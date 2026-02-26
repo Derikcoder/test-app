@@ -15,7 +15,12 @@ import {
   getServiceCallById,
   createServiceCall,
   updateServiceCall,
-  deleteServiceCall
+  deleteServiceCall,
+  addParts,
+  uploadPhotos,
+  submitRating,
+  getServiceCallsByStatus,
+  getServiceCallsByAgent
 } from '../controllers/serviceCall.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -55,5 +60,40 @@ router.put('/:id', protect, updateServiceCall);
  * @access  Private (JWT required)
  */
 router.delete('/:id', protect, deleteServiceCall);
+
+/**
+ * @route   GET /api/service-calls/status/:status
+ * @desc    Get service calls by status
+ * @access  Private (JWT required)
+ */
+router.get('/status/:status', protect, getServiceCallsByStatus);
+
+/**
+ * @route   GET /api/service-calls/agent/:agentId
+ * @desc    Get service calls assigned to an agent
+ * @access  Private (JWT required)
+ */
+router.get('/agent/:agentId', protect, getServiceCallsByAgent);
+
+/**
+ * @route   POST /api/service-calls/:id/parts
+ * @desc    Add parts used to service call
+ * @access  Private (JWT required)
+ */
+router.post('/:id/parts', protect, addParts);
+
+/**
+ * @route   POST /api/service-calls/:id/photos
+ * @desc    Upload before/after photos for service call
+ * @access  Private (JWT required)
+ */
+router.post('/:id/photos', protect, uploadPhotos);
+
+/**
+ * @route   POST /api/service-calls/:id/rating
+ * @desc    Submit rating and feedback for completed service call
+ * @access  Private (JWT required)
+ */
+router.post('/:id/rating', protect, submitRating);
 
 export default router;

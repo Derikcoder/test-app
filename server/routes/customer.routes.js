@@ -15,7 +15,11 @@ import {
   getCustomerById,
   createCustomer,
   updateCustomer,
-  deleteCustomer
+  deleteCustomer,
+  getCustomerSites,
+  addCustomerSite,
+  updateCustomerSite,
+  deleteCustomerSite
 } from '../controllers/customer.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -55,5 +59,33 @@ router.put('/:id', protect, updateCustomer);
  * @access  Private (JWT required)
  */
 router.delete('/:id', protect, deleteCustomer);
+
+/**
+ * @route   GET /api/customers/:id/sites
+ * @desc    Get all sites for a business customer
+ * @access  Private (JWT required)
+ */
+router.get('/:id/sites', protect, getCustomerSites);
+
+/**
+ * @route   POST /api/customers/:id/sites
+ * @desc    Add new site to business customer
+ * @access  Private (JWT required)
+ */
+router.post('/:id/sites', protect, addCustomerSite);
+
+/**
+ * @route   PUT /api/customers/:id/sites/:siteId
+ * @desc    Update site information
+ * @access  Private (JWT required)
+ */
+router.put('/:id/sites/:siteId', protect, updateCustomerSite);
+
+/**
+ * @route   DELETE /api/customers/:id/sites/:siteId
+ * @desc    Delete site from business customer
+ * @access  Private (JWT required)
+ */
+router.delete('/:id/sites/:siteId', protect, deleteCustomerSite);
 
 export default router;

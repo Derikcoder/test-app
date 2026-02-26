@@ -22,6 +22,9 @@ import authRoutes from './routes/auth.routes.js';
 import agentRoutes from './routes/agent.routes.js';
 import customerRoutes from './routes/customer.routes.js';
 import serviceCallRoutes from './routes/serviceCall.routes.js';
+import equipmentRoutes from './routes/equipment.routes.js';
+import quotationRoutes from './routes/quotation.routes.js';
+import invoiceRoutes from './routes/invoice.routes.js';
 import { requestLogger, errorLogger, logInfo, logError } from './middleware/logger.middleware.js';
 
 // Load environment variables from .env file
@@ -97,6 +100,15 @@ app.use('/api/customers', customerRoutes);
 
 // Service call tracking and management
 app.use('/api/service-calls', serviceCallRoutes);
+
+// Equipment registry and asset management
+app.use('/api/equipment', equipmentRoutes);
+
+// Quotation/estimate management
+app.use('/api/quotations', quotationRoutes);
+
+// Invoice and payment management
+app.use('/api/invoices', invoiceRoutes);
 
 /**
  * 404 Handler
