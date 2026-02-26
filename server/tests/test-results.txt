@@ -1,0 +1,166 @@
+
+> server@1.0.0 test
+> jest --detectOpenHandles
+
+PASS tests/unit/models/User.model.test.js
+PASS tests/unit/middleware/auth.middleware.test.js
+FAIL tests/unit/controllers/auth.controller.test.js
+  ● Auth Controller › registerUser › should handle server errors gracefully
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+    -   "message": "Server error",
+    +   "details": undefined,
+    +   "message": "Database error",
+      },
+
+    Number of calls: 1
+
+      135 |
+      136 |       expect(res.status).toHaveBeenCalledWith(500);
+    > 137 |       expect(res.json).toHaveBeenCalledWith({ message: 'Server error' });
+          |                        ^
+      138 |     });
+      139 |   });
+      140 |
+
+      at Object.toHaveBeenCalledWith (tests/unit/controllers/auth.controller.test.js:137:24)
+
+  ● Auth Controller › loginUser › should login user with correct credentials
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: 200
+
+    Number of calls: 0
+
+      159 |       expect(User.findOne).toHaveBeenCalledWith({ email: 'test@example.com' });
+      160 |       expect(mockUser.comparePassword).toHaveBeenCalledWith('password123');
+    > 161 |       expect(res.status).toHaveBeenCalledWith(200);
+          |                          ^
+      162 |       expect(res.json).toHaveBeenCalledWith(
+      163 |         expect.objectContaining({
+      164 |           _id: '123',
+
+      at Object.toHaveBeenCalledWith (tests/unit/controllers/auth.controller.test.js:161:26)
+
+  ● Auth Controller › loginUser › should handle server errors gracefully
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+    -   "message": "Server error",
+    +   "details": undefined,
+    +   "message": "Database error",
+      },
+
+    Number of calls: 1
+
+      238 |
+      239 |       expect(res.status).toHaveBeenCalledWith(500);
+    > 240 |       expect(res.json).toHaveBeenCalledWith({ message: 'Server error' });
+          |                        ^
+      241 |     });
+      242 |
+      243 |     test('should convert email to lowercase before searching', async () => {
+
+      at Object.toHaveBeenCalledWith (tests/unit/controllers/auth.controller.test.js:240:24)
+
+  ● Auth Controller › loginUser › should convert email to lowercase before searching
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+    -   "email": "test@example.com",
+    +   "email": "TEST@EXAMPLE.COM",
+      },
+
+    Number of calls: 1
+
+      258 |
+      259 |       // Email should be converted to lowercase before query
+    > 260 |       expect(User.findOne).toHaveBeenCalledWith({ email: 'test@example.com' });
+          |                            ^
+      261 |     });
+      262 |   });
+      263 |
+
+      at Object.toHaveBeenCalledWith (tests/unit/controllers/auth.controller.test.js:260:28)
+
+  ● Auth Controller › getUserProfile › should return user profile when authenticated
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: 200
+    Received: 500
+
+    Number of calls: 1
+
+      282 |       await getUserProfile(req, res);
+      283 |
+    > 284 |       expect(res.status).toHaveBeenCalledWith(200);
+          |                          ^
+      285 |       expect(res.json).toHaveBeenCalledWith(
+      286 |         expect.objectContaining({
+      287 |           _id: '123',
+
+      at Object.toHaveBeenCalledWith (tests/unit/controllers/auth.controller.test.js:284:26)
+
+  ● Auth Controller › getUserProfile › should return 404 when user not found
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: 404
+    Received: 500
+
+    Number of calls: 1
+
+      301 |       await getUserProfile(req, res);
+      302 |
+    > 303 |       expect(res.status).toHaveBeenCalledWith(404);
+          |                          ^
+      304 |       expect(res.json).toHaveBeenCalledWith({ message: 'User not found' });
+      305 |     });
+      306 |
+
+      at Object.toHaveBeenCalledWith (tests/unit/controllers/auth.controller.test.js:303:26)
+
+  ● Auth Controller › getUserProfile › should handle server errors gracefully
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+    -   "message": "Server error",
+    +   "message": "Database error",
+      },
+
+    Number of calls: 1
+
+      315 |
+      316 |       expect(res.status).toHaveBeenCalledWith(500);
+    > 317 |       expect(res.json).toHaveBeenCalledWith({ message: 'Server error' });
+          |                        ^
+      318 |     });
+      319 |   });
+      320 | });
+
+      at Object.toHaveBeenCalledWith (tests/unit/controllers/auth.controller.test.js:317:24)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       7 failed, 35 passed, 42 total
+Snapshots:   0 total
+Time:        2.237 s
+Ran all test suites.

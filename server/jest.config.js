@@ -5,6 +5,12 @@
 
 export default {
   testEnvironment: 'node',
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
+  transform: {
+    '^.+\\.js$': ['babel-jest', { configFile: './babel.config.cjs' }],
+  },
   collectCoverageFrom: [
     'controllers/**/*.js',
     'middleware/**/*.js',
@@ -22,7 +28,6 @@ export default {
   },
   testMatch: ['**/tests/**/*.test.js'],
   moduleFileExtensions: ['js'],
-  transform: {},
   testTimeout: 10000,
   collectCoverage: false,
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
