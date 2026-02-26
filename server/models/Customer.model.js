@@ -10,13 +10,71 @@
 import mongoose from 'mongoose';
 
 /**
+ * Site Sub-Schema (for Business Customers)
+ * 
+ * @description
+ * Represents individual service locations for business customers.
+ * Business customers can have multiple sites requiring service.
+ */
+const siteSchema = new mongoose.Schema({
+  /** Site name/identifier (e.g., "Head Office", "Branch 2") */
+  siteName: {
+    type: String,
+    required: [true, 'Site name is required'],
+    trim: true,
+  },
+  /** Physical address of this site */
+  address: {
+    type: String,
+    required: [true, 'Site address is required'],
+    trim: true,
+  },
+  /** Site-specific contact person name */
+  contactPerson: {
+    type: String,
+    trim: true,
+  },
+  /** Site-specific contact phone */
+  contactPhone: {
+    type: String,
+    trim: true,
+  },
+  /** Site-specific contact email */
+  contactEmail: {
+    type: String,
+    lowercase: true,
+    trim: true,
+  },
+  /** Service types offered at this site */
+  serviceTypes: {
+    type: [String],
+    default: [],
+  },
+  /** Site status */
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
+  },
+  /** Additional notes about this site */
+  notes: {
+    type: String,
+    trim: true,
+  },
+}, { _id: true }); // Enable _id for sites
+
+/**
  * Customer Schema Definition
  * 
  * @description
- * Represents a business customer/client in the field service system.
+ * Represents a customer/client in the field service system.
+ * Supports both business customers (multiple sites) and residential customers (single site).
  * Includes business details, contact information, and account management.
  * 
  * Key Features:
+ * - Customer type: business or residential
+ * - Business customers: multiple sites with equipment per site
+ * - Residential customers: single service address
  * - Immutable business name and customer ID (prevents fraud/confusion)
  * - Primary and alternate contact information
  * - Separate physical and billing addresses
@@ -24,10 +82,19 @@ import mongoose from 'mongoose';
  */
 const customerSchema = new mongoose.Schema(
   {
+    /** Customer type - Determines fields and validation */
+    customerType: {
+      type: String,
+      enum: ['business', 'residential'],
+      required: [true, 'Customer type is required'],
+      default: 'residential',
+    },
     /** Business/company name - Cannot be changed after creation */
     businessName: {
       type: String,
-      required: [true, 'Business name is required'],
+      required: function() {
+        return this.customerType === 'business';
+      },
       trim: true,
       immutable: true, // Protects business identity
     },
@@ -70,10 +137,12 @@ const customerSchema = new mongoose.Schema(
       trim: true,
       immutable: true, // Protects customer identity in accounting
     },
-    /** Physical/service location address */
+    /** Physical/service location address (for residential customers) */
     physicalAddress: {
       type: String,
-      required: [true, 'Physical address is required'],
+      required: function() {
+        return this.customerType === 'residential';
+      },
       trim: true,
     },
     /** Billing address (if different from physical) */
@@ -85,6 +154,37 @@ const customerSchema = new mongoose.Schema(
     vatNumber: {
       type: String,
       trim: true,
+    },
+    /** Tax number for business customers */
+    taxNumber: {
+      type: String,
+      trim: true,
+    },
+    /** Company registration number (for business customers) */
+    registrationNumber: {
+      type: String,
+      trim: true,
+    },
+    /** Multiple sites (for business customers only) */
+    sites: {
+      type: [siteSchema],
+      default: [],
+      validate: {
+        validator: function(sites) {
+          // Business customers must have at least one site
+          if (this.customerType === 'business' && sites.length === 0) {
+            return false;
+          }
+          return true;
+        },
+        message: 'Business customers must have at least one site',
+      },
+    },
+    /** Maintenance manager (central contact for business customers) */
+    maintenanceManager: {
+      name: { type: String, trim: true },
+      phone: { type: String, trim: true },
+      email: { type: String, lowercase: true, trim: true },
     },
     /** Current account status */
     accountStatus: {
@@ -116,6 +216,7 @@ const customerSchema = new mongoose.Schema(
 customerSchema.statics.IMMUTABLE_FIELDS = [
   'businessName',
   'customerId',
+  'customerType',
   'createdAt',
   '_id',
   'createdBy'
@@ -134,6 +235,10 @@ customerSchema.statics.EDITABLE_FIELDS = [
   'physicalAddress',
   'billingAddress',
   'vatNumber',
+  'taxNumber',
+  'registrationNumber',
+  'sites',
+  'maintenanceManager',
   'accountStatus',
   'notes'
 ];

@@ -10,18 +10,57 @@
 import mongoose from 'mongoose';
 
 /**
+ * Parts Used Sub-Schema
+ * 
+ * @description
+ * Represents parts/materials used during service call.
+ * Tracked for invoicing and inventory management.
+ */
+const partsUsedSchema = new mongoose.Schema({
+  /** Part description */
+  description: {
+    type: String,
+    required: [true, 'Part description is required'],
+    trim: true,
+  },
+  /** Quantity used */
+  quantity: {
+    type: Number,
+    required: [true, 'Quantity is required'],
+    min: [0, 'Quantity cannot be negative'],
+    default: 1,
+  },
+  /** Unit price */
+  unitPrice: {
+    type: Number,
+    required: [true, 'Unit price is required'],
+    min: [0, 'Unit price cannot be negative'],
+  },
+  /** Total cost (quantity × unitPrice) */
+  total: {
+    type: Number,
+    required: [true, 'Total is required'],
+    min: [0, 'Total cannot be negative'],
+  },
+}, { _id: true });
+
+/**
  * Service Call Schema Definition
  * 
  * @description
  * Represents a service request/work order in the field service system.
- * Tracks assignment, status, scheduling, and completion details.
+ * Tracks assignment, status, scheduling, completion, and invoicing details.
  * 
  * Key Features:
  * - Auto-generated call number (SC-000001 format)
  * - Customer and agent references (relationships)
  * - Status workflow tracking
  * - Priority levels for scheduling
- * - Time tracking (estimated vs actual duration)
+ * - Time tracking (scheduled vs actual duration)
+ * - Parts usage tracking
+ * - Photo documentation (before/after)
+ * - Customer rating and feedback
+ * - Links to quotation and invoice
  */
 const serviceCallSchema = new mongoose.Schema(
   {
@@ -33,16 +72,43 @@ const serviceCallSchema = new mongoose.Schema(
       trim: true,
       immutable: true, // Prevents modification of service call ID
     },
+    /** Reference to Quotation (if call was created from a quotation) */
+    quotation: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Quotation',
+    },
+    /** Reference to Invoice (when service is invoiced) */
+    invoice: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Invoice',
+    },
     /** Reference to Customer who requested the service */
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
       required: [true, 'Customer is required'],
     },
+    /** Reference to specific site (for business customers with multiple sites) */
+    siteId: {
+      type: mongoose.Schema.Types.ObjectId,
+      trim: true,
+    },
+    /** Reference to Equipment being serviced */
+    equipment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Equipment',
+    },
     /** Reference to FieldServiceAgent assigned to this call */
     assignedAgent: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'FieldServiceAgent',
+    },
+    /** Role of person who created the call */
+    createdByRole: {
+      type: String,
+      enum: ['superadmin', 'agent', 'customer'],
+      required: [true, 'Creator role is required'],
+      default: 'superadmin',
     },
     /** Brief title/summary of the service call */
     title: {
@@ -65,10 +131,10 @@ const serviceCallSchema = new mongoose.Schema(
     /** Current status in the service call lifecycle */
     status: {
       type: String,
-      enum: ['open', 'assigned', 'in-progress', 'on-hold', 'completed', 'cancelled'],
-      default: 'open',
+      enum: ['pending', 'scheduled', 'assigned', 'in-progress', 'on-hold', 'completed', 'invoiced', 'cancelled'],
+      default: 'pending',
     },
-    /** Type/category of service (e.g., 'Repair', 'Installation') */
+    /** Type/category of service */
     serviceType: {
       type: String,
       required: [true, 'Service type is required'],
@@ -78,17 +144,33 @@ const serviceCallSchema = new mongoose.Schema(
     scheduledDate: {
       type: Date,
     },
+    /** Date/time service started */
+    startedDate: {
+      type: Date,
+    },
     /** Actual completion date/time */
     completedDate: {
       type: Date,
     },
-    /** Estimated duration in minutes */
-    estimatedDuration: {
-      type: Number, // in minutes
+    /** Date/time service was invoiced */
+    invoicedDate: {
+      type: Date,
     },
-    /** Actual duration in minutes (for performance tracking) */
-    actualDuration: {
-      type: Number, // in minutes
+    /** Labor hours spent on the job */
+    laborHours: {
+      type: Number,
+      min: [0, 'Labor hours cannot be negative'],
+    },
+    /** Parts/materials used during service */
+    partsUsed: {
+      type: [partsUsedSchema],
+      default: [],
+    },
+    /** Total cost of parts used */
+    partsCost: {
+      type: Number,
+      min: [0, 'Parts cost cannot be negative'],
+      default: 0,
     },
     /** Physical location where service will be performed */
     serviceLocation: {
@@ -100,10 +182,45 @@ const serviceCallSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** Agent's work notes (visible to customer) */
+    agentNotes: {
+      type: String,
+      trim: true,
+    },
     /** Internal notes for agents/staff only (not customer-visible) */
     internalNotes: {
       type: String,
       trim: true,
+    },
+    /** Before photos (array of image URLs or file references) */
+    beforePhotos: {
+      type: [String],
+      default: [],
+    },
+    /** After photos (array of image URLs or file references) */
+    afterPhotos: {
+      type: [String],
+      default: [],
+    },
+    /** Customer signature data (when service completed) */
+    customerSignature: {
+      type: String, // Can store image data URL or file reference
+      trim: true,
+    },
+    /** Customer rating (1-5 stars) */
+    rating: {
+      type: Number,
+      min: [1, 'Rating must be at least 1'],
+      max: [5, 'Rating cannot exceed 5'],
+    },
+    /** Customer feedback/comments */
+    customerFeedback: {
+      type: String,
+      trim: true,
+    },
+    /** Date customer provided rating/feedback */
+    ratedDate: {
+      type: Date,
     },
     /** Reference to User who created this service call */
     createdBy: {
@@ -156,7 +273,11 @@ serviceCallSchema.statics.IMMUTABLE_FIELDS = [
  * Fields that can be safely updated during service call lifecycle
  */
 serviceCallSchema.statics.EDITABLE_FIELDS = [
+  'quotation',
+  'invoice',
   'customer',
+  'siteId',
+  'equipment',
   'assignedAgent',
   'title',
   'description',
@@ -164,12 +285,22 @@ serviceCallSchema.statics.EDITABLE_FIELDS = [
   'status',
   'serviceType',
   'scheduledDate',
+  'startedDate',
   'completedDate',
-  'estimatedDuration',
-  'actualDuration',
+  'invoicedDate',
+  'laborHours',
+  'partsUsed',
+  'partsCost',
   'serviceLocation',
   'notes',
-  'internalNotes'
+  'agentNotes',
+  'internalNotes',
+  'beforePhotos',
+  'afterPhotos',
+  'customerSignature',
+  'rating',
+  'customerFeedback',
+  'ratedDate'
 ];
 
 const ServiceCall = mongoose.model('ServiceCall', serviceCallSchema);

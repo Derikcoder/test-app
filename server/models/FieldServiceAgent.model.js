@@ -66,11 +66,54 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    /** Service specializations (e.g., ['HVAC_REFRIGERATION', 'ELECTRICAL']) */
+    specializations: {
+      type: [String],
+      enum: ['HVAC_REFRIGERATION', 'ELECTRICAL', 'PLUMBING', 'GENERAL_MAINTENANCE'],
+      default: [],
+    },
+    /** Total number of jobs attended */
+    totalJobsAttended: {
+      type: Number,
+      min: [0, 'Total jobs cannot be negative'],
+      default: 0,
+    },
+    /** Average customer rating (0-5 stars) */
+    averageRating: {
+      type: Number,
+      min: [0, 'Rating cannot be negative'],
+      max: [5, 'Rating cannot exceed 5'],
+      default: 0,
+    },
+    /** Number of ratings received */
+    ratingsCount: {
+      type: Number,
+      min: [0, 'Ratings count cannot be negative'],
+      default: 0,
+    },
+    /** Hourly labor rate for cost calculation */
+    hourlyRate: {
+      type: Number,
+      min: [0, 'Hourly rate cannot be negative'],
+      default: 0,
+    },
     /** Current employment status */
     status: {
       type: String,
       enum: ['active', 'inactive', 'on-leave'],
       default: 'active',
+    },
+    /** Current availability status */
+    availability: {
+      type: String,
+      enum: ['available', 'busy', 'off-duty'],
+      default: 'available',
+    },
+    /** Current location (for future geolocation features) */
+    currentLocation: {
+      lat: { type: Number },
+      lng: { type: Number },
+      updatedAt: { type: Date },
     },
     /** Geographic area assigned to agent */
     assignedArea: {
@@ -100,6 +143,37 @@ const fieldServiceAgentSchema = new mongoose.Schema(
 );
 
 /**
+ * Instance Method: Update Rating
+ * 
+ * @description
+ * Recalculates average rating when a new rating is added from a service call.
+ * 
+ * @param {Number} newRating - New rating value (1-5)
+ * @returns {Promise<FieldServiceAgent>} Updated agent
+ */
+fieldServiceAgentSchema.methods.updateRating = async function(newRating) {
+  // Calculate new average
+  const totalRating = (this.averageRating * this.ratingsCount) + newRating;
+  this.ratingsCount += 1;
+  this.averageRating = totalRating / this.ratingsCount;
+  
+  return this.save();
+};
+
+/**
+ * Instance Method: Increment Jobs Attended
+ * 
+ * @description
+ * Increments the total jobs attended counter.
+ * 
+ * @returns {Promise<FieldServiceAgent>} Updated agent
+ */
+fieldServiceAgentSchema.methods.incrementJobsAttended = async function() {
+  this.totalJobsAttended += 1;
+  return this.save();
+};
+
+/**
  * Static Property: Immutable Fields
  * Fields that cannot be updated after creation (HR/legal protection)
  */
@@ -120,7 +194,14 @@ fieldServiceAgentSchema.statics.EDITABLE_FIELDS = [
   'email',
   'phoneNumber',
   'skills',
+  'specializations',
+  'totalJobsAttended',
+  'averageRating',
+  'ratingsCount',
+  'hourlyRate',
   'status',
+  'availability',
+  'currentLocation',
   'assignedArea',
   'vehicleNumber',
   'notes'
