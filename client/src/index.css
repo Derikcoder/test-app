@@ -118,7 +118,7 @@
    * Multi-line text input with glassmorphism
    */
   .glass-form-textarea {
-    @apply glass-form-input resize-vertical min-h-[120px];
+    @apply glass-form-input resize-y min-h-[120px];
   }
 
   /**

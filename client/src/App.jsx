@@ -50,8 +50,6 @@ const ProtectedRoute = ({ children }) => {
         </div>
       </div>
     );
-      </div>
-    );
   }
 
   // Redirect to login if not authenticated, otherwise render children
