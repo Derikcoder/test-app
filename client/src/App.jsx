@@ -43,11 +43,13 @@ const ProtectedRoute = ({ children }) => {
   // Show loading spinner while authentication status is being determined
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+        <div className="glass-card p-8 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-b-transparent mx-auto mb-4"></div>
+          <p className="text-lg font-semibold opacity-90" style={{ color: 'white' }}>Loading...</p>
         </div>
+      </div>
+    );
       </div>
     );
   }

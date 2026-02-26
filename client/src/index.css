@@ -1,3 +1,392 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/**
+ * Appatunid Brand Colors & Glassmorphism Design System
+ * 
+ * Primary: #05198C (Deep Blue)
+ * Secondary: #FFFB28 (Bright Yellow)
+ * 
+ * Glassmorphism Design Pattern:
+ * - Frosted glass effect with backdrop blur
+ * - Semi-transparent layers (rgba)
+ * - Subtle borders with transparency
+ * - Smooth transitions and shadows
+ */
+
+:root {
+  /* Appatunid Brand Colors */
+  --primary: #05198C;
+  --secondary: #FFFB28;
+  --primary-light: #1a3ba8;
+  --primary-dark: #031154;
+  --secondary-dark: #e6e600;
+  
+  /* Glassmorphism Colors */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-hover: rgba(255, 255, 255, 0.15);
+  --glass-backdrop: rgba(5, 25, 140, 0.05);
+  
+  /* Gradients */
+  --glass-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --primary-gradient: linear-gradient(135deg, #05198C 0%, #1a3ba8 100%);
+  --secondary-gradient: linear-gradient(135deg, #FFFB28 0%, #e6e600 100%);
+}
+
+/* ============================================================
+   GLASSMORPHISM COMPONENTS
+   ============================================================ */
+
+@layer components {
+  /**
+   * Glass Pane Base
+   * Core glassmorphism style for containers and cards
+   */
+  .glass-pane {
+    @apply relative;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  }
+
+  /**
+   * Glass Form Container
+   * Full form wrapper with enhanced glassmorphism
+   */
+  .glass-form {
+    @apply glass-pane p-8 w-full max-w-md shadow-2xl;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(15px) saturate(200%);
+    -webkit-backdrop-filter: blur(15px) saturate(200%);
+  }
+
+  /**
+   * Glass Form Group
+   * Wrapper for label + input combinations
+   */
+  .glass-form-group {
+    @apply mb-6 relative;
+  }
+
+  /**
+   * Glass Form Label
+   * Labels with proper contrast and styling
+   */
+  .glass-form-label {
+    @apply block text-sm font-semibold mb-2;
+    color: var(--primary);
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+  }
+
+  /**
+   * Glass Form Input
+   * Text inputs, textareas, and selects with glassmorphic effect
+   */
+  .glass-form-input {
+    @apply w-full px-4 py-3 rounded-lg transition-all duration-300;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1.5px solid var(--glass-border);
+    color: var(--primary);
+    font-weight: 500;
+  }
+
+  .glass-form-input::placeholder {
+    @apply opacity-60;
+    color: var(--primary);
+  }
+
+  .glass-form-input:focus {
+    @apply outline-none;
+    background: rgba(255, 255, 255, 0.25);
+    border-color: var(--secondary);
+    box-shadow: 0 0 20px rgba(255, 251, 40, 0.3), inset 0 0 20px rgba(255, 251, 40, 0.1);
+  }
+
+  .glass-form-input:hover:not(:focus) {
+    @apply border-opacity-100;
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 251, 40, 0.5);
+  }
+
+  /**
+   * Glass Form Textarea
+   * Multi-line text input with glassmorphism
+   */
+  .glass-form-textarea {
+    @apply glass-form-input resize-vertical min-h-[120px];
+  }
+
+  /**
+   * Glass Form Select
+   * Dropdown selections with custom styling
+   */
+  .glass-form-select {
+    @apply glass-form-input appearance-none cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2305198C' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+  }
+
+  /**
+   * Glass Form Error Message
+   * Validation error display
+   */
+  .glass-form-error {
+    @apply text-sm font-medium mt-1;
+    color: #ee5a52;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+  }
+
+  /**
+   * Glass Form Success Message
+   * Success message display
+   */
+  .glass-form-success {
+    @apply text-sm font-medium mt-1;
+    color: #10b981;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+  }
+
+  /**
+   * Glass Button Primary
+   * Main action button with brand primary color
+   */
+  .glass-btn-primary {
+    @apply w-full px-6 py-3 rounded-lg font-bold transition-all duration-300 uppercase tracking-wide;
+    background: var(--primary-gradient);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 16px rgba(5, 25, 140, 0.3);
+    cursor: pointer;
+  }
+
+  .glass-btn-primary:hover {
+    @apply transform -translate-y-1;
+    box-shadow: 0 12px 24px rgba(5, 25, 140, 0.4);
+    background: linear-gradient(135deg, var(--primary-light) 0%, #2a5bcc 100%);
+  }
+
+  .glass-btn-primary:active {
+    @apply transform translate-y-0;
+    box-shadow: 0 4px 12px rgba(5, 25, 140, 0.3);
+  }
+
+  .glass-btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    transform: none;
+  }
+
+  /**
+   * Glass Button Secondary
+   * Secondary action button with brand secondary color
+   */
+  .glass-btn-secondary {
+    @apply w-full px-6 py-3 rounded-lg font-bold transition-all duration-300 uppercase tracking-wide;
+    background: var(--secondary-gradient);
+    color: var(--primary);
+    border: 1px solid rgba(255, 251, 40, 0.5);
+    box-shadow: 0 8px 16px rgba(255, 251, 40, 0.2);
+    cursor: pointer;
+  }
+
+  .glass-btn-secondary:hover {
+    @apply transform -translate-y-1;
+    box-shadow: 0 12px 24px rgba(255, 251, 40, 0.3);
+    background: linear-gradient(135deg, var(--secondary) 0%, #fff000 100%);
+  }
+
+  .glass-btn-secondary:active {
+    @apply transform translate-y-0;
+    box-shadow: 0 4px 12px rgba(255, 251, 40, 0.2);
+  }
+
+  /**
+   * Glass Button Outline
+   * Tertiary action button with border only
+   */
+  .glass-btn-outline {
+    @apply w-full px-6 py-3 rounded-lg font-bold transition-all duration-300 uppercase tracking-wide;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--primary);
+    border: 2px solid var(--primary);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+  }
+
+  .glass-btn-outline:hover {
+    @apply transform -translate-y-1;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--secondary);
+    color: var(--secondary);
+    box-shadow: 0 8px 16px rgba(255, 251, 40, 0.2);
+  }
+
+  /**
+   * Glass Heading
+   * Styled h1, h2, h3 headings for glass forms
+   */
+  .glass-heading {
+    @apply text-3xl font-bold mb-2 text-center;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .glass-heading-secondary {
+    @apply text-center text-sm font-medium opacity-75 mb-8;
+    color: var(--primary);
+  }
+
+  /**
+   * Glass Link
+   * Styled links within glass components
+   */
+  .glass-link {
+    @apply font-semibold transition-all duration-300;
+    color: var(--primary);
+    text-decoration: underline;
+    text-decoration-color: var(--secondary);
+    text-underline-offset: 3px;
+  }
+
+  .glass-link:hover {
+    color: var(--secondary);
+  }
+
+  /**
+   * Glass Divider
+   * Visual separator
+   */
+  .glass-divider {
+    @apply my-6 flex items-center;
+    color: rgba(5, 25, 140, 0.4);
+  }
+
+  .glass-divider::before,
+  .glass-divider::after {
+    @apply flex-1 h-px;
+    background: linear-gradient(90deg, rgba(5, 25, 140, 0.1), rgba(5, 25, 140, 0.4), rgba(5, 25, 140, 0.1));
+    content: '';
+  }
+
+  .glass-divider-text {
+    @apply px-4 text-xs font-semibold;
+    color: var(--primary);
+  }
+
+  /**
+   * Glass Card
+   * Content card with glassmorphic styling
+   */
+  .glass-card {
+    @apply glass-pane p-6;
+    background: rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2);
+  }
+
+  /**
+   * Glass Alert
+   * Alert/notification boxes
+   */
+  .glass-alert {
+    @apply glass-pane p-4 rounded-lg mb-4 flex items-start;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-alert-error {
+    @apply glass-alert;
+    border-left: 4px solid #ee5a52;
+    background: rgba(238, 90, 82, 0.1);
+  }
+
+  .glass-alert-success {
+    @apply glass-alert;
+    border-left: 4px solid #10b981;
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .glass-alert-info {
+    @apply glass-alert;
+    border-left: 4px solid var(--primary);
+    background: rgba(5, 25, 140, 0.1);
+  }
+}
+
+/* ============================================================
+   BACKGROUND EFFECTS
+   ============================================================ */
+
+/**
+ * Animated Gradient Background
+ * For page backgrounds or large containers
+ */
+.glass-bg-animated {
+  background: linear-gradient(-45deg, #05198C, #1a3ba8, #FFFB28, #e6e600);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/**
+ * Subtle Glass Background Particles
+ * Subtle animated background for depth
+ */
+.glass-bg-particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(5, 25, 140, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 251, 40, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================================
+   ACCESSIBILITY & DARK MODE SUPPORT
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-btn-primary,
+  .glass-btn-secondary,
+  .glass-btn-outline,
+  .glass-form-input,
+  .glass-form-select,
+  .glass-card {
+    transition: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-bg: rgba(30, 30, 50, 0.3);
+    --glass-border: rgba(255, 251, 40, 0.1);
+    --glass-hover: rgba(30, 30, 50, 0.5);
+  }
+}

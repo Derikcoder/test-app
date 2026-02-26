@@ -64,209 +64,198 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">SuperUser Registration</h2>
-          <p className="mt-2 text-sm text-gray-600">Create your business account</p>
-        </div>
+    <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="glass-form max-w-3xl">
+        {/* Heading */}
+        <h1 className="glass-heading">Create Account</h1>
+        <p className="glass-heading-secondary">Join Appatunid & Manage Your Business</p>
 
+        {/* Error Message Display */}
         {error && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
-            <p className="text-red-700 text-sm">{error}</p>
+          <div className="glass-alert-error mb-6">
+            <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <p style={{ color: '#ee5a52' }} className="font-medium">{error}</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* User Information */}
-          <div className="bg-gray-50 p-6 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">User Information</h3>
+          {/* User Information Section */}
+          <div className="glass-card">
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>👤 User Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Username</label>
                 <input
                   type="text"
                   name="userName"
                   required
                   value={formData.userName}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="johndoe"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Email</label>
                 <input
                   type="email"
                   name="email"
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="john@example.com"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Password</label>
                 <input
                   type="password"
                   name="password"
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="Minimum 6 characters"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Confirm Password</label>
                 <input
                   type="password"
                   name="confirmPassword"
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="Re-enter password"
                 />
               </div>
             </div>
           </div>
 
-          {/* Business Information */}
-          <div className="bg-gray-50 p-6 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Information</h3>
+          {/* Business Information Section */}
+          <div className="glass-card">
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>🏢 Business Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Business Name *
-                </label>
+              <div className="md:col-span-2 glass-form-group">
+                <label className="glass-form-label">Business Name</label>
                 <input
                   type="text"
                   name="businessName"
                   required
                   value={formData.businessName}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="ABC Corporation"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Business Registration Number *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Business Registration Number</label>
                 <input
                   type="text"
                   name="businessRegistrationNumber"
                   required
                   value={formData.businessRegistrationNumber}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="REG123456"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tax Number *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Tax Number</label>
                 <input
                   type="text"
                   name="taxNumber"
                   required
                   value={formData.taxNumber}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="TAX123456"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  VAT Number *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">VAT Number</label>
                 <input
                   type="text"
                   name="vatNumber"
                   required
                   value={formData.vatNumber}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="VAT123456"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Phone Number</label>
                 <input
                   type="tel"
                   name="phoneNumber"
                   required
                   value={formData.phoneNumber}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="+27 12 345 6789"
                 />
               </div>
             </div>
           </div>
 
-          {/* Address Information */}
-          <div className="bg-gray-50 p-6 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Address Information</h3>
+          {/* Address Information Section */}
+          <div className="glass-card">
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>📍 Address Information</h3>
             <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Physical Address *
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Physical Address</label>
                 <textarea
                   name="physicalAddress"
                   required
                   value={formData.physicalAddress}
                   onChange={handleChange}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-textarea"
                   placeholder="123 Main Street, City, Province, Postal Code"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Website Address
-                </label>
+              <div className="glass-form-group">
+                <label className="glass-form-label">Website Address</label>
                 <input
                   type="url"
                   name="websiteAddress"
                   value={formData.websiteAddress}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="glass-form-input"
                   placeholder="https://www.example.com"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-4">
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="text-indigo-600 hover:text-indigo-800 font-medium"
+              className="glass-btn-outline flex-1"
             >
-              Already have an account? Login
+              Already Have Account?
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="glass-btn-primary flex-1"
             >
-              {loading ? 'Registering...' : 'Register'}
+              {loading ? '🔄 Registering...' : '✨ Create Account'}
             </button>
+          </div>
+
+          {/* Footer */}
+          <div className="text-center pt-4">
+            <p className="text-xs opacity-70" style={{ color: 'var(--primary)' }}>
+              By registering, you agree to our Terms & Conditions
+            </p>
           </div>
         </form>
       </div>
