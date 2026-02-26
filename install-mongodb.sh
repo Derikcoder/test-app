@@ -72,4 +72,5 @@ else
     exit 1
 fi
 
-# VITE_GOOGLE_MAPS_API_KEY removed for security
+# Note: Add your Google Maps API key to client/.env
+# VITE_GOOGLE_MAPS_API_KEY=your-api-key-here
