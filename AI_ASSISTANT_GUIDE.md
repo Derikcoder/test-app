@@ -226,6 +226,8 @@ VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 - Never commit API keys or secrets
 - JWT_SECRET must be strong in production
 - Google Maps API key needs billing enabled
+- `VITE_` variables are exposed in the client bundle (treat as public)
+- Restrict Google Maps API keys by HTTP referrers and API scope
 
 ### 4. API Proxy Configuration
 
@@ -704,6 +706,8 @@ curl -X GET http://localhost:5000/api/auth/profile \
 - ✅ Updated README.md with comprehensive documentation
 - ✅ Added industry-standard comments throughout codebase
 - ✅ Created AI_ASSISTANT_GUIDE.md (this file)
+- ✅ Clarified client env exposure and API key restriction guidance
+- ✅ Updated SECURITY.md with key rotation notes
 
 **Modified Files:**
 - All server files (added JSDoc comments)

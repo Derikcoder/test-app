@@ -81,6 +81,7 @@ This document provides a structured, enterprise-grade overview of the codebase. 
 - Client environment variables must start with VITE_.
 - Backend environment variables are read from server/.env.
 - The client map picker relies on VITE_GOOGLE_MAPS_API_KEY.
+- VITE_ variables are public in the client bundle and must be treated as non-secret.
 
 ## Data and Control Flow Overview
 - UI events -> component state -> API calls via api/axios.js.

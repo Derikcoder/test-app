@@ -15,7 +15,7 @@ This document outlines the security analysis and remediation steps taken on this
 
 #### What Happened:
 - A real Google Maps API key was accidentally hardcoded in `install-mongodb.sh`
-- **Key:** `AIzaSyDyXkHddp5X57PpzU49JEZAT1Vp_cv7be0`
+- **Key:** (redacted)
 - The file was tracked in git and pushed to the public GitHub repository
 - The key was exposed in the following commits
 
@@ -29,18 +29,19 @@ This document outlines the security analysis and remediation steps taken on this
 #### Required Action - YOU MUST DO THIS:
 ⚠️ **DISABLE THE COMPROMISED API KEY IMMEDIATELY**
 
-The API key `AIzaSyDyXkHddp5X57PpzU49JEZAT1Vp_cv7be0` is compromised and must be revoked:
+The compromised API key must be revoked:
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
 2. Find your project
 3. Navigate to **Credentials**
-4. Find the API key: `AIzaSyDyXkHddp5X57PpzU49JEZAT1Vp_cv7be0`
+4. Find the compromised API key
 5. Click **Delete** to revoke it
 6. Create a NEW Google Maps API key
-7. Update `client/.env` with the new key:
+7. Update `client/.env` with the new key (local only):
    ```
    VITE_GOOGLE_MAPS_API_KEY=your-new-api-key-here
    ```
+8. Restrict the new key by HTTP referrer and API scope (Maps JavaScript API, Places API)
 
 **Timeline:**
 - This key was used in the initial project setup
@@ -285,6 +286,8 @@ npm ls
 - ❌ Removed exposed Google Maps API key from `install-mongodb.sh`
 - ❌ Cleaned git history to remove API key from all commits
 - ❌ Force-pushed cleaned history to GitHub
+- ✅ Generated a new Google Maps API key (stored locally in client/.env)
+- ✅ Updated documentation to emphasize client-side key exposure
 
 ### Files Updated:
 - `install-mongodb.sh` - Replaced hardcoded key with placeholder
@@ -297,9 +300,9 @@ npm ls
 - ✅ Confirmed proper `.gitignore` configuration
 
 ### Next Steps for User:
-1. **URGENT:** Disable the compromised API key in Google Cloud Console
-2. **Create a new Google Maps API key**
-3. **Update** `client/.env` with the new key
+1. **Confirm** the compromised API key is disabled in Google Cloud Console
+2. **Restrict** the new API key by HTTP referrer and API scope
+3. **Keep** `client/.env` local and never commit it
 4. **Consider** implementing git-secrets to prevent future incidents
 
 ---
@@ -313,7 +316,7 @@ npm ls
 | Git History | ✅ Cleaned | API key removed from all commits |
 | Database | ✅ Secure | Uses environment variables |
 | Authentication | ✅ Secure | JWT + bcrypt passwords |
-| API Keys | ⚠️ PENDING | Compromised key awaits manual disable |
+| API Keys | ✅ Updated | New key generated; restrict by referrer and API scope |
 
 ---
 

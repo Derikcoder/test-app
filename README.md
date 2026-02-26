@@ -300,6 +300,13 @@ VITE_API_URL=http://localhost:5000
 VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 ```
 
+You can copy the template from [client/.env.example](client/.env.example) and fill in your values.
+
+**Important Notes:**
+- `VITE_` variables are bundled into the frontend and are visible to users
+- Treat client-side API keys as public and restrict them in Google Cloud (HTTP referrers, API restrictions)
+- Never commit `client/.env` to git; keep keys local or injected via CI/CD
+
 **🗺️ Getting a Google Maps API Key:**
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
