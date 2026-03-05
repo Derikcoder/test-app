@@ -61,12 +61,19 @@ export const AuthProvider = ({ children }) => {
    * Sets loading to false after checking, allowing app to render.
    */
   useEffect(() => {
-    // Attempt to retrieve stored user data from localStorage
-    const userInfo = localStorage.getItem('userInfo');
-    
-    if (userInfo) {
-      // Parse and restore user session
-      setUser(JSON.parse(userInfo));
+    try {
+      // Attempt to retrieve stored user data from localStorage
+      const userInfo = localStorage.getItem('userInfo');
+      
+      if (userInfo) {
+        // Parse and restore user session
+        setUser(JSON.parse(userInfo));
+      }
+    } catch (error) {
+      // Handle invalid JSON in localStorage gracefully
+      console.error('Error parsing user data from localStorage:', error);
+      // Clear corrupted data
+      localStorage.removeItem('userInfo');
     }
     
     // Mark initialization complete

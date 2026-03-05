@@ -4,7 +4,7 @@
  */
 
 import '@testing-library/jest-dom';
-import { expect, afterEach, vi } from 'vitest';
+import { expect, afterEach, vi, beforeEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 // Cleanup after each test
@@ -12,14 +12,37 @@ afterEach(() => {
   cleanup();
 });
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+// Create a functional localStorage mock
+const createLocalStorageMock = () => {
+  let store = {};
+  
+  return {
+    getItem: (key) => {
+      return store[key] || null;
+    },
+    setItem: (key, value) => {
+      store[key] = value.toString();
+    },
+    removeItem: (key) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (index) => {
+      const keys = Object.keys(store);
+      return keys[index] || null;
+    },
+  };
 };
-global.localStorage = localStorageMock;
+
+// Reset localStorage before each test
+beforeEach(() => {
+  global.localStorage = createLocalStorageMock();
+});
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {

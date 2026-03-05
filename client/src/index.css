@@ -353,9 +353,16 @@
 
 /**
  * Subtle Glass Background Particles
- * Subtle animated background for depth
+ * Container with animated background for depth
+ * Note: This is used as a page container, so pointer-events must be enabled
  */
 .glass-bg-particles {
+  position: relative;
+  min-height: 100vh;
+}
+
+.glass-bg-particles::before {
+  content: '';
   position: fixed;
   top: 0;
   left: 0;

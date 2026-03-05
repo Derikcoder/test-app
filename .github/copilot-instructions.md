@@ -8,16 +8,17 @@ This file provides instructions for GitHub Copilot and other AI code assistants 
 
 **Before providing any code suggestions or making changes:**
 
-1. Read [../AI_ASSISTANT_GUIDE.md](../AI_ASSISTANT_GUIDE.md) - Comprehensive project briefing
-2. Review [../README.md](../README.md) - User-facing documentation
-3. Check [../PROJECT-STRUCTURE.md](../PROJECT-STRUCTURE.md) - Architecture details
+1. Read [AI_ASSISTANT_GUIDE.md](../AI_ASSISTANT_GUIDE.md) - Comprehensive project briefing
+2. Review [README.md](../README.md) - User-facing documentation
+3. Check [PROJECT-STRUCTURE.md](../PROJECT-STRUCTURE.md) - Architecture details
 
 These files contain critical context about:
-- Project architecture and design decisions
-- Coding conventions and patterns used
-- Security considerations (field-level permissions, JWT)
+- Project architecture and design decisions (Architecture overview, tech stack, file organization)
+- Coding conventions and patterns (JSDoc, naming, async/await, React hooks)
+- Security considerations (field-level permissions, JWT tokens, password hashing)
+- Password reset system (new feature: email, tokens, recovery flow)
 - Common pitfalls and solutions
-- Development workflow
+- Development workflow and testing practices
 
 ### 🚨 Pre-Exit Protocol
 

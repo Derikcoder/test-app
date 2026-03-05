@@ -6,12 +6,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import Login from '../../components/Login';
 import { AuthProvider } from '../../context/AuthContext';
-import axios from 'axios';
+import Login from '../../components/Login';
+import api from '../../api/axios';
 
-// Mock axios
-vi.mock('axios');
+// Mock the API instance
+vi.mock('../../api/axios', () => ({
+  default: {
+    post: vi.fn(),
+    get: vi.fn(),
+  },
+}));
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -46,21 +51,20 @@ describe('Login Component', () => {
 
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
     });
 
     it('should render link to registration page', () => {
       renderLogin();
 
-      const registerLink = screen.getByText(/sign up/i);
-      expect(registerLink).toBeInTheDocument();
-      expect(registerLink.closest('a')).toHaveAttribute('href', '/register');
+      const registerButton = screen.getByRole('button', { name: /create account/i });
+      expect(registerButton).toBeInTheDocument();
     });
 
     it('should render heading', () => {
       renderLogin();
 
-      expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
     });
   });
 
@@ -71,12 +75,12 @@ describe('Login Component', () => {
       const passwordInput = screen.getByLabelText(/password/i);
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /login/i });
       fireEvent.click(submitButton);
 
       // HTML5 validation should prevent submission
       // Check that API was not called
-      expect(axios.post).not.toHaveBeenCalled();
+      expect(api.post).not.toHaveBeenCalled();
     });
 
     it('should display error for empty password', async () => {
@@ -85,11 +89,11 @@ describe('Login Component', () => {
       const emailInput = screen.getByLabelText(/email/i);
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /login/i });
       fireEvent.click(submitButton);
 
       // HTML5 validation should prevent submission
-      expect(axios.post).not.toHaveBeenCalled();
+      expect(api.post).not.toHaveBeenCalled();
     });
 
     it('should accept valid email format', () => {
@@ -113,28 +117,28 @@ describe('Login Component', () => {
         },
       };
 
-      axios.post.mockResolvedValueOnce(mockResponse);
+      vi.mocked(api.post).mockResolvedValueOnce(mockResponse);
 
       renderLogin();
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /login/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(axios.post).toHaveBeenCalledWith('/api/auth/login', {
+        expect(api.post).toHaveBeenCalledWith('/auth/login', {
           email: 'test@example.com',
           password: 'password123',
         });
       });
 
-      // Should navigate to home page after successful login
+      // Should navigate to profile page after successful login
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/');
+        expect(mockNavigate).toHaveBeenCalledWith('/profile');
       });
 
       // Should store user in localStorage
@@ -144,7 +148,7 @@ describe('Login Component', () => {
 
     it('should display error message for invalid credentials', async () => {
       const errorMessage = 'Invalid email or password';
-      axios.post.mockRejectedValueOnce({
+      vi.mocked(api.post).mockRejectedValueOnce({
         response: {
           data: { message: errorMessage },
         },
@@ -154,7 +158,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /login/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } });
@@ -172,31 +176,31 @@ describe('Login Component', () => {
     });
 
     it('should display generic error for network error', async () => {
-      axios.post.mockRejectedValueOnce(new Error('Network Error'));
+      vi.mocked(api.post).mockRejectedValueOnce(new Error('Network Error'));
 
       renderLogin();
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /login/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/server error/i)).toBeInTheDocument();
+        expect(screen.getByText(/login failed/i)).toBeInTheDocument();
       });
     });
 
     it('should disable submit button during submission', async () => {
-      axios.post.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+      vi.mocked(api.post).mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
       renderLogin();
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /login/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -210,7 +214,7 @@ describe('Login Component', () => {
   describe('User Experience', () => {
     it('should clear error message when user starts typing', async () => {
       const errorMessage = 'Invalid email or password';
-      axios.post.mockRejectedValueOnce({
+      vi.mocked(api.post).mockRejectedValueOnce({
         response: {
           data: { message: errorMessage },
         },
@@ -220,7 +224,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /login/i });
 
       // Submit with wrong credentials
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });

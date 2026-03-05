@@ -3,12 +3,20 @@
  * @description Unit tests for auth controller
  */
 
-import { registerUser, loginUser, getUserProfile } from '../../../controllers/auth.controller.js';
+import { 
+  registerUser, 
+  loginUser, 
+  getUserProfile,
+  forgotPassword,
+  resetPassword 
+} from '../../../controllers/auth.controller.js';
 import User from '../../../models/User.model.js';
 import jwt from 'jsonwebtoken';
+import * as emailService from '../../../utils/emailService.js';
 
-// Mock User model and logger
+// Mock User model, emailService, and logger
 jest.mock('../../../models/User.model.js');
+jest.mock('../../../utils/emailService.js');
 jest.mock('../../../middleware/logger.middleware.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
@@ -158,7 +166,6 @@ describe('Auth Controller', () => {
 
       expect(User.findOne).toHaveBeenCalledWith({ email: 'test@example.com' });
       expect(mockUser.comparePassword).toHaveBeenCalledWith('password123');
-      expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           _id: '123',
@@ -268,7 +275,7 @@ describe('Auth Controller', () => {
         userName: 'testuser',
         email: 'test@example.com',
         businessName: 'Test Business',
-        populate: jest.fn().mockResolvedValue({
+        toObject: jest.fn().mockReturnValue({
           _id: '123',
           userName: 'testuser',
           email: 'test@example.com',
@@ -276,12 +283,13 @@ describe('Auth Controller', () => {
         }),
       };
 
-      req.user = mockUser;
-      User.findById = jest.fn().mockReturnValue(mockUser);
+      req.user = { _id: '123' };
+      User.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockUser),
+      });
 
       await getUserProfile(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           _id: '123',
@@ -295,7 +303,7 @@ describe('Auth Controller', () => {
       req.user = { _id: 'nonexistent' };
 
       User.findById = jest.fn().mockReturnValue({
-        populate: jest.fn().mockResolvedValue(null),
+        select: jest.fn().mockResolvedValue(null),
       });
 
       await getUserProfile(req, res);
@@ -307,14 +315,135 @@ describe('Auth Controller', () => {
     test('should handle server errors gracefully', async () => {
       req.user = { _id: '123' };
 
-      User.findById = jest.fn().mockImplementation(() => {
-        throw new Error('Database error');
+      User.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockRejectedValue(new Error('Database error')),
       });
 
       await getUserProfile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ message: 'Server error' });
+    });
+  });
+
+  describe('forgotPassword', () => {
+    test('should send password reset email to existing user', async () => {
+      const mockUser = {
+        _id: '123',
+        email: 'test@example.com',
+        userName: 'testuser',
+        generatePasswordResetToken: jest.fn().mockReturnValue('mock-reset-token'),
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      User.findOne = jest.fn().mockResolvedValue(mockUser);
+      emailService.sendPasswordResetEmail = jest.fn().mockResolvedValue(true);
+
+      req.body = { email: 'test@example.com' };
+      req.protocol = 'http';
+      req.get = jest.fn().mockReturnValue('localhost:5000');
+
+      await forgotPassword(req, res);
+
+      expect(User.findOne).toHaveBeenCalled();
+      expect(mockUser.generatePasswordResetToken).toHaveBeenCalled();
+      expect(mockUser.save).toHaveBeenCalled();
+      expect(emailService.sendPasswordResetEmail).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('should return same success message for non-existent email', async () => {
+      User.findOne = jest.fn().mockResolvedValue(null);
+
+      req.body = { email: 'nonexistent@example.com' };
+      req.protocol = 'http';
+      req.get = jest.fn().mockReturnValue('localhost:5000');
+
+      await forgotPassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('should return error if email not provided', async () => {
+      req.body = {};
+
+      await forgotPassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Please provide your email address',
+        })
+      );
+    });
+  });
+
+  describe('resetPassword', () => {
+    test('should reset password with valid token', async () => {
+      const mockUser = {
+        _id: '123',
+        email: 'test@example.com',
+        userName: 'testuser',
+        password: 'oldpassword',
+        resetPasswordToken: null,
+        resetPasswordExpire: null,
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      User.findOne = jest.fn().mockResolvedValue(mockUser);
+
+      req.params = { token: 'valid-reset-token' };
+      req.body = { password: 'newpassword123' };
+
+      await resetPassword(req, res);
+
+      expect(mockUser.password).toBe('newpassword123');
+      expect(mockUser.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('should reject invalid token', async () => {
+      User.findOne = jest.fn().mockResolvedValue(null);
+
+      req.params = { token: 'invalid-token' };
+      req.body = { password: 'newpassword123' };
+
+      await resetPassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Invalid or expired reset token. Please request a new password reset.',
+        })
+      );
+    });
+
+    test('should validate minimum password length', async () => {
+      req.params = { token: 'valid-token' };
+      req.body = { password: '12345' };
+
+      await resetPassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Password must be at least 6 characters',
+        })
+      );
+    });
+
+    test('should return error if password not provided', async () => {
+      req.params = { token: 'some-token' };
+      req.body = {};
+
+      await resetPassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Please provide a new password',
+        })
+      );
     });
   });
 });

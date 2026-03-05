@@ -57,7 +57,7 @@ const Sidebar = () => {
       {/* Menu Toggle Button - Fixed Position */}
       <button
         onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-50 p-3 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-700 transition-all duration-300"
+        className="glass-btn-primary fixed top-4 left-4 z-50 p-3 shadow-lg transition-all duration-300"
         aria-label="Toggle menu"
       >
         {isOpen ? (
@@ -81,21 +81,21 @@ const Sidebar = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
+        className={`glass-pane fixed top-0 left-0 h-full w-80 shadow-2xl z-40 transform transition-transform duration-300 ease-in-out backdrop-blur-xl bg-white/10 border border-white/20 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="p-6 bg-gradient-to-r from-indigo-600 to-indigo-800">
+          <div className="p-6 bg-gradient-to-r from-blue-900/40 to-blue-800/40 border-b border-white/20 backdrop-blur-md">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">{user.businessName}</h2>
-                <p className="text-indigo-100 text-sm mt-1">SuperUser Dashboard</p>
+                <h2 className="glass-heading text-xl">{user.businessName}</h2>
+                <p className="text-white/70 text-sm mt-1">SuperUser Dashboard</p>
               </div>
               <button
                 onClick={toggleSidebar}
-                className="text-white hover:bg-indigo-700 p-2 rounded-lg transition-colors"
+                className="text-white hover:text-yellow-300 p-2 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -112,16 +112,16 @@ const Sidebar = () => {
                   <Link
                     to={item.path}
                     onClick={toggleSidebar}
-                    className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    className={`glass-link flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${
                       isActive(item.path)
-                        ? 'bg-indigo-100 text-indigo-700 font-semibold'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-white/20 backdrop-blur-sm text-blue-900 font-semibold border border-white/30'
+                        : 'text-white/80 hover:bg-white/10 hover:text-yellow-300'
                     }`}
                   >
-                    <span className={isActive(item.path) ? 'text-indigo-600' : 'text-gray-500'}>
-                      {item.icon}
-                    </span>
-                    <span>{item.name}</span>
+                  <span className={isActive(item.path) ? 'text-blue-900' : 'text-white/70'}>
+                    {item.icon}
+                  </span>
+                  <span>{item.name}</span>
                   </Link>
                 </li>
               ))}
@@ -129,16 +129,17 @@ const Sidebar = () => {
           </nav>
 
           {/* Footer - User Info */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-white/20 backdrop-blur-sm bg-white/10">
             <div className="flex items-center gap-3 px-4 py-2">
-              <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-900 rounded-full flex items-center justify-center border border-white/30">
                 <span className="text-white font-bold text-lg">
                   {user.userName?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900">{user.userName}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+                <p className="text-sm font-semibold text-white">{user.userName}</p>
+                <p className="text-xs text-white/60">{user.email}</p>
               </div>
             </div>
           </div>

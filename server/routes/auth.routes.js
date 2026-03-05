@@ -18,6 +18,8 @@ import {
   getUserProfile,
   updateUserProfile,
   getFieldPermissions,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/auth.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -57,5 +59,19 @@ router.put('/profile', protect, updateUserProfile);
  * @access  Private (JWT required)
  */
 router.get('/field-permissions', protect, getFieldPermissions);
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset email
+ * @access  Public
+ */
+router.post('/forgot-password', forgotPassword);
+
+/**
+ * @route   PUT /api/auth/reset-password/:token
+ * @desc    Reset password with valid token
+ * @access  Public
+ */
+router.put('/reset-password/:token', resetPassword);
 
 export default router;

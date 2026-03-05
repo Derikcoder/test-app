@@ -8,11 +8,14 @@
  * - Login with JWT token generation
  * - Profile retrieval and updates
  * - Field-level permission enforcement
+ * - Password reset functionality
  */
 
 import User from '../models/User.model.js';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
+import { sendPasswordResetEmail } from '../utils/emailService.js';
 
 /**
  * Generate JWT Token
@@ -158,11 +161,7 @@ export const registerUser = async (req, res) => {
     }
   } catch (error) {
     logError('Registration error:', error);
-    res.status(500).json({ 
-      message: error.message,
-      // Include stack trace only in development for debugging
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -211,8 +210,11 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
+    // Convert email to lowercase for case-insensitive lookup
+    const normalizedEmail = email.toLowerCase();
+
     // Find user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
 
     // Verify user exists and password matches
     if (user && (await user.comparePassword(password))) {
@@ -240,10 +242,7 @@ export const loginUser = async (req, res) => {
     }
   } catch (error) {
     logError('Login error:', error);
-    res.status(500).json({ 
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -288,7 +287,7 @@ export const getUserProfile = async (req, res) => {
       res.status(404).json({ message: 'User not found' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -465,5 +464,178 @@ export const updateUserProfile = async (req, res) => {
       message: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+};
+
+/**
+ * Request Password Reset
+ * 
+ * @async
+ * @function forgotPassword
+ * @route POST /api/auth/forgot-password
+ * @access Public
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request data
+ * @param {string} req.body.email - User's email address
+ * @param {Object} res - Express response object
+ * 
+ * @description
+ * Initiates password reset process:
+ * 1. Validates email exists in database
+ * 2. Generates secure reset token (valid for 1 hour)
+ * 3. Sends reset email with token link
+ * 4. Returns success message (same message even if email not found - security)
+ * 
+ * Security Note: Always returns success to prevent email enumeration attacks
+ * 
+ * @example
+ * POST /api/auth/forgot-password
+ * Body: { email: "user@example.com" }
+ * Response: { message: "If that email exists, a reset link has been sent" }
+ */
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Validate email provided
+    if (!email) {
+      return res.status(400).json({ message: 'Please provide your email address' });
+    }
+    
+    // Find user by email (case-insensitive)
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    // Security: Always return same message to prevent email enumeration
+    const successMessage = 'If that email exists in our system, a password reset link has been sent';
+    
+    if (!user) {
+      logInfo(`Password reset requested for non-existent email: ${email}`);
+      return res.json({ message: successMessage });
+    }
+    
+    // Generate password reset token
+    const resetToken = user.generatePasswordResetToken();
+    await user.save({ validateBeforeSave: false }); // Save without validation
+    
+    // Create reset URL
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+    
+    // Send password reset email
+    try {
+      await sendPasswordResetEmail({
+        email: user.email,
+        resetUrl,
+        userName: user.userName,
+      });
+      
+      logInfo(`✅ Password reset email sent to: ${user.email}`);
+      
+      res.json({ 
+        message: successMessage,
+        // In development, return token for testing (remove in production)
+        ...(process.env.NODE_ENV === 'development' && { resetToken, resetUrl })
+      });
+    } catch (emailError) {
+      // If email fails, clear the reset token
+      user.resetPasswordToken = null;
+      user.resetPasswordExpire = null;
+      await user.save({ validateBeforeSave: false });
+      
+      logError('Error sending password reset email:', emailError);
+      return res.status(500).json({ 
+        message: 'Error sending password reset email. Please try again later.' 
+      });
+    }
+  } catch (error) {
+    logError('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Reset Password with Token
+ * 
+ * @async
+ * @function resetPassword
+ * @route PUT /api/auth/reset-password/:token
+ * @access Public
+ * 
+ * @param {Object} req - Express request object
+ * @param {string} req.params.token - Reset token from email link
+ * @param {Object} req.body - Request data
+ * @param {string} req.body.password - New password
+ * @param {Object} res - Express response object
+ * 
+ * @description
+ * Resets user password using valid token:
+ * 1. Validates token exists and hasn't expired
+ * 2. Updates user password (automatically hashed)
+ * 3. Clears reset token fields
+ * 4. Logs user in with new JWT token
+ * 
+ * @example
+ * PUT /api/auth/reset-password/abc123def456
+ * Body: { password: "newPassword123" }
+ * Response: { message: "Password reset successful", token: "jwt..." }
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    // Validate password provided
+    if (!password) {
+      return res.status(400).json({ message: 'Please provide a new password' });
+    }
+    
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    
+    // Hash the token from URL to compare with database
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(req.params.token)
+      .digest('hex');
+    
+    // Find user with valid token that hasn't expired
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }, // Token must be in the future
+    });
+    
+    if (!user) {
+      return res.status(400).json({ 
+        message: 'Invalid or expired reset token. Please request a new password reset.' 
+      });
+    }
+    
+    // Update password (will be hashed by pre-save hook)
+    user.password = password;
+    
+    // Clear reset token fields
+    user.resetPasswordToken = null;
+    user.resetPasswordExpire = null;
+    
+    // Save user
+    await user.save();
+    
+    logInfo(`✅ Password reset successful for user: ${user.email}`);
+    
+    // Return success with login token
+    res.json({
+      message: 'Password reset successful! You are now logged in.',
+      token: generateToken(user._id),
+      user: {
+        _id: user._id,
+        userName: user.userName,
+        email: user.email,
+        businessName: user.businessName,
+      }
+    });
+  } catch (error) {
+    logError('Reset password error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };

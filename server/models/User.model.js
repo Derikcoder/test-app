@@ -9,6 +9,7 @@
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 /**
  * User Schema Definition
@@ -102,6 +103,16 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    /** Password reset token - Generated when user requests password reset */
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    /** Password reset token expiry - Token valid for 1 hour */
+    resetPasswordExpire: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt fields
@@ -147,6 +158,39 @@ userSchema.pre('save', async function (next) {
  */
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+/**
+ * Instance Method: Generate Password Reset Token
+ * 
+ * @method generatePasswordResetToken
+ * @returns {string} Plain text reset token (to be sent via email)
+ * 
+ * @description
+ * Generates a secure random token for password reset.
+ * Stores hashed version in database with 1-hour expiry.
+ * Returns plain text token to be sent via email.
+ * 
+ * @example
+ * const resetToken = user.generatePasswordResetToken();
+ * await user.save();
+ * // Send resetToken via email
+ */
+userSchema.methods.generatePasswordResetToken = function () {
+  // Generate random token (32 bytes = 64 hex characters)
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  // Hash token and store in database
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  // Set expiry to 1 hour from now
+  this.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour
+  
+  // Return unhashed token to be sent via email
+  return resetToken;
 };
 
 /**

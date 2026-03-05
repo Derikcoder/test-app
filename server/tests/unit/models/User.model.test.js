@@ -408,4 +408,102 @@ describe('User Model', () => {
       await expect(duplicateUser.save()).rejects.toThrow();
     });
   });
+
+  describe('Password Reset Token Generation', () => {
+    test('should generate a 64-character hex token', async () => {
+      const user = new User({
+        userName: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
+        businessName: 'Test Business',
+        businessRegistrationNumber: 'BR123',
+      });
+
+      const resetToken = user.generatePasswordResetToken();
+
+      expect(resetToken).toBeDefined();
+      expect(typeof resetToken).toBe('string');
+      expect(resetToken).toHaveLength(64); // 32 bytes = 64 hex chars
+      expect(resetToken).toMatch(/^[a-f0-9]{64}$/); // Only hex characters
+    });
+
+    test('should store hashed token in database', async () => {
+      const user = new User({
+        userName: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
+        businessName: 'Test Business',
+        businessRegistrationNumber: 'BR123',
+      });
+
+      const resetToken = user.generatePasswordResetToken();
+
+      expect(user.resetPasswordToken).toBeDefined();
+      expect(user.resetPasswordToken).not.toBe(resetToken); // Should be hashed
+      expect(user.resetPasswordToken).toHaveLength(64); // SHA256 hash = 64 hex chars
+    });
+
+    test('should set expiry to 1 hour from now', async () => {
+      const user = new User({
+        userName: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
+        businessName: 'Test Business',
+        businessRegistrationNumber: 'BR123',
+      });
+
+      const beforeTime = Date.now();
+      user.generatePasswordResetToken();
+      const afterTime = Date.now();
+
+      const expectedExpiry = 60 * 60 * 1000; // 1 hour in milliseconds
+      const lowerBound = beforeTime + expectedExpiry;
+      const upperBound = afterTime + expectedExpiry;
+
+      expect(user.resetPasswordExpire).toBeDefined();
+      expect(user.resetPasswordExpire.getTime()).toBeGreaterThanOrEqual(lowerBound);
+      expect(user.resetPasswordExpire.getTime()).toBeLessThanOrEqual(upperBound);
+    });
+
+    test('should return unhashed token for email', async () => {
+      const user = new User({
+        userName: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
+        businessName: 'Test Business',
+        businessRegistrationNumber: 'BR123',
+      });
+
+      const resetToken = user.generatePasswordResetToken();
+
+      expect(resetToken).toBeDefined();
+      expect(resetToken).not.toBe(user.resetPasswordToken);
+      expect(resetToken).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    test('should overwrite previous token if called again', async () => {
+      const user = new User({
+        userName: 'testuser',
+        email: 'test@example.com',
+        password: 'password123',
+        businessName: 'Test Business',
+        businessRegistrationNumber: 'BR123',
+      });
+
+      const firstToken = user.generatePasswordResetToken();
+      const firstHashedToken = user.resetPasswordToken;
+      const firstExpiry = user.resetPasswordExpire;
+
+      // Wait a moment to ensure different timestamp
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const secondToken = user.generatePasswordResetToken();
+      const secondHashedToken = user.resetPasswordToken;
+      const secondExpiry = user.resetPasswordExpire;
+
+      expect(firstToken).not.toBe(secondToken);
+      expect(firstHashedToken).not.toBe(secondHashedToken);
+      expect(firstExpiry.getTime()).not.toBe(secondExpiry.getTime());
+    });
+  });
 });
