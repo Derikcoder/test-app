@@ -1,0 +1,189 @@
+[{
+  "Besigheid Besonderhede" : {
+	"Bank": "ABSA",
+	"Rekening Nommer": "4099240300",
+	"Rekening Naam": "WKD",
+	"Tak Kode": "630069",
+	"Rekening Tipe": "Tjek Rekening",
+	"Fisiese Adres": "1Ste Straat, Kloppersbos, Pyramid, Wallmanstal, Gauteng",
+	"MPY Reg No": "2020 / 212066 / 07",
+	"Bedryf Naam": "K202012066",
+	"Belasting No": "9708906178",
+	"BTW No": "4180309579"
+	},
+
+  "Klient Besonderhede" : {
+	"Rede vir Uitroep": "EnjinHerstel",
+	"BTW Reg No": "?",
+	"Faktuur": "1055",
+	"Besigheid Naam": "Hertex Fabrics Kramerville Showroom",
+	"Datum": "2026/01/09",
+	"Adres": "16 Kramer Weg, Kramerville, Sandton, Johannesburg, Gauteng",
+	"Contact Person": "Ryan",
+	"Contact Number": "074 086 7728",
+	"Email": "ryan@hertex.co.za"
+	},
+
+  "Masjien Besonderhede" : {
+	"Fabrikaat": "Ricardo",
+	"Model": "4105ZD",
+	"KVA": "63KVA",
+	"Brandstof": "Diesel",
+	"Fases": "Drie",
+	"Tipe": "Stil",
+	"Ure": "856"
+	},
+
+  "Faktuur Besonderhede": [{
+
+  	"Diverse Uitgawes": [{
+
+  		"Diens Onderdele en Parte": [{
+	  		"P772578 Lug Filter": {
+	  			"Eenheid Koste": "R 600.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+	  		},
+	  		"FC-5716 Diesel Filter": {
+	  			"Eenheid Koste": "R 270.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+	  		},
+	  		"C-66071 Olie filter": {
+	  			"Eenheid Koste": "R 346.80",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+	  		},
+	  		"W 940/5 Olie filter": {
+	  			"Eenheid Koste": "R 292.50",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+	  		}
+  		}],
+        "Diens Onderdele en Parte Totaal": "(P772578 Lug Filter Totaal + FC-5716 Diesel Filter Totaal + C-66071 Olie filter Totaal + W 940/5 Olie filter Totaal)",
+
+  		"Komponente": [{
+  			"Silinder-huls":{
+  				"Eenheid Koste": "R 1,020.00",
+	  			"Aantal Eenhede": "4",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"O Ringe":{
+  				"Eenheid Koste": "R 51.00",
+	  			"Aantal Eenhede": "12",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Suier Kaal STD":{
+  				"Eenheid Koste": "R 975.00",
+	  			"Aantal Eenhede": "4",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Suier Ring Stel STD":{
+  				"Eenheid Koste": "R 1,800.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Suierpenne":{
+  				"Eenheid Koste": "R 105.00",
+	  			"Aantal Eenhede": "4",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Groot kant koeellaers":{
+  				"Eenheid Koste": "R 1,575.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Hoof Koeellaers":{
+  				"Eenheid Koste": "R 1,725.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Olie Pomp":{
+  				"Eenheid Koste": "R 3,150.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Termostaat":{
+  				"Eenheid Koste": "R 600.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Silinder kop pakking":{
+  				"Eenheid Koste": "R 825.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Inlaat klep":{
+  				"Eenheid Koste": "R 255.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Uitlaat klep":{
+  				"Eenheid Koste": "R 255.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Klep gids stel":{
+  				"Eenheid Koste": "R 930.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Silinder Kop Boute":{
+  				"Eenheid Koste": "R 105.00",
+	  			"Aantal Eenhede": "14",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"3/4 WP 21 Bar Water pyp P/M":{
+  				"Eenheid Koste": "R 270.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Enjin kop herstel werk":{
+  				"Eenheid Koste": "R 7,500.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			}
+        }],
+        "Komponente Totaal": "(Silinder-huls Totaal + O Ringe Totaal + Suier Kaal STD Totaal + Suier Ring Stel STD Totaal + Suierpenne Totaal + Groot kant koeellaers Totaal + Hoof Koeellaers Totaal + Olie Pomp Totaal + Termostaat Totaal + Silinder kop pakking Totaal + Inlaat klep Totaal + Uitlaat klep Totaal + Klep gids stel Totaal + Silinder Kop Boute Totaal + 3/4 WP 21 Bar Water pyp P/M Totaal + Enjin kop herstel werk Totaal)",
+
+  		"Smeermiddels en Konsentrate": [{
+  			"15W40 Minerale Enjin Olie": {
+  				"Eenheid Koste": "R 1,500.00",
+	  			"Aantal Eenhede": "1",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			},
+  			"Anti-fries 96% 5liter": {
+  				"Eenheid Koste": "R 391.00",
+	  			"Aantal Eenhede": "2",
+	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
+  			}
+  		}],
+        "Smeermiddels en Konsentrate Totaal": "(15W40 Minerale Enjin Olie Totaal + Anti-fries 96% 5liter Totaal)",
+
+  		"Verbruikbare Voorraad (lappe, chemikalie)": "((Diens Onderdele en Parte Totaal + Komponente Totaal + Smeermiddels en Konsentrate Totaal) * 0.075)"
+  	}],
+    "Totale Diverse Uitgawes": "(Diens Onderdele en Parte Totaal + Komponente Totaal + Smeermiddels en Konsentrate Totaal + Verbruikbare Voorraad Totaal)",
+
+    "Vaste Uitgawes": [{
+       "Reis Koste" : {
+            "Eenheid Koste" : "R 8.50 per km", 
+            "Kilometers" : "1",
+            "Totaal" : "(Eenheid Koste * Kilometers)"
+       },
+       "Arbeids Koste" : {
+            "Eenheid Koste" : "R 650.00 per uur",
+            "Aantal Ure" : "1",
+            "Totaal" : "(Eenheid Koste * Aantal Ure)"
+       }
+    }],
+
+	"Totale Vaste Uitgawes": "(Reis Koste Totaal + Arbeids Koste Totaal)"
+	
+  }],
+    "Faktuur Totaal": {
+        "Totale Uitgawes": "(Totale Diverse Uitgawes + Totale Vaste Uitgawes)",
+        "BTW": "(Totale Uitgawes * 0.15)",
+        "Deposito Betaalbaar": "(Totale Uitgawes * 0.5)",
+        "Saldo Betaalbaar": "(Totale Uitgawes - Deposito Betaalbaar)"
+    } 
+}]
