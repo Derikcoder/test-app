@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** February 26, 2026  
+**Last Updated:** March 17, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -291,7 +291,7 @@ Complete password recovery system with secure token generation, email delivery, 
 **Server (.env - server/):**
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/field-service-db
+MONGODB_URI=mongodb://localhost:27017/field-service-db
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 NODE_ENV=development
 
@@ -577,7 +577,7 @@ File: `server/utils/emailService.js` (lines ~100-250)
 
 **MongoDB Connection Failed:**
 - Check if MongoDB is running: `sudo systemctl status mongod`
-- Verify MONGO_URI in `server/.env`
+- Verify MONGODB_URI in `server/.env`
 - Check MongoDB logs: `sudo journalctl -u mongod`
 
 **JWT Token Issues:**
@@ -813,7 +813,7 @@ curl -X GET http://localhost:5000/api/auth/profile \
 
 **Server:**
 - [ ] `NODE_ENV=production`
-- [ ] `MONGO_URI=mongodb+srv://...`
+- [ ] `MONGODB_URI=mongodb+srv://...`
 - [ ] `JWT_SECRET=<strong-random-string>`
 - [ ] `PORT=5000` (or cloud provider's PORT)
 
@@ -859,6 +859,17 @@ curl -X GET http://localhost:5000/api/auth/profile \
 ---
 
 ## 🔄 Recent Changes
+
+### 2026-03-17 (Session 3)
+- ✅ Standardized runtime startup behavior and documentation
+   - Added `strictPort: true` in `client/vite.config.js` to enforce frontend on port 3000
+   - Updated setup template in `setup-and-run.sh` from `MONGO_URI` to `MONGODB_URI`
+   - Synced `README.md` and `AI_ASSISTANT_GUIDE.md` references to `MONGODB_URI`
+- ✅ Added invoice schema groundwork for structured extraction
+   - Created `invoice.schema.v1.json` (current-format starter schema)
+   - Created `invoice.schema.v1.1.json` (normalized schema)
+   - Created `invoice.v1-to-v1.1.keymap.json` (migration map and transform hints)
+   - Updated working `invoiceSample.json` toward modular, machine-readable structure
 
 ### 2026-02-26 (Session 2)
 - ✅ Fixed ES6 module error and implemented password reset feature
@@ -996,7 +1007,7 @@ curl -X GET http://localhost:5000/api/auth/profile \
 → Backend: Add `protect` middleware. Frontend: Wrap in `<ProtectedRoute>`
 
 **"Database connection failing"**
-→ Check MongoDB running, verify MONGO_URI, check MongoDB logs
+→ Check MongoDB running, verify MONGODB_URI, check MongoDB logs
 
 **"How do I add Google Maps to a component?"**
 → See Customers.jsx for example implementation with @react-google-maps/api

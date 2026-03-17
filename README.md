@@ -274,13 +274,13 @@ PORT=5000
 NODE_ENV=development
 
 # MongoDB Configuration
-MONGO_URI=mongodb://localhost:27017/field-service-db
+MONGODB_URI=mongodb://localhost:27017/field-service-db
 
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 
 # Optional: MongoDB Atlas (cloud database)
-# MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/field-service-db
+# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/field-service-db
 ```
 
 **⚠️ Important Security Notes:**

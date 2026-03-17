@@ -8,6 +8,10 @@ This document provides a structured, enterprise-grade overview of the codebase. 
 - LOGGING_GUIDE.md: Logging policy and usage guidelines.
 - PROFILE_EDITING_GUIDE.md: Profile editing rules and examples.
 - PROJECT-STRUCTURE.md: This document.
+- invoiceSample.json: Working invoice sample payload used as source reference.
+- invoice.schema.v1.json: Starter JSON Schema matching the current invoice payload format.
+- invoice.schema.v1.1.json: Normalized JSON Schema for cleaner integration format.
+- invoice.v1-to-v1.1.keymap.json: Field mapping and transform hints from v1 to v1.1.
 - install-mongodb.sh: MongoDB install helper script.
 - package.json: Root scripts that orchestrate client/server workflows.
 - client/: React + Vite frontend application.

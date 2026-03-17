@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/invoice.schema.v1.json",
+  "title": "WKD Invoice Schema v1",
+  "description": "Starter schema based on current invoiceSample.json format.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "$ref": "#/$defs/invoice"
+  },
+  "$defs": {
+    "invoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diensverskaffer_besonderhede",
+        "klient_besonderhede",
+        "faktuur_besonderhede",
+        "diens_besonderhede",
+        "faktureerde_besonderhede || koste_berekening",
+        "diens_beskrywing"
+      ],
+      "properties": {
+        "diensverskaffer_besonderhede": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/diensverskafferBesonderhede"
+          }
+        },
+        "klient_besonderhede": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/klientBesonderhede"
+          }
+        },
+        "faktuur_besonderhede": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/faktuurBesonderhede"
+          }
+        },
+        "diens_besonderhede": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/diensBesonderhede"
+          }
+        },
+        "faktureerde_besonderhede || koste_berekening": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/kosteBerekening"
+          }
+        },
+        "diens_beskrywing": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "diensverskafferBesonderhede": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "besigheid_handeslnaam",
+        "besigheid_registrasie_naam",
+        "belasting_identifikasie_nommer",
+        "btw_registrasie_nommer",
+        "besigheid_adres",
+        "besigheid_kontak_nommer",
+        "besigheid_e-pos_adres",
+        "besigheid_registrasie_webwerf"
+      ],
+      "properties": {
+        "besigheid_handeslnaam": {
+          "type": "string",
+          "minLength": 1
+        },
+        "besigheid_registrasie_naam": {
+          "type": "string",
+          "minLength": 1
+        },
+        "belasting_identifikasie_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "btw_registrasie_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "besigheid_adres": {
+          "type": "string",
+          "minLength": 1
+        },
+        "besigheid_kontak_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "besigheid_e-pos_adres": {
+          "type": "string",
+          "format": "email"
+        },
+        "besigheid_registrasie_webwerf": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "klientBesonderhede": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "klient_tipe",
+        "besigheid_naam",
+        "besigheid_registrasie_nommer",
+        "belasting_identifikasie_nommer",
+        "btw_registrasie_nommer",
+        "klient_adres",
+        "kontak_persoon",
+        "klient_kontak_nommer",
+        "klient_e-pos_adres"
+      ],
+      "properties": {
+        "klient_tipe": {
+          "type": "string",
+          "minLength": 1
+        },
+        "besigheid_naam": {
+          "type": "string",
+          "minLength": 1
+        },
+        "besigheid_registrasie_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "belasting_identifikasie_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "btw_registrasie_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "klient_adres": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kontak_persoon": {
+          "type": "string",
+          "minLength": 1
+        },
+        "klient_kontak_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "klient_e-pos_adres": {
+          "type": "string",
+          "format": "email"
+        }
+      }
+    },
+    "faktuurBesonderhede": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "faktuur_nommer",
+        "faktuur_datum",
+        "vervaldatum",
+        "betalingsvoorwaardes",
+        "valuta"
+      ],
+      "properties": {
+        "faktuur_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "faktuur_datum": {
+          "type": "string",
+          "format": "date"
+        },
+        "vervaldatum": {
+          "type": "string",
+          "format": "date"
+        },
+        "betalingsvoorwaardes": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valuta": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      }
+    },
+    "diensBesonderhede": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diens_besonderhede",
+        "masjien_besonderhede"
+      ],
+      "properties": {
+        "diens_besonderhede": {
+          "type": "string",
+          "minLength": 1
+        },
+        "masjien_besonderhede": {
+          "$ref": "#/$defs/masjienBesonderhede"
+        }
+      }
+    },
+    "masjienBesonderhede": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "masjien_tipe",
+        "masjien_merk",
+        "masjien_model",
+        "masjien_serienommer",
+        "kva_gradering",
+        "huidige_masjien_ure",
+        "masjine_ure_ten_laaste_diens",
+        "brandstof_tipe",
+        "bou_tipe",
+        "masjien_foutkode",
+        "foutkode_beskrywing",
+        "datum_van_laaste_diens"
+      ],
+      "properties": {
+        "masjien_tipe": {
+          "type": "string",
+          "minLength": 1
+        },
+        "masjien_merk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "masjien_model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "masjien_serienommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kva_gradering": {
+          "type": "string",
+          "minLength": 1
+        },
+        "huidige_masjien_ure": {
+          "type": "string",
+          "minLength": 1
+        },
+        "masjine_ure_ten_laaste_diens": {
+          "type": "string",
+          "minLength": 1
+        },
+        "brandstof_tipe": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bou_tipe": {
+          "type": "string",
+          "minLength": 1
+        },
+        "masjien_foutkode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "foutkode_beskrywing": {
+          "type": "string",
+          "minLength": 1
+        },
+        "datum_van_laaste_diens": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "kosteBerekening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lyn_items",
+        "vaste_uitgawes",
+        "faktuur_totale_berekening"
+      ],
+      "properties": {
+        "lyn_items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/lynItem"
+          }
+        },
+        "vaste_uitgawes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/vasteUitgawe"
+          }
+        },
+        "faktuur_totale_berekening": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "lynItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kategorie",
+        "part_tipe",
+        "fabrikaat",
+        "part_nommer",
+        "eenheid_koste",
+        "aantal_eenhede",
+        "totaal_koste",
+        "part_beskrywing"
+      ],
+      "properties": {
+        "kategorie": {
+          "type": "string",
+          "minLength": 1
+        },
+        "part_tipe": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fabrikaat": {
+          "type": "string",
+          "minLength": 1
+        },
+        "part_nommer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "eenheid_koste": {
+          "type": "number",
+          "minimum": 0
+        },
+        "aantal_eenhede": {
+          "type": "number",
+          "minimum": 0
+        },
+        "totaal_koste": {
+          "type": "number",
+          "minimum": 0
+        },
+        "part_beskrywing": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "vasteUitgawe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uitroepfooi_r/km",
+        "aantal_kilometers",
+        "minimum_uitroepfooi",
+        "uitroepfooi_totaal"
+      ],
+      "properties": {
+        "uitroepfooi_r/km": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aantal_kilometers": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minimum_uitroepfooi": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uitroepfooi_totaal": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

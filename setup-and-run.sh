@@ -85,7 +85,7 @@ if [[ ! -f "server/.env" ]]; then
     print_warning "server/.env not found. Creating template..."
     cat > server/.env << 'EOF'
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/field-service-db
+MONGODB_URI=mongodb://localhost:27017/field-service-db
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 NODE_ENV=development
 EOF

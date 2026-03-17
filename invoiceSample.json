@@ -1,189 +1,161 @@
 [{
-  "Besigheid Besonderhede" : {
-	"Bank": "ABSA",
-	"Rekening Nommer": "4099240300",
-	"Rekening Naam": "WKD",
-	"Tak Kode": "630069",
-	"Rekening Tipe": "Tjek Rekening",
-	"Fisiese Adres": "1Ste Straat, Kloppersbos, Pyramid, Wallmanstal, Gauteng",
-	"MPY Reg No": "2020 / 212066 / 07",
-	"Bedryf Naam": "K202012066",
-	"Belasting No": "9708906178",
-	"BTW No": "4180309579"
-	},
+	"diensverskaffer_besonderhede": [{
+		"besigheid_handeslnaam": "WKD",
+		"besigheid_registrasie_naam": "#12/123456789/2019",
+		"belasting_identifikasie_nommer": "1234567890",
+		"btw_registrasie_nommer": "1234567890",
+		"besigheid_adres": "Plot 55, 1Ste Straat, Pyramid, Wallmanstall, Gauteng, Suid-Afrika",
+		"besigheid_kontak_nommer": "011 123 4567",
+		"besigheid_e-pos_adres": "info@wkd.co.za",
+		"besigheid_registrasie_webwerf": "www.wolmaranskontrakdienste.co.za"
+	}],
+	"klient_besonderhede": [{
+		"klient_tipe": "Besigheid",
+		"besigheid_naam": "Hertex Fabrics",
+		"besigheid_registrasie_nommer": "#12/987654321/2018",
+		"belasting_identifikasie_nommer": "9876543210",
+		"btw_registrasie_nommer": "9876543210",
+		"klient_adres": "16 Kramer Weg, Kramerville, Sandton, Gauteng, Suid-Afrika",
+		"kontak_persoon": "Ryan",
+		"klient_kontak_nommer": "011 765 4321",
+		"klient_e-pos_adres": "ryan@hertex.xo.za"
+	}],
+	"faktuur_besonderhede": [{
+		"faktuur_nommer": "INV-2024-001",
+		"faktuur_datum": "2024-06-01",
+		"vervaldatum": "2024-06-30",
+		"betalingsvoorwaardes": "Net 30 Dae",
+		"valuta": "ZAR"
+	}],
+	"diens_besonderhede":[{
+		"diens_besonderhede": "Kragopwekker enjin herstelwerk",
+		"masjien_besonderhede": {
+			"masjien_tipe": "Kragopwekker",
+			"masjien_merk": "Ricardo",
+			"masjien_model": "4105ZD",
+			"masjien_serienommer": "C123456789",
+			"kva_gradering": "63 KVA",
+			"huidige_masjien_ure": "856 Ure",
+			"masjine_ure_ten_laaste_diens": "Ure op faktuur van laaste diens verskaf",
+			"brandstof_tipe": "Diesel",
+			"bou_tipe": "Stil, boks tipe",
+			"masjien_foutkode": "E-1234",
+			"foutkode_beskrywing": "Oorverhitting van die enjin",
+			"datum_van_laaste_diens": "Datum van vorige Faktuur"
+		}
+	}],
+	"faktureerde_besonderhede || koste_berekening": [{
+		"lyn_items": [
+			{
+			"kategorie": "Diens Onderdele",
+			"part_tipe": "Lug Filter",
+			"fabrikaat": "Donaldson",
+			"part_nommer": "P772578",
+			"eenheid_koste": 600,
+			"aantal_eenhede": 1,
+			"totaal_koste": 600,
+			"part_beskrywing": "Donaldson is 'n hoe gehalte Lug Filter vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Diens Onderdele",
+			"part_tipe": "Brandstof Filter",
+			"fabrikaat": "Sekura",
+			"part_nommer": "P772579",
+			"eenheid_koste": 270,
+			"aantal_eenhede": 1,
+			"totaal_koste": 270,
+			"part_beskrywing": "Sekura is 'n hoe gehalte Brandstof Filter vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Diens Onderdele",
+			"part_tipe": "Olie Filter",
+			"fabrikaat": "Sekura",
+			"part_nommer": "C-66071",
+			"eenheid_koste": 346.8,
+			"aantal_eenhede": 1,
+			"totaal_koste": 346.8,
+			"part_beskrywing": "Sekura is 'n hoe gehalte Olie Filter vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Diens Onderdele",
+			"part_tipe": "Olie Filter",
+			"fabrikaat": "WIX",
+			"part_nommer": "W940/5",
+			"eenheid_koste": 292.5,
+			"aantal_eenhede": 1,
+			"totaal_koste": 292.5,
+			"part_beskrywing": "WIX is 'n hoe gehalte Olie Filter vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Parte",
+			"part_tipe": "Silinderhuls",
+			"fabrikaat": "Yongdong",
+			"part_nommer": "YD485",
+			"eenheid_koste": 1020,
+			"aantal_eenhede": 4,
+			"totaal_koste": 4080,
+			"part_beskrywing": "Silinderhuls vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Parte",
+			"part_tipe": "O-Ringe",
+			"fabrikaat": "Yongdong",
+			"part_nommer": "YD486",
+			"eenheid_koste": 51,
+			"aantal_eenhede": 12,
+			"totaal_koste": 612,
+			"part_beskrywing": "O-Ringe vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Parte",
+			"part_tipe": "Suier Kaal Standaard",
+			"fabrikaat": "Yongdong",
+			"part_nommer": "YD487",
+			"eenheid_koste": 975,
+			"aantal_eenhede": 4,
+			"totaal_koste": 3900,
+			"part_beskrywing": "Suiers vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Parte",
+			"part_tipe": "Suier ringe Standaard Stel",
+			"fabrikaat": "Yongdong",
+			"part_nommer": "YD488",
+			"eenheid_koste": 1800,
+			"aantal_eenhede": 1,
+			"totaal_koste": 1800,
+			"part_beskrywing": "Suier ringe vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Parte",
+			"part_tipe": "Suier Stange",
+			"fabrikaat": "Yongdong",
+			"part_nommer": "YD494",
+			"eenheid_koste": 105,
+			"aantal_eenhede": 16,
+			"totaal_koste": 1680,
+			"part_beskrywing": "Suier stange vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Parte",
+			"part_tipe": "Groot Kant Koeel Laers",
+			"fabrikaat": "Yongdong",
+			"part_nommer": "YD489",
+			"eenheid_koste": 1725,
+			"aantal_eenhede": 1,
+			"totaal_koste": 1725,
+			"part_beskrywing": "Groot Kant Koeel Laers vir Diesel Kragopwekkers"
+		},{
+			"kategorie": "Parte",
+			"part_tipe": "Hoof Koeel Laers",
+			"fabrikaat": "Yongdong",
+			"part_nommer": "YD488",
+			"eenheid_koste": 150,
+			"aantal_eenhede": 16,
+			"totaal_koste": 2400,
+			"part_beskrywing": "Suier ringe vir Diesel Kragopwekkers"
+		}],
+		"vaste_uitgawes": [{
+			"uitroepfooi_r/km": "R8.50 per km",
+			"aantal_kilometers": "360 km",
+			"minimum_uitroepfooi": "R650.00",
+			"uitroepfooi_totaal": "(8.50 * 360) > 650 ? (8.50 * 360) : 650"
+		}
+	],
+		"faktuur_totale_berekening": [{}]
+	}],
+	"diens_beskrywing": [{
 
-  "Klient Besonderhede" : {
-	"Rede vir Uitroep": "EnjinHerstel",
-	"BTW Reg No": "?",
-	"Faktuur": "1055",
-	"Besigheid Naam": "Hertex Fabrics Kramerville Showroom",
-	"Datum": "2026/01/09",
-	"Adres": "16 Kramer Weg, Kramerville, Sandton, Johannesburg, Gauteng",
-	"Contact Person": "Ryan",
-	"Contact Number": "074 086 7728",
-	"Email": "ryan@hertex.co.za"
-	},
-
-  "Masjien Besonderhede" : {
-	"Fabrikaat": "Ricardo",
-	"Model": "4105ZD",
-	"KVA": "63KVA",
-	"Brandstof": "Diesel",
-	"Fases": "Drie",
-	"Tipe": "Stil",
-	"Ure": "856"
-	},
-
-  "Faktuur Besonderhede": [{
-
-  	"Diverse Uitgawes": [{
-
-  		"Diens Onderdele en Parte": [{
-	  		"P772578 Lug Filter": {
-	  			"Eenheid Koste": "R 600.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-	  		},
-	  		"FC-5716 Diesel Filter": {
-	  			"Eenheid Koste": "R 270.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-	  		},
-	  		"C-66071 Olie filter": {
-	  			"Eenheid Koste": "R 346.80",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-	  		},
-	  		"W 940/5 Olie filter": {
-	  			"Eenheid Koste": "R 292.50",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-	  		}
-  		}],
-        "Diens Onderdele en Parte Totaal": "(P772578 Lug Filter Totaal + FC-5716 Diesel Filter Totaal + C-66071 Olie filter Totaal + W 940/5 Olie filter Totaal)",
-
-  		"Komponente": [{
-  			"Silinder-huls":{
-  				"Eenheid Koste": "R 1,020.00",
-	  			"Aantal Eenhede": "4",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"O Ringe":{
-  				"Eenheid Koste": "R 51.00",
-	  			"Aantal Eenhede": "12",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Suier Kaal STD":{
-  				"Eenheid Koste": "R 975.00",
-	  			"Aantal Eenhede": "4",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Suier Ring Stel STD":{
-  				"Eenheid Koste": "R 1,800.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Suierpenne":{
-  				"Eenheid Koste": "R 105.00",
-	  			"Aantal Eenhede": "4",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Groot kant koeellaers":{
-  				"Eenheid Koste": "R 1,575.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Hoof Koeellaers":{
-  				"Eenheid Koste": "R 1,725.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Olie Pomp":{
-  				"Eenheid Koste": "R 3,150.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Termostaat":{
-  				"Eenheid Koste": "R 600.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Silinder kop pakking":{
-  				"Eenheid Koste": "R 825.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Inlaat klep":{
-  				"Eenheid Koste": "R 255.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Uitlaat klep":{
-  				"Eenheid Koste": "R 255.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Klep gids stel":{
-  				"Eenheid Koste": "R 930.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Silinder Kop Boute":{
-  				"Eenheid Koste": "R 105.00",
-	  			"Aantal Eenhede": "14",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"3/4 WP 21 Bar Water pyp P/M":{
-  				"Eenheid Koste": "R 270.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Enjin kop herstel werk":{
-  				"Eenheid Koste": "R 7,500.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			}
-        }],
-        "Komponente Totaal": "(Silinder-huls Totaal + O Ringe Totaal + Suier Kaal STD Totaal + Suier Ring Stel STD Totaal + Suierpenne Totaal + Groot kant koeellaers Totaal + Hoof Koeellaers Totaal + Olie Pomp Totaal + Termostaat Totaal + Silinder kop pakking Totaal + Inlaat klep Totaal + Uitlaat klep Totaal + Klep gids stel Totaal + Silinder Kop Boute Totaal + 3/4 WP 21 Bar Water pyp P/M Totaal + Enjin kop herstel werk Totaal)",
-
-  		"Smeermiddels en Konsentrate": [{
-  			"15W40 Minerale Enjin Olie": {
-  				"Eenheid Koste": "R 1,500.00",
-	  			"Aantal Eenhede": "1",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			},
-  			"Anti-fries 96% 5liter": {
-  				"Eenheid Koste": "R 391.00",
-	  			"Aantal Eenhede": "2",
-	  			"Totaal": "(Eenheid Koste * Aantal Eenhede)"
-  			}
-  		}],
-        "Smeermiddels en Konsentrate Totaal": "(15W40 Minerale Enjin Olie Totaal + Anti-fries 96% 5liter Totaal)",
-
-  		"Verbruikbare Voorraad (lappe, chemikalie)": "((Diens Onderdele en Parte Totaal + Komponente Totaal + Smeermiddels en Konsentrate Totaal) * 0.075)"
-  	}],
-    "Totale Diverse Uitgawes": "(Diens Onderdele en Parte Totaal + Komponente Totaal + Smeermiddels en Konsentrate Totaal + Verbruikbare Voorraad Totaal)",
-
-    "Vaste Uitgawes": [{
-       "Reis Koste" : {
-            "Eenheid Koste" : "R 8.50 per km", 
-            "Kilometers" : "1",
-            "Totaal" : "(Eenheid Koste * Kilometers)"
-       },
-       "Arbeids Koste" : {
-            "Eenheid Koste" : "R 650.00 per uur",
-            "Aantal Ure" : "1",
-            "Totaal" : "(Eenheid Koste * Aantal Ure)"
-       }
-    }],
-
-	"Totale Vaste Uitgawes": "(Reis Koste Totaal + Arbeids Koste Totaal)"
-	
-  }],
-    "Faktuur Totaal": {
-        "Totale Uitgawes": "(Totale Diverse Uitgawes + Totale Vaste Uitgawes)",
-        "BTW": "(Totale Uitgawes * 0.15)",
-        "Deposito Betaalbaar": "(Totale Uitgawes * 0.5)",
-        "Saldo Betaalbaar": "(Totale Uitgawes - Deposito Betaalbaar)"
-    } 
+	}]
 }]

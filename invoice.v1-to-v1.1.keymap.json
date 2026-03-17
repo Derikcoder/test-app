@@ -1,0 +1,265 @@
+{
+  "version": "1.1",
+  "source_format": "invoice.schema.v1.json",
+  "target_format": "invoice.schema.v1.1.json",
+  "notes": [
+    "Use this map when converting legacy v1 invoice payloads to v1.1 normalized payloads.",
+    "Fields with transform hints need parsing/normalization logic.",
+    "Array notation [] means apply mapping for each array item."
+  ],
+  "top_level": {
+    "diensverskaffer_besonderhede": "service_provider_details",
+    "klient_besonderhede": "client_details",
+    "faktuur_besonderhede": "invoice_details",
+    "diens_besonderhede": "service_details",
+    "faktureerde_besonderhede || koste_berekening": "billing_and_costing",
+    "diens_beskrywing": "service_description"
+  },
+  "field_mappings": [
+    {
+      "from": "diensverskaffer_besonderhede[].besigheid_handeslnaam",
+      "to": "service_provider_details[].business_trade_name",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diensverskaffer_besonderhede[].besigheid_registrasie_naam",
+      "to": "service_provider_details[].business_registered_name",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diensverskaffer_besonderhede[].belasting_identifikasie_nommer",
+      "to": "service_provider_details[].tax_identification_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diensverskaffer_besonderhede[].btw_registrasie_nommer",
+      "to": "service_provider_details[].vat_registration_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diensverskaffer_besonderhede[].besigheid_adres",
+      "to": "service_provider_details[].business_address",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diensverskaffer_besonderhede[].besigheid_kontak_nommer",
+      "to": "service_provider_details[].business_contact_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diensverskaffer_besonderhede[].besigheid_e-pos_adres",
+      "to": "service_provider_details[].business_email_address",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diensverskaffer_besonderhede[].besigheid_registrasie_webwerf",
+      "to": "service_provider_details[].business_website",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].klient_tipe",
+      "to": "client_details[].client_type",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].besigheid_naam",
+      "to": "client_details[].business_name",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].besigheid_registrasie_nommer",
+      "to": "client_details[].business_registration_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].belasting_identifikasie_nommer",
+      "to": "client_details[].tax_identification_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].btw_registrasie_nommer",
+      "to": "client_details[].vat_registration_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].klient_adres",
+      "to": "client_details[].client_address",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].kontak_persoon",
+      "to": "client_details[].contact_person",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].klient_kontak_nommer",
+      "to": "client_details[].client_contact_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "klient_besonderhede[].klient_e-pos_adres",
+      "to": "client_details[].client_email_address",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktuur_besonderhede[].faktuur_nommer",
+      "to": "invoice_details[].invoice_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktuur_besonderhede[].faktuur_datum",
+      "to": "invoice_details[].invoice_date",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktuur_besonderhede[].vervaldatum",
+      "to": "invoice_details[].due_date",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktuur_besonderhede[].betalingsvoorwaardes",
+      "to": "invoice_details[].payment_terms",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktuur_besonderhede[].valuta",
+      "to": "invoice_details[].currency",
+      "transform": "uppercase"
+    },
+    {
+      "from": "diens_besonderhede[].diens_besonderhede",
+      "to": "service_details[].service_summary",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.masjien_tipe",
+      "to": "service_details[].machine_details.machine_type",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.masjien_merk",
+      "to": "service_details[].machine_details.machine_brand",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.masjien_model",
+      "to": "service_details[].machine_details.machine_model",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.masjien_serienommer",
+      "to": "service_details[].machine_details.machine_serial_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.kva_gradering",
+      "to": "service_details[].machine_details.kva_rating",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.huidige_masjien_ure",
+      "to": "service_details[].machine_details.current_machine_hours",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.masjine_ure_ten_laaste_diens",
+      "to": "service_details[].machine_details.machine_hours_at_last_service",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.brandstof_tipe",
+      "to": "service_details[].machine_details.fuel_type",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.bou_tipe",
+      "to": "service_details[].machine_details.build_type",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.masjien_foutkode",
+      "to": "service_details[].machine_details.machine_fault_code",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.foutkode_beskrywing",
+      "to": "service_details[].machine_details.fault_code_description",
+      "transform": "copy_string"
+    },
+    {
+      "from": "diens_besonderhede[].masjien_besonderhede.datum_van_laaste_diens",
+      "to": "service_details[].machine_details.last_service_date_reference",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].kategorie",
+      "to": "billing_and_costing[].line_items[].category",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].part_tipe",
+      "to": "billing_and_costing[].line_items[].part_type",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].fabrikaat",
+      "to": "billing_and_costing[].line_items[].manufacturer",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].part_nommer",
+      "to": "billing_and_costing[].line_items[].part_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].eenheid_koste",
+      "to": "billing_and_costing[].line_items[].unit_cost",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].aantal_eenhede",
+      "to": "billing_and_costing[].line_items[].quantity",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].totaal_koste",
+      "to": "billing_and_costing[].line_items[].total_cost",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].part_beskrywing",
+      "to": "billing_and_costing[].line_items[].part_description",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].uitroepfooi_r/km",
+      "to": "billing_and_costing[].fixed_expenses[].callout_fee_per_km",
+      "transform": "parse_currency_rate"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].aantal_kilometers",
+      "to": "billing_and_costing[].fixed_expenses[].distance_km",
+      "transform": "parse_distance_km"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].minimum_uitroepfooi",
+      "to": "billing_and_costing[].fixed_expenses[].minimum_callout_fee",
+      "transform": "parse_currency_amount"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].uitroepfooi_totaal",
+      "to": "billing_and_costing[].fixed_expenses[].callout_fee_total",
+      "transform": "evaluate_formula_or_set_manual"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].faktuur_totale_berekening[]",
+      "to": "billing_and_costing[].invoice_totals[]",
+      "transform": "normalize_totals_object"
+    },
+    {
+      "from": "diens_beskrywing[]",
+      "to": "service_description[]",
+      "transform": "copy_object"
+    }
+  ]
+}
