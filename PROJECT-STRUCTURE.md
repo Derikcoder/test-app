@@ -2,6 +2,42 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
+---
+
+## 🏗️ Project Vision
+
+This codebase is being built as a **digital transformation framework for service industry businesses** (field service, generators, electrical, plumbing, and beyond). The architecture is intentionally modular — each branch represents a **standalone, portable component** that can be extracted and carried into other projects.
+
+---
+
+## 🌿 Branch Architecture
+
+```
+main                 ← Production (stable, never touched directly)
+  └── consolidation  ← QA / integration merge point
+        └── foundation    ← Base framework (parent of all features)
+              ├── feature/invoicing-engine
+              ├── feature/customer-portal
+              ├── feature/field-agent-app
+              └── feature/<module-name>
+```
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable production code. Never commit here directly. |
+| `consolidation` | Integration branch — all features QA'd here before promoting to `main`. |
+| `foundation` | Living base framework. All feature branches are created from here. |
+| `feature/*` | Standalone modules, named after the functionality they deliver. |
+
+### Branch Rules
+- **Always branch from `foundation`** when starting a new module
+- **Merge feature → foundation** when module is complete and tested
+- **Merge foundation → consolidation** when a milestone is ready for QA
+- **Merge consolidation → main** only after QA sign-off
+- **Never commit directly to `main`**
+
+---
+
 ## Root
 - AUTH_GUIDE.md: Authentication usage and API expectations.
 - FIELD_PERMISSIONS.md: Field-level permissions and immutable fields policy.

@@ -853,8 +853,57 @@ curl -X GET http://localhost:5000/api/auth/profile \
 
 ### Git Repository
 - **Remote**: https://github.com/Derikcoder/test-app
-- **Branch**: main
-- **Last Commit**: Initial commit with full-stack application
+- **Active Branch**: `foundation`
+- **Branch Model**: Parent → Child → Consolidation → Production
+
+#### Branch Architecture
+
+This project uses a structured branching model where **each branch is a standalone, portable module** — designed so individual branches can be carried into other projects as reusable components. The framework is being built as a **digital transformation platform for service industry businesses**.
+
+```
+main                 ← Production (stable, never touched directly)
+  └── consolidation  ← QA / integration merge point
+        └── foundation    ← Base framework (parent of all features)
+              ├── feature/invoicing-engine
+              ├── feature/customer-portal
+              ├── feature/field-agent-app
+              └── feature/<module-name>
+```
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable production code only. Never commit here directly. |
+| `consolidation` | Integration branch. All features merge here for QA before `main`. |
+| `foundation` | Living base framework. All feature branches are born from here. |
+| `feature/*` | Standalone modules, named after the functionality they deliver. |
+
+#### Branch Workflow
+```bash
+# Start a new module from foundation
+git checkout foundation
+git checkout -b feature/your-module-name
+
+# Work on the feature, commit regularly
+git add .
+git commit -m "feat: describe what you built"
+
+# Merge back to foundation when done
+git checkout foundation
+git merge feature/your-module-name
+
+# Promote stable foundation to consolidation for QA
+git checkout consolidation
+git merge foundation
+
+# After QA passes, merge consolidation into main
+git checkout main
+git merge consolidation
+```
+
+#### Naming Conventions
+- Feature branches: `feature/<module-name>` (e.g. `feature/invoicing-engine`)
+- Hotfix branches: `hotfix/<description>` (e.g. `hotfix/login-token-expiry`)
+- Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`
 
 ---
 

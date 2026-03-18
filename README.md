@@ -716,17 +716,49 @@ npm update
    - Follow existing code structure and patterns
    - Add comments for complex logic
 
-2. **Git Workflow**
+2. **Branch Architecture**
+
+   This project follows a **parent → child → consolidation → production** branching model.
+   Each branch represents a standalone, portable module that can be carried into other projects.
+
+   ```
+   main                 ← Production (stable, never touched directly)
+     └── consolidation  ← QA/merge point (all branches merged here before main)
+           └── foundation    ← Base framework (parent of all features)
+                 ├── feature/invoicing-engine
+                 ├── feature/customer-portal
+                 ├── feature/field-agent-app
+                 └── feature/<module-name>
+   ```
+
+   | Branch | Purpose |
+   |--------|---------|
+   | `main` | Stable production code only. Never commit here directly. |
+   | `consolidation` | Integration branch. All features merge here for QA before promoting to `main`. |
+   | `foundation` | Living base framework. All feature branches are created from here. |
+   | `feature/*` | Standalone module branches. Named after the functionality they deliver. |
+
+   **Workflow:**
    ```bash
-   # Create feature branch
-   git checkout -b feature/your-feature-name
-   
-   # Make changes and commit
+   # Start a new module from foundation
+   git checkout foundation
+   git checkout -b feature/your-module-name
+
+   # Work on the feature, commit regularly
    git add .
    git commit -m "feat: Add new feature"
-   
-   # Push and create pull request
-   git push origin feature/your-feature-name
+
+   # When ready, merge back to foundation
+   git checkout foundation
+   git merge feature/your-module-name
+
+   # When foundation is stable, promote to consolidation for QA
+   git checkout consolidation
+   git merge foundation
+
+   # Once QA passes, consolidation is merged into main
+   git checkout main
+   git merge consolidation
    ```
 
 3. **Commit Message Format**
