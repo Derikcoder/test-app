@@ -20,6 +20,11 @@ import UserProfile from './components/UserProfile';
 import FieldServiceAgents from './components/FieldServiceAgents';
 import AgentProfile from './components/AgentProfile';
 import Customers from './components/Customers';
+import HeadOfficeCustomer from './components/HeadOfficeCustomer';
+import BranchCustomer from './components/BranchCustomer';
+import FranchiseCustomer from './components/FranchiseCustomer';
+import SingleBusinessCustomer from './components/SingleBusinessCustomer';
+import ResidentialCustomer from './components/ResidentialCustomer';
 import ServiceCalls from './components/ServiceCalls';
 
 /**
@@ -117,6 +122,46 @@ function App() {
             element={
               <ProtectedRoute>
                 <Customers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/head-office/:id"
+            element={
+              <ProtectedRoute>
+                <HeadOfficeCustomer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/branch/:id"
+            element={
+              <ProtectedRoute>
+                <BranchCustomer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/franchise/:id"
+            element={
+              <ProtectedRoute>
+                <FranchiseCustomer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/single-business/:id"
+            element={
+              <ProtectedRoute>
+                <SingleBusinessCustomer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/residential/:id"
+            element={
+              <ProtectedRoute>
+                <ResidentialCustomer />
               </ProtectedRoute>
             }
           />

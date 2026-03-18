@@ -126,7 +126,13 @@ main                 ← Production (stable, never touched directly)
 - `UserProfile.jsx`: Profile display, edits with protected field logic, and SuperUser stats dashboard.
 - `FieldServiceAgents.jsx`: Field service agent list and CRUD screen.
 - `AgentProfile.jsx`: Agent detail view with job statistics.
-- `Customers.jsx`: Customer list page — all registered customers with service history and Book Service button.
+- `Customers.jsx`: Customer list page — all customers filtered by type, navigates to type-specific profiles.
+- `RegisterNewCustomer.jsx`: Reusable modal/form for registering any customer type. Callable from any screen.
+- `HeadOfficeCustomer.jsx`: Profile view for Head Office accounts (parent of branches/franchises).
+- `BranchCustomer.jsx`: Profile view for Branch accounts (child of Head Office).
+- `FranchiseCustomer.jsx`: Profile view for Franchise accounts (child of Head Office, independent billing).
+- `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
+- `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
 - `ServiceCalls.jsx`: Service calls list page — all jobs with status, priority, filters, and booking.
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
