@@ -10,6 +10,29 @@ This codebase is being built as a **digital transformation framework for service
 
 ---
 
+## 🎯 Active Branch Goal — `feature/customer-management`
+
+**Objective:** Refactor the customer module into a proper parent → child component hierarchy.
+
+### Problem
+`Customers.jsx` currently contains a customer registration/service request form — it is **not** a customer list. This mixes concerns and makes the component unsuitable as the customers landing page.
+
+### Plan
+1. **Extract** the existing form from `Customers.jsx` into a new reusable component: `RegisterNewCustomer.jsx`
+2. **Recreate** `Customers.jsx` as a true customer list page — dynamically renders all customers from the database
+3. **Create** `SingleCustomer.jsx` as the customer detail/profile view — child of `Customers.jsx`, navigated to per row
+4. **Wire** routing so `Customers` → list, clicking a customer → `SingleCustomer` profile
+
+### Component Hierarchy
+```
+Customers.jsx          ← parent: lists all customers from DB
+  └── SingleCustomer.jsx    ← child: individual customer profile + service history
+
+RegisterNewCustomer.jsx  ← standalone modal/form: register a new customer (callable from anywhere)
+```
+
+---
+
 ## 🌿 Branch Architecture
 
 ```
