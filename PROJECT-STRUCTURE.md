@@ -25,11 +25,24 @@ This codebase is being built as a **digital transformation framework for service
 
 ### Component Hierarchy
 ```
-Customers.jsx          ← parent: lists all customers from DB
-  └── SingleCustomer.jsx    ← child: individual customer profile + service history
+Customers.jsx                    ← parent: lists all customers from DB, filtered by type
+  ├── HeadOfficeCustomer.jsx     ← profile: head office account (multiple branches/franchises)
+  ├── BranchCustomer.jsx         ← profile: branch of a head office
+  ├── FranchiseCustomer.jsx      ← profile: franchise operation
+  ├── SingleBusinessCustomer.jsx ← profile: standalone business (SME)
+  └── ResidentialCustomer.jsx    ← profile: individual/residential client
 
-RegisterNewCustomer.jsx  ← standalone modal/form: register a new customer (callable from anywhere)
+RegisterNewCustomer.jsx          ← standalone modal/form: register any customer type (callable from anywhere)
 ```
+
+### Customer Type Notes
+- **HeadOfficeCustomer** — parent account; may have linked Branch and Franchise children
+- **BranchCustomer** — linked to a HeadOffice parent; inherits some account settings
+- **FranchiseCustomer** — linked to a HeadOffice parent; independent billing but shared branding
+- **SingleBusinessCustomer** — standalone SME; no parent/child account relationships
+- **ResidentialCustomer** — individual homeowner or tenant; simpler profile, no business fields
+
+Each customer type will have its own profile view tailored to the relevant fields and service history structure.
 
 ---
 
