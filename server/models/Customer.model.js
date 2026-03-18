@@ -9,6 +9,37 @@
 
 import mongoose from 'mongoose';
 
+const addressSchema = new mongoose.Schema({
+  streetAddress: {
+    type: String,
+    trim: true,
+  },
+  complexName: {
+    type: String,
+    trim: true,
+  },
+  siteAddressDetail: {
+    type: String,
+    trim: true,
+  },
+  suburb: {
+    type: String,
+    trim: true,
+  },
+  cityDistrict: {
+    type: String,
+    trim: true,
+  },
+  province: {
+    type: String,
+    trim: true,
+  },
+  postalCode: {
+    type: String,
+    trim: true,
+  },
+}, { _id: false });
+
 /**
  * Site Sub-Schema (for Business Customers)
  * 
@@ -28,6 +59,11 @@ const siteSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Site address is required'],
     trim: true,
+  },
+  /** Structured physical address for this site */
+  addressDetails: {
+    type: addressSchema,
+    default: () => ({}),
   },
   /** Site-specific contact person name */
   contactPerson: {
@@ -145,10 +181,20 @@ const customerSchema = new mongoose.Schema(
       },
       trim: true,
     },
+    /** Structured physical address for both private and business customers */
+    physicalAddressDetails: {
+      type: addressSchema,
+      default: () => ({}),
+    },
     /** Billing address (if different from physical) */
     billingAddress: {
       type: String,
       trim: true,
+    },
+    /** Structured billing address */
+    billingAddressDetails: {
+      type: addressSchema,
+      default: () => ({}),
     },
     /** VAT registration number for invoicing */
     vatNumber: {
@@ -233,7 +279,9 @@ customerSchema.statics.EDITABLE_FIELDS = [
   'phoneNumber',
   'alternatePhone',
   'physicalAddress',
+  'physicalAddressDetails',
   'billingAddress',
+  'billingAddressDetails',
   'vatNumber',
   'taxNumber',
   'registrationNumber',

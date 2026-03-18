@@ -21,17 +21,33 @@ const ServiceCalls = () => {
  const [successMessage, setSuccessMessage] = useState('');
 
  const [formData, setFormData] = useState({
+   customerType: 'business',
   companyName: user?.businessName || '',
   contactPerson: '',
   contactEmail: user?.email || '',
   contactPhone: user?.phoneNumber || '',
-  siteAddress: user?.physicalAddress || '',
-  dataCenterName: '',
+    siteName: '',
+    adminStreetAddress: user?.physicalAddress || '',
+    adminComplexName: '',
+    adminSiteAddressDetail: '',
+    adminSuburb: '',
+    adminCityDistrict: '',
+    adminProvince: '',
+    adminPostalCode: '',
+    machineLocationSameAsAdmin: 'yes',
+    machineStreetAddress: '',
+    machineComplexName: '',
+    machineAddressDetail: '',
+    machineSuburb: '',
+    machineCityDistrict: '',
+    machineProvince: '',
+    machinePostalCode: '',
+    machineLocationNotes: '',
   generatorMakeModel: '',
   generatorCapacityKva: '',
-  serialNumber: '',
+   machineModelNumber: '',
   serviceType: 'Preventive Maintenance',
-  urgency: 'High',
+  urgency: 'high',
   outageStart: '',
   outageEnd: '',
   preferredDate: '',
@@ -60,13 +76,27 @@ const ServiceCalls = () => {
   * @returns {string|null} Returns validation error message, or null if valid.
   */
  const validateForm = () => {
-  if (!formData.companyName.trim()) return 'Company name is required.';
   if (!formData.contactPerson.trim()) return 'Contact person is required.';
   if (!/^\S+@\S+\.\S+$/.test(formData.contactEmail)) return 'A valid contact email is required.';
   if (!formData.contactPhone.trim()) return 'Contact phone is required.';
-  if (!formData.siteAddress.trim()) return 'Site address is required.';
-  if (!formData.dataCenterName.trim()) return 'Data center name is required.';
+   if (formData.customerType === 'business') {
+    if (!formData.companyName.trim()) return 'Company name is required.';
+    if (!formData.siteName.trim()) return 'Site name is required.';
+   }
+  if (formData.machineLocationSameAsAdmin === 'no') {
+   if (!formData.machineStreetAddress.trim()) return 'Machine location street address is required.';
+   if (!formData.machineSuburb.trim()) return 'Machine location suburb is required.';
+   if (!formData.machineCityDistrict.trim()) return 'Machine location city/district is required.';
+   if (!formData.machineProvince.trim()) return 'Machine location province is required.';
+   if (!formData.machinePostalCode.trim()) return 'Machine location postal code is required.';
+  }
+  if (!formData.adminStreetAddress.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} street address is required.`;
+  if (!formData.adminSuburb.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} suburb is required.`;
+  if (!formData.adminCityDistrict.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} city/district is required.`;
+  if (!formData.adminProvince.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} province is required.`;
+  if (!formData.adminPostalCode.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} postal code is required.`;
   if (!formData.generatorMakeModel.trim()) return 'Generator make/model is required.';
+   if (!formData.machineModelNumber.trim()) return 'Machine model number is required.';
   if (!formData.generatorCapacityKva || Number(formData.generatorCapacityKva) <= 0) {
    return 'Generator capacity must be greater than 0.';
   }
@@ -80,36 +110,140 @@ const ServiceCalls = () => {
  };
 
  /**
+  * Formats segmented address fields for readable dispatch notes.
+  *
+  * @param {string} prefix - Field name prefix (admin|machine)
+  * @returns {string}
+  */
+ const formatAddress = (prefix) => {
+  const street = formData[`${prefix}StreetAddress`]?.trim();
+  const complex = formData[`${prefix}ComplexName`]?.trim();
+  const detail = formData[`${prefix}AddressDetail`]?.trim() || formData[`${prefix}SiteAddressDetail`]?.trim();
+  const suburb = formData[`${prefix}Suburb`]?.trim();
+  const cityDistrict = formData[`${prefix}CityDistrict`]?.trim();
+  const province = formData[`${prefix}Province`]?.trim();
+  const postalCode = formData[`${prefix}PostalCode`]?.trim();
+
+  return [
+   street,
+   complex ? `Complex/Industrial Park: ${complex}` : null,
+   detail ? `Unit/Site Detail: ${detail}` : null,
+   suburb,
+   cityDistrict,
+   province,
+   postalCode ? `Postal Code: ${postalCode}` : null,
+  ].filter(Boolean).join(', ');
+ };
+
+ /**
   * Builds a backend-safe service call payload.
   *
-  * @returns {{title: string, description: string, priority: string, scheduledDate: string}}
+   * @returns {{title: string, description: string, priority: string, serviceType: string, scheduledDate: string, serviceLocation: string, bookingRequest: object}}
   */
  const buildPayload = () => {
-  const title = `${formData.serviceType} - ${formData.companyName} (${formData.dataCenterName})`;
+   const isBusiness = formData.customerType === 'business';
+    const administrativeAddress = {
+     streetAddress: formData.adminStreetAddress,
+     complexName: formData.adminComplexName,
+     siteAddressDetail: formData.adminSiteAddressDetail,
+     suburb: formData.adminSuburb,
+     cityDistrict: formData.adminCityDistrict,
+     province: formData.adminProvince,
+     postalCode: formData.adminPostalCode,
+    };
+    const machineAddress = formData.machineLocationSameAsAdmin === 'yes'
+     ? administrativeAddress
+     : {
+       streetAddress: formData.machineStreetAddress,
+       complexName: formData.machineComplexName,
+       siteAddressDetail: formData.machineAddressDetail,
+       suburb: formData.machineSuburb,
+       cityDistrict: formData.machineCityDistrict,
+       province: formData.machineProvince,
+       postalCode: formData.machinePostalCode,
+      };
+    const resolvedServiceLocation = formData.machineLocationSameAsAdmin === 'yes'
+     ? formatAddress('admin')
+     : formatAddress('machine');
+   const title = isBusiness
+    ? `${formData.serviceType} - ${formData.companyName} (${formData.siteName})`
+    : `${formData.serviceType} - Private Customer (${formData.contactPerson})`;
 
-  const description = [
-   `Company: ${formData.companyName}`,
-   `Contact: ${formData.contactPerson}`,
-   `Email: ${formData.contactEmail}`,
-   `Phone: ${formData.contactPhone}`,
-   `Site Address: ${formData.siteAddress}`,
-   `Data Center: ${formData.dataCenterName}`,
-   `Generator: ${formData.generatorMakeModel}`,
-   `Capacity (kVA): ${formData.generatorCapacityKva}`,
-   `Serial Number: ${formData.serialNumber || 'N/A'}`,
-   `Service Type: ${formData.serviceType}`,
-   `Urgency: ${formData.urgency}`,
-   `Load Shedding Window: ${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`,
-   `Preferred Date: ${formData.preferredDate}`,
-   `Preferred Time Window: ${formData.preferredTimeWindow}`,
-   `Notes: ${formData.notes || 'None'}`,
-  ].join('\n');
+   const description = isBusiness
+    ? [
+       `Customer Type: Business`,
+       `Company: ${formData.companyName}`,
+       `Contact: ${formData.contactPerson}`,
+       `Email: ${formData.contactEmail}`,
+       `Phone: ${formData.contactPhone}`,
+       `Site Name: ${formData.siteName}`,
+       `Administrative Address: ${formatAddress('admin')}`,
+       `Machine Location Same As Administrative Address: ${formData.machineLocationSameAsAdmin === 'yes' ? 'Yes' : 'No'}`,
+       `Machine Technical Address: ${formData.machineLocationSameAsAdmin === 'yes' ? formatAddress('admin') : formatAddress('machine')}`,
+       `Machine Location Notes: ${formData.machineLocationNotes || 'None'}`,
+       `Generator: ${formData.generatorMakeModel}`,
+       `Machine Model Number: ${formData.machineModelNumber}`,
+       `Capacity (kVA): ${formData.generatorCapacityKva}`,
+       `Service Type: ${formData.serviceType}`,
+       `Urgency: ${formData.urgency}`,
+       `Load Shedding Window: ${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`,
+       `Preferred Date: ${formData.preferredDate}`,
+       `Preferred Time Window: ${formData.preferredTimeWindow}`,
+       `Notes: ${formData.notes || 'None'}`,
+      ].join('\n')
+    : [
+       `Customer Type: Private`,
+       `Contact: ${formData.contactPerson}`,
+       `Email: ${formData.contactEmail}`,
+       `Phone: ${formData.contactPhone}`,
+       `Residential Address: ${formatAddress('admin')}`,
+       `Machine Located At Residential Address: ${formData.machineLocationSameAsAdmin === 'yes' ? 'Yes' : 'No'}`,
+       `Machine Address: ${formData.machineLocationSameAsAdmin === 'yes' ? formatAddress('admin') : formatAddress('machine')}`,
+       `Machine Location Notes: ${formData.machineLocationNotes || 'None'}`,
+       `Generator: ${formData.generatorMakeModel}`,
+       `Machine Model Number: ${formData.machineModelNumber}`,
+       `Capacity (kVA): ${formData.generatorCapacityKva}`,
+       `Service Type: ${formData.serviceType}`,
+       `Urgency: ${formData.urgency}`,
+       `Load Shedding Window: ${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`,
+       `Preferred Date: ${formData.preferredDate}`,
+       `Preferred Time Window: ${formData.preferredTimeWindow}`,
+       `Notes: ${formData.notes || 'None'}`,
+      ].join('\n');
 
   return {
    title,
    description,
    priority: formData.urgency,
+   serviceType: formData.serviceType,
    scheduledDate: new Date(formData.preferredDate).toISOString(),
+  serviceLocation: resolvedServiceLocation,
+   bookingRequest: {
+    contact: {
+     customerType: formData.customerType,
+     companyName: isBusiness ? formData.companyName : '',
+     contactPerson: formData.contactPerson,
+     contactEmail: formData.contactEmail,
+     contactPhone: formData.contactPhone,
+    },
+    administrativeAddress,
+    machineAddress,
+    generatorDetails: {
+      siteName: isBusiness ? formData.siteName : '',
+      generatorMakeModel: formData.generatorMakeModel,
+      machineModelNumber: formData.machineModelNumber,
+      generatorCapacityKva: Number(formData.generatorCapacityKva),
+      machineLocationSameAsAdmin: formData.machineLocationSameAsAdmin === 'yes',
+      machineLocationNotes: formData.machineLocationNotes,
+    },
+    outageWindow: {
+      start: new Date(formData.outageStart).toISOString(),
+      end: new Date(formData.outageEnd).toISOString(),
+    },
+    preferredDate: new Date(formData.preferredDate).toISOString(),
+    preferredTimeWindow: formData.preferredTimeWindow,
+    additionalNotes: formData.notes,
+   },
   };
  };
 
@@ -180,26 +314,140 @@ const ServiceCalls = () => {
         </div>
        )}
 
+      <section className="space-y-4">
+       <h2 className="glass-heading-secondary">Customer Type</h2>
+       <select
+        name="customerType"
+        value={formData.customerType}
+        onChange={handleInputChange}
+        className="w-full md:w-1/2 rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+       >
+        <option value="business" className="text-black">Business</option>
+        <option value="private" className="text-black">Private</option>
+       </select>
+      </section>
+
        <section className="space-y-4">
-        <h2 className="glass-heading-secondary">Company & Contact</h2>
+       <h2 className="glass-heading-secondary">
+        {formData.customerType === 'business' ? 'Company & Contact' : 'Private Contact'}
+       </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {formData.customerType === 'business' && (
          <input name="companyName" value={formData.companyName} onChange={handleInputChange} placeholder="Company Name" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+        )}
          <input name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} placeholder="Contact Person" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
          <input type="email" name="contactEmail" value={formData.contactEmail} onChange={handleInputChange} placeholder="Contact Email" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
          <input name="contactPhone" value={formData.contactPhone} onChange={handleInputChange} placeholder="Contact Phone" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
         </div>
-        <input name="siteAddress" value={formData.siteAddress} onChange={handleInputChange} placeholder="Site Address" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
-       </section>
+      {formData.customerType === 'business' ? (
+        <input name="siteName" value={formData.siteName} onChange={handleInputChange} placeholder="Site Name (Machine Location Name)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+      ) : null}
+             </section>
+
+           <section className="space-y-4">
+      <h2 className="glass-heading-secondary">
+       {formData.customerType === 'business' ? 'Administrative Address (Billing/Records)' : 'Physical Address'}
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <input name="adminStreetAddress" value={formData.adminStreetAddress} onChange={handleInputChange} placeholder="Street Address" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+       <input name="adminComplexName" value={formData.adminComplexName} onChange={handleInputChange} placeholder="Complex / Industrial Park (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+       <input name="adminSiteAddressDetail" value={formData.adminSiteAddressDetail} onChange={handleInputChange} placeholder="Unit / Site Address Detail (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+       <input name="adminSuburb" value={formData.adminSuburb} onChange={handleInputChange} placeholder="Suburb" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+       <input name="adminCityDistrict" value={formData.adminCityDistrict} onChange={handleInputChange} placeholder="City / District" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+       <input name="adminProvince" value={formData.adminProvince} onChange={handleInputChange} placeholder="Province" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+       <input name="adminPostalCode" value={formData.adminPostalCode} onChange={handleInputChange} placeholder="Postal / ZIP Code" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+      </div>
+           </section>
 
        <section className="space-y-4">
         <h2 className="glass-heading-secondary">Generator Details</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <input name="dataCenterName" value={formData.dataCenterName} onChange={handleInputChange} placeholder="Data Center Name" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
          <input name="generatorMakeModel" value={formData.generatorMakeModel} onChange={handleInputChange} placeholder="Generator Make / Model" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+         <input name="machineModelNumber" value={formData.machineModelNumber} onChange={handleInputChange} placeholder="Machine Model Number" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
          <input type="number" min="1" name="generatorCapacityKva" value={formData.generatorCapacityKva} onChange={handleInputChange} placeholder="Capacity (kVA)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
-         <input name="serialNumber" value={formData.serialNumber} onChange={handleInputChange} placeholder="Serial Number (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
         </div>
        </section>
+
+            <section className="space-y-4">
+             <h2 className="glass-heading-secondary">Technical Machine Location (Dispatch)</h2>
+             {formData.customerType === 'business' ? (
+              <>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <select name="machineLocationSameAsAdmin" value={formData.machineLocationSameAsAdmin} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
+                 <option value="yes" className="text-black">Machine location is the same as administrative address</option>
+                 <option value="no" className="text-black">Machine location is different</option>
+                </select>
+                <input
+                 name="machineLocationNotes"
+                 value={formData.machineLocationNotes}
+                 onChange={handleInputChange}
+                 placeholder="Machine Position Notes (e.g., Plant Room B, Bay 4, Roof Level 2)"
+                 className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+                />
+               </div>
+
+               {formData.machineLocationSameAsAdmin === 'no' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <input name="machineStreetAddress" value={formData.machineStreetAddress} onChange={handleInputChange} placeholder="Machine Street Address" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machineComplexName" value={formData.machineComplexName} onChange={handleInputChange} placeholder="Machine Complex / Industrial Park (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+                 <input name="machineAddressDetail" value={formData.machineAddressDetail} onChange={handleInputChange} placeholder="Machine Unit / Internal Location Detail (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+                 <input name="machineSuburb" value={formData.machineSuburb} onChange={handleInputChange} placeholder="Machine Suburb" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machineCityDistrict" value={formData.machineCityDistrict} onChange={handleInputChange} placeholder="Machine City / District" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machineProvince" value={formData.machineProvince} onChange={handleInputChange} placeholder="Machine Province" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machinePostalCode" value={formData.machinePostalCode} onChange={handleInputChange} placeholder="Machine Postal / ZIP Code" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                </div>
+               )}
+              </>
+             ) : (
+              <>
+               <div className="space-y-3 rounded-xl border border-white/15 bg-white/5 p-4">
+                <p className="text-sm font-medium text-white/90">Is machine located at residential address?</p>
+                <div className="flex flex-wrap gap-6">
+                 <label className="flex items-center gap-2 text-white/85">
+                  <input
+                   type="radio"
+                   name="machineLocationSameAsAdmin"
+                   value="yes"
+                   checked={formData.machineLocationSameAsAdmin === 'yes'}
+                   onChange={handleInputChange}
+                  />
+                  <span>Yes</span>
+                 </label>
+                 <label className="flex items-center gap-2 text-white/85">
+                  <input
+                   type="radio"
+                   name="machineLocationSameAsAdmin"
+                   value="no"
+                   checked={formData.machineLocationSameAsAdmin === 'no'}
+                   onChange={handleInputChange}
+                  />
+                  <span>No</span>
+                 </label>
+                </div>
+               </div>
+
+               {formData.machineLocationSameAsAdmin === 'no' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <input name="machineStreetAddress" value={formData.machineStreetAddress} onChange={handleInputChange} placeholder="Machine Street Address" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machineComplexName" value={formData.machineComplexName} onChange={handleInputChange} placeholder="Machine Complex / Industrial Park (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+                 <input name="machineAddressDetail" value={formData.machineAddressDetail} onChange={handleInputChange} placeholder="Machine Unit / Site Detail (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+                 <input name="machineSuburb" value={formData.machineSuburb} onChange={handleInputChange} placeholder="Machine Suburb" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machineCityDistrict" value={formData.machineCityDistrict} onChange={handleInputChange} placeholder="Machine City / District" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machineProvince" value={formData.machineProvince} onChange={handleInputChange} placeholder="Machine Province" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                 <input name="machinePostalCode" value={formData.machinePostalCode} onChange={handleInputChange} placeholder="Machine Postal / ZIP Code" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+                </div>
+               )}
+
+               <input
+                name="machineLocationNotes"
+                value={formData.machineLocationNotes}
+                onChange={handleInputChange}
+                placeholder="Machine Location Notes (Optional)"
+                className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+               />
+              </>
+             )}
+            </section>
 
        <section className="space-y-4">
         <h2 className="glass-heading-secondary">Service & Outage Window</h2>
@@ -212,10 +460,10 @@ const ServiceCalls = () => {
          </select>
 
          <select name="urgency" value={formData.urgency} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
-          <option value="Low" className="text-black">Low</option>
-          <option value="Medium" className="text-black">Medium</option>
-          <option value="High" className="text-black">High</option>
-          <option value="Urgent" className="text-black">Urgent</option>
+          <option value="low" className="text-black">Low</option>
+          <option value="medium" className="text-black">Medium</option>
+          <option value="high" className="text-black">High</option>
+          <option value="urgent" className="text-black">Urgent</option>
          </select>
 
          <input type="datetime-local" name="outageStart" value={formData.outageStart} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" required />

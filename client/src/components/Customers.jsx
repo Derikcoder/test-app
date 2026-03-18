@@ -29,8 +29,13 @@ const Customers = () => {
   phoneNumber: '',
   alternatePhone: '',
   customerId: '',
-  physicalAddress: '',
-  residentialAddress: '',
+    streetAddress: '',
+    complexName: '',
+    siteAddressDetail: '',
+    suburb: '',
+    cityDistrict: '',
+    province: '',
+    postalCode: '',
   billingAddress: '',
   vatNumber: '',
   accountStatus: 'active',
@@ -132,15 +137,41 @@ const Customers = () => {
   return lastServiceCall ? parseNotes(lastServiceCall.notes) : null;
  }, [lastServiceCall]);
 
+ const lastBookingRequest = useMemo(() => {
+  return lastServiceCall?.bookingRequest || null;
+ }, [lastServiceCall]);
+
+ const formatStructuredAddress = (address) => {
+  if (!address) return '';
+
+  return [
+   address.streetAddress,
+   address.complexName ? `Complex/Industrial Park: ${address.complexName}` : null,
+   address.siteAddressDetail ? `Unit/Site Detail: ${address.siteAddressDetail}` : null,
+   address.suburb,
+   address.cityDistrict,
+   address.province,
+   address.postalCode ? `Postal Code: ${address.postalCode}` : null,
+  ].filter(Boolean).join(', ');
+ };
+
  const formatDate = (value) => {
   if (!value) return 'N/A';
   return new Date(value).toLocaleDateString();
  };
 
- const addressFieldName = customerType === 'private' ? 'residentialAddress' : 'physicalAddress';
+ const physicalAddressDetails = {
+  streetAddress: formData.streetAddress,
+  complexName: formData.complexName,
+  siteAddressDetail: formData.siteAddressDetail,
+  suburb: formData.suburb,
+  cityDistrict: formData.cityDistrict,
+  province: formData.province,
+  postalCode: formData.postalCode,
+ };
 
  const setAddressValue = (value) => {
-  setFormData((prev) => ({ ...prev, [addressFieldName]: value }));
+  setFormData((prev) => ({ ...prev, streetAddress: value }));
  };
 
  const reverseGeocode = (coords) => {
@@ -238,11 +269,26 @@ const Customers = () => {
   const businessName = isPrivate
    ? `Private - ${formData.contactFirstName} ${formData.contactLastName}`.trim()
    : formData.businessName;
+  const formattedPhysicalAddress = formatStructuredAddress(physicalAddressDetails);
+  const businessSites = isPrivate
+   ? []
+   : [
+     {
+      siteName: formData.branchName || formData.businessName,
+      address: formattedPhysicalAddress,
+      addressDetails: physicalAddressDetails,
+      contactPerson: `${formData.contactFirstName} ${formData.contactLastName}`.trim(),
+      contactPhone: formData.phoneNumber,
+      contactEmail: formData.email,
+      status: 'active',
+      notes: formData.notes || '',
+     }
+    ];
 
   const customerNotes = {
    customerType,
    branchName: isPrivate ? null : formData.branchName,
-   residentialAddress: formData.residentialAddress,
+    physicalAddressDetails,
    bookingLocation: formData.bookingLocation,
    serviceLocation: formData.serviceLocation,
    locationRelationship: formData.locationRelationship,
@@ -262,11 +308,13 @@ const Customers = () => {
    phoneNumber: formData.phoneNumber,
    alternatePhone: formData.alternatePhone,
    customerId,
-   physicalAddress: isPrivate ? formData.residentialAddress : formData.physicalAddress,
+  physicalAddress: formattedPhysicalAddress,
+    physicalAddressDetails,
    billingAddress: formData.billingAddress,
    vatNumber: formData.vatNumber,
    accountStatus: formData.accountStatus,
-   notes: JSON.stringify(customerNotes)
+  notes: JSON.stringify(customerNotes),
+  sites: businessSites,
   };
  };
 
@@ -326,7 +374,7 @@ const Customers = () => {
    priority: 'medium',
    status: 'open',
    serviceType,
-   serviceLocation: formData.serviceLocation || formData.physicalAddress || formData.residentialAddress,
+    serviceLocation: formData.serviceLocation || formatStructuredAddress(physicalAddressDetails),
    notes: JSON.stringify(jobDetails)
   };
  };
@@ -341,8 +389,13 @@ const Customers = () => {
    phoneNumber: '',
    alternatePhone: '',
    customerId: '',
-   physicalAddress: '',
-   residentialAddress: '',
+    streetAddress: '',
+    complexName: '',
+    siteAddressDetail: '',
+    suburb: '',
+    cityDistrict: '',
+    province: '',
+    postalCode: '',
    billingAddress: '',
    vatNumber: '',
    accountStatus: 'active',
@@ -655,31 +708,74 @@ const Customers = () => {
           />
          </div>
 
-         {customerType === 'business' ? (
-          <div className="md:col-span-2">
-           <label className="glass-form-label">Physical Address *</label>
+         <div className="md:col-span-2">
+          <label className="glass-form-label">
+           {customerType === 'business' ? 'Physical Address *' : 'Residential Address *'}
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
            <input
             type="text"
-            name="physicalAddress"
-            value={formData.physicalAddress}
+            name="streetAddress"
+            value={formData.streetAddress}
             onChange={handleInputChange}
             required
+            placeholder="Street Address"
+            className="glass-form-input"
+           />
+           <input
+            type="text"
+            name="complexName"
+            value={formData.complexName}
+            onChange={handleInputChange}
+            placeholder="Complex / Industrial Park"
+            className="glass-form-input"
+           />
+           <input
+            type="text"
+            name="siteAddressDetail"
+            value={formData.siteAddressDetail}
+            onChange={handleInputChange}
+            placeholder="Unit / Site Detail"
+            className="glass-form-input"
+           />
+           <input
+            type="text"
+            name="suburb"
+            value={formData.suburb}
+            onChange={handleInputChange}
+            required
+            placeholder="Suburb"
+            className="glass-form-input"
+           />
+           <input
+            type="text"
+            name="cityDistrict"
+            value={formData.cityDistrict}
+            onChange={handleInputChange}
+            required
+            placeholder="City / District"
+            className="glass-form-input"
+           />
+           <input
+            type="text"
+            name="province"
+            value={formData.province}
+            onChange={handleInputChange}
+            required
+            placeholder="Province"
+            className="glass-form-input"
+           />
+           <input
+            type="text"
+            name="postalCode"
+            value={formData.postalCode}
+            onChange={handleInputChange}
+            required
+            placeholder="Postal / ZIP Code"
             className="glass-form-input"
            />
           </div>
-         ) : (
-          <div className="md:col-span-2">
-           <label className="glass-form-label">Residential Address *</label>
-           <input
-            type="text"
-            name="residentialAddress"
-            value={formData.residentialAddress}
-            onChange={handleInputChange}
-            required
-            className="glass-form-input"
-           />
-          </div>
-         )}
+         </div>
 
          <div className="md:col-span-2">
           <div className="flex items-center justify-between">
@@ -709,7 +805,7 @@ const Customers = () => {
              googleMapsApiKey={googleMapsApiKey}
              libraries={['places']}
              onLoad={() => {
-              if (pendingCoords && !formData[addressFieldName]) {
+              if (pendingCoords && !formData.streetAddress) {
                reverseGeocode(pendingCoords);
               }
              }}
@@ -859,6 +955,35 @@ const Customers = () => {
            {lastServiceCall.description && (
             <div>Description: {lastServiceCall.description}</div>
            )}
+           {lastBookingRequest && (
+            <>
+             <div>
+              Customer Type: <span className="font-medium">{lastBookingRequest.contact?.customerType || 'N/A'}</span>
+             </div>
+             {lastBookingRequest.contact?.contactPerson && (
+              <div>
+               Contact: <span className="font-medium">{lastBookingRequest.contact.contactPerson}</span>
+              </div>
+             )}
+             {lastBookingRequest.generatorDetails?.siteName && (
+              <div>
+               Site Name: <span className="font-medium">{lastBookingRequest.generatorDetails.siteName}</span>
+              </div>
+             )}
+             <div>
+              Generator: <span className="font-medium">{lastBookingRequest.generatorDetails?.generatorMakeModel || 'N/A'}</span>
+             </div>
+             <div>
+              Machine Model Number: <span className="font-medium">{lastBookingRequest.generatorDetails?.machineModelNumber || 'N/A'}</span>
+             </div>
+             <div>
+              Administrative Address: <span className="font-medium">{formatStructuredAddress(lastBookingRequest.administrativeAddress)}</span>
+             </div>
+             <div>
+              Machine Address: <span className="font-medium">{formatStructuredAddress(lastBookingRequest.machineAddress)}</span>
+             </div>
+            </>
+           )}
            {lastServiceDetails?.generator && (
             <div>
              Generator: {lastServiceDetails.generator.brand || 'N/A'} {lastServiceDetails.generator.model || ''}
@@ -874,7 +999,7 @@ const Customers = () => {
              Plumbing: {lastServiceDetails.plumbing.subject || 'Service details on file'}
             </div>
            )}
-           {!lastServiceDetails && (
+           {!lastBookingRequest && !lastServiceDetails && (
             <div>Previous job details are not in the new format.</div>
            )}
           </div>

@@ -1,6 +1,44 @@
 import Customer from '../models/Customer.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
+const formatAddress = (address = {}) => {
+  if (!address || typeof address !== 'object') return '';
+
+  return [
+    address.streetAddress,
+    address.complexName ? `Complex/Industrial Park: ${address.complexName}` : null,
+    address.siteAddressDetail ? `Unit/Site Detail: ${address.siteAddressDetail}` : null,
+    address.suburb,
+    address.cityDistrict,
+    address.province,
+    address.postalCode ? `Postal Code: ${address.postalCode}` : null,
+  ].filter(Boolean).join(', ');
+};
+
+const normalizeAddress = (addressDetails, fallback = '') => {
+  const normalized = addressDetails && typeof addressDetails === 'object' ? addressDetails : {};
+  const formatted = formatAddress(normalized);
+
+  return {
+    details: normalized,
+    formatted: formatted || fallback || '',
+  };
+};
+
+const normalizeSites = (sites = []) => {
+  if (!Array.isArray(sites)) return [];
+
+  return sites.map((site) => {
+    const normalizedAddress = normalizeAddress(site.addressDetails, site.address);
+
+    return {
+      ...site,
+      address: normalizedAddress.formatted,
+      addressDetails: normalizedAddress.details,
+    };
+  });
+};
+
 // @desc    Get all customers
 // @route   GET /api/customers
 // @access  Private
@@ -50,7 +88,9 @@ export const createCustomer = async (req, res) => {
       alternatePhone,
       customerId,
       physicalAddress,
+      physicalAddressDetails,
       billingAddress,
+      billingAddressDetails,
       taxNumber,
       registrationNumber,
       vatNumber,
@@ -59,6 +99,10 @@ export const createCustomer = async (req, res) => {
       accountStatus,
       notes
     } = req.body;
+
+    const normalizedPhysicalAddress = normalizeAddress(physicalAddressDetails, physicalAddress);
+    const normalizedBillingAddress = normalizeAddress(billingAddressDetails, billingAddress);
+    const normalizedSites = normalizeSites(sites);
 
     // Validate required fields
     if (!customerType || !contactFirstName || !contactLastName || !email || !phoneNumber || !customerId) {
@@ -70,11 +114,11 @@ export const createCustomer = async (req, res) => {
       if (!businessName) {
         return res.status(400).json({ message: 'Business name is required for business customers' });
       }
-      if (!sites || sites.length === 0) {
+      if (!normalizedSites || normalizedSites.length === 0) {
         return res.status(400).json({ message: 'At least one site is required for business customers' });
       }
     } else if (customerType === 'residential') {
-      if (!physicalAddress) {
+      if (!normalizedPhysicalAddress.formatted) {
         return res.status(400).json({ message: 'Physical address is required for residential customers' });
       }
     }
@@ -95,12 +139,14 @@ export const createCustomer = async (req, res) => {
       phoneNumber,
       alternatePhone,
       customerId,
-      physicalAddress,
-      billingAddress,
+      physicalAddress: normalizedPhysicalAddress.formatted,
+      physicalAddressDetails: normalizedPhysicalAddress.details,
+      billingAddress: normalizedBillingAddress.formatted,
+      billingAddressDetails: normalizedBillingAddress.details,
       taxNumber,
       registrationNumber,
       vatNumber,
-      sites,
+      sites: normalizedSites,
       maintenanceManager,
       accountStatus,
       notes,
@@ -213,6 +259,7 @@ export const addCustomerSite = async (req, res) => {
     const {
       siteName,
       address,
+      addressDetails,
       contactPerson,
       contactPhone,
       contactEmail,
@@ -234,15 +281,18 @@ export const addCustomerSite = async (req, res) => {
       return res.status(400).json({ message: 'Only business customers can have multiple sites' });
     }
 
+    const normalizedAddress = normalizeAddress(addressDetails, address);
+
     // Validate required fields
-    if (!siteName || !address) {
+    if (!siteName || !normalizedAddress.formatted) {
       return res.status(400).json({ message: 'Site name and address are required' });
     }
 
     // Add new site
     customer.sites.push({
       siteName,
-      address,
+      address: normalizedAddress.formatted,
+      addressDetails: normalizedAddress.details,
       contactPerson,
       contactPhone,
       contactEmail,
@@ -287,12 +337,18 @@ export const updateCustomerSite = async (req, res) => {
     }
 
     // Update site fields
-    const updateableFields = ['siteName', 'address', 'contactPerson', 'contactPhone', 'contactEmail', 'serviceTypes', 'status', 'notes'];
+    const updateableFields = ['siteName', 'contactPerson', 'contactPhone', 'contactEmail', 'serviceTypes', 'status', 'notes'];
     updateableFields.forEach(field => {
       if (req.body[field] !== undefined) {
         site[field] = req.body[field];
       }
     });
+
+    if (req.body.address !== undefined || req.body.addressDetails !== undefined) {
+      const normalizedAddress = normalizeAddress(req.body.addressDetails, req.body.address ?? site.address);
+      site.address = normalizedAddress.formatted;
+      site.addressDetails = normalizedAddress.details;
+    }
 
     const updatedCustomer = await customer.save();
     logInfo(`✅ Site updated for customer ${customer.customerId}: ${site.siteName}`);

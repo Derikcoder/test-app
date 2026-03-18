@@ -96,6 +96,27 @@ const AgentProfile = () => {
   }
  };
 
+ const formatStructuredAddress = (address) => {
+  if (!address) return 'N/A';
+
+  return [
+   address.streetAddress,
+   address.complexName ? `Complex/Industrial Park: ${address.complexName}` : null,
+   address.siteAddressDetail ? `Unit/Site Detail: ${address.siteAddressDetail}` : null,
+   address.suburb,
+   address.cityDistrict,
+   address.province,
+   address.postalCode ? `Postal Code: ${address.postalCode}` : null,
+  ].filter(Boolean).join(', ') || 'N/A';
+ };
+
+ const getCustomerLabel = (call) => {
+  if (call.customer?.businessName) return call.customer.businessName;
+  if (call.bookingRequest?.contact?.companyName) return call.bookingRequest.contact.companyName;
+  if (call.bookingRequest?.contact?.contactPerson) return call.bookingRequest.contact.contactPerson;
+  return 'N/A';
+ };
+
  if (loading) {
   return (
    <>
@@ -336,11 +357,48 @@ const AgentProfile = () => {
 
              <p className="text-white/80 mb-3">{call.description}</p>
 
+             {call.bookingRequest && (
+              <div className="mb-4 rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/85">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                 <span className="text-white/60">Customer Type:</span>
+                 <span className="ml-2 capitalize">{call.bookingRequest.contact?.customerType || 'N/A'}</span>
+                </div>
+                <div>
+                 <span className="text-white/60">Contact:</span>
+                 <span className="ml-2">{call.bookingRequest.contact?.contactPerson || 'N/A'}</span>
+                </div>
+                <div>
+                 <span className="text-white/60">Machine Model Number:</span>
+                 <span className="ml-2">{call.bookingRequest.generatorDetails?.machineModelNumber || 'N/A'}</span>
+                </div>
+                <div>
+                 <span className="text-white/60">Generator:</span>
+                 <span className="ml-2">{call.bookingRequest.generatorDetails?.generatorMakeModel || 'N/A'}</span>
+                </div>
+                {call.bookingRequest.generatorDetails?.siteName && (
+                 <div className="md:col-span-2">
+                  <span className="text-white/60">Site Name:</span>
+                  <span className="ml-2">{call.bookingRequest.generatorDetails.siteName}</span>
+                 </div>
+                )}
+                <div className="md:col-span-2">
+                 <span className="text-white/60">Administrative Address:</span>
+                 <span className="ml-2">{formatStructuredAddress(call.bookingRequest.administrativeAddress)}</span>
+                </div>
+                <div className="md:col-span-2">
+                 <span className="text-white/60">Machine Address:</span>
+                 <span className="ml-2">{formatStructuredAddress(call.bookingRequest.machineAddress)}</span>
+                </div>
+               </div>
+              </div>
+             )}
+
              <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                <span className="text-white/60">Customer:</span>
                <span className="ml-2 font-medium text-white">
-                {call.customer?.businessName || 'N/A'}
+                {getCustomerLabel(call)}
                </span>
               </div>
               <div>
@@ -351,10 +409,10 @@ const AgentProfile = () => {
                  : 'Not scheduled'}
                </span>
               </div>
-              {call.location && (
+              {(call.serviceLocation || call.location) && (
                <div className="col-span-2">
                 <span className="text-white/60">Location:</span>
-                <span className="ml-2 text-white">{call.location}</span>
+                <span className="ml-2 text-white">{call.serviceLocation || call.location}</span>
                </div>
               )}
              </div>

@@ -9,6 +9,115 @@
 
 import mongoose from 'mongoose';
 
+const addressSchema = new mongoose.Schema({
+  streetAddress: {
+    type: String,
+    trim: true,
+  },
+  complexName: {
+    type: String,
+    trim: true,
+  },
+  siteAddressDetail: {
+    type: String,
+    trim: true,
+  },
+  suburb: {
+    type: String,
+    trim: true,
+  },
+  cityDistrict: {
+    type: String,
+    trim: true,
+  },
+  province: {
+    type: String,
+    trim: true,
+  },
+  postalCode: {
+    type: String,
+    trim: true,
+  },
+}, { _id: false });
+
+const bookingContactSchema = new mongoose.Schema({
+  customerType: {
+    type: String,
+    enum: ['business', 'private'],
+    default: 'business',
+  },
+  companyName: {
+    type: String,
+    trim: true,
+  },
+  contactPerson: {
+    type: String,
+    trim: true,
+  },
+  contactEmail: {
+    type: String,
+    lowercase: true,
+    trim: true,
+  },
+  contactPhone: {
+    type: String,
+    trim: true,
+  },
+}, { _id: false });
+
+const generatorBookingSchema = new mongoose.Schema({
+  siteName: {
+    type: String,
+    trim: true,
+  },
+  generatorMakeModel: {
+    type: String,
+    trim: true,
+  },
+  machineModelNumber: {
+    type: String,
+    trim: true,
+  },
+  generatorCapacityKva: {
+    type: Number,
+    min: [0, 'Generator capacity cannot be negative'],
+  },
+  machineLocationSameAsAdmin: {
+    type: Boolean,
+    default: true,
+  },
+  machineLocationNotes: {
+    type: String,
+    trim: true,
+  },
+}, { _id: false });
+
+const bookingRequestSchema = new mongoose.Schema({
+  contact: bookingContactSchema,
+  administrativeAddress: addressSchema,
+  machineAddress: addressSchema,
+  generatorDetails: generatorBookingSchema,
+  outageWindow: {
+    start: {
+      type: Date,
+    },
+    end: {
+      type: Date,
+    },
+  },
+  preferredDate: {
+    type: Date,
+  },
+  preferredTimeWindow: {
+    type: String,
+    trim: true,
+  },
+  additionalNotes: {
+    type: String,
+    trim: true,
+  },
+}, { _id: false });
+
 /**
  * Parts Used Sub-Schema
  * 
@@ -86,7 +195,6 @@ const serviceCallSchema = new mongoose.Schema(
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
-      required: [true, 'Customer is required'],
     },
     /** Reference to specific site (for business customers with multiple sites) */
     siteId: {
@@ -192,6 +300,11 @@ const serviceCallSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** Structured booking request data for direct bookings without a linked customer record */
+    bookingRequest: {
+      type: bookingRequestSchema,
+      default: null,
+    },
     /** Before photos (array of image URLs or file references) */
     beforePhotos: {
       type: [String],
@@ -295,6 +408,7 @@ serviceCallSchema.statics.EDITABLE_FIELDS = [
   'notes',
   'agentNotes',
   'internalNotes',
+  'bookingRequest',
   'beforePhotos',
   'afterPhotos',
   'customerSignature',

@@ -57,12 +57,19 @@ export const createServiceCall = async (req, res) => {
       estimatedDuration,
       serviceLocation,
       notes,
-      internalNotes
+      internalNotes,
+      bookingRequest
     } = req.body;
 
+    const normalizedPriority = priority ? String(priority).toLowerCase() : undefined;
+
     // Validate required fields
-    if (!customer || !title || !description || !serviceType) {
+    if (!title || !description || !serviceType) {
       return res.status(400).json({ message: 'Please fill in all required fields' });
+    }
+
+    if (!customer && !bookingRequest) {
+      return res.status(400).json({ message: 'A linked customer or booking request details are required' });
     }
 
     const serviceCall = await ServiceCall.create({
@@ -70,7 +77,7 @@ export const createServiceCall = async (req, res) => {
       assignedAgent,
       title,
       description,
-      priority,
+      priority: normalizedPriority,
       status,
       serviceType,
       scheduledDate,
@@ -78,6 +85,7 @@ export const createServiceCall = async (req, res) => {
       serviceLocation,
       notes,
       internalNotes,
+      bookingRequest,
       createdBy: req.user._id
     });
 
