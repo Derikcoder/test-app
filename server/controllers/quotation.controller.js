@@ -52,6 +52,7 @@ const DEFAULT_TRAVEL_RATE_PER_KM = 8.5;
 const CALL_OUT_FLOOR_DISTANCE_KM = 45;
 const CALL_OUT_FLOOR_TIME_MINUTES = 30;
 const CALL_OUT_FLOOR_AMOUNT = 650;
+const INCLUDED_ASSESSMENT_MINUTES = 15;
 
 const getDefaultValidUntilDate = () => {
   const date = new Date();
@@ -66,6 +67,7 @@ const calculateQuotationCosts = ({
   partsProcurementCost,
   thirdPartyDeliveryCost,
   labourHours,
+  isFirstSiteVisit,
   labourRate,
   travellingCost,
   distanceTravelledKm,
@@ -91,6 +93,8 @@ const calculateQuotationCosts = ({
   const estimatedPartsProfit = Number((partsCost - resolvedPartsProcurementCost - resolvedThirdPartyDeliveryCost).toFixed(2));
 
   const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
+  const resolvedIsFirstSiteVisit = Boolean(isFirstSiteVisit);
+  const includedAssessmentHours = resolvedIsFirstSiteVisit ? (INCLUDED_ASSESSMENT_MINUTES / 60) : 0;
   const requestedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
   const resolvedLabourRate = isSuperUser ? requestedLabourRate : 650;
   const resolvedDistanceTravelledKm = Number.isFinite(Number(distanceTravelledKm)) ? Number(distanceTravelledKm) : 0;
@@ -107,12 +111,16 @@ const calculateQuotationCosts = ({
   );
   const isCallOutFloorApplicable = resolvedDistanceTravelledKm < CALL_OUT_FLOOR_DISTANCE_KM
     && resolvedTravelTimeMinutes < CALL_OUT_FLOOR_TIME_MINUTES;
+  const isFirstVisitCallOutPackage = isCallOutFloorApplicable && resolvedIsFirstSiteVisit;
   const resolvedTravellingCost = isCallOutFloorApplicable
     ? Number(Math.max(baseTravellingCost, CALL_OUT_FLOOR_AMOUNT).toFixed(2))
     : baseTravellingCost;
   const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
 
-  const labourCost = Number((resolvedLabourHours * resolvedLabourRate).toFixed(2));
+  const resolvedChargeableLabourHours = isFirstVisitCallOutPackage
+    ? Number(Math.max(resolvedLabourHours - includedAssessmentHours, 0).toFixed(2))
+    : resolvedLabourHours;
+  const labourCost = Number((resolvedChargeableLabourHours * resolvedLabourRate).toFixed(2));
 
   // Pricing rule (kept explicit for policy visibility):
   // if parts cost > 50% of labour cost => consumables = rate% of parts cost
@@ -133,6 +141,9 @@ const calculateQuotationCosts = ({
     estimatedPartsProfit,
     partsCost,
     labourHours: resolvedLabourHours,
+    isFirstSiteVisit: resolvedIsFirstSiteVisit,
+    includedAssessmentMinutes: INCLUDED_ASSESSMENT_MINUTES,
+    chargeableLabourHours: resolvedChargeableLabourHours,
     labourRate: resolvedLabourRate,
     labourCost,
     consumablesRate: resolvedConsumablesRate,
@@ -225,6 +236,7 @@ export const createQuotation = async (req, res) => {
       partsProcurementCost,
       thirdPartyDeliveryCost,
       labourHours,
+      isFirstSiteVisit,
       labourRate,
       travellingCost,
       distanceTravelledKm,
@@ -281,6 +293,7 @@ export const createQuotation = async (req, res) => {
       partsProcurementCost,
       thirdPartyDeliveryCost,
       labourHours,
+      isFirstSiteVisit,
       labourRate,
       travellingCost,
       distanceTravelledKm,
@@ -310,6 +323,9 @@ export const createQuotation = async (req, res) => {
       estimatedPartsProfit: costing.estimatedPartsProfit,
       partsCost: costing.partsCost,
       labourHours: costing.labourHours,
+      isFirstSiteVisit: costing.isFirstSiteVisit,
+      includedAssessmentMinutes: costing.includedAssessmentMinutes,
+      chargeableLabourHours: costing.chargeableLabourHours,
       labourRate: costing.labourRate,
       labourCost: costing.labourCost,
       consumablesRate: costing.consumablesRate,
@@ -359,6 +375,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       partsProcurementCost,
       thirdPartyDeliveryCost,
       labourHours,
+      isFirstSiteVisit,
       labourRate,
       travellingCost,
       distanceTravelledKm,
@@ -422,6 +439,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       partsProcurementCost,
       thirdPartyDeliveryCost,
       labourHours,
+      isFirstSiteVisit,
       labourRate,
       travellingCost,
       distanceTravelledKm,
@@ -451,6 +469,9 @@ export const createQuotationFromServiceCall = async (req, res) => {
       estimatedPartsProfit: costing.estimatedPartsProfit,
       partsCost: costing.partsCost,
       labourHours: costing.labourHours,
+      isFirstSiteVisit: costing.isFirstSiteVisit,
+      includedAssessmentMinutes: costing.includedAssessmentMinutes,
+      chargeableLabourHours: costing.chargeableLabourHours,
       labourRate: costing.labourRate,
       labourCost: costing.labourCost,
       consumablesRate: costing.consumablesRate,
@@ -536,6 +557,7 @@ export const updateQuotation = async (req, res) => {
       'partsProcurementCost',
       'thirdPartyDeliveryCost',
       'labourHours',
+      'isFirstSiteVisit',
       'labourRate',
       'distanceTravelledKm',
       'travelRatePerKm',
@@ -554,6 +576,7 @@ export const updateQuotation = async (req, res) => {
         partsProcurementCost: quotation.partsProcurementCost,
         thirdPartyDeliveryCost: quotation.thirdPartyDeliveryCost,
         labourHours: quotation.labourHours,
+        isFirstSiteVisit: quotation.isFirstSiteVisit,
         labourRate: quotation.labourRate,
         distanceTravelledKm: quotation.distanceTravelledKm,
         travelRatePerKm: quotation.travelRatePerKm,
@@ -572,6 +595,9 @@ export const updateQuotation = async (req, res) => {
   quotation.estimatedPartsProfit = costing.estimatedPartsProfit;
       quotation.partsCost = costing.partsCost;
       quotation.labourHours = costing.labourHours;
+  quotation.isFirstSiteVisit = costing.isFirstSiteVisit;
+  quotation.includedAssessmentMinutes = costing.includedAssessmentMinutes;
+  quotation.chargeableLabourHours = costing.chargeableLabourHours;
       quotation.labourRate = costing.labourRate;
       quotation.labourCost = costing.labourCost;
       quotation.consumablesRate = costing.consumablesRate;

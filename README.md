@@ -74,6 +74,7 @@ This is an enterprise-grade field service management application built with the 
 - 🛣️ Default `ratePerKm` is `R8.50` and can only be changed by superAdmin
 - 📞 Call-out floor rule: if `distanceTravelledKm < 45` and `travelTimeMinutes < 30`, travel charge is floored to a minimum of `R650.00`
 - ⏱️ `travelTimeMinutes` is now captured explicitly to support Google API distance/time enrichment later
+- 🧰 First-time customer/site visit package: includes first 15 minutes on-site assessment before billable labour is calculated
 - 📦 Parts fulfilment capture for profitability analysis: in-house procurement vs third-party delivery (e.g., Picup)
 - 💸 Captures procurement and delivery economics: `partsProcurementCost`, `thirdPartyDeliveryCost`, and derived `estimatedPartsProfit`
 - 📅 Default quotation validity is now 14 days, with calendar override available for customer-specific arrangements

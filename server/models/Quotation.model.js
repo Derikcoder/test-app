@@ -159,6 +159,23 @@ const quotationSchema = new mongoose.Schema(
       min: [0, 'Labour hours cannot be negative'],
       default: 0,
     },
+    /** First-time customer/site visit indicator for call-out package rules */
+    isFirstSiteVisit: {
+      type: Boolean,
+      default: true,
+    },
+    /** Included on-site assessment minutes in first-visit call-out package */
+    includedAssessmentMinutes: {
+      type: Number,
+      min: [0, 'Included assessment minutes cannot be negative'],
+      default: 15,
+    },
+    /** Labour hours billable after included on-site assessment allowance */
+    chargeableLabourHours: {
+      type: Number,
+      min: [0, 'Chargeable labour hours cannot be negative'],
+      default: 0,
+    },
     /** Labour rate per hour (used in wage calculation) */
     labourRate: {
       type: Number,
@@ -384,6 +401,9 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'estimatedPartsProfit',
   'partsCost',
   'labourHours',
+  'isFirstSiteVisit',
+  'includedAssessmentMinutes',
+  'chargeableLabourHours',
   'labourRate',
   'labourCost',
   'consumablesRate',

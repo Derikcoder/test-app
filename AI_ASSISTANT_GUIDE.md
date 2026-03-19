@@ -909,6 +909,12 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 20)
+- ✅ Added first-visit assessment inclusion to call-out pricing logic
+   - For first-time customer/site visits under call-out-floor conditions, first 15 minutes on-site assessment is included
+   - Backend now computes and stores `chargeableLabourHours` after included assessment allowance
+   - UI added first-site-visit toggle and labour-hour breakdown to reflect included assessment policy
+
 ### 2026-03-19 (Session 19)
 - ✅ Added call-out floor rule for travel costing
    - Rule: if `distanceTravelledKm < 45` and `travelTimeMinutes < 30`, minimum travel charge is `R650.00`
