@@ -117,6 +117,44 @@ const AgentProfile = () => {
   return 'N/A';
  };
 
+ const getCustomerPhone = (call) => {
+  return (
+   call.bookingRequest?.contact?.contactPhone
+   || call.customer?.phoneNumber
+   || call.customer?.alternatePhone
+   || ''
+  );
+ };
+
+ const normalizePhoneForTel = (phone) => {
+  if (!phone) return '';
+  const trimmed = String(phone).trim();
+  const normalized = trimmed.replace(/[^\d+]/g, '');
+
+  if (normalized.startsWith('+')) return normalized;
+  if (normalized.startsWith('0') && normalized.length === 10) return `+27${normalized.slice(1)}`;
+  if (normalized.startsWith('27')) return `+${normalized}`;
+
+  return normalized;
+ };
+
+ const normalizePhoneForWhatsApp = (phone) => {
+  const telNumber = normalizePhoneForTel(phone);
+  return telNumber.replace(/[^\d]/g, '');
+ };
+
+ const getDescriptionPreview = (description) => {
+  if (!description) return 'No description provided.';
+
+  const normalized = String(description).trim();
+  if (!normalized) return 'No description provided.';
+
+  const lines = normalized.split('\n').map((line) => line.trim()).filter(Boolean);
+  const preview = lines.slice(0, 3).join(' • ');
+
+  return preview.length > 220 ? `${preview.slice(0, 220)}...` : preview;
+ };
+
  if (loading) {
   return (
    <>
@@ -179,13 +217,13 @@ const AgentProfile = () => {
          <h1 className="glass-heading text-3xl">
           {agent.firstName} {agent.lastName}
          </h1>
-         <p className="text-white/70 mt-1">Employee ID: {agent.employeeId}</p>
-         <div className="mt-2 flex gap-4 text-white/70">
+         <p className="text-white/90 mt-1 font-medium">Employee ID: {agent.employeeId}</p>
+         <div className="mt-2 flex flex-wrap gap-3 text-white/90 text-sm">
           <span>📧 {agent.email}</span>
           <span>📱 {agent.phoneNumber}</span>
          </div>
          {agent.assignedArea && (
-          <p className="text-white/70 mt-1">📍 Area: {agent.assignedArea}</p>
+          <p className="text-white/90 mt-1 text-sm">📍 Area: {agent.assignedArea}</p>
          )}
         </div>
         <div>
@@ -200,7 +238,7 @@ const AgentProfile = () => {
        </div>
        {agent.skills?.length > 0 && (
         <div className="mt-4">
-         <p className="text-white/70 text-sm mb-2">Skills:</p>
+         <p className="text-white/90 text-sm font-medium mb-2">Skills:</p>
          <div className="flex flex-wrap gap-2">
           {agent.skills.map((skill, index) => (
            <span
@@ -287,7 +325,7 @@ const AgentProfile = () => {
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'all'
            ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/60 hover:text-white'
+           : 'text-white/80 hover:text-white'
          }`}
         >
          All ({stats.total})
@@ -297,7 +335,7 @@ const AgentProfile = () => {
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'to-attend'
            ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/60 hover:text-white'
+           : 'text-white/80 hover:text-white'
          }`}
         >
          To Attend ({stats.toBeAttended})
@@ -307,7 +345,7 @@ const AgentProfile = () => {
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'in-progress'
            ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/60 hover:text-white'
+           : 'text-white/80 hover:text-white'
          }`}
         >
          In Progress ({stats.inProgress})
@@ -317,7 +355,7 @@ const AgentProfile = () => {
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'completed'
            ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/60 hover:text-white'
+           : 'text-white/80 hover:text-white'
          }`}
         >
          Completed ({stats.completed})
@@ -341,6 +379,13 @@ const AgentProfile = () => {
            key={call._id}
            className="glass-card border border-white/20 rounded-lg p-6 hover:shadow-md transition"
           >
+             {(() => {
+              const customerPhone = getCustomerPhone(call);
+              const whatsappPhone = normalizePhoneForWhatsApp(customerPhone);
+              const telPhone = normalizePhoneForTel(customerPhone);
+              const hasPhone = Boolean(whatsappPhone && telPhone);
+
+              return (
            <div className="flex justify-between items-start">
             <div className="flex-1">
              <div className="flex items-center gap-3 mb-2">
@@ -355,11 +400,17 @@ const AgentProfile = () => {
               </span>
              </div>
 
-             <p className="text-white/80 mb-3">{call.description}</p>
+             {call.title && (
+              <p className="text-white text-base font-semibold mb-2">{call.title}</p>
+             )}
+
+             <p className="text-white/85 text-sm leading-relaxed mb-3 rounded-lg border border-white/15 bg-black/20 px-3 py-2">
+              {getDescriptionPreview(call.description)}
+             </p>
 
              {call.bookingRequest && (
               <div className="mb-4 rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/85">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 <div>
                  <span className="text-white/60">Customer Type:</span>
                  <span className="ml-2 capitalize">{call.bookingRequest.contact?.customerType || 'N/A'}</span>
@@ -396,6 +447,22 @@ const AgentProfile = () => {
                    : 'N/A'}
                  </span>
                 </div>
+                <div>
+                 <span className="text-white/60">Progress Status:</span>
+                 <span className="ml-2">{call.bookingRequest.progressStatus || 'N/A'}</span>
+                </div>
+                <div>
+                 <span className="text-white/60">Services In Progress:</span>
+                 <span className="ml-2">{call.bookingRequest.servicesInProgress || 'N/A'}</span>
+                </div>
+                <div>
+                 <span className="text-white/60">Quotation History:</span>
+                 <span className="ml-2">{call.bookingRequest.quotationHistory || 'N/A'}</span>
+                </div>
+                <div>
+                 <span className="text-white/60">Invoicing History:</span>
+                 <span className="ml-2">{call.bookingRequest.invoicingHistory || 'N/A'}</span>
+                </div>
                 {call.bookingRequest.generatorDetails?.siteName && (
                  <div className="md:col-span-2">
                   <span className="text-white/60">Site Name:</span>
@@ -422,6 +489,10 @@ const AgentProfile = () => {
                </span>
               </div>
               <div>
+               <span className="text-white/60">Contact Phone:</span>
+               <span className="ml-2 text-white">{customerPhone || 'N/A'}</span>
+              </div>
+              <div>
                <span className="text-white/60">Scheduled:</span>
                <span className="ml-2 text-white">
                 {call.scheduledDate
@@ -435,9 +506,41 @@ const AgentProfile = () => {
                 <span className="ml-2 text-white">{call.serviceLocation || call.location}</span>
                </div>
               )}
+              <div className="col-span-2 pt-1">
+               {hasPhone ? (
+                <div className="flex flex-wrap gap-2">
+                 <a
+                  href={`https://wa.me/${whatsappPhone}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/35 hover:bg-emerald-500/45 border border-emerald-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  title="Start WhatsApp call/chat with customer"
+                 >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                   <path d="M20.52 3.48A11.77 11.77 0 0012.07 0C5.57 0 .26 5.3.26 11.8c0 2.08.54 4.1 1.56 5.88L0 24l6.48-1.7a11.86 11.86 0 005.6 1.43h.01c6.5 0 11.8-5.3 11.8-11.8 0-3.15-1.23-6.12-3.37-8.45zM12.08 21.7h-.01a9.86 9.86 0 01-5.03-1.38l-.36-.21-3.84 1.01 1.03-3.74-.24-.39a9.79 9.79 0 01-1.5-5.2c0-5.43 4.43-9.86 9.88-9.86 2.63 0 5.1 1.02 6.95 2.88a9.8 9.8 0 012.89 6.97c0 5.44-4.43 9.87-9.87 9.87zm5.41-7.42c-.3-.15-1.78-.88-2.06-.98-.28-.11-.48-.15-.68.15-.2.3-.78.98-.96 1.17-.18.2-.36.22-.66.07-.3-.15-1.28-.47-2.43-1.5-.89-.79-1.49-1.77-1.67-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.68-1.64-.93-2.25-.24-.58-.49-.5-.68-.5h-.58c-.2 0-.52.08-.8.37-.27.3-1.04 1.02-1.04 2.5 0 1.47 1.07 2.9 1.22 3.1.15.2 2.11 3.21 5.11 4.5.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.78-.73 2.03-1.43.25-.7.25-1.3.17-1.43-.07-.12-.27-.2-.57-.35z" />
+                  </svg>
+                  WhatsApp Call
+                 </a>
+                 <a
+                  href={`tel:${telPhone}`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-500/35 hover:bg-blue-500/45 border border-blue-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  title="Place a regular phone call"
+                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.95.68l1.5 4.5a1 1 0 01-.5 1.21l-2.17 1.09a11.04 11.04 0 005.31 5.31l1.09-2.17a1 1 0 011.21-.5l4.5 1.5a1 1 0 01.68.95V19a2 2 0 01-2 2h-1C9.72 21 3 14.28 3 6V5z" />
+                  </svg>
+                  Call Customer
+                 </a>
+                </div>
+               ) : (
+                <p className="text-xs text-white/70">No valid customer phone number available for call actions.</p>
+               )}
+              </div>
              </div>
             </div>
            </div>
+            );
+           })()}
           </div>
          ))}
         </div>

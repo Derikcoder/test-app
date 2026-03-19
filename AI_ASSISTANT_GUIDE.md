@@ -909,6 +909,12 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 7)
+- ✅ Improved customer contact flow in agent profile
+   - Added WhatsApp-first customer contact button and regular call button in `client/src/components/AgentProfile.jsx`
+   - Added South Africa-friendly phone normalization fallback for `wa.me` and `tel:` links
+   - Extended service call customer populate in `server/controllers/serviceCall.controller.js` to include customer phone fields used by contact actions
+
 ### 2026-03-19 (Session 6)
 - ✅ Added superUser operations queue for service call assignment
    - Updated `client/src/components/ServiceCalls.jsx` to show unassigned call alerts and awaiting-acceptance counters

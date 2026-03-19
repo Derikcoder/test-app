@@ -7,7 +7,7 @@ import { logError, logInfo } from '../middleware/logger.middleware.js';
 export const getServiceCalls = async (req, res) => {
   try {
     const serviceCalls = await ServiceCall.find({ createdBy: req.user._id })
-      .populate('customer', 'businessName contactFirstName contactLastName customerId')
+      .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
       .populate('assignedAgent', 'firstName lastName employeeId')
       .sort({ createdAt: -1 });
     res.json(serviceCalls);
@@ -364,7 +364,7 @@ export const getServiceCallsByStatus = async (req, res) => {
       status: status,
       createdBy: req.user._id
     })
-      .populate('customer', 'businessName contactFirstName contactLastName customerId')
+      .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
       .populate('assignedAgent', 'firstName lastName employeeId')
       .sort({ createdAt: -1 });
 
@@ -386,7 +386,7 @@ export const getServiceCallsByAgent = async (req, res) => {
       assignedAgent: agentId,
       createdBy: req.user._id
     })
-      .populate('customer', 'businessName contactFirstName contactLastName customerId')
+      .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
       .populate('assignedAgent', 'firstName lastName employeeId')
       .sort({ createdAt: -1 });
 

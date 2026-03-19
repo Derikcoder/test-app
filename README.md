@@ -46,6 +46,7 @@ This is an enterprise-grade field service management application built with the 
 - 📈 Job statistics and performance metrics
 - 📅 Service history tracking
 - 🎯 Agent availability and assignment status
+- 📞 Direct customer contact actions from agent profile (WhatsApp-first + regular call)
 
 ### Service Call Management
 - 📞 Service call creation and tracking
