@@ -105,6 +105,14 @@ const bookingRequestSchema = new mongoose.Schema({
       type: Date,
     },
   },
+  serviceHistoryType: {
+    type: String,
+    enum: ['first-service-call', 'existing-customer'],
+    default: 'first-service-call',
+  },
+  dateOfLastService: {
+    type: Date,
+  },
   preferredDate: {
     type: Date,
   },

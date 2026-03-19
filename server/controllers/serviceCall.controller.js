@@ -46,6 +46,7 @@ export const getServiceCallById = async (req, res) => {
 export const createServiceCall = async (req, res) => {
   try {
     const {
+      callNumber,
       customer,
       assignedAgent,
       title,
@@ -63,6 +64,14 @@ export const createServiceCall = async (req, res) => {
 
     const normalizedPriority = priority ? String(priority).toLowerCase() : undefined;
 
+    // Validation runs before pre-save hooks, so ensure a call number is always present.
+    // If not provided by client, generate the next sequence number here.
+    let resolvedCallNumber = callNumber;
+    if (!resolvedCallNumber) {
+      const count = await ServiceCall.countDocuments();
+      resolvedCallNumber = `SC-${String(count + 1).padStart(6, '0')}`;
+    }
+
     // Validate required fields
     if (!title || !description || !serviceType) {
       return res.status(400).json({ message: 'Please fill in all required fields' });
@@ -73,6 +82,7 @@ export const createServiceCall = async (req, res) => {
     }
 
     const serviceCall = await ServiceCall.create({
+      callNumber: resolvedCallNumber,
       customer,
       assignedAgent,
       title,

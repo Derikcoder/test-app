@@ -376,6 +376,26 @@ const AgentProfile = () => {
                  <span className="text-white/60">Generator:</span>
                  <span className="ml-2">{call.bookingRequest.generatorDetails?.generatorMakeModel || 'N/A'}</span>
                 </div>
+                <div>
+                 <span className="text-white/60">Service History:</span>
+                 <span className="ml-2 capitalize">{(call.bookingRequest.serviceHistoryType || 'N/A').replace('-', ' ')}</span>
+                </div>
+                <div>
+                 <span className="text-white/60">Date of Last Service:</span>
+                 <span className="ml-2">
+                  {call.bookingRequest.dateOfLastService
+                   ? new Date(call.bookingRequest.dateOfLastService).toLocaleDateString()
+                   : 'N/A'}
+                 </span>
+                </div>
+                <div>
+                 <span className="text-white/60">Preferred Service Date:</span>
+                 <span className="ml-2">
+                  {call.bookingRequest.preferredDate
+                   ? new Date(call.bookingRequest.preferredDate).toLocaleDateString()
+                   : 'N/A'}
+                 </span>
+                </div>
                 {call.bookingRequest.generatorDetails?.siteName && (
                  <div className="md:col-span-2">
                   <span className="text-white/60">Site Name:</span>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,8 @@ const ServiceCalls = () => {
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [errorMessage, setErrorMessage] = useState('');
  const [successMessage, setSuccessMessage] = useState('');
+ const [serviceCalls, setServiceCalls] = useState([]);
+ const [lastServiceAutofillMeta, setLastServiceAutofillMeta] = useState(null);
 
  const [formData, setFormData] = useState({
    customerType: 'business',
@@ -48,13 +50,85 @@ const ServiceCalls = () => {
    machineModelNumber: '',
   serviceType: 'Preventive Maintenance',
   urgency: 'high',
+  serviceHistoryType: 'first-service-call',
+  dateOfLastService: '',
+  dateOfPreferredServiceCall: '',
   outageStart: '',
   outageEnd: '',
-  preferredDate: '',
   preferredTimeWindow: '08:00 - 12:00',
   notes: '',
   confirmAccuracy: false,
  });
+
+ const getServiceCallContactEmail = (call) => {
+  const bookingEmail = call?.bookingRequest?.contact?.contactEmail;
+  if (bookingEmail) return String(bookingEmail).toLowerCase().trim();
+
+  const descriptionEmailMatch = call?.description?.match(/Email:\s*([^\s]+)/i);
+  if (descriptionEmailMatch?.[1]) return String(descriptionEmailMatch[1]).toLowerCase().trim();
+
+  return '';
+ };
+
+ const findLastServiceDateByEmail = (email) => {
+  if (!email) return null;
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const matching = serviceCalls
+   .filter((call) => getServiceCallContactEmail(call) === normalizedEmail)
+   .sort((a, b) => {
+    const dateA = new Date(a.completedDate || a.scheduledDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.completedDate || b.scheduledDate || b.createdAt || 0).getTime();
+    return dateB - dateA;
+   });
+
+  if (!matching.length) return null;
+  const latestCall = matching[0];
+  const latestDate = latestCall.bookingRequest?.dateOfLastService
+   || latestCall.completedDate
+   || latestCall.scheduledDate
+   || latestCall.createdAt;
+
+  if (!latestDate) return null;
+
+  return {
+   date: new Date(latestDate).toISOString().slice(0, 10),
+   callNumber: latestCall.callNumber || 'Unknown',
+  };
+ };
+
+ const fetchServiceCalls = async () => {
+  try {
+   const response = await api.get('/service-calls', {
+    headers: {
+     Authorization: `Bearer ${user?.token}`,
+    },
+   });
+   setServiceCalls(response.data || []);
+  } catch {
+   setServiceCalls([]);
+  }
+ };
+
+ useEffect(() => {
+  if (!user?.token) return;
+  fetchServiceCalls();
+ }, [user?.token]);
+
+ useEffect(() => {
+  if (formData.serviceHistoryType !== 'existing-customer') {
+   setLastServiceAutofillMeta(null);
+   return;
+  }
+
+  const lastServiceData = findLastServiceDateByEmail(formData.contactEmail);
+  setLastServiceAutofillMeta(lastServiceData);
+
+  setFormData((prev) => ({
+   ...prev,
+   dateOfLastService: lastServiceData?.date || prev.dateOfLastService,
+  }));
+ }, [formData.serviceHistoryType, formData.contactEmail, serviceCalls]);
 
  /**
   * Updates form state on input changes.
@@ -100,7 +174,13 @@ const ServiceCalls = () => {
   if (!formData.generatorCapacityKva || Number(formData.generatorCapacityKva) <= 0) {
    return 'Generator capacity must be greater than 0.';
   }
-  if (!formData.preferredDate) return 'Preferred service date is required.';
+  if (formData.serviceHistoryType === 'first-service-call' && !formData.dateOfPreferredServiceCall) {
+   return 'Preferred site visit date is required.';
+  }
+  if (formData.serviceHistoryType === 'existing-customer') {
+   if (!formData.dateOfLastService) return 'Date of last service is required for existing customers.';
+   if (!formData.dateOfPreferredServiceCall) return 'Preferred service call date is required.';
+  }
   if (!formData.outageStart || !formData.outageEnd) return 'Outage window is required.';
   if (new Date(formData.outageStart) >= new Date(formData.outageEnd)) {
    return 'Outage end time must be after outage start time.';
@@ -138,7 +218,7 @@ const ServiceCalls = () => {
  /**
   * Builds a backend-safe service call payload.
   *
-   * @returns {{title: string, description: string, priority: string, serviceType: string, scheduledDate: string, serviceLocation: string, bookingRequest: object}}
+  * @returns {{title: string, description: string, priority: string, serviceType: string, scheduledDate: string, serviceLocation: string, bookingRequest: object}}
   */
  const buildPayload = () => {
    const isBusiness = formData.customerType === 'business';
@@ -184,10 +264,13 @@ const ServiceCalls = () => {
        `Generator: ${formData.generatorMakeModel}`,
        `Machine Model Number: ${formData.machineModelNumber}`,
        `Capacity (kVA): ${formData.generatorCapacityKva}`,
+      `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
+      `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
+      `Preferred Service Call Date: ${formData.dateOfPreferredServiceCall}`,
        `Service Type: ${formData.serviceType}`,
        `Urgency: ${formData.urgency}`,
        `Load Shedding Window: ${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`,
-       `Preferred Date: ${formData.preferredDate}`,
+      `Preferred Date: ${formData.dateOfPreferredServiceCall}`,
        `Preferred Time Window: ${formData.preferredTimeWindow}`,
        `Notes: ${formData.notes || 'None'}`,
       ].join('\n')
@@ -203,10 +286,13 @@ const ServiceCalls = () => {
        `Generator: ${formData.generatorMakeModel}`,
        `Machine Model Number: ${formData.machineModelNumber}`,
        `Capacity (kVA): ${formData.generatorCapacityKva}`,
+      `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
+      `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
+      `Preferred Service Call Date: ${formData.dateOfPreferredServiceCall}`,
        `Service Type: ${formData.serviceType}`,
        `Urgency: ${formData.urgency}`,
        `Load Shedding Window: ${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`,
-       `Preferred Date: ${formData.preferredDate}`,
+      `Preferred Date: ${formData.dateOfPreferredServiceCall}`,
        `Preferred Time Window: ${formData.preferredTimeWindow}`,
        `Notes: ${formData.notes || 'None'}`,
       ].join('\n');
@@ -216,7 +302,7 @@ const ServiceCalls = () => {
    description,
    priority: formData.urgency,
    serviceType: formData.serviceType,
-   scheduledDate: new Date(formData.preferredDate).toISOString(),
+  scheduledDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
   serviceLocation: resolvedServiceLocation,
    bookingRequest: {
     contact: {
@@ -240,7 +326,9 @@ const ServiceCalls = () => {
       start: new Date(formData.outageStart).toISOString(),
       end: new Date(formData.outageEnd).toISOString(),
     },
-    preferredDate: new Date(formData.preferredDate).toISOString(),
+    preferredDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
+    dateOfLastService: formData.dateOfLastService ? new Date(formData.dateOfLastService).toISOString() : null,
+    serviceHistoryType: formData.serviceHistoryType,
     preferredTimeWindow: formData.preferredTimeWindow,
     additionalNotes: formData.notes,
    },
@@ -284,7 +372,7 @@ const ServiceCalls = () => {
   }
  };
 
- const minDateTime = useMemo(() => new Date().toISOString().slice(0, 16), []);
+ const minDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
  if (!user) return null;
 
@@ -466,15 +554,63 @@ const ServiceCalls = () => {
           <option value="urgent" className="text-black">Urgent</option>
          </select>
 
+           <select
+            name="serviceHistoryType"
+            value={formData.serviceHistoryType}
+            onChange={handleInputChange}
+            className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+           >
+            <option value="first-service-call" className="text-black">First Service Call</option>
+            <option value="existing-customer" className="text-black">Existing Customer</option>
+           </select>
+
          <input type="datetime-local" name="outageStart" value={formData.outageStart} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" required />
          <input type="datetime-local" name="outageEnd" value={formData.outageEnd} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" required />
         </div>
+
+        {formData.serviceHistoryType === 'first-service-call' ? (
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+           type="date"
+           min={minDate}
+           name="dateOfPreferredServiceCall"
+           value={formData.dateOfPreferredServiceCall}
+           onChange={handleInputChange}
+           className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+           required
+          />
+         </div>
+        ) : (
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+           type="date"
+           name="dateOfLastService"
+           value={formData.dateOfLastService}
+           onChange={handleInputChange}
+           className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+           required
+          />
+          <input
+           type="date"
+           min={minDate}
+           name="dateOfPreferredServiceCall"
+           value={formData.dateOfPreferredServiceCall}
+           onChange={handleInputChange}
+           className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+           required
+          />
+          <p className="md:col-span-2 text-xs text-white/70">
+           {lastServiceAutofillMeta
+            ? `Date of Last Service was auto-filled from ${lastServiceAutofillMeta.callNumber} (stored in database). You can adjust it if needed.`
+            : 'Date of Last Service can auto-fill from your previous service records in the database when a matching contact email is found.'}
+          </p>
+         </div>
+        )}
        </section>
 
-       <section className="space-y-4">
+             <section className="space-y-4">
         <h2 className="glass-heading-secondary">Scheduling</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <input type="datetime-local" min={minDateTime} name="preferredDate" value={formData.preferredDate} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" required />
          <select name="preferredTimeWindow" value={formData.preferredTimeWindow} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
           <option value="06:00 - 10:00" className="text-black">06:00 - 10:00</option>
           <option value="08:00 - 12:00" className="text-black">08:00 - 12:00</option>

@@ -519,8 +519,8 @@ const Customers = () => {
     <Sidebar />
     <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
      <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-      <p className="mt-4 text-white/70">Loading customers...</p>
+      <div className="animate-spin rounded-full h-11 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+      <p className="mt-3 text-white/70">Loading customers...</p>
      </div>
     </div>
    </>
@@ -975,6 +975,28 @@ const Customers = () => {
              </div>
              <div>
               Machine Model Number: <span className="font-medium">{lastBookingRequest.generatorDetails?.machineModelNumber || 'N/A'}</span>
+             </div>
+             <div>
+              Service History Type:{' '}
+              <span className="font-medium capitalize">
+               {(lastBookingRequest.serviceHistoryType || 'N/A').replace('-', ' ')}
+              </span>
+             </div>
+             <div>
+              Date of Last Service:{' '}
+              <span className="font-medium">
+               {lastBookingRequest.dateOfLastService
+                ? formatDate(lastBookingRequest.dateOfLastService)
+                : 'N/A'}
+              </span>
+             </div>
+             <div>
+              Preferred Service Date:{' '}
+              <span className="font-medium">
+               {lastBookingRequest.preferredDate
+                ? formatDate(lastBookingRequest.preferredDate)
+                : 'N/A'}
+              </span>
              </div>
              <div>
               Administrative Address: <span className="font-medium">{formatStructuredAddress(lastBookingRequest.administrativeAddress)}</span>
