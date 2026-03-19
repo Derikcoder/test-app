@@ -2,6 +2,8 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
+Last updated: 2026-03-19
+
 ---
 
 ## 🏗️ Project Vision
@@ -91,7 +93,7 @@ main                 ← Production (stable, never touched directly)
 - `FieldServiceAgents.jsx`: Field service agent list and CRUD screen.
 - `AgentProfile.jsx`: Agent detail view with job statistics.
 - `Customers.jsx`: Customer list page — all registered customers with service history and Book Service button.
-- `ServiceCalls.jsx`: Service calls list page — all jobs with status, priority, filters, and booking.
+- `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, and last-service auto-fill by contact email.
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
 ### Client Tests (`client/src/__tests__/`)
@@ -117,7 +119,7 @@ main                 ← Production (stable, never touched directly)
 - `User.model.js`: User schema, password hashing, comparePassword, immutable/editable field lists.
 - `FieldServiceAgent.model.js`: Field agent schema, employee details, and metadata.
 - `Customer.model.js`: Customer schema, contact information, sites, and account status.
-- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used.
+- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history fields (`serviceHistoryType`, `dateOfLastService`).
 - `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call.
 - `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking.
 - `Equipment.model.js`: Equipment/asset tracking schema.
@@ -127,7 +129,7 @@ main                 ← Production (stable, never touched directly)
 - `auth.controller.js`: Login, registration, profile updates, password reset, and SuperUser stats.
 - `agent.controller.js`: Field service agent CRUD.
 - `customer.controller.js`: Customer CRUD.
-- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment.
+- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, and create-time call number resolution fallback.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `invoice.controller.js`: Invoice generation from quotations, payment tracking.
 - `equipment.controller.js`: Equipment/asset CRUD.

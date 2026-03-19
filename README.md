@@ -52,6 +52,8 @@ This is an enterprise-grade field service management application built with the 
 - 🔄 Status workflow management
 - 📅 Scheduling and assignment
 - 📝 Detailed service notes and history
+- 🧾 Service history classification (first service call vs existing customer)
+- 🗓️ Existing customer last-service date support with auto-fill by contact email
 
 ### System Features
 - 📋 Enterprise-level logging middleware
@@ -360,6 +362,11 @@ http://localhost:5000/api
 | `GET` | `/service-calls/:id` | Get service call by ID | Yes |
 | `PUT` | `/service-calls/:id` | Update service call | Yes |
 | `DELETE` | `/service-calls/:id` | Delete service call | Yes |
+
+Service call creation supports structured booking history fields in `bookingRequest`:
+- `serviceHistoryType`: `first-service-call` or `existing-customer`
+- `dateOfLastService`: required for existing-customer flow
+- `preferredDate`: preferred service call date
 
 ### System Endpoints
 

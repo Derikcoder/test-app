@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** March 17, 2026  
+**Last Updated:** March 19, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -56,7 +56,7 @@ A full-stack MERN (MongoDB, Express, React, Node.js) application for managing fi
 - ✅ User/Agent/Customer/Service Call CRUD operations
 - ✅ Field-level permissions implemented
 - ✅ Google Maps integration setup
-- ⚠️ Service Calls UI is placeholder (needs full implementation)
+- ⚠️ Service Calls UI is partially implemented and still evolving
 - ✅ Comprehensive logging system
 - ✅ Industry-standard code comments throughout
 
@@ -908,6 +908,19 @@ git merge consolidation
 ---
 
 ## 🔄 Recent Changes
+
+### 2026-03-19 (Session 4)
+- ✅ Enhanced service call booking flow with service history support
+    - Added `serviceHistoryType` and `dateOfLastService` to `bookingRequest` schema in `server/models/ServiceCall.model.js`
+    - Updated `server/controllers/serviceCall.controller.js` create flow to ensure `callNumber` is resolved before validation
+    - Extended `client/src/components/ServiceCalls.jsx` with:
+       - First service call vs existing customer selection
+       - Conditional date validation for each flow
+       - Existing-customer auto-fill of last service date using prior calls matched by contact email
+    - Updated service history display blocks in:
+       - `client/src/components/Customers.jsx`
+       - `client/src/components/AgentProfile.jsx`
+    - Fixed gradient class typo in `Customers.jsx` (`from-blue-899` -> `from-blue-900`)
 
 ### 2026-03-17 (Session 3)
 - ✅ Standardized runtime startup behavior and documentation
