@@ -12,6 +12,42 @@ This codebase is being built as a **digital transformation framework for service
 
 ---
 
+## 🎯 Active Branch Goal — `feature/customer-management`
+
+**Objective:** Refactor the customer module into a proper parent → child component hierarchy.
+
+### Problem
+`Customers.jsx` currently contains a customer registration/service request form — it is **not** a customer list. This mixes concerns and makes the component unsuitable as the customers landing page.
+
+### Plan
+1. **Extract** the existing form from `Customers.jsx` into a new reusable component: `RegisterNewCustomer.jsx`
+2. **Recreate** `Customers.jsx` as a true customer list page — dynamically renders all customers from the database
+3. **Create** `SingleCustomer.jsx` as the customer detail/profile view — child of `Customers.jsx`, navigated to per row
+4. **Wire** routing so `Customers` → list, clicking a customer → `SingleCustomer` profile
+
+### Component Hierarchy
+```
+Customers.jsx                    ← parent: lists all customers from DB, filtered by type
+  ├── HeadOfficeCustomer.jsx     ← profile: head office account (multiple branches/franchises)
+  ├── BranchCustomer.jsx         ← profile: branch of a head office
+  ├── FranchiseCustomer.jsx      ← profile: franchise operation
+  ├── SingleBusinessCustomer.jsx ← profile: standalone business (SME)
+  └── ResidentialCustomer.jsx    ← profile: individual/residential client
+
+RegisterNewCustomer.jsx          ← standalone modal/form: register any customer type (callable from anywhere)
+```
+
+### Customer Type Notes
+- **HeadOfficeCustomer** — parent account; may have linked Branch and Franchise children
+- **BranchCustomer** — linked to a HeadOffice parent; inherits some account settings
+- **FranchiseCustomer** — linked to a HeadOffice parent; independent billing but shared branding
+- **SingleBusinessCustomer** — standalone SME; no parent/child account relationships
+- **ResidentialCustomer** — individual homeowner or tenant; simpler profile, no business fields
+
+Each customer type will have its own profile view tailored to the relevant fields and service history structure.
+
+---
+
 ## 🌿 Branch Architecture
 
 ```
@@ -92,7 +128,13 @@ main                 ← Production (stable, never touched directly)
 - `UserProfile.jsx`: Profile display, edits with protected field logic, and SuperUser stats dashboard.
 - `FieldServiceAgents.jsx`: Field service agent list and CRUD screen.
 - `AgentProfile.jsx`: Agent detail view with job statistics.
-- `Customers.jsx`: Customer list page — all registered customers with service history and Book Service button.
+- `Customers.jsx`: Customer list page — all customers filtered by type, with navigation to type-specific profiles.
+- `RegisterNewCustomer.jsx`: Reusable modal/form for registering any customer type. Callable from any screen.
+- `HeadOfficeCustomer.jsx`: Profile view for Head Office accounts (parent of branches/franchises).
+- `BranchCustomer.jsx`: Profile view for Branch accounts (child of Head Office).
+- `FranchiseCustomer.jsx`: Profile view for Franchise accounts (child of Head Office, independent billing).
+- `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
+- `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, and last-service auto-fill by contact email.
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
