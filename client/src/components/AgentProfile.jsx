@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
+import CreateQuoteModal from './CreateQuoteModal';
 
 const AgentProfile = () => {
  const { id } = useParams();
@@ -124,6 +125,26 @@ const AgentProfile = () => {
    || call.customer?.alternatePhone
    || ''
   );
+ };
+
+ const buildQuoteSourceFromCall = (call) => {
+  const descriptionPreview = getDescriptionPreview(call?.description || '');
+  return {
+   customerId: call?.customer?._id || '',
+   siteId: call?.siteId || '',
+   equipmentId: call?.equipment?._id || call?.equipment || '',
+   serviceType: call?.serviceType || 'Scheduled Maintenance',
+   title: call?.title || `Quotation for ${call?.callNumber || 'Service Call'}`,
+   description: descriptionPreview,
+   notes: call?.bookingRequest?.additionalNotes || '',
+   lineItems: [
+    {
+      description: call?.serviceType || 'Service Work',
+      quantity: 1,
+      unitPrice: 0,
+    },
+   ],
+  };
  };
 
  const normalizePhoneForTel = (phone) => {
@@ -508,7 +529,7 @@ const AgentProfile = () => {
               )}
               <div className="col-span-2 pt-1">
                {hasPhone ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                  <a
                   href={`https://wa.me/${whatsappPhone}`}
                   target="_blank"
@@ -531,9 +552,25 @@ const AgentProfile = () => {
                   </svg>
                   Call Customer
                  </a>
+                 <CreateQuoteModal
+                  token={user?.token}
+                  sourceData={buildQuoteSourceFromCall(call)}
+                  triggerLabel="Create Quote"
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  onCreated={fetchAgentData}
+                 />
                 </div>
                ) : (
-                <p className="text-xs text-white/70">No valid customer phone number available for call actions.</p>
+                <div className="flex flex-wrap gap-2 items-center">
+                 <p className="text-xs text-white/70">No valid customer phone number available for call actions.</p>
+                 <CreateQuoteModal
+                  token={user?.token}
+                  sourceData={buildQuoteSourceFromCall(call)}
+                  triggerLabel="Create Quote"
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  onCreated={fetchAgentData}
+                 />
+                </div>
                )}
               </div>
              </div>

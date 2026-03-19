@@ -1,0 +1,390 @@
+import { useEffect, useMemo, useState } from 'react';
+import api from '../api/axios';
+
+/**
+ * Reusable quote creation modal.
+ * Can be used from superAdmin workflows and customer-oriented workflows.
+ */
+const CreateQuoteModal = ({
+  token,
+  sourceData = {},
+  triggerLabel = 'Create Quote',
+  triggerClassName = 'glass-btn-primary font-semibold py-2 px-4',
+  onCreated,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const initialLineItems = useMemo(
+    () => sourceData?.lineItems?.length
+      ? sourceData.lineItems
+      : [{ description: sourceData?.serviceType || 'Service Item', quantity: 1, unitPrice: 0 }],
+    [sourceData]
+  );
+
+  const [formData, setFormData] = useState({
+    customerId: sourceData.customerId || '',
+    siteId: sourceData.siteId || '',
+    equipmentId: sourceData.equipmentId || '',
+    serviceType: sourceData.serviceType || 'Preventive Maintenance',
+    title: sourceData.title || 'Service Quotation',
+    description: sourceData.description || '',
+    validUntil: sourceData.validUntil || '',
+    vatRate: sourceData.vatRate ?? 15,
+    notes: sourceData.notes || '',
+    terms: sourceData.terms || 'Payment due within 30 days. Quotation valid for 30 days from date of issue.',
+    lineItems: initialLineItems,
+  });
+
+  useEffect(() => {
+    if (!isOpen || !token) return;
+
+    const fetchCustomers = async () => {
+      try {
+        setLoadingCustomers(true);
+        const response = await api.get('/customers', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCustomers(response.data || []);
+      } catch {
+        setCustomers([]);
+      } finally {
+        setLoadingCustomers(false);
+      }
+    };
+
+    fetchCustomers();
+  }, [isOpen, token]);
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      customerId: sourceData.customerId || prev.customerId,
+      siteId: sourceData.siteId || prev.siteId,
+      equipmentId: sourceData.equipmentId || prev.equipmentId,
+      serviceType: sourceData.serviceType || prev.serviceType,
+      title: sourceData.title || prev.title,
+      description: sourceData.description || prev.description,
+      notes: sourceData.notes || prev.notes,
+      lineItems: sourceData?.lineItems?.length ? sourceData.lineItems : prev.lineItems,
+    }));
+  }, [sourceData]);
+
+  const closeModal = () => {
+    setIsOpen(false);
+    setError('');
+    setSuccess('');
+  };
+
+  const updateLineItem = (index, key, value) => {
+    setFormData((prev) => {
+      const nextItems = [...prev.lineItems];
+      nextItems[index] = {
+        ...nextItems[index],
+        [key]: key === 'description' ? value : Number(value),
+      };
+      return { ...prev, lineItems: nextItems };
+    });
+  };
+
+  const addLineItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      lineItems: [...prev.lineItems, { description: '', quantity: 1, unitPrice: 0 }],
+    }));
+  };
+
+  const removeLineItem = (index) => {
+    setFormData((prev) => {
+      if (prev.lineItems.length <= 1) return prev;
+      return {
+        ...prev,
+        lineItems: prev.lineItems.filter((_, idx) => idx !== index),
+      };
+    });
+  };
+
+  const totals = useMemo(() => {
+    const subtotal = formData.lineItems.reduce((sum, item) => {
+      const quantity = Number(item.quantity) || 0;
+      const unitPrice = Number(item.unitPrice) || 0;
+      return sum + (quantity * unitPrice);
+    }, 0);
+
+    const vatRate = Number(formData.vatRate) || 0;
+    const vatAmount = subtotal * (vatRate / 100);
+    const totalAmount = subtotal + vatAmount;
+
+    return {
+      subtotal: subtotal.toFixed(2),
+      vatAmount: vatAmount.toFixed(2),
+      totalAmount: totalAmount.toFixed(2),
+    };
+  }, [formData.lineItems, formData.vatRate]);
+
+  const validate = () => {
+    if (!formData.customerId) return 'Please select a customer.';
+    if (!formData.serviceType.trim()) return 'Service type is required.';
+    if (!formData.title.trim()) return 'Title is required.';
+    if (!formData.lineItems.length) return 'At least one line item is required.';
+
+    const hasInvalid = formData.lineItems.some(
+      (item) => !item.description?.trim() || Number(item.quantity) <= 0 || Number(item.unitPrice) < 0
+    );
+
+    if (hasInvalid) {
+      return 'Each line item must include description, quantity > 0, and unit price >= 0.';
+    }
+
+    return null;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const payload = {
+        customer: formData.customerId,
+        siteId: formData.siteId || undefined,
+        equipment: formData.equipmentId || undefined,
+        serviceType: formData.serviceType,
+        title: formData.title,
+        description: formData.description,
+        lineItems: formData.lineItems.map((item) => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+        })),
+        vatRate: Number(formData.vatRate) || 15,
+        validUntil: formData.validUntil || undefined,
+        notes: formData.notes,
+        terms: formData.terms,
+      };
+
+      const response = await api.post('/quotations', payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setSuccess(`Quotation ${response.data?.quotationNumber || ''} created successfully.`.trim());
+      if (onCreated) onCreated(response.data);
+    } catch (submitError) {
+      setError(submitError?.response?.data?.message || 'Failed to create quotation.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className={triggerClassName}
+      >
+        {triggerLabel}
+      </button>
+
+      {isOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="glass-card w-full max-w-4xl rounded-2xl border border-white/20 bg-slate-900/85 p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="glass-heading-secondary">Create Quote</h2>
+              <button type="button" onClick={closeModal} className="text-white/80 hover:text-white">Close</button>
+            </div>
+
+            {error ? <div className="mb-4 rounded-lg border border-red-300/50 bg-red-500/20 px-4 py-2 text-white">{error}</div> : null}
+            {success ? <div className="mb-4 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-4 py-2 text-white">{success}</div> : null}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="glass-form-label text-white/90">Customer</label>
+                  <select
+                    value={formData.customerId}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, customerId: event.target.value }))}
+                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    disabled={loadingCustomers}
+                    required
+                  >
+                    <option value="" className="text-black">Select customer</option>
+                    {customers.map((customer) => (
+                      <option key={customer._id} value={customer._id} className="text-black">
+                        {customer.businessName || `${customer.contactFirstName || ''} ${customer.contactLastName || ''}`.trim()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="glass-form-label text-white/90">Service Type</label>
+                  <input
+                    value={formData.serviceType}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, serviceType: event.target.value }))}
+                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="glass-form-label text-white/90">Title</label>
+                  <input
+                    value={formData.title}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
+                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="glass-form-label text-white/90">Description / Scope</label>
+                  <textarea
+                    rows="3"
+                    value={formData.description}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white font-semibold">Line Items</h3>
+                  <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
+                </div>
+
+                {formData.lineItems.map((item, index) => (
+                  <div key={`line-item-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                    <div className="md:col-span-6">
+                      <label className="glass-form-label text-white/80">Description</label>
+                      <input
+                        value={item.description}
+                        onChange={(event) => updateLineItem(index, 'description', event.target.value)}
+                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="glass-form-label text-white/80">Qty</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(event) => updateLineItem(index, 'quantity', event.target.value)}
+                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="glass-form-label text-white/80">Unit Price</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.unitPrice}
+                        onChange={(event) => updateLineItem(index, 'unitPrice', event.target.value)}
+                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-1">
+                      <button
+                        type="button"
+                        onClick={() => removeLineItem(index)}
+                        className="w-full rounded-lg border border-red-300/50 bg-red-500/20 px-2 py-2 text-white text-sm"
+                        title="Remove line item"
+                      >
+                        X
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="glass-form-label text-white/90">Valid Until</label>
+                  <input
+                    type="date"
+                    value={formData.validUntil}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, validUntil: event.target.value }))}
+                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                  />
+                </div>
+                <div>
+                  <label className="glass-form-label text-white/90">VAT Rate (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.vatRate}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, vatRate: event.target.value }))}
+                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                  />
+                </div>
+                <div className="rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white">
+                  <p>Subtotal: R {totals.subtotal}</p>
+                  <p>VAT: R {totals.vatAmount}</p>
+                  <p className="font-semibold text-yellow-200">Total: R {totals.totalAmount}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="glass-form-label text-white/90">Notes</label>
+                <textarea
+                  rows="2"
+                  value={formData.notes}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
+                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="glass-form-label text-white/90">Terms</label>
+                <textarea
+                  rows="2"
+                  value={formData.terms}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, terms: event.target.value }))}
+                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="glass-btn-primary font-semibold py-2 px-5 disabled:opacity-60"
+                >
+                  {submitting ? 'Creating...' : 'Create Quote'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="glass-btn-secondary font-semibold py-2 px-5"
+                >
+                  Close
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+};
+
+export default CreateQuoteModal;

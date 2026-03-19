@@ -58,6 +58,12 @@ This is an enterprise-grade field service management application built with the 
 - 🧭 Existing-customer lifecycle capture (services in progress + progress status)
 - 🧾 Quotation and invoicing history capture in structured booking request
 - 🚨 SuperUser operations queue for unassigned call alerts and assignment to field agents
+- 🧩 Reusable quote creation component available from agent profile and service calls views
+
+### Quotation Management
+- 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
+- 📊 Auto-calculated subtotal, VAT, and total during quotation creation
+- 🔁 Quote prefill from historical/service-call machine data
 
 ### System Features
 - 📋 Enterprise-level logging middleware

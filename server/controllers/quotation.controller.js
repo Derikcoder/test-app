@@ -73,18 +73,20 @@ export const createQuotation = async (req, res) => {
       customer,
       siteId,
       equipment,
+      serviceType,
       title,
       description,
       lineItems,
+      vatRate,
       validUntil,
       terms,
       notes
     } = req.body;
 
     // Validate required fields
-    if (!customer || !title || !lineItems || lineItems.length === 0) {
+    if (!customer || !serviceType || !title || !lineItems || lineItems.length === 0) {
       return res.status(400).json({ 
-        message: 'Customer, title, and at least one line item are required' 
+        message: 'Customer, serviceType, title, and at least one line item are required' 
       });
     }
 
@@ -123,13 +125,23 @@ export const createQuotation = async (req, res) => {
       total: item.quantity * item.unitPrice
     }));
 
+    const calculatedSubtotal = calculatedLineItems.reduce((sum, item) => sum + item.total, 0);
+    const resolvedVatRate = Number.isFinite(Number(vatRate)) ? Number(vatRate) : 15;
+    const calculatedVatAmount = Number((calculatedSubtotal * (resolvedVatRate / 100)).toFixed(2));
+    const calculatedTotalAmount = Number((calculatedSubtotal + calculatedVatAmount).toFixed(2));
+
     const quotation = await Quotation.create({
       customer,
       siteId,
       equipment,
+      serviceType,
       title,
       description,
       lineItems: calculatedLineItems,
+      subtotal: calculatedSubtotal,
+      vatRate: resolvedVatRate,
+      vatAmount: calculatedVatAmount,
+      totalAmount: calculatedTotalAmount,
       validUntil,
       terms,
       notes,

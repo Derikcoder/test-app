@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import CreateQuoteModal from './CreateQuoteModal';
 
 /**
  * Renders the service booking form for generator service calls.
@@ -482,6 +483,34 @@ const ServiceCalls = () => {
 
  const minDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
+ const quoteSourceData = useMemo(() => ({
+  serviceType: formData.serviceType,
+  title: `${formData.serviceType} Quotation`,
+  description: [
+   `Customer Type: ${formData.customerType}`,
+   `Contact Person: ${formData.contactPerson || 'N/A'}`,
+   `Generator: ${formData.generatorMakeModel || 'N/A'}`,
+   `Machine Model Number: ${formData.machineModelNumber || 'N/A'}`,
+   `Capacity (kVA): ${formData.generatorCapacityKva || 'N/A'}`,
+  ].join('\n'),
+  notes: formData.notes,
+  lineItems: [
+   {
+    description: formData.serviceType || 'Service Work',
+    quantity: 1,
+    unitPrice: 0,
+   },
+  ],
+ }), [
+  formData.serviceType,
+  formData.customerType,
+  formData.contactPerson,
+  formData.generatorMakeModel,
+  formData.machineModelNumber,
+  formData.generatorCapacityKva,
+  formData.notes,
+ ]);
+
  if (!user) return null;
 
  return (
@@ -877,6 +906,13 @@ const ServiceCalls = () => {
         >
          Cancel
         </button>
+
+          <CreateQuoteModal
+           token={user?.token}
+           sourceData={quoteSourceData}
+           triggerLabel="Create Quote"
+           triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 py-3 px-6 text-sm font-semibold text-white transition"
+          />
        </div>
       </form>
      </div>

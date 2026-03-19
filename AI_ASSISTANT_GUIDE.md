@@ -909,6 +909,15 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 8)
+- ✅ Added reusable quote creation flow for superAdmin and customer-oriented usage
+   - Created `client/src/components/CreateQuoteModal.jsx` reusable modal component
+   - Integrated quote creation button into `client/src/components/AgentProfile.jsx` service-call cards
+   - Integrated quote creation button into `client/src/components/ServiceCalls.jsx`
+- ✅ Fixed quotation backend create contract in `server/controllers/quotation.controller.js`
+   - Added required `serviceType` validation and persistence
+   - Added subtotal/VAT/total calculations before save
+
 ### 2026-03-19 (Session 7)
 - ✅ Improved customer contact flow in agent profile
    - Added WhatsApp-first customer contact button and regular call button in `client/src/components/AgentProfile.jsx`
