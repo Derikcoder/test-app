@@ -909,6 +909,11 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 10)
+- ✅ Added explicit quote template selector in `client/src/components/CreateQuoteModal.jsx`
+   - Template options: Auto, Perkins, Cummins, Emergency Repair, Generic
+   - Added apply action to load selected template line items on demand
+
 ### 2026-03-19 (Session 9)
 - ✅ Added machine-model quote templates in reusable quote modal
    - `CreateQuoteModal.jsx` now supports suggested line items from machine model context

@@ -66,6 +66,7 @@ This is an enterprise-grade field service management application built with the 
 - 🔁 Quote prefill from historical/service-call machine data
 - 🧠 Machine-model quote templates (Perkins/Cummins/generic fallback)
 - ⚡ Shortcut API to create quote from service call context: `POST /api/quotations/from-service-call/:serviceCallId`
+- 🎛️ Explicit template selector in quote modal: Auto, Perkins, Cummins, Emergency Repair, Generic
 
 ### System Features
 - 📋 Enterprise-level logging middleware

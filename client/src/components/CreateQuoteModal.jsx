@@ -1,39 +1,61 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
 
+const TEMPLATE_OPTIONS = [
+  { value: 'auto', label: 'Auto (from machine/service data)' },
+  { value: 'perkins', label: 'Perkins Template' },
+  { value: 'cummins', label: 'Cummins Template' },
+  { value: 'emergency', label: 'Emergency Repair Template' },
+  { value: 'generic', label: 'Generic Service Template' },
+];
+
+const getTemplateLineItemsByType = (templateType) => {
+  switch (templateType) {
+    case 'perkins':
+      return [
+        { description: 'Perkins service kit and filters', quantity: 1, unitPrice: 1850 },
+        { description: 'Engine oil replacement and disposal', quantity: 1, unitPrice: 1250 },
+        { description: 'Load test and diagnostics report', quantity: 1, unitPrice: 1450 },
+      ];
+    case 'cummins':
+      return [
+        { description: 'Cummins preventive service kit', quantity: 1, unitPrice: 2100 },
+        { description: 'Cooling and fuel system checks', quantity: 1, unitPrice: 1350 },
+        { description: 'Controller diagnostics and tuning', quantity: 1, unitPrice: 1650 },
+      ];
+    case 'emergency':
+      return [
+        { description: 'Emergency call-out labor', quantity: 2, unitPrice: 950 },
+        { description: 'Fault finding and root-cause analysis', quantity: 1, unitPrice: 1400 },
+        { description: 'Temporary restoration and safety checks', quantity: 1, unitPrice: 950 },
+      ];
+    case 'generic':
+    default:
+      return [
+        { description: 'Generator inspection and diagnostics', quantity: 1, unitPrice: 1100 },
+        { description: 'Preventive service labor', quantity: 2, unitPrice: 850 },
+        { description: 'Consumables and replacement filters', quantity: 1, unitPrice: 950 },
+      ];
+  }
+};
+
 const getSuggestedTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) => {
   const model = String(machineModelNumber).toLowerCase();
   const type = String(serviceType).toLowerCase();
 
   if (model.includes('perkins')) {
-    return [
-      { description: 'Perkins service kit and filters', quantity: 1, unitPrice: 1850 },
-      { description: 'Engine oil replacement and disposal', quantity: 1, unitPrice: 1250 },
-      { description: 'Load test and diagnostics report', quantity: 1, unitPrice: 1450 },
-    ];
+    return getTemplateLineItemsByType('perkins');
   }
 
   if (model.includes('cummins')) {
-    return [
-      { description: 'Cummins preventive service kit', quantity: 1, unitPrice: 2100 },
-      { description: 'Cooling and fuel system checks', quantity: 1, unitPrice: 1350 },
-      { description: 'Controller diagnostics and tuning', quantity: 1, unitPrice: 1650 },
-    ];
+    return getTemplateLineItemsByType('cummins');
   }
 
   if (type.includes('emergency')) {
-    return [
-      { description: 'Emergency call-out labor', quantity: 2, unitPrice: 950 },
-      { description: 'Fault finding and root-cause analysis', quantity: 1, unitPrice: 1400 },
-      { description: 'Temporary restoration and safety checks', quantity: 1, unitPrice: 950 },
-    ];
+    return getTemplateLineItemsByType('emergency');
   }
 
-  return [
-    { description: 'Generator inspection and diagnostics', quantity: 1, unitPrice: 1100 },
-    { description: 'Preventive service labor', quantity: 2, unitPrice: 850 },
-    { description: 'Consumables and replacement filters', quantity: 1, unitPrice: 950 },
-  ];
+  return getTemplateLineItemsByType('generic');
 };
 
 /**
@@ -53,6 +75,7 @@ const CreateQuoteModal = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('auto');
 
   const canUseServiceCallShortcut = Boolean(sourceData?.serviceCallId && sourceData?.customerId);
   const machineTemplateSource = sourceData?.machineModelNumber || sourceData?.generatorMakeModel || '';
@@ -113,10 +136,12 @@ const CreateQuoteModal = ({
   }, [sourceData]);
 
   const applySuggestedTemplate = () => {
-    const suggested = getSuggestedTemplateLineItems({
-      machineModelNumber: machineTemplateSource,
-      serviceType: formData.serviceType,
-    });
+    const suggested = selectedTemplate === 'auto'
+      ? getSuggestedTemplateLineItems({
+          machineModelNumber: machineTemplateSource,
+          serviceType: formData.serviceType,
+        })
+      : getTemplateLineItemsByType(selectedTemplate);
 
     setFormData((prev) => ({
       ...prev,
@@ -325,15 +350,36 @@ const CreateQuoteModal = ({
                     className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
                   />
                 </div>
+
+                <div className="md:col-span-2">
+                  <label className="glass-form-label text-white/90">Template</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <select
+                      value={selectedTemplate}
+                      onChange={(event) => setSelectedTemplate(event.target.value)}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    >
+                      {TEMPLATE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value} className="text-black">
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={applySuggestedTemplate}
+                      className="glass-btn-secondary px-4 py-3 text-sm font-semibold"
+                    >
+                      Apply Selected Template
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-white font-semibold">Line Items</h3>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={applySuggestedTemplate} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">
-                      Load Suggested Template
-                    </button>
                     <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
                   </div>
                 </div>
