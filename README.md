@@ -56,6 +56,7 @@ This is an enterprise-grade field service management application built with the 
 - 🗓️ Existing customer last-service date support with auto-fill by contact email
 - 🧭 Existing-customer lifecycle capture (services in progress + progress status)
 - 🧾 Quotation and invoicing history capture in structured booking request
+- 🚨 SuperUser operations queue for unassigned call alerts and assignment to field agents
 
 ### System Features
 - 📋 Enterprise-level logging middleware
@@ -373,6 +374,12 @@ Service call creation supports structured booking history fields in `bookingRequ
 - `quotationHistory`: quotation references/history notes
 - `invoicingHistory`: invoice references/history notes
 - `preferredDate`: preferred service call date
+
+Service call assignment workflow supports these fields:
+- `assignedAgent`: selected field service agent
+- `assignedDate`: timestamp when assignment occurred
+- `agentAccepted`: whether the assigned agent has accepted the job
+- `assignmentNotifiedAt`: timestamp when assignment alert was queued for crew follow-up
 
 ### System Endpoints
 

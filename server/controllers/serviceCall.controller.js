@@ -144,6 +144,25 @@ export const updateServiceCall = async (req, res) => {
       }
     });
 
+    // Assignment workflow support: when assigning an agent, mark assignment metadata
+    if (req.body.assignedAgent !== undefined) {
+      const incomingAssignedAgent = req.body.assignedAgent ? String(req.body.assignedAgent) : '';
+      const existingAssignedAgent = serviceCall.assignedAgent ? String(serviceCall.assignedAgent) : '';
+
+      if (incomingAssignedAgent && incomingAssignedAgent !== existingAssignedAgent) {
+        serviceCall.assignedDate = new Date();
+        serviceCall.assignmentNotifiedAt = new Date();
+
+        if (req.body.agentAccepted === undefined) {
+          serviceCall.agentAccepted = false;
+        }
+
+        if (req.body.status === undefined || serviceCall.status === 'pending' || serviceCall.status === 'scheduled') {
+          serviceCall.status = 'assigned';
+        }
+      }
+    }
+
     // Auto-set completedDate if status is completed
     if (req.body.status === 'completed' && !serviceCall.completedDate) {
       serviceCall.completedDate = new Date();

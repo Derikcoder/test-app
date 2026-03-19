@@ -20,6 +20,11 @@ const ServiceCalls = () => {
  const [errorMessage, setErrorMessage] = useState('');
  const [successMessage, setSuccessMessage] = useState('');
  const [serviceCalls, setServiceCalls] = useState([]);
+ const [agents, setAgents] = useState([]);
+ const [selectedAssignments, setSelectedAssignments] = useState({});
+ const [queueActionError, setQueueActionError] = useState('');
+ const [queueActionSuccess, setQueueActionSuccess] = useState('');
+ const [assigningCallId, setAssigningCallId] = useState('');
  const [lastServiceAutofillMeta, setLastServiceAutofillMeta] = useState(null);
 
  const [formData, setFormData] = useState({
@@ -114,10 +119,95 @@ const ServiceCalls = () => {
   }
  };
 
+ const fetchAgents = async () => {
+  try {
+   const response = await api.get('/agents/available/list', {
+    headers: {
+     Authorization: `Bearer ${user?.token}`,
+    },
+   });
+   setAgents(response.data || []);
+  } catch {
+   try {
+    const fallback = await api.get('/agents', {
+     headers: {
+      Authorization: `Bearer ${user?.token}`,
+     },
+    });
+    setAgents(fallback.data || []);
+   } catch {
+    setAgents([]);
+   }
+  }
+ };
+
  useEffect(() => {
   if (!user?.token) return;
   fetchServiceCalls();
+  fetchAgents();
  }, [user?.token]);
+
+ const getCustomerLabel = (call) => {
+  const bookingContact = call?.bookingRequest?.contact;
+  if (bookingContact?.companyName) return bookingContact.companyName;
+  if (bookingContact?.contactPerson) return bookingContact.contactPerson;
+  if (call?.customer?.businessName) return call.customer.businessName;
+  return 'Unlinked customer';
+ };
+
+ const unassignedCalls = useMemo(
+  () => serviceCalls.filter((call) => !call.assignedAgent),
+  [serviceCalls]
+ );
+
+ const awaitingAcceptanceCalls = useMemo(
+  () => serviceCalls.filter((call) => call.assignedAgent && call.agentAccepted === false),
+  [serviceCalls]
+ );
+
+ const handleAssignmentSelect = (callId, agentId) => {
+  setSelectedAssignments((prev) => ({
+   ...prev,
+   [callId]: agentId,
+  }));
+ };
+
+ const assignCallToAgent = async (call) => {
+  const selectedAgent = selectedAssignments[call._id];
+  if (!selectedAgent) {
+   setQueueActionError('Please select a field service agent before assigning the call.');
+   setQueueActionSuccess('');
+   return;
+  }
+
+  setQueueActionError('');
+  setQueueActionSuccess('');
+  setAssigningCallId(call._id);
+
+  try {
+   await api.put(
+    `/service-calls/${call._id}`,
+    {
+     assignedAgent: selectedAgent,
+     status: 'assigned',
+     agentAccepted: false,
+    },
+    {
+     headers: {
+      Authorization: `Bearer ${user?.token}`,
+     },
+    }
+   );
+
+   setQueueActionSuccess(`Service call ${call.callNumber || call._id} assigned and crew alert queued.`);
+   await fetchServiceCalls();
+   await fetchAgents();
+  } catch (error) {
+   setQueueActionError(error?.response?.data?.message || 'Failed to assign the service call. Please try again.');
+  } finally {
+   setAssigningCallId('');
+  }
+ };
 
  useEffect(() => {
   if (formData.serviceHistoryType !== 'existing-customer') {
@@ -408,6 +498,79 @@ const ServiceCalls = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="p-8 space-y-8">
+        <section className="space-y-4 rounded-xl border border-yellow-300/30 bg-yellow-500/10 p-5">
+         <h2 className="glass-heading-secondary">Operations Alerts & Assignment Queue</h2>
+         <p className="text-white/80 text-sm">
+          SuperUser operations view: monitor incoming service calls, assign them to available field service agents, and queue assignment alerts for crew follow-up.
+         </p>
+
+         {queueActionError ? (
+          <div className="rounded-lg px-4 py-3 border border-red-300/40 bg-red-500/20 text-white text-sm">
+           {queueActionError}
+          </div>
+         ) : null}
+
+         {queueActionSuccess ? (
+          <div className="rounded-lg px-4 py-3 border border-emerald-300/40 bg-emerald-500/20 text-white text-sm">
+           {queueActionSuccess}
+          </div>
+         ) : null}
+
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-white/20 bg-white/5 p-4">
+           <p className="text-xs uppercase tracking-wide text-white/70">Unassigned Calls</p>
+           <p className="text-2xl font-bold text-yellow-200 mt-1">{unassignedCalls.length}</p>
+           <p className="text-white/70 text-xs mt-2">Needs superUser assignment</p>
+          </div>
+          <div className="rounded-lg border border-white/20 bg-white/5 p-4">
+           <p className="text-xs uppercase tracking-wide text-white/70">Awaiting Agent Acceptance</p>
+           <p className="text-2xl font-bold text-blue-200 mt-1">{awaitingAcceptanceCalls.length}</p>
+           <p className="text-white/70 text-xs mt-2">Assigned and pending field agent action</p>
+          </div>
+         </div>
+
+         {unassignedCalls.length === 0 ? (
+          <p className="text-sm text-white/75">No unassigned calls right now.</p>
+         ) : (
+          <div className="space-y-3">
+           {unassignedCalls.slice(0, 8).map((call) => (
+            <div key={call._id} className="rounded-lg border border-white/20 bg-white/5 p-4">
+             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+          <p className="text-white font-semibold">{call.title || 'Untitled Service Call'}</p>
+          <p className="text-xs text-white/70 mt-1">
+           {call.callNumber || call._id} · {getCustomerLabel(call)} · Priority: {call.priority || 'medium'}
+          </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <select
+           value={selectedAssignments[call._id] || ''}
+           onChange={(event) => handleAssignmentSelect(call._id, event.target.value)}
+           className="w-full sm:w-[280px] rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+          >
+           <option value="" className="text-black">Select field service agent</option>
+           {agents.map((agent) => (
+            <option key={agent._id} value={agent._id} className="text-black">
+             {agent.firstName} {agent.lastName} ({agent.employeeId})
+            </option>
+           ))}
+          </select>
+          <button
+           type="button"
+           onClick={() => assignCallToAgent(call)}
+           disabled={assigningCallId === call._id}
+           className="glass-btn-primary px-4 py-2 font-semibold disabled:opacity-50"
+          >
+           {assigningCallId === call._id ? 'Assigning...' : 'Assign'}
+          </button>
+              </div>
+             </div>
+            </div>
+           ))}
+          </div>
+         )}
+        </section>
+
        {errorMessage && (
         <div className="rounded-lg px-4 py-3 border border-red-300/40 bg-red-500/20 text-white">
          {errorMessage}

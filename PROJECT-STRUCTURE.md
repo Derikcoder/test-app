@@ -135,7 +135,7 @@ main                 ← Production (stable, never touched directly)
 - `FranchiseCustomer.jsx`: Profile view for Franchise accounts (child of Head Office, independent billing).
 - `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
-- `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, and lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`).
+- `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
 ### Client Tests (`client/src/__tests__/`)
@@ -161,7 +161,7 @@ main                 ← Production (stable, never touched directly)
 - `User.model.js`: User schema, password hashing, comparePassword, immutable/editable field lists.
 - `FieldServiceAgent.model.js`: Field agent schema, employee details, and metadata.
 - `Customer.model.js`: Customer schema, contact information, sites, and account status.
-- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`).
+- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), with assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`).
 - `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call.
 - `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking.
 - `Equipment.model.js`: Equipment/asset tracking schema.
@@ -171,7 +171,7 @@ main                 ← Production (stable, never touched directly)
 - `auth.controller.js`: Login, registration, profile updates, password reset, and SuperUser stats.
 - `agent.controller.js`: Field service agent CRUD.
 - `customer.controller.js`: Customer CRUD.
-- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, and create-time call number resolution fallback.
+- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `invoice.controller.js`: Invoice generation from quotations, payment tracking.
 - `equipment.controller.js`: Equipment/asset CRUD.

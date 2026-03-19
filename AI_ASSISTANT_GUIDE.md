@@ -909,6 +909,14 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 6)
+- ✅ Added superUser operations queue for service call assignment
+   - Updated `client/src/components/ServiceCalls.jsx` to show unassigned call alerts and awaiting-acceptance counters
+   - Added inline assignment controls to assign unassigned calls to field service agents
+- ✅ Extended service call assignment workflow metadata
+   - Added `assignedDate`, `agentAccepted`, and `assignmentNotifiedAt` in `server/models/ServiceCall.model.js`
+   - Updated `server/controllers/serviceCall.controller.js` to auto-stamp assignment metadata and default status behavior when an agent is assigned
+
 ### 2026-03-19 (Session 5)
 - ✅ Extended service booking lifecycle capture for existing-customer flow
    - Added `servicesInProgress`, `progressStatus`, `quotationHistory`, and `invoicingHistory` to `bookingRequest` in `server/models/ServiceCall.model.js`

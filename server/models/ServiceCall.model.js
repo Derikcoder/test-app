@@ -235,6 +235,19 @@ const serviceCallSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'FieldServiceAgent',
     },
+    /** Date/time the call was assigned to an agent */
+    assignedDate: {
+      type: Date,
+    },
+    /** Indicates whether assigned agent has accepted the job */
+    agentAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    /** Timestamp for latest assignment alert sent to service crew */
+    assignmentNotifiedAt: {
+      type: Date,
+    },
     /** Role of person who created the call */
     createdByRole: {
       type: String,
@@ -416,6 +429,9 @@ serviceCallSchema.statics.EDITABLE_FIELDS = [
   'siteId',
   'equipment',
   'assignedAgent',
+  'assignedDate',
+  'agentAccepted',
+  'assignmentNotifiedAt',
   'title',
   'description',
   'priority',
