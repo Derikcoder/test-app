@@ -5,7 +5,7 @@
  * Supports: headOffice, branch, franchise, singleBusiness, residential
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Autocomplete, GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
@@ -13,6 +13,11 @@ import api from '../api/axios';
 const RegisterNewCustomer = () => {
  const { user } = useAuth();
  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+ const { isLoaded: isGoogleMapsLoaded, loadError: googleMapsLoadError } = useJsApiLoader({
+  id: 'appatunid-google-maps-script',
+  googleMapsApiKey,
+  libraries: ['places'],
+ });
  const [customers, setCustomers] = useState([]);
  const [serviceCalls, setServiceCalls] = useState([]);
  const [loading, setLoading] = useState(true);
@@ -94,6 +99,13 @@ const RegisterNewCustomer = () => {
  useEffect(() => {
   requestCurrentLocation();
  }, []);
+
+ useEffect(() => {
+  if (!isGoogleMapsLoaded) return;
+  if (pendingCoords && !formData.streetAddress) {
+   reverseGeocode(pendingCoords);
+  }
+ }, [isGoogleMapsLoaded, pendingCoords, formData.streetAddress]);
 
  const fetchCustomers = async () => {
   try {
@@ -805,17 +817,14 @@ const RegisterNewCustomer = () => {
            <div className="mt-3 text-sm text-white/70">
             Set VITE_GOOGLE_MAPS_API_KEY to enable the map picker.
            </div>
+          ) : googleMapsLoadError ? (
+           <div className="mt-3 text-sm text-red-600">
+            Failed to load Google Maps. Please refresh the page and verify your API key restrictions.
+           </div>
+          ) : !isGoogleMapsLoaded ? (
+           <div className="mt-3 text-sm text-white/70">Loading map tools...</div>
           ) : (
            <div className="mt-3 space-y-3">
-            <LoadScript
-             googleMapsApiKey={googleMapsApiKey}
-             libraries={['places']}
-             onLoad={() => {
-              if (pendingCoords && !formData.streetAddress) {
-               reverseGeocode(pendingCoords);
-              }
-             }}
-            >
              <Autocomplete
               onLoad={(instance) => setAutocomplete(instance)}
               onPlaceChanged={handlePlaceChanged}
@@ -840,7 +849,6 @@ const RegisterNewCustomer = () => {
                />
               </GoogleMap>
              </div>
-            </LoadScript>
             <p className="text-xs text-gray-500">
              Default location uses your current position. Move the pin or search if the customer is not on site.
             </p>
