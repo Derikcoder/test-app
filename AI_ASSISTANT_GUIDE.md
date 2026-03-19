@@ -909,6 +909,14 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 22)
+- ✅ Made quote sharing channels optional in submit flow
+   - Quote modal now allows per-send channel selection instead of hardcoded channels
+   - Telegram is available as a first-class share option for dev/test workflows
+- ✅ Added Telegram quote-share support in backend send endpoint
+   - `POST /api/quotations/:id/send` now supports `telegram` in `channels`
+   - Endpoint returns `telegramUrl` and stores `lastTelegramLink` for audit visibility
+
 ### 2026-03-19 (Session 21)
 - ✅ Added quote delivery pipeline (PDF + channels)
    - Implemented real PDF generation for quotations using `pdfkit`

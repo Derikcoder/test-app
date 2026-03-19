@@ -64,7 +64,7 @@ This is an enterprise-grade field service management application built with the 
 - 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
 - ✅ Quote submission flow uses `Submit Quote` action semantics
 - 📄 Real quotation PDF generation endpoint available at `GET /api/quotations/:id/pdf`
-- 📤 Quote delivery endpoint available at `POST /api/quotations/:id/send` for email/WhatsApp distribution
+- 📤 Quote delivery endpoint available at `POST /api/quotations/:id/send` for optional Email/WhatsApp/Telegram distribution
 - 🔗 Public share link support for customer PDF access: `GET /api/quotations/share/:token/pdf`
 - 📊 Auto-calculated subtotal, VAT, and total during quotation creation
 - 🔁 Quote prefill from historical/service-call machine data

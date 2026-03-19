@@ -79,6 +79,11 @@ const normalizePhoneForWhatsApp = (phone) => {
   return cleaned;
 };
 
+const buildTelegramShareUrl = ({ quotationNumber, shareUrl }) => {
+  const message = `Quotation ${quotationNumber}\nView PDF: ${shareUrl}`;
+  return `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`;
+};
+
 const generateQuotationPdfBuffer = (quotation) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -789,12 +794,12 @@ export const updateQuotationStatus = async (req, res) => {
   }
 };
 
-// @desc    Send quotation PDF via email and/or WhatsApp
+// @desc    Send quotation PDF via Email and/or WhatsApp/Telegram
 // @route   POST /api/quotations/:id/send
 // @access  Private
 export const sendQuotation = async (req, res) => {
   try {
-    const { channels = ['email', 'whatsapp'] } = req.body || {};
+    const { channels } = req.body || {};
 
     const quotation = await Quotation.findOne({
       _id: req.params.id,
@@ -805,7 +810,17 @@ export const sendQuotation = async (req, res) => {
       return res.status(404).json({ message: 'Quotation not found' });
     }
 
-    const selectedChannels = Array.isArray(channels) ? channels : ['email', 'whatsapp'];
+    const allowedChannels = ['email', 'whatsapp', 'telegram'];
+    const selectedChannels = Array.isArray(channels)
+      ? [...new Set(channels.map((channel) => String(channel).trim().toLowerCase()))].filter((channel) => allowedChannels.includes(channel))
+      : ['email', 'whatsapp'];
+
+    if (Array.isArray(channels) && selectedChannels.length === 0) {
+      return res.status(400).json({
+        message: 'Please select at least one valid channel: email, whatsapp, or telegram.',
+      });
+    }
+
     const baseUrl = getBaseUrl(req);
     if (!quotation.shareToken) {
       quotation.shareToken = buildShareToken();
@@ -819,6 +834,7 @@ export const sendQuotation = async (req, res) => {
 
     let emailSent = false;
     let whatsappUrl = '';
+    let telegramUrl = '';
 
     if (selectedChannels.includes('email')) {
       await sendQuotationEmail({
@@ -841,6 +857,14 @@ export const sendQuotation = async (req, res) => {
       }
     }
 
+    if (selectedChannels.includes('telegram')) {
+      telegramUrl = buildTelegramShareUrl({
+        quotationNumber: quotation.quotationNumber,
+        shareUrl,
+      });
+      quotation.lastTelegramLink = telegramUrl;
+    }
+
     quotation.status = quotation.status === 'draft' ? 'sent' : quotation.status;
     quotation.sentDate = new Date();
     quotation.lastSentChannels = selectedChannels;
@@ -852,7 +876,9 @@ export const sendQuotation = async (req, res) => {
       quotationNumber: quotation.quotationNumber,
       emailSent,
       whatsappUrl,
+      telegramUrl,
       shareUrl,
+      channels: selectedChannels,
     });
   } catch (error) {
     logError('Send quotation error:', error);

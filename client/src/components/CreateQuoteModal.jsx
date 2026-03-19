@@ -121,6 +121,11 @@ const CreateQuoteModal = ({
   const [sendSuccess, setSendSuccess] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('auto');
   const [createdQuotationId, setCreatedQuotationId] = useState('');
+  const [shareChannels, setShareChannels] = useState({
+    email: false,
+    whatsapp: false,
+    telegram: true,
+  });
 
   const canUseServiceCallShortcut = Boolean(sourceData?.serviceCallId && sourceData?.customerId);
   const machineTemplateSource = sourceData?.machineModelNumber || sourceData?.generatorMakeModel || '';
@@ -432,6 +437,15 @@ const CreateQuoteModal = ({
   const handleSendQuote = async () => {
     if (!createdQuotationId) return;
 
+    const selectedChannels = Object.entries(shareChannels)
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([channel]) => channel);
+
+    if (!selectedChannels.length) {
+      setError('Select at least one sharing channel (Email, WhatsApp, or Telegram).');
+      return;
+    }
+
     try {
       setSending(true);
       setError('');
@@ -439,18 +453,27 @@ const CreateQuoteModal = ({
 
       const response = await api.post(
         `/quotations/${createdQuotationId}/send`,
-        { channels: ['email', 'whatsapp'] },
+        { channels: selectedChannels },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const whatsappUrl = response?.data?.whatsappUrl;
+      const telegramUrl = response?.data?.telegramUrl;
+
       if (whatsappUrl) {
         window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
       }
 
-      setSendSuccess('Quote PDF sent to customer channels (email and WhatsApp where available).');
+      if (telegramUrl) {
+        window.open(telegramUrl, '_blank', 'noopener,noreferrer');
+      }
+
+      const usedChannels = Array.isArray(response?.data?.channels) && response.data.channels.length
+        ? response.data.channels
+        : selectedChannels;
+      setSendSuccess(`Quote PDF prepared for: ${usedChannels.join(', ')}.`);
     } catch (sendError) {
-      setError(sendError?.response?.data?.message || 'Failed to send quote to customer.');
+      setError(sendError?.response?.data?.message || 'Failed to send quote to selected channels.');
     } finally {
       setSending(false);
     }
@@ -844,6 +867,42 @@ const CreateQuoteModal = ({
                 />
               </div>
 
+              <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
+                <h3 className="text-white font-semibold">Share Channels</h3>
+                <p className="text-xs text-white/70">
+                  Select where to share this quotation after submission. Telegram is enabled by default for local testing.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 text-sm text-white/90">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(shareChannels.email)}
+                      onChange={(event) => setShareChannels((prev) => ({ ...prev, email: event.target.checked }))}
+                      className="h-4 w-4 rounded border-white/30 bg-white/10"
+                    />
+                    Email
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-white/90">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(shareChannels.whatsapp)}
+                      onChange={(event) => setShareChannels((prev) => ({ ...prev, whatsapp: event.target.checked }))}
+                      className="h-4 w-4 rounded border-white/30 bg-white/10"
+                    />
+                    WhatsApp
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-white/90">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(shareChannels.telegram)}
+                      onChange={(event) => setShareChannels((prev) => ({ ...prev, telegram: event.target.checked }))}
+                      className="h-4 w-4 rounded border-white/30 bg-white/10"
+                    />
+                    Telegram
+                  </label>
+                </div>
+              </div>
+
               <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
@@ -858,7 +917,7 @@ const CreateQuoteModal = ({
                   onClick={handleSendQuote}
                   className="glass-btn-secondary font-semibold py-2 px-5 disabled:opacity-60"
                 >
-                  {sending ? 'Sending...' : 'Send PDF to Customer'}
+                  {sending ? 'Sending...' : 'Share PDF'}
                 </button>
                 <button
                   type="button"

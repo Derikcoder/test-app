@@ -296,6 +296,11 @@ const quotationSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** Last generated Telegram delivery link (if applicable) */
+    lastTelegramLink: {
+      type: String,
+      trim: true,
+    },
     /** Date quotation was approved by customer */
     approvedDate: {
       type: Date,

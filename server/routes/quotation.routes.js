@@ -79,7 +79,7 @@ router.patch('/:id/status', protect, updateQuotationStatus);
 
 /**
  * @route   POST /api/quotations/:id/send
- * @desc    Send quotation via email/whatsapp with PDF
+ * @desc    Send quotation via optional email/whatsapp/telegram channels with PDF
  * @access  Private (JWT required)
  */
 router.post('/:id/send', protect, sendQuotation);
