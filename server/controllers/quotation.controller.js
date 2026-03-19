@@ -50,12 +50,23 @@ const normalizePartLineItems = (lineItems = []) => {
 
 const DEFAULT_TRAVEL_RATE_PER_KM = 8.5;
 
+const getDefaultValidUntilDate = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 14);
+  return date;
+};
+
 const calculateQuotationCosts = ({
   lineItems = [],
+  partsFulfilmentMode,
+  deliveryProvider,
+  partsProcurementCost,
+  thirdPartyDeliveryCost,
   labourHours,
   labourRate,
   travellingCost,
   distanceTravelledKm,
+  travelRatePerKm,
   timeTravelledCost,
   consumablesRate,
   isSuperUser = false,
@@ -63,11 +74,24 @@ const calculateQuotationCosts = ({
   const normalizedLineItems = normalizePartLineItems(lineItems);
 
   const partsCost = normalizedLineItems.reduce((sum, item) => sum + item.total, 0);
+  const resolvedPartsFulfilmentMode = partsFulfilmentMode === 'thirdPartyDelivery'
+    ? 'thirdPartyDelivery'
+    : 'inHouseProcurement';
+  const resolvedDeliveryProvider = resolvedPartsFulfilmentMode === 'thirdPartyDelivery'
+    ? String(deliveryProvider || '').trim()
+    : '';
+  const resolvedPartsProcurementCost = Number.isFinite(Number(partsProcurementCost)) ? Number(partsProcurementCost) : 0;
+  const resolvedThirdPartyDeliveryCost = resolvedPartsFulfilmentMode === 'thirdPartyDelivery'
+    ? (Number.isFinite(Number(thirdPartyDeliveryCost)) ? Number(thirdPartyDeliveryCost) : 0)
+    : 0;
+  const estimatedPartsProfit = Number((partsCost - resolvedPartsProcurementCost - resolvedThirdPartyDeliveryCost).toFixed(2));
+
   const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
   const requestedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
   const resolvedLabourRate = isSuperUser ? requestedLabourRate : 650;
   const resolvedDistanceTravelledKm = Number.isFinite(Number(distanceTravelledKm)) ? Number(distanceTravelledKm) : 0;
-  const resolvedTravelRatePerKm = DEFAULT_TRAVEL_RATE_PER_KM;
+  const requestedTravelRatePerKm = Number.isFinite(Number(travelRatePerKm)) ? Number(travelRatePerKm) : DEFAULT_TRAVEL_RATE_PER_KM;
+  const resolvedTravelRatePerKm = isSuperUser ? requestedTravelRatePerKm : DEFAULT_TRAVEL_RATE_PER_KM;
   const resolvedTimeTravelledCost = Number.isFinite(Number(timeTravelledCost))
     ? Number(timeTravelledCost)
     : Number.isFinite(Number(travellingCost))
@@ -92,6 +116,11 @@ const calculateQuotationCosts = ({
 
   return {
     normalizedLineItems,
+    partsFulfilmentMode: resolvedPartsFulfilmentMode,
+    deliveryProvider: resolvedDeliveryProvider,
+    partsProcurementCost: resolvedPartsProcurementCost,
+    thirdPartyDeliveryCost: resolvedThirdPartyDeliveryCost,
+    estimatedPartsProfit,
     partsCost,
     labourHours: resolvedLabourHours,
     labourRate: resolvedLabourRate,
@@ -180,10 +209,15 @@ export const createQuotation = async (req, res) => {
       title,
       description,
       lineItems,
+      partsFulfilmentMode,
+      deliveryProvider,
+      partsProcurementCost,
+      thirdPartyDeliveryCost,
       labourHours,
       labourRate,
       travellingCost,
       distanceTravelledKm,
+      travelRatePerKm,
       timeTravelledCost,
       consumablesRate,
       vatRate,
@@ -230,10 +264,15 @@ export const createQuotation = async (req, res) => {
 
     const costing = calculateQuotationCosts({
       lineItems,
+      partsFulfilmentMode,
+      deliveryProvider,
+      partsProcurementCost,
+      thirdPartyDeliveryCost,
       labourHours,
       labourRate,
       travellingCost,
       distanceTravelledKm,
+      travelRatePerKm,
       timeTravelledCost,
       consumablesRate,
       isSuperUser: Boolean(req.user?.isSuperUser),
@@ -251,6 +290,11 @@ export const createQuotation = async (req, res) => {
       title,
       description,
       lineItems: costing.normalizedLineItems,
+      partsFulfilmentMode: costing.partsFulfilmentMode,
+      deliveryProvider: costing.deliveryProvider,
+      partsProcurementCost: costing.partsProcurementCost,
+      thirdPartyDeliveryCost: costing.thirdPartyDeliveryCost,
+      estimatedPartsProfit: costing.estimatedPartsProfit,
       partsCost: costing.partsCost,
       labourHours: costing.labourHours,
       labourRate: costing.labourRate,
@@ -265,7 +309,7 @@ export const createQuotation = async (req, res) => {
       vatRate: resolvedVatRate,
       vatAmount: calculatedVatAmount,
       totalAmount: calculatedTotalAmount,
-      validUntil,
+      validUntil: validUntil || getDefaultValidUntilDate(),
       terms,
       notes,
       createdBy: req.user._id
@@ -296,10 +340,15 @@ export const createQuotationFromServiceCall = async (req, res) => {
       description,
       serviceType,
       lineItems,
+      partsFulfilmentMode,
+      deliveryProvider,
+      partsProcurementCost,
+      thirdPartyDeliveryCost,
       labourHours,
       labourRate,
       travellingCost,
       distanceTravelledKm,
+      travelRatePerKm,
       timeTravelledCost,
       consumablesRate,
       vatRate,
@@ -353,10 +402,15 @@ export const createQuotationFromServiceCall = async (req, res) => {
 
     const costing = calculateQuotationCosts({
       lineItems: requestedLineItems,
+      partsFulfilmentMode,
+      deliveryProvider,
+      partsProcurementCost,
+      thirdPartyDeliveryCost,
       labourHours,
       labourRate,
       travellingCost,
       distanceTravelledKm,
+      travelRatePerKm,
       timeTravelledCost,
       consumablesRate,
       isSuperUser: Boolean(req.user?.isSuperUser),
@@ -374,6 +428,11 @@ export const createQuotationFromServiceCall = async (req, res) => {
       title: title || `Quotation for ${serviceCall.callNumber || 'Service Call'}`,
       description: description || serviceCall.description || '',
       lineItems: costing.normalizedLineItems,
+      partsFulfilmentMode: costing.partsFulfilmentMode,
+      deliveryProvider: costing.deliveryProvider,
+      partsProcurementCost: costing.partsProcurementCost,
+      thirdPartyDeliveryCost: costing.thirdPartyDeliveryCost,
+      estimatedPartsProfit: costing.estimatedPartsProfit,
       partsCost: costing.partsCost,
       labourHours: costing.labourHours,
       labourRate: costing.labourRate,
@@ -388,7 +447,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       vatRate: resolvedVatRate,
       vatAmount: calculatedVatAmount,
       totalAmount: calculatedTotalAmount,
-      validUntil,
+      validUntil: validUntil || getDefaultValidUntilDate(),
       terms,
       notes,
       createdBy: req.user._id,
@@ -455,9 +514,14 @@ export const updateQuotation = async (req, res) => {
 
     const shouldRecalculateFinancials = [
       'lineItems',
+      'partsFulfilmentMode',
+      'deliveryProvider',
+      'partsProcurementCost',
+      'thirdPartyDeliveryCost',
       'labourHours',
       'labourRate',
       'distanceTravelledKm',
+      'travelRatePerKm',
       'timeTravelledCost',
       'travellingCost',
       'consumablesRate',
@@ -467,9 +531,14 @@ export const updateQuotation = async (req, res) => {
     if (shouldRecalculateFinancials) {
       const costing = calculateQuotationCosts({
         lineItems: quotation.lineItems,
+        partsFulfilmentMode: quotation.partsFulfilmentMode,
+        deliveryProvider: quotation.deliveryProvider,
+        partsProcurementCost: quotation.partsProcurementCost,
+        thirdPartyDeliveryCost: quotation.thirdPartyDeliveryCost,
         labourHours: quotation.labourHours,
         labourRate: quotation.labourRate,
         distanceTravelledKm: quotation.distanceTravelledKm,
+        travelRatePerKm: quotation.travelRatePerKm,
         timeTravelledCost: quotation.timeTravelledCost,
         travellingCost: quotation.travellingCost,
         consumablesRate: quotation.consumablesRate,
@@ -477,6 +546,11 @@ export const updateQuotation = async (req, res) => {
       });
 
       quotation.lineItems = costing.normalizedLineItems;
+  quotation.partsFulfilmentMode = costing.partsFulfilmentMode;
+  quotation.deliveryProvider = costing.deliveryProvider;
+  quotation.partsProcurementCost = costing.partsProcurementCost;
+  quotation.thirdPartyDeliveryCost = costing.thirdPartyDeliveryCost;
+  quotation.estimatedPartsProfit = costing.estimatedPartsProfit;
       quotation.partsCost = costing.partsCost;
       quotation.labourHours = costing.labourHours;
       quotation.labourRate = costing.labourRate;

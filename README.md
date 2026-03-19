@@ -70,7 +70,11 @@ This is an enterprise-grade field service management application built with the 
 - 🏷️ Optional line-item part number field to improve future auto-quote generation from machine/parts history
 - 📈 Unit cost entry now auto-applies tiered markup to selling unit price: <R1000 (50%), <R2000 (40%), <R3000 (30%), <R4000 (25%), <R5000 (20%), >=R5000 (20%)
 - 🧮 Separated costing concerns: Parts line items, Labour (hours × rate), Consumables (% of parts), and function-based Travel costing
-- 🚗 Travel costing formula: `(distanceTravelledKm × R8.50) + timeTravelledCost` (time component is currently manual)
+- 🚗 Travel costing formula: `(distanceTravelledKm × ratePerKm) + timeTravelledCost` (distance is variable; time component is currently manual)
+- 🛣️ Default `ratePerKm` is `R8.50` and can only be changed by superAdmin
+- 📦 Parts fulfilment capture for profitability analysis: in-house procurement vs third-party delivery (e.g., Picup)
+- 💸 Captures procurement and delivery economics: `partsProcurementCost`, `thirdPartyDeliveryCost`, and derived `estimatedPartsProfit`
+- 📅 Default quotation validity is now 14 days, with calendar override available for customer-specific arrangements
 - 🔒 Labour rate is editable by superAdmin only; backend enforces default `R650/hour` for non-super users
 
 ### System Features

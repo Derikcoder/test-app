@@ -118,6 +118,35 @@ const quotationSchema = new mongoose.Schema(
         message: 'Quotation must have at least one line item',
       },
     },
+    /** Parts fulfilment mode to support profitability analysis */
+    partsFulfilmentMode: {
+      type: String,
+      enum: ['inHouseProcurement', 'thirdPartyDelivery'],
+      default: 'inHouseProcurement',
+    },
+    /** Third-party provider name when delivery service is used (e.g. Picup) */
+    deliveryProvider: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Actual cost paid to procure parts */
+    partsProcurementCost: {
+      type: Number,
+      min: [0, 'Parts procurement cost cannot be negative'],
+      default: 0,
+    },
+    /** Delivery fee charged by third-party delivery services */
+    thirdPartyDeliveryCost: {
+      type: Number,
+      min: [0, 'Third-party delivery cost cannot be negative'],
+      default: 0,
+    },
+    /** Estimated parts profit = parts revenue - procurement and delivery costs */
+    estimatedPartsProfit: {
+      type: Number,
+      default: 0,
+    },
     /** Total parts cost (sum of line items) */
     partsCost: {
       type: Number,
@@ -208,6 +237,11 @@ const quotationSchema = new mongoose.Schema(
     validUntil: {
       type: Date,
       required: [true, 'Valid until date is required'],
+      default: () => {
+        const date = new Date();
+        date.setDate(date.getDate() + 14);
+        return date;
+      },
     },
     /** Current quotation status */
     status: {
@@ -255,7 +289,7 @@ const quotationSchema = new mongoose.Schema(
     terms: {
       type: String,
       trim: true,
-      default: 'Payment due within 30 days. Quotation valid for 30 days from date of issue.',
+      default: 'Payment due within 30 days. Quotation valid for 14 days from date of issue.',
     },
     /** Reference to User who created this quotation */
     createdBy: {
@@ -337,6 +371,11 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'title',
   'description',
   'lineItems',
+  'partsFulfilmentMode',
+  'deliveryProvider',
+  'partsProcurementCost',
+  'thirdPartyDeliveryCost',
+  'estimatedPartsProfit',
   'partsCost',
   'labourHours',
   'labourRate',

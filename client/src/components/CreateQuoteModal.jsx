@@ -12,6 +12,19 @@ const TEMPLATE_OPTIONS = [
 const MIN_PROFIT_MARGIN_RATE = 0.2;
 const TRAVEL_RATE_PER_KM = 8.5;
 
+const toDateInputValue = (value) => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+};
+
+const getDefaultValidUntilDateString = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 14);
+  return date.toISOString().slice(0, 10);
+};
+
 const getTemplateLineItemsByType = (templateType) => {
   switch (templateType) {
     case 'perkins':
@@ -119,7 +132,11 @@ const CreateQuoteModal = ({
     serviceType: sourceData.serviceType || 'Preventive Maintenance',
     title: sourceData.title || 'Service Quotation',
     description: sourceData.description || '',
-    validUntil: sourceData.validUntil || '',
+    validUntil: toDateInputValue(sourceData.validUntil) || getDefaultValidUntilDateString(),
+    partsFulfilmentMode: sourceData.partsFulfilmentMode || 'inHouseProcurement',
+    deliveryProvider: sourceData.deliveryProvider || '',
+    partsProcurementCost: sourceData.partsProcurementCost ?? 0,
+    thirdPartyDeliveryCost: sourceData.thirdPartyDeliveryCost ?? 0,
     vatRate: sourceData.vatRate ?? 15,
     labourHours: sourceData.labourHours ?? 0,
     labourRate: sourceData.labourRate ?? 650,
@@ -128,7 +145,7 @@ const CreateQuoteModal = ({
     timeTravelledCost: sourceData.timeTravelledCost ?? 0,
     consumablesRate: sourceData.consumablesRate ?? 2,
     notes: sourceData.notes || '',
-    terms: sourceData.terms || 'Payment due within 30 days. Quotation valid for 30 days from date of issue.',
+    terms: sourceData.terms || 'Payment due within 30 days. Quotation valid for 14 days from date of issue.',
     lineItems: initialLineItems,
   });
 
@@ -161,6 +178,11 @@ const CreateQuoteModal = ({
       serviceType: sourceData.serviceType || prev.serviceType,
       title: sourceData.title || prev.title,
       description: sourceData.description || prev.description,
+      validUntil: toDateInputValue(sourceData.validUntil) || prev.validUntil,
+      partsFulfilmentMode: sourceData.partsFulfilmentMode || prev.partsFulfilmentMode,
+      deliveryProvider: sourceData.deliveryProvider || prev.deliveryProvider,
+      partsProcurementCost: sourceData.partsProcurementCost ?? prev.partsProcurementCost,
+      thirdPartyDeliveryCost: sourceData.thirdPartyDeliveryCost ?? prev.thirdPartyDeliveryCost,
       notes: sourceData.notes || prev.notes,
       lineItems: sourceData?.lineItems?.length ? sourceData.lineItems : prev.lineItems,
     }));
@@ -220,6 +242,11 @@ const CreateQuoteModal = ({
       const unitPrice = getMarkedUpUnitPrice(item.unitPrice);
       return sum + (quantity * unitPrice);
     }, 0);
+    const partsProcurementCost = Number(formData.partsProcurementCost) || 0;
+    const thirdPartyDeliveryCost = formData.partsFulfilmentMode === 'thirdPartyDelivery'
+      ? (Number(formData.thirdPartyDeliveryCost) || 0)
+      : 0;
+    const estimatedPartsProfit = partsCost - partsProcurementCost - thirdPartyDeliveryCost;
 
     const labourHours = Number(formData.labourHours) || 0;
     const labourRate = Number(formData.labourRate) || 0;
@@ -242,6 +269,9 @@ const CreateQuoteModal = ({
 
     return {
       partsCost: partsCost.toFixed(2),
+      partsProcurementCost: partsProcurementCost.toFixed(2),
+      thirdPartyDeliveryCost: thirdPartyDeliveryCost.toFixed(2),
+      estimatedPartsProfit: estimatedPartsProfit.toFixed(2),
       labourCost: labourCost.toFixed(2),
       distanceTravelledKm: distanceTravelledKm.toFixed(2),
       travelRatePerKm: travelRatePerKm.toFixed(2),
@@ -280,6 +310,9 @@ const CreateQuoteModal = ({
 
     if (Number(formData.labourHours) < 0) return 'Labour hours cannot be negative.';
     if (Number(formData.labourRate) < 0) return 'Labour rate cannot be negative.';
+    if (Number(formData.partsProcurementCost) < 0) return 'Parts procurement cost cannot be negative.';
+    if (Number(formData.thirdPartyDeliveryCost) < 0) return 'Third-party delivery cost cannot be negative.';
+    if (Number(formData.travelRatePerKm) < 0) return 'Rate per km cannot be negative.';
     if (Number(formData.distanceTravelledKm) < 0) return 'Distance travelled cannot be negative.';
     if (Number(formData.timeTravelledCost) < 0) return 'Time travelled cost cannot be negative.';
     if (Number(formData.consumablesRate) < 0) return 'Consumables rate cannot be negative.';
@@ -311,11 +344,19 @@ const CreateQuoteModal = ({
           quantity: Number(item.quantity),
           unitPrice: getMarkedUpUnitPrice(item.unitPrice),
         })),
+        partsFulfilmentMode: formData.partsFulfilmentMode,
+        deliveryProvider: formData.partsFulfilmentMode === 'thirdPartyDelivery'
+          ? formData.deliveryProvider
+          : '',
+        partsProcurementCost: Number(formData.partsProcurementCost) || 0,
+        thirdPartyDeliveryCost: formData.partsFulfilmentMode === 'thirdPartyDelivery'
+          ? (Number(formData.thirdPartyDeliveryCost) || 0)
+          : 0,
         vatRate: Number(formData.vatRate) || 15,
         labourHours: Number(formData.labourHours) || 0,
         labourRate: Number(formData.labourRate) || 650,
         distanceTravelledKm: Number(formData.distanceTravelledKm) || 0,
-        travelRatePerKm: TRAVEL_RATE_PER_KM,
+        travelRatePerKm: Number(formData.travelRatePerKm) || TRAVEL_RATE_PER_KM,
         timeTravelledCost: Number(formData.timeTravelledCost) || 0,
         consumablesRate: Number(formData.consumablesRate) || 2,
         validUntil: formData.validUntil || undefined,
@@ -532,6 +573,56 @@ const CreateQuoteModal = ({
               <div className="rounded-lg border border-white/20 bg-white/5 p-4">
                 <h3 className="text-white font-semibold mb-3">Costing Inputs</h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* UI consistency rule: keep helper notes in the first block of the section, not under individual fields. */}
+                  <div className="md:col-span-5 rounded-md border border-white/15 bg-white/5 px-3 py-2">
+                    <p className="text-xs text-white/70">
+                      Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Parts Fulfilment</label>
+                    <select
+                      value={formData.partsFulfilmentMode}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, partsFulfilmentMode: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    >
+                      <option value="inHouseProcurement" className="text-black">In-house Procurement</option>
+                      <option value="thirdPartyDelivery" className="text-black">Third-party Delivery</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Parts Procurement Cost (R)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.partsProcurementCost}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, partsProcurementCost: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Delivery Provider</label>
+                    <input
+                      value={formData.deliveryProvider}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, deliveryProvider: event.target.value }))}
+                      placeholder="e.g. Picup"
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'}
+                    />
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Third-party Delivery Cost (R)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.thirdPartyDeliveryCost}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, thirdPartyDeliveryCost: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'}
+                    />
+                  </div>
                   <div>
                     <label className="glass-form-label text-white/90">Labour Hours</label>
                     <input
@@ -554,9 +645,6 @@ const CreateQuoteModal = ({
                       className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
                       disabled={!isSuperUser}
                     />
-                    {!isSuperUser ? (
-                      <p className="text-xs text-white/65 mt-1">Labour rate is controlled by superAdmin.</p>
-                    ) : null}
                   </div>
                   <div>
                     <label className="glass-form-label text-white/90">Distance Travelled (km)</label>
@@ -575,11 +663,11 @@ const CreateQuoteModal = ({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={TRAVEL_RATE_PER_KM}
+                      value={formData.travelRatePerKm}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, travelRatePerKm: event.target.value }))}
                       className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
-                      disabled
+                      disabled={!isSuperUser}
                     />
-                    <p className="text-xs text-white/65 mt-1">System default for now. Future release will source route data.</p>
                   </div>
                   <div>
                     <label className="glass-form-label text-white/90">Time Travelled Cost (R)</label>
@@ -630,6 +718,9 @@ const CreateQuoteModal = ({
                 </div>
                 <div className="rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white">
                   <p>Parts Cost: R {totals.partsCost}</p>
+                  <p>Parts Procurement Cost: R {totals.partsProcurementCost}</p>
+                  <p>Third-party Delivery Cost: R {totals.thirdPartyDeliveryCost}</p>
+                  <p className="font-semibold">Estimated Parts Profit: R {totals.estimatedPartsProfit}</p>
                   <p>Labour Cost: R {totals.labourCost}</p>
                   <p>Travel: ({totals.distanceTravelledKm} km x R {totals.travelRatePerKm}) + R {totals.timeTravelledCost}</p>
                   <p>Travelling Cost: R {totals.travellingCost}</p>

@@ -909,6 +909,23 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 18)
+- ✅ Enforced UI consistency rule for helper notes in quote modal sections
+   - Helper comments are placed in the first block of each section to prevent field-row misalignment
+   - Removed per-input helper text under costing fields
+- ✅ Refined travel input policy in quote modal and backend
+   - `distanceTravelledKm` remains the variable operational input (future Google API source)
+   - `ratePerKm` is controlled and only editable by superAdmin
+
+### 2026-03-19 (Session 17)
+- ✅ Added procurement and delivery profitability capture to quotation flow
+   - New quotation fields: `partsFulfilmentMode`, `deliveryProvider`, `partsProcurementCost`, `thirdPartyDeliveryCost`, `estimatedPartsProfit`
+   - UI now captures in-house vs third-party delivery mode (e.g. Picup) and related costs
+   - Backend computes `estimatedPartsProfit = partsCost - partsProcurementCost - thirdPartyDeliveryCost`
+- ✅ Set default quotation validity period to 14 days while keeping manual calendar override
+   - Frontend defaults `validUntil` to 14 days from today
+   - Backend and schema provide 14-day fallback defaults for robust create flows
+
 ### 2026-03-19 (Session 16)
 - ✅ Implemented function-based travel costing in quotation flow
    - Formula: `travellingCost = (distanceTravelledKm × 8.5) + timeTravelledCost`
