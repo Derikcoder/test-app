@@ -70,6 +70,7 @@ This is an enterprise-grade field service management application built with the 
 - 🏷️ Optional line-item part number field to improve future auto-quote generation from machine/parts history
 - 🧮 Separated costing concerns: Parts line items, Labour (hours × rate), Consumables (% of parts), and editable Travelling cost
 - 🔒 Labour rate is editable by superAdmin only; backend enforces default `R650/hour` for non-super users
+- 🔒 Travelling cost is editable by superAdmin only; backend enforces default `R8.50` for non-super users
 
 ### System Features
 - 📋 Enterprise-level logging middleware

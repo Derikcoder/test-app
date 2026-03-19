@@ -55,7 +55,8 @@ const calculateQuotationCosts = ({ lineItems = [], labourHours, labourRate, trav
   const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
   const requestedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
   const resolvedLabourRate = isSuperUser ? requestedLabourRate : 650;
-  const resolvedTravellingCost = Number.isFinite(Number(travellingCost)) ? Number(travellingCost) : 8.5;
+  const requestedTravellingCost = Number.isFinite(Number(travellingCost)) ? Number(travellingCost) : 8.5;
+  const resolvedTravellingCost = isSuperUser ? requestedTravellingCost : 8.5;
   const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
 
   const labourCost = Number((resolvedLabourHours * resolvedLabourRate).toFixed(2));

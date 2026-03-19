@@ -522,7 +522,11 @@ const CreateQuoteModal = ({
                       value={formData.travellingCost}
                       onChange={(event) => setFormData((prev) => ({ ...prev, travellingCost: event.target.value }))}
                       className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      disabled={!isSuperUser}
                     />
+                    {!isSuperUser ? (
+                      <p className="text-xs text-white/65 mt-1">Travelling cost is controlled by superAdmin.</p>
+                    ) : null}
                   </div>
                   <div>
                     <label className="glass-form-label text-white/90">Consumables Rate (%)</label>

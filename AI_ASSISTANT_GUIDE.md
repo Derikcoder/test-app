@@ -909,6 +909,11 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 14)
+- ✅ Enforced superAdmin-only control of travelling cost in quotation costing
+   - UI: travelling cost input disabled for non-super users in `client/src/components/CreateQuoteModal.jsx`
+   - Backend: `server/controllers/quotation.controller.js` now forces `travellingCost = 8.5` for non-super users
+
 ### 2026-03-19 (Session 13)
 - ✅ Enforced superAdmin-only control of labour rate in quotation costing
    - UI: labour rate input disabled for non-super users in `client/src/components/CreateQuoteModal.jsx`
