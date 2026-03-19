@@ -45,7 +45,7 @@ const createTransporter = async () => {
   }
   
   // For production: Use real SMTP credentials
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: process.env.SMTP_PORT || 587,
     secure: false, // true for 465, false for other ports
@@ -322,7 +322,57 @@ export const sendEmail = async ({ to, subject, html, text }) => {
   }
 };
 
+/**
+ * Send Quotation Email with PDF attachment
+ *
+ * @async
+ * @param {Object} options - Quotation email payload
+ * @param {string} options.to - Recipient email
+ * @param {string} options.customerName - Recipient display name
+ * @param {string} options.quotationNumber - Quotation number
+ * @param {string} options.shareUrl - Public share URL for PDF
+ * @param {Buffer} options.pdfBuffer - Generated PDF bytes
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendQuotationEmail = async ({ to, customerName, quotationNumber, shareUrl, pdfBuffer }) => {
+  if (!to) {
+    throw new Error('Customer email is required to send quotation');
+  }
+
+  const transporter = await createTransporter();
+
+  const mailOptions = {
+    from: `${process.env.FROM_NAME || 'Appatunid'} <${process.env.FROM_EMAIL || 'noreply@appatunid.com'}>`,
+    to,
+    subject: `Quotation ${quotationNumber} - Appatunid`,
+    html: `
+      <p>Hello ${customerName || 'Customer'},</p>
+      <p>Please find your quotation <strong>${quotationNumber}</strong> attached as a PDF.</p>
+      <p>You can also view/download it from this secure link:</p>
+      <p><a href="${shareUrl}">${shareUrl}</a></p>
+      <p>Kind regards,<br/>Appatunid Team</p>
+    `,
+    text: `Hello ${customerName || 'Customer'},\n\nYour quotation ${quotationNumber} is attached as a PDF.\nSecure link: ${shareUrl}\n\nKind regards,\nAppatunid Team`,
+    attachments: [
+      {
+        filename: `${quotationNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+    ],
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('📧 Quotation email sent!');
+    console.log('📬 Preview URL:', nodemailer.getTestMessageUrl(info));
+  }
+
+  return info;
+};
+
 // Export createTransporter for testing
 export { createTransporter };
 
-export default { sendPasswordResetEmail, sendEmail, createTransporter };
+export default { sendPasswordResetEmail, sendEmail, sendQuotationEmail, createTransporter };

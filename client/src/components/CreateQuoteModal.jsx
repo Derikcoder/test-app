@@ -107,7 +107,7 @@ const CreateQuoteModal = ({
   token,
   isSuperUser = false,
   sourceData = {},
-  triggerLabel = 'Create Quote',
+  triggerLabel = 'Submit Quote',
   triggerClassName = 'glass-btn-primary font-semibold py-2 px-4',
   onCreated,
 }) => {
@@ -115,9 +115,12 @@ const CreateQuoteModal = ({
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [sendSuccess, setSendSuccess] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('auto');
+  const [createdQuotationId, setCreatedQuotationId] = useState('');
 
   const canUseServiceCallShortcut = Boolean(sourceData?.serviceCallId && sourceData?.customerId);
   const machineTemplateSource = sourceData?.machineModelNumber || sourceData?.generatorMakeModel || '';
@@ -212,6 +215,8 @@ const CreateQuoteModal = ({
     setIsOpen(false);
     setError('');
     setSuccess('');
+    setSendSuccess('');
+    setCreatedQuotationId('');
   };
 
   const updateLineItem = (index, key, value) => {
@@ -347,6 +352,7 @@ const CreateQuoteModal = ({
     event.preventDefault();
     setError('');
     setSuccess('');
+    setSendSuccess('');
 
     const validationError = validate();
     if (validationError) {
@@ -413,12 +419,40 @@ const CreateQuoteModal = ({
         );
       }
 
-      setSuccess(`Quotation ${response.data?.quotationNumber || ''} created successfully.`.trim());
+      setCreatedQuotationId(response.data?._id || '');
+      setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted successfully.`.trim());
       if (onCreated) onCreated(response.data);
     } catch (submitError) {
-      setError(submitError?.response?.data?.message || 'Failed to create quotation.');
+      setError(submitError?.response?.data?.message || 'Failed to submit quotation.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSendQuote = async () => {
+    if (!createdQuotationId) return;
+
+    try {
+      setSending(true);
+      setError('');
+      setSendSuccess('');
+
+      const response = await api.post(
+        `/quotations/${createdQuotationId}/send`,
+        { channels: ['email', 'whatsapp'] },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const whatsappUrl = response?.data?.whatsappUrl;
+      if (whatsappUrl) {
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      }
+
+      setSendSuccess('Quote PDF sent to customer channels (email and WhatsApp where available).');
+    } catch (sendError) {
+      setError(sendError?.response?.data?.message || 'Failed to send quote to customer.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -436,12 +470,13 @@ const CreateQuoteModal = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="glass-card w-full max-w-4xl rounded-2xl border border-white/20 bg-slate-900/85 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="glass-heading-secondary">Create Quote</h2>
+              <h2 className="glass-heading-secondary">Submit Quote</h2>
               <button type="button" onClick={closeModal} className="text-white/80 hover:text-white">Close</button>
             </div>
 
             {error ? <div className="mb-4 rounded-lg border border-red-300/50 bg-red-500/20 px-4 py-2 text-white">{error}</div> : null}
             {success ? <div className="mb-4 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-4 py-2 text-white">{success}</div> : null}
+            {sendSuccess ? <div className="mb-4 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-4 py-2 text-white">{sendSuccess}</div> : null}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -815,7 +850,15 @@ const CreateQuoteModal = ({
                   disabled={submitting}
                   className="glass-btn-primary font-semibold py-2 px-5 disabled:opacity-60"
                 >
-                  {submitting ? 'Creating...' : 'Create Quote'}
+                  {submitting ? 'Submitting...' : 'Submit Quote'}
+                </button>
+                <button
+                  type="button"
+                  disabled={!createdQuotationId || sending}
+                  onClick={handleSendQuote}
+                  className="glass-btn-secondary font-semibold py-2 px-5 disabled:opacity-60"
+                >
+                  {sending ? 'Sending...' : 'Send PDF to Customer'}
                 </button>
                 <button
                   type="button"

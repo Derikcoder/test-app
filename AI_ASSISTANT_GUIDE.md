@@ -909,6 +909,16 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 21)
+- ✅ Added quote delivery pipeline (PDF + channels)
+   - Implemented real PDF generation for quotations using `pdfkit`
+   - Added send endpoint to deliver quote PDF via email and generate WhatsApp share link
+   - Added tokenized public PDF share route for customer access
+- ✅ Updated UX wording from “Create Quote” to “Submit Quote” in quote modal
+- ✅ Accepted quotation workflow now auto-converts to service jobcard
+   - On approval, quotation is converted and linked service call is created with `in-progress` status
+   - Supports operational visibility of accepted work as active jobs
+
 ### 2026-03-19 (Session 20)
 - ✅ Added first-visit assessment inclusion to call-out pricing logic
    - For first-time customer/site visits under call-out-floor conditions, first 15 minutes on-site assessment is included

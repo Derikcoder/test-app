@@ -137,7 +137,7 @@ main                 ← Production (stable, never touched directly)
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
 - `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.
-- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing inputs (`distanceTravelledKm`, superAdmin-controlled `ratePerKm`, `travelTimeMinutes`, manual `timeTravelledCost`), call-out floor rule support, first-site-visit 15-minute assessment inclusion, procurement/delivery profitability capture, 14-day default quotation validity with calendar override, and section-level helper-note placement to preserve row alignment.
+- `CreateQuoteModal.jsx`: Reusable quotation submission modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing inputs (`distanceTravelledKm`, superAdmin-controlled `ratePerKm`, `travelTimeMinutes`, manual `timeTravelledCost`), call-out floor rule support, first-site-visit 15-minute assessment inclusion, procurement/delivery profitability capture, 14-day default quotation validity with calendar override, section-level helper-note placement to preserve row alignment, and post-submit PDF send action (email/WhatsApp).
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
 ### Client Tests (`client/src/__tests__/`)
@@ -176,7 +176,7 @@ main                 ← Production (stable, never touched directly)
 - `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `quotation.controller.js`: Quotation creation, line items, status management, and create-time pricing calculation (subtotal/VAT/total).
-- `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, function-based travel-cost calculation (`distanceTravelledKm × ratePerKm + timeTravelledCost`) with call-out floor condition support, first-site-visit included assessment logic, procurement/delivery profit capture, and 14-day default validity fallback.
+- `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, function-based travel-cost calculation (`distanceTravelledKm × ratePerKm + timeTravelledCost`) with call-out floor condition support, first-site-visit included assessment logic, procurement/delivery profit capture, 14-day default validity fallback, PDF generation, quote delivery endpoints (email/WhatsApp), and auto-conversion of approved quotations into in-progress service jobcards.
 - `invoice.controller.js`: Invoice generation from quotations, payment tracking.
 - `equipment.controller.js`: Equipment/asset CRUD.
 
@@ -185,7 +185,7 @@ main                 ← Production (stable, never touched directly)
 - `agent.routes.js`: `/api/agents` — agent endpoints.
 - `customer.routes.js`: `/api/customers` — customer endpoints.
 - `serviceCall.routes.js`: `/api/service-calls` — service call endpoints.
-- `quotation.routes.js`: `/api/quotations` — quotation endpoints.
+- `quotation.routes.js`: `/api/quotations` — quotation endpoints including PDF generation, send/distribution, and tokenized share access.
 - `invoice.routes.js`: `/api/invoices` — invoice endpoints.
 - `equipment.routes.js`: `/api/equipment` — equipment endpoints.
 - `example.routes.js`: `/api/example` — example/template endpoints.

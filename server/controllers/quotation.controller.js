@@ -2,6 +2,9 @@ import Quotation from '../models/Quotation.model.js';
 import ServiceCall from '../models/ServiceCall.model.js';
 import Customer from '../models/Customer.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
+import PDFDocument from 'pdfkit';
+import crypto from 'crypto';
+import { sendQuotationEmail } from '../utils/emailService.js';
 
 const buildTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) => {
   const model = String(machineModelNumber).toLowerCase();
@@ -58,6 +61,71 @@ const getDefaultValidUntilDate = () => {
   const date = new Date();
   date.setDate(date.getDate() + 14);
   return date;
+};
+
+const buildShareToken = () => crypto.randomBytes(24).toString('hex');
+
+const getBaseUrl = (req) => {
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
+  return `${req.protocol}://${req.get('host')}`;
+};
+
+const normalizePhoneForWhatsApp = (phone) => {
+  if (!phone) return '';
+  const cleaned = String(phone).replace(/[^\d+]/g, '');
+  if (cleaned.startsWith('+')) return cleaned.slice(1);
+  if (cleaned.startsWith('0') && cleaned.length === 10) return `27${cleaned.slice(1)}`;
+  if (cleaned.startsWith('27')) return cleaned;
+  return cleaned;
+};
+
+const generateQuotationPdfBuffer = (quotation) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const chunks = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    doc.fontSize(18).text('Appatunid Quotation', { align: 'left' });
+    doc.moveDown(0.5);
+    doc.fontSize(11).text(`Quotation Number: ${quotation.quotationNumber}`);
+    doc.text(`Title: ${quotation.title || 'N/A'}`);
+    doc.text(`Status: ${quotation.status}`);
+    doc.text(`Valid Until: ${quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : 'N/A'}`);
+    doc.moveDown();
+
+    const customerName = quotation.customer?.businessName
+      || `${quotation.customer?.contactFirstName || ''} ${quotation.customer?.contactLastName || ''}`.trim()
+      || 'Customer';
+
+    doc.fontSize(12).text('Customer', { underline: true });
+    doc.fontSize(11).text(customerName);
+    if (quotation.customer?.email) doc.text(`Email: ${quotation.customer.email}`);
+    if (quotation.customer?.phoneNumber) doc.text(`Phone: ${quotation.customer.phoneNumber}`);
+    doc.moveDown();
+
+    doc.fontSize(12).text('Line Items', { underline: true });
+    doc.moveDown(0.5);
+
+    quotation.lineItems.forEach((item, idx) => {
+      doc.fontSize(10).text(`${idx + 1}. ${item.description}`);
+      doc.text(`   Qty: ${item.quantity} | Unit: R ${Number(item.unitPrice).toFixed(2)} | Total: R ${Number(item.total).toFixed(2)}`);
+      if (item.partNumber) {
+        doc.text(`   Part Number: ${item.partNumber}`);
+      }
+    });
+
+    doc.moveDown();
+    doc.fontSize(11).text(`Subtotal: R ${Number(quotation.subtotal || 0).toFixed(2)}`);
+    doc.text(`VAT (${Number(quotation.vatRate || 0).toFixed(2)}%): R ${Number(quotation.vatAmount || 0).toFixed(2)}`);
+    doc.fontSize(12).text(`Total: R ${Number(quotation.totalAmount || 0).toFixed(2)}`);
+
+    doc.moveDown();
+    doc.fontSize(10).text(quotation.terms || 'Terms available on request.');
+    doc.end();
+  });
 };
 
 const calculateQuotationCosts = ({
@@ -634,7 +702,7 @@ export const updateQuotation = async (req, res) => {
 // @access  Private
 export const updateQuotationStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, assignedAgent, scheduledDate, priority } = req.body;
     
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
@@ -675,13 +743,119 @@ export const updateQuotationStatus = async (req, res) => {
       quotation.rejectedDate = new Date();
     }
 
+    let createdJobcard = null;
+
+    // Accepted quote -> auto-create jobcard that appears in in-progress work.
+    if (status === 'approved' && !quotation.convertedToServiceCall) {
+      const serviceCall = await ServiceCall.create({
+        customer: quotation.customer,
+        siteId: quotation.siteId,
+        equipment: quotation.equipment,
+        quotation: quotation._id,
+        assignedAgent,
+        title: quotation.title,
+        description: quotation.description,
+        priority: priority || 'medium',
+        status: 'in-progress',
+        serviceType: quotation.serviceType || 'Scheduled Maintenance',
+        scheduledDate: scheduledDate || new Date(),
+        agentNotes: quotation.notes,
+        createdByRole: 'superadmin',
+        createdBy: req.user._id,
+      });
+
+      quotation.status = 'converted';
+      quotation.convertedToServiceCall = serviceCall._id;
+      quotation.convertedDate = new Date();
+      createdJobcard = serviceCall;
+    }
+
     const updatedQuotation = await quotation.save();
     await updatedQuotation.populate('customer', 'businessName contactFirstName contactLastName');
 
+    if (createdJobcard) {
+      await createdJobcard.populate('customer', 'businessName contactFirstName contactLastName');
+      await createdJobcard.populate('assignedAgent', 'firstName lastName employeeId');
+    }
+
     logInfo(`✅ Quotation status updated: ${updatedQuotation.quotationNumber} → ${status}`);
-    res.json(updatedQuotation);
+    res.json({
+      quotation: updatedQuotation,
+      jobcard: createdJobcard,
+    });
   } catch (error) {
     logError('Update quotation status error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Send quotation PDF via email and/or WhatsApp
+// @route   POST /api/quotations/:id/send
+// @access  Private
+export const sendQuotation = async (req, res) => {
+  try {
+    const { channels = ['email', 'whatsapp'] } = req.body || {};
+
+    const quotation = await Quotation.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    }).populate('customer');
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found' });
+    }
+
+    const selectedChannels = Array.isArray(channels) ? channels : ['email', 'whatsapp'];
+    const baseUrl = getBaseUrl(req);
+    if (!quotation.shareToken) {
+      quotation.shareToken = buildShareToken();
+    }
+    if (!quotation.shareTokenExpiresAt) {
+      quotation.shareTokenExpiresAt = quotation.validUntil || getDefaultValidUntilDate();
+    }
+
+    const shareUrl = `${baseUrl}/api/quotations/share/${quotation.shareToken}/pdf`;
+    const pdfBuffer = await generateQuotationPdfBuffer(quotation);
+
+    let emailSent = false;
+    let whatsappUrl = '';
+
+    if (selectedChannels.includes('email')) {
+      await sendQuotationEmail({
+        to: quotation.customer?.email,
+        customerName: quotation.customer?.businessName
+          || `${quotation.customer?.contactFirstName || ''} ${quotation.customer?.contactLastName || ''}`.trim(),
+        quotationNumber: quotation.quotationNumber,
+        shareUrl,
+        pdfBuffer,
+      });
+      emailSent = true;
+    }
+
+    if (selectedChannels.includes('whatsapp')) {
+      const phone = normalizePhoneForWhatsApp(quotation.customer?.phoneNumber || quotation.customer?.alternatePhone || '');
+      if (phone) {
+        const message = `Quotation ${quotation.quotationNumber}\nView PDF: ${shareUrl}`;
+        whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        quotation.lastWhatsAppLink = whatsappUrl;
+      }
+    }
+
+    quotation.status = quotation.status === 'draft' ? 'sent' : quotation.status;
+    quotation.sentDate = new Date();
+    quotation.lastSentChannels = selectedChannels;
+    await quotation.save();
+
+    logInfo(`✅ Quotation sent: ${quotation.quotationNumber} via ${selectedChannels.join(', ')}`);
+    res.json({
+      message: 'Quotation sent successfully',
+      quotationNumber: quotation.quotationNumber,
+      emailSent,
+      whatsappUrl,
+      shareUrl,
+    });
+  } catch (error) {
+    logError('Send quotation error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -807,27 +981,43 @@ export const generateQuotationPDF = async (req, res) => {
       return res.status(404).json({ message: 'Quotation not found' });
     }
 
-    // TODO: Implement PDF generation using a library like pdfkit or puppeteer
-    // For now, return the quotation data that would be used in PDF generation
-    
-    logInfo(`📄 PDF generation requested for quotation: ${quotation.quotationNumber}`);
-    
-    res.json({
-      message: 'PDF generation feature coming soon',
-      quotation: {
-        quotationNumber: quotation.quotationNumber,
-        title: quotation.title,
-        customer: quotation.customer,
-        lineItems: quotation.lineItems,
-        subtotal: quotation.subtotal,
-        vatAmount: quotation.vatAmount,
-        totalAmount: quotation.totalAmount,
-        validUntil: quotation.validUntil,
-        terms: quotation.terms
-      }
-    });
+    const pdfBuffer = await generateQuotationPdfBuffer(quotation);
+
+    logInfo(`📄 PDF generated for quotation: ${quotation.quotationNumber}`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${quotation.quotationNumber}.pdf"`);
+    res.send(pdfBuffer);
   } catch (error) {
     logError('Generate quotation PDF error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Public quotation PDF by share token
+// @route   GET /api/quotations/share/:token/pdf
+// @access  Public
+export const generateSharedQuotationPDF = async (req, res) => {
+  try {
+    const quotation = await Quotation.findOne({
+      shareToken: req.params.token,
+    })
+      .populate('customer')
+      .populate('equipment');
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation link not found' });
+    }
+
+    if (quotation.shareTokenExpiresAt && quotation.shareTokenExpiresAt < new Date()) {
+      return res.status(410).json({ message: 'Quotation link expired' });
+    }
+
+    const pdfBuffer = await generateQuotationPdfBuffer(quotation);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${quotation.quotationNumber}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    logError('Generate shared quotation PDF error:', error);
     res.status(500).json({ message: error.message });
   }
 };

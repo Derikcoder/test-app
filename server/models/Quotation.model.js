@@ -276,6 +276,26 @@ const quotationSchema = new mongoose.Schema(
     sentDate: {
       type: Date,
     },
+    /** Public share token used for customer PDF links (WhatsApp/email) */
+    shareToken: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    /** Optional expiry for share token links */
+    shareTokenExpiresAt: {
+      type: Date,
+    },
+    /** Delivery channels used for latest send action */
+    lastSentChannels: {
+      type: [String],
+      default: [],
+    },
+    /** Last generated WhatsApp delivery link (if applicable) */
+    lastWhatsAppLink: {
+      type: String,
+      trim: true,
+    },
     /** Date quotation was approved by customer */
     approvedDate: {
       type: Date,
@@ -420,6 +440,10 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'validUntil',
   'status',
   'sentDate',
+  'shareToken',
+  'shareTokenExpiresAt',
+  'lastSentChannels',
+  'lastWhatsAppLink',
   'approvedDate',
   'rejectedDate',
   'rejectionReason',
