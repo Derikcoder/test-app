@@ -452,6 +452,12 @@ const CreateQuoteModal = ({
                   &lt;R1000 = 50%, &lt;R2000 = 40%, &lt;R3000 = 30%, &lt;R4000 = 25%, &lt;R5000 = 20%, &gt;=R5000 = 20%. Minimum margin floor is 20%.
                 </p>
 
+                <div className="rounded-md border border-white/15 bg-white/5 px-3 py-2">
+                  <p className="text-xs text-white/70">
+                    Profit margin policy note: tiered markup is applied automatically and never below 20%.
+                  </p>
+                </div>
+
                 {formData.lineItems.map((item, index) => (
                   <div key={`line-item-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
                     <div className="md:col-span-3">
@@ -494,9 +500,6 @@ const CreateQuoteModal = ({
                         className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
                         required
                       />
-                      <p className="text-xs text-white/65 mt-1">
-                        Margin {Math.round(getPartMarginRate(item.unitPrice) * 100)}% to Sell: R {getMarkedUpUnitPrice(item.unitPrice).toFixed(2)}
-                      </p>
                     </div>
                     <div className="md:col-span-1">
                       <button
