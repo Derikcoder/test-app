@@ -110,6 +110,22 @@ const bookingRequestSchema = new mongoose.Schema({
     enum: ['first-service-call', 'existing-customer'],
     default: 'first-service-call',
   },
+  servicesInProgress: {
+    type: String,
+    trim: true,
+  },
+  progressStatus: {
+    type: String,
+    trim: true,
+  },
+  quotationHistory: {
+    type: String,
+    trim: true,
+  },
+  invoicingHistory: {
+    type: String,
+    trim: true,
+  },
   dateOfLastService: {
     type: Date,
   },

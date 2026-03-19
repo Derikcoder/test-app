@@ -51,6 +51,10 @@ const ServiceCalls = () => {
   serviceType: 'Preventive Maintenance',
   urgency: 'high',
   serviceHistoryType: 'first-service-call',
+  servicesInProgress: '',
+  progressStatus: 'N/A',
+  quotationHistory: '',
+  invoicingHistory: '',
   dateOfLastService: '',
   dateOfPreferredServiceCall: '',
   outageStart: '',
@@ -179,6 +183,8 @@ const ServiceCalls = () => {
   }
   if (formData.serviceHistoryType === 'existing-customer') {
    if (!formData.dateOfLastService) return 'Date of last service is required for existing customers.';
+    if (!formData.servicesInProgress.trim()) return 'Services in progress is required for existing customers.';
+    if (!formData.progressStatus.trim()) return 'Progress status is required for existing customers.';
    if (!formData.dateOfPreferredServiceCall) return 'Preferred service call date is required.';
   }
   if (!formData.outageStart || !formData.outageEnd) return 'Outage window is required.';
@@ -266,6 +272,10 @@ const ServiceCalls = () => {
        `Capacity (kVA): ${formData.generatorCapacityKva}`,
       `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
       `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
+      `Services in Progress: ${formData.servicesInProgress || 'N/A'}`,
+      `Progress Status: ${formData.progressStatus || 'N/A'}`,
+      `Quotation History: ${formData.quotationHistory || 'N/A'}`,
+      `Invoicing History: ${formData.invoicingHistory || 'N/A'}`,
       `Preferred Service Call Date: ${formData.dateOfPreferredServiceCall}`,
        `Service Type: ${formData.serviceType}`,
        `Urgency: ${formData.urgency}`,
@@ -288,6 +298,10 @@ const ServiceCalls = () => {
        `Capacity (kVA): ${formData.generatorCapacityKva}`,
       `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
       `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
+      `Services in Progress: ${formData.servicesInProgress || 'N/A'}`,
+      `Progress Status: ${formData.progressStatus || 'N/A'}`,
+      `Quotation History: ${formData.quotationHistory || 'N/A'}`,
+      `Invoicing History: ${formData.invoicingHistory || 'N/A'}`,
       `Preferred Service Call Date: ${formData.dateOfPreferredServiceCall}`,
        `Service Type: ${formData.serviceType}`,
        `Urgency: ${formData.urgency}`,
@@ -329,6 +343,10 @@ const ServiceCalls = () => {
     preferredDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
     dateOfLastService: formData.dateOfLastService ? new Date(formData.dateOfLastService).toISOString() : null,
     serviceHistoryType: formData.serviceHistoryType,
+    servicesInProgress: formData.servicesInProgress,
+    progressStatus: formData.progressStatus,
+    quotationHistory: formData.quotationHistory,
+    invoicingHistory: formData.invoicingHistory,
     preferredTimeWindow: formData.preferredTimeWindow,
     additionalNotes: formData.notes,
    },
@@ -604,6 +622,45 @@ const ServiceCalls = () => {
             ? `Date of Last Service was auto-filled from ${lastServiceAutofillMeta.callNumber} (stored in database). You can adjust it if needed.`
             : 'Date of Last Service can auto-fill from your previous service records in the database when a matching contact email is found.'}
           </p>
+          <textarea
+           name="servicesInProgress"
+           value={formData.servicesInProgress}
+           onChange={handleInputChange}
+           rows="3"
+           placeholder="Services in Progress (required for existing customers)"
+           className="md:col-span-2 w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+           required
+          />
+          <select
+           name="progressStatus"
+           value={formData.progressStatus}
+           onChange={handleInputChange}
+           className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+           required
+          >
+           <option value="N/A" className="text-black">N/A</option>
+           <option value="Not Started" className="text-black">Not Started</option>
+           <option value="In Progress" className="text-black">In Progress</option>
+           <option value="Awaiting Quotation" className="text-black">Awaiting Quotation</option>
+           <option value="Awaiting Approval" className="text-black">Awaiting Approval</option>
+           <option value="Quoted" className="text-black">Quoted</option>
+           <option value="Invoiced" className="text-black">Invoiced</option>
+           <option value="Completed" className="text-black">Completed</option>
+          </select>
+          <input
+           name="quotationHistory"
+           value={formData.quotationHistory}
+           onChange={handleInputChange}
+           placeholder="Quotation History (optional references or notes)"
+           className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+          />
+          <input
+           name="invoicingHistory"
+           value={formData.invoicingHistory}
+           onChange={handleInputChange}
+           placeholder="Invoicing History (optional references or notes)"
+           className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+          />
          </div>
         )}
        </section>

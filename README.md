@@ -54,6 +54,8 @@ This is an enterprise-grade field service management application built with the 
 - 📝 Detailed service notes and history
 - 🧾 Service history classification (first service call vs existing customer)
 - 🗓️ Existing customer last-service date support with auto-fill by contact email
+- 🧭 Existing-customer lifecycle capture (services in progress + progress status)
+- 🧾 Quotation and invoicing history capture in structured booking request
 
 ### System Features
 - 📋 Enterprise-level logging middleware
@@ -366,6 +368,10 @@ http://localhost:5000/api
 Service call creation supports structured booking history fields in `bookingRequest`:
 - `serviceHistoryType`: `first-service-call` or `existing-customer`
 - `dateOfLastService`: required for existing-customer flow
+- `servicesInProgress`: active service work context for existing-customer flow
+- `progressStatus`: current progress state of in-flight service work
+- `quotationHistory`: quotation references/history notes
+- `invoicingHistory`: invoice references/history notes
 - `preferredDate`: preferred service call date
 
 ### System Endpoints

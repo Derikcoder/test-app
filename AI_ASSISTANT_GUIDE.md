@@ -909,6 +909,17 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 5)
+- ✅ Extended service booking lifecycle capture for existing-customer flow
+   - Added `servicesInProgress`, `progressStatus`, `quotationHistory`, and `invoicingHistory` to `bookingRequest` in `server/models/ServiceCall.model.js`
+   - Updated `client/src/components/ServiceCalls.jsx` to:
+      - Capture lifecycle fields in the existing-customer path
+      - Validate required lifecycle fields for existing customers
+      - Persist lifecycle fields in the submitted `bookingRequest` payload
+      - Include lifecycle fields in booking summary/description text
+- ✅ Stabilized Google Maps script loading in customer registration
+   - Refined script initialization in `client/src/components/RegisterNewCustomer.jsx` to avoid duplicate custom element definition warnings (`gmp-internal-* already defined`)
+
 ### 2026-03-19 (Session 4)
 - ✅ Enhanced service call booking flow with service history support
     - Added `serviceHistoryType` and `dateOfLastService` to `bookingRequest` schema in `server/models/ServiceCall.model.js`
