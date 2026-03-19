@@ -17,6 +17,11 @@ import mongoose from 'mongoose';
  * Includes description, quantity, pricing, and totals.
  */
 const lineItemSchema = new mongoose.Schema({
+  /** Optional part number / SKU */
+  partNumber: {
+    type: String,
+    trim: true,
+  },
   /** Item/service description */
   description: {
     type: String,

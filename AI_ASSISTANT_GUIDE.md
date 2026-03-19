@@ -909,6 +909,12 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 11)
+- ✅ Added optional line-item part number support for quotations
+   - Added `partNumber` to quotation line-item schema in `server/models/Quotation.model.js`
+   - Updated `client/src/components/CreateQuoteModal.jsx` to capture part number before description (optional)
+   - Preserved non-required behavior to support rare no-part-number items
+
 ### 2026-03-19 (Session 10)
 - ✅ Added explicit quote template selector in `client/src/components/CreateQuoteModal.jsx`
    - Template options: Auto, Perkins, Cummins, Emergency Repair, Generic

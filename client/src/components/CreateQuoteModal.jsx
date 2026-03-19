@@ -83,7 +83,7 @@ const CreateQuoteModal = ({
   const initialLineItems = useMemo(
     () => sourceData?.lineItems?.length
       ? sourceData.lineItems
-      : [{ description: sourceData?.serviceType || 'Service Item', quantity: 1, unitPrice: 0 }],
+      : [{ partNumber: '', description: sourceData?.serviceType || 'Service Item', quantity: 1, unitPrice: 0 }],
     [sourceData]
   );
 
@@ -160,7 +160,7 @@ const CreateQuoteModal = ({
       const nextItems = [...prev.lineItems];
       nextItems[index] = {
         ...nextItems[index],
-        [key]: key === 'description' ? value : Number(value),
+        [key]: (key === 'description' || key === 'partNumber') ? value : Number(value),
       };
       return { ...prev, lineItems: nextItems };
     });
@@ -169,7 +169,7 @@ const CreateQuoteModal = ({
   const addLineItem = () => {
     setFormData((prev) => ({
       ...prev,
-      lineItems: [...prev.lineItems, { description: '', quantity: 1, unitPrice: 0 }],
+      lineItems: [...prev.lineItems, { partNumber: '', description: '', quantity: 1, unitPrice: 0 }],
     }));
   };
 
@@ -237,6 +237,7 @@ const CreateQuoteModal = ({
         title: formData.title,
         description: formData.description,
         lineItems: formData.lineItems.map((item) => ({
+          partNumber: item.partNumber?.trim() || undefined,
           description: item.description,
           quantity: Number(item.quantity),
           unitPrice: Number(item.unitPrice),
@@ -386,7 +387,16 @@ const CreateQuoteModal = ({
 
                 {formData.lineItems.map((item, index) => (
                   <div key={`line-item-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
-                    <div className="md:col-span-6">
+                    <div className="md:col-span-3">
+                      <label className="glass-form-label text-white/80">Part Number (Optional)</label>
+                      <input
+                        value={item.partNumber || ''}
+                        onChange={(event) => updateLineItem(index, 'partNumber', event.target.value)}
+                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        placeholder="e.g. A-7003"
+                      />
+                    </div>
+                    <div className="md:col-span-4">
                       <label className="glass-form-label text-white/80">Description</label>
                       <input
                         value={item.description}
@@ -406,7 +416,7 @@ const CreateQuoteModal = ({
                         required
                       />
                     </div>
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-2">
                       <label className="glass-form-label text-white/80">Unit Price</label>
                       <input
                         type="number"
