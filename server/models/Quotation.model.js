@@ -118,6 +118,49 @@ const quotationSchema = new mongoose.Schema(
         message: 'Quotation must have at least one line item',
       },
     },
+    /** Total parts cost (sum of line items) */
+    partsCost: {
+      type: Number,
+      min: [0, 'Parts cost cannot be negative'],
+      default: 0,
+    },
+    /** Labour hours used for quote costing */
+    labourHours: {
+      type: Number,
+      min: [0, 'Labour hours cannot be negative'],
+      default: 0,
+    },
+    /** Labour rate per hour (used in wage calculation) */
+    labourRate: {
+      type: Number,
+      min: [0, 'Labour rate cannot be negative'],
+      default: 650,
+    },
+    /** Labour cost total (labourHours × labourRate) */
+    labourCost: {
+      type: Number,
+      min: [0, 'Labour cost cannot be negative'],
+      default: 0,
+    },
+    /** Consumables rate percentage applied to parts cost */
+    consumablesRate: {
+      type: Number,
+      min: [0, 'Consumables rate cannot be negative'],
+      max: [100, 'Consumables rate cannot exceed 100%'],
+      default: 2,
+    },
+    /** Consumables cost total */
+    consumablesCost: {
+      type: Number,
+      min: [0, 'Consumables cost cannot be negative'],
+      default: 0,
+    },
+    /** Travel cost charge */
+    travellingCost: {
+      type: Number,
+      min: [0, 'Travelling cost cannot be negative'],
+      default: 8.5,
+    },
     /** Subtotal amount (sum of all line items, before VAT) */
     subtotal: {
       type: Number,
@@ -276,6 +319,13 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'title',
   'description',
   'lineItems',
+  'partsCost',
+  'labourHours',
+  'labourRate',
+  'labourCost',
+  'consumablesRate',
+  'consumablesCost',
+  'travellingCost',
   'subtotal',
   'vatAmount',
   'totalAmount',

@@ -38,6 +38,50 @@ const buildTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) =
   ];
 };
 
+const normalizePartLineItems = (lineItems = []) => {
+  return lineItems.map((item) => ({
+    ...item,
+    partNumber: item.partNumber ? String(item.partNumber).trim() : undefined,
+    quantity: Number(item.quantity),
+    unitPrice: Number(item.unitPrice),
+    total: Number(item.quantity) * Number(item.unitPrice),
+  }));
+};
+
+const calculateQuotationCosts = ({ lineItems = [], labourHours, labourRate, travellingCost, consumablesRate }) => {
+  const normalizedLineItems = normalizePartLineItems(lineItems);
+
+  const partsCost = normalizedLineItems.reduce((sum, item) => sum + item.total, 0);
+  const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
+  const resolvedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
+  const resolvedTravellingCost = Number.isFinite(Number(travellingCost)) ? Number(travellingCost) : 8.5;
+  const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
+
+  const labourCost = Number((resolvedLabourHours * resolvedLabourRate).toFixed(2));
+
+  // Pricing rule (kept explicit for policy visibility):
+  // if parts cost > 50% of labour cost => consumables = rate% of parts cost
+  // if parts cost < 50% of labour cost => consumables = rate% of parts cost
+  const partsVsLabourThreshold = labourCost * 0.5;
+  const consumablesCost = partsCost > partsVsLabourThreshold
+    ? Number((partsCost * (resolvedConsumablesRate / 100)).toFixed(2))
+    : Number((partsCost * (resolvedConsumablesRate / 100)).toFixed(2));
+
+  const subtotal = Number((partsCost + labourCost + consumablesCost + resolvedTravellingCost).toFixed(2));
+
+  return {
+    normalizedLineItems,
+    partsCost,
+    labourHours: resolvedLabourHours,
+    labourRate: resolvedLabourRate,
+    labourCost,
+    consumablesRate: resolvedConsumablesRate,
+    consumablesCost,
+    travellingCost: resolvedTravellingCost,
+    subtotal,
+  };
+};
+
 /**
  * @file quotation.controller.js
  * @description Quotation/estimate management controller
@@ -112,6 +156,10 @@ export const createQuotation = async (req, res) => {
       title,
       description,
       lineItems,
+      labourHours,
+      labourRate,
+      travellingCost,
+      consumablesRate,
       vatRate,
       validUntil,
       terms,
@@ -154,16 +202,17 @@ export const createQuotation = async (req, res) => {
       });
     }
 
-    // Calculate line item totals
-    const calculatedLineItems = lineItems.map(item => ({
-      ...item,
-      total: item.quantity * item.unitPrice
-    }));
+    const costing = calculateQuotationCosts({
+      lineItems,
+      labourHours,
+      labourRate,
+      travellingCost,
+      consumablesRate,
+    });
 
-    const calculatedSubtotal = calculatedLineItems.reduce((sum, item) => sum + item.total, 0);
     const resolvedVatRate = Number.isFinite(Number(vatRate)) ? Number(vatRate) : 15;
-    const calculatedVatAmount = Number((calculatedSubtotal * (resolvedVatRate / 100)).toFixed(2));
-    const calculatedTotalAmount = Number((calculatedSubtotal + calculatedVatAmount).toFixed(2));
+    const calculatedVatAmount = Number((costing.subtotal * (resolvedVatRate / 100)).toFixed(2));
+    const calculatedTotalAmount = Number((costing.subtotal + calculatedVatAmount).toFixed(2));
 
     const quotation = await Quotation.create({
       customer,
@@ -172,8 +221,15 @@ export const createQuotation = async (req, res) => {
       serviceType,
       title,
       description,
-      lineItems: calculatedLineItems,
-      subtotal: calculatedSubtotal,
+      lineItems: costing.normalizedLineItems,
+      partsCost: costing.partsCost,
+      labourHours: costing.labourHours,
+      labourRate: costing.labourRate,
+      labourCost: costing.labourCost,
+      consumablesRate: costing.consumablesRate,
+      consumablesCost: costing.consumablesCost,
+      travellingCost: costing.travellingCost,
+      subtotal: costing.subtotal,
       vatRate: resolvedVatRate,
       vatAmount: calculatedVatAmount,
       totalAmount: calculatedTotalAmount,
@@ -208,6 +264,10 @@ export const createQuotationFromServiceCall = async (req, res) => {
       description,
       serviceType,
       lineItems,
+      labourHours,
+      labourRate,
+      travellingCost,
+      consumablesRate,
       vatRate,
       validUntil,
       terms,
@@ -257,15 +317,17 @@ export const createQuotationFromServiceCall = async (req, res) => {
       });
     }
 
-    const calculatedLineItems = requestedLineItems.map((item) => ({
-      ...item,
-      total: Number(item.quantity) * Number(item.unitPrice),
-    }));
+    const costing = calculateQuotationCosts({
+      lineItems: requestedLineItems,
+      labourHours,
+      labourRate,
+      travellingCost,
+      consumablesRate,
+    });
 
-    const calculatedSubtotal = calculatedLineItems.reduce((sum, item) => sum + item.total, 0);
     const resolvedVatRate = Number.isFinite(Number(vatRate)) ? Number(vatRate) : 15;
-    const calculatedVatAmount = Number((calculatedSubtotal * (resolvedVatRate / 100)).toFixed(2));
-    const calculatedTotalAmount = Number((calculatedSubtotal + calculatedVatAmount).toFixed(2));
+    const calculatedVatAmount = Number((costing.subtotal * (resolvedVatRate / 100)).toFixed(2));
+    const calculatedTotalAmount = Number((costing.subtotal + calculatedVatAmount).toFixed(2));
 
     const quotation = await Quotation.create({
       customer: serviceCall.customer,
@@ -274,8 +336,15 @@ export const createQuotationFromServiceCall = async (req, res) => {
       serviceType: resolvedServiceType,
       title: title || `Quotation for ${serviceCall.callNumber || 'Service Call'}`,
       description: description || serviceCall.description || '',
-      lineItems: calculatedLineItems,
-      subtotal: calculatedSubtotal,
+      lineItems: costing.normalizedLineItems,
+      partsCost: costing.partsCost,
+      labourHours: costing.labourHours,
+      labourRate: costing.labourRate,
+      labourCost: costing.labourCost,
+      consumablesRate: costing.consumablesRate,
+      consumablesCost: costing.consumablesCost,
+      travellingCost: costing.travellingCost,
+      subtotal: costing.subtotal,
       vatRate: resolvedVatRate,
       vatAmount: calculatedVatAmount,
       totalAmount: calculatedTotalAmount,
@@ -337,20 +406,46 @@ export const updateQuotation = async (req, res) => {
       });
     }
 
-    // Recalculate line item totals if line items are being updated
-    if (req.body.lineItems) {
-      req.body.lineItems = req.body.lineItems.map(item => ({
-        ...item,
-        total: item.quantity * item.unitPrice
-      }));
-    }
-
     // Update editable fields
     Quotation.EDITABLE_FIELDS.forEach(field => {
       if (req.body[field] !== undefined) {
         quotation[field] = req.body[field];
       }
     });
+
+    const shouldRecalculateFinancials = [
+      'lineItems',
+      'labourHours',
+      'labourRate',
+      'travellingCost',
+      'consumablesRate',
+      'vatRate',
+    ].some((field) => req.body[field] !== undefined);
+
+    if (shouldRecalculateFinancials) {
+      const costing = calculateQuotationCosts({
+        lineItems: quotation.lineItems,
+        labourHours: quotation.labourHours,
+        labourRate: quotation.labourRate,
+        travellingCost: quotation.travellingCost,
+        consumablesRate: quotation.consumablesRate,
+      });
+
+      quotation.lineItems = costing.normalizedLineItems;
+      quotation.partsCost = costing.partsCost;
+      quotation.labourHours = costing.labourHours;
+      quotation.labourRate = costing.labourRate;
+      quotation.labourCost = costing.labourCost;
+      quotation.consumablesRate = costing.consumablesRate;
+      quotation.consumablesCost = costing.consumablesCost;
+      quotation.travellingCost = costing.travellingCost;
+      quotation.subtotal = costing.subtotal;
+
+      const resolvedVatRate = Number.isFinite(Number(quotation.vatRate)) ? Number(quotation.vatRate) : 15;
+      quotation.vatRate = resolvedVatRate;
+      quotation.vatAmount = Number((quotation.subtotal * (resolvedVatRate / 100)).toFixed(2));
+      quotation.totalAmount = Number((quotation.subtotal + quotation.vatAmount).toFixed(2));
+    }
 
     const updatedQuotation = await quotation.save();
     await updatedQuotation.populate('customer', 'businessName contactFirstName contactLastName');

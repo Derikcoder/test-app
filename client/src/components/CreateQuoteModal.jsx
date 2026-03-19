@@ -96,6 +96,10 @@ const CreateQuoteModal = ({
     description: sourceData.description || '',
     validUntil: sourceData.validUntil || '',
     vatRate: sourceData.vatRate ?? 15,
+    labourHours: sourceData.labourHours ?? 0,
+    labourRate: sourceData.labourRate ?? 650,
+    travellingCost: sourceData.travellingCost ?? 8.5,
+    consumablesRate: sourceData.consumablesRate ?? 2,
     notes: sourceData.notes || '',
     terms: sourceData.terms || 'Payment due within 30 days. Quotation valid for 30 days from date of issue.',
     lineItems: initialLineItems,
@@ -184,22 +188,46 @@ const CreateQuoteModal = ({
   };
 
   const totals = useMemo(() => {
-    const subtotal = formData.lineItems.reduce((sum, item) => {
+    const partsCost = formData.lineItems.reduce((sum, item) => {
       const quantity = Number(item.quantity) || 0;
       const unitPrice = Number(item.unitPrice) || 0;
       return sum + (quantity * unitPrice);
     }, 0);
+
+    const labourHours = Number(formData.labourHours) || 0;
+    const labourRate = Number(formData.labourRate) || 0;
+    const travellingCost = Number(formData.travellingCost) || 0;
+    const consumablesRate = Number(formData.consumablesRate) || 0;
+
+    const labourCost = labourHours * labourRate;
+    const halfLabourThreshold = labourCost * 0.5;
+    const consumablesCost = partsCost > halfLabourThreshold
+      ? partsCost * (consumablesRate / 100)
+      : partsCost * (consumablesRate / 100);
+    const subtotal = partsCost + labourCost + travellingCost + consumablesCost;
 
     const vatRate = Number(formData.vatRate) || 0;
     const vatAmount = subtotal * (vatRate / 100);
     const totalAmount = subtotal + vatAmount;
 
     return {
+      partsCost: partsCost.toFixed(2),
+      labourCost: labourCost.toFixed(2),
+      travellingCost: travellingCost.toFixed(2),
+      consumablesCost: consumablesCost.toFixed(2),
+      halfLabourThreshold: halfLabourThreshold.toFixed(2),
       subtotal: subtotal.toFixed(2),
       vatAmount: vatAmount.toFixed(2),
       totalAmount: totalAmount.toFixed(2),
     };
-  }, [formData.lineItems, formData.vatRate]);
+  }, [
+    formData.lineItems,
+    formData.labourHours,
+    formData.labourRate,
+    formData.travellingCost,
+    formData.consumablesRate,
+    formData.vatRate,
+  ]);
 
   const validate = () => {
     if (!formData.customerId && !canUseServiceCallShortcut) return 'Please select a customer.';
@@ -214,6 +242,11 @@ const CreateQuoteModal = ({
     if (hasInvalid) {
       return 'Each line item must include description, quantity > 0, and unit price >= 0.';
     }
+
+    if (Number(formData.labourHours) < 0) return 'Labour hours cannot be negative.';
+    if (Number(formData.labourRate) < 0) return 'Labour rate cannot be negative.';
+    if (Number(formData.travellingCost) < 0) return 'Travelling cost cannot be negative.';
+    if (Number(formData.consumablesRate) < 0) return 'Consumables rate cannot be negative.';
 
     return null;
   };
@@ -243,6 +276,10 @@ const CreateQuoteModal = ({
           unitPrice: Number(item.unitPrice),
         })),
         vatRate: Number(formData.vatRate) || 15,
+        labourHours: Number(formData.labourHours) || 0,
+        labourRate: Number(formData.labourRate) || 650,
+        travellingCost: Number(formData.travellingCost) || 8.5,
+        consumablesRate: Number(formData.consumablesRate) || 2,
         validUntil: formData.validUntil || undefined,
         notes: formData.notes,
         terms: formData.terms,
@@ -379,11 +416,15 @@ const CreateQuoteModal = ({
 
               <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-white font-semibold">Line Items</h3>
+                  <h3 className="text-white font-semibold">Parts</h3>
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
                   </div>
                 </div>
+
+                <p className="text-xs text-white/70">
+                  Add each part as a separate line item. Labour, consumables, and travel are calculated separately below.
+                </p>
 
                 {formData.lineItems.map((item, index) => (
                   <div key={`line-item-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
@@ -442,6 +483,56 @@ const CreateQuoteModal = ({
                 ))}
               </div>
 
+              <div className="rounded-lg border border-white/20 bg-white/5 p-4">
+                <h3 className="text-white font-semibold mb-3">Costing Inputs</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="glass-form-label text-white/90">Labour Hours</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={formData.labourHours}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, labourHours: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Labour Rate (R/hour)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.labourRate}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, labourRate: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Travelling Cost (R)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.travellingCost}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, travellingCost: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    />
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Consumables Rate (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.consumablesRate}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, consumablesRate: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="glass-form-label text-white/90">Valid Until</label>
@@ -465,7 +556,12 @@ const CreateQuoteModal = ({
                   />
                 </div>
                 <div className="rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white">
-                  <p>Subtotal: R {totals.subtotal}</p>
+                  <p>Parts Cost: R {totals.partsCost}</p>
+                  <p>Labour Cost: R {totals.labourCost}</p>
+                  <p>Travelling Cost: R {totals.travellingCost}</p>
+                  <p>Consumables Cost: R {totals.consumablesCost}</p>
+                  <p className="text-xs text-white/70 mt-1">Rule reference: 50% labour threshold = R {totals.halfLabourThreshold}</p>
+                  <p className="mt-1">Subtotal: R {totals.subtotal}</p>
                   <p>VAT: R {totals.vatAmount}</p>
                   <p className="font-semibold text-yellow-200">Total: R {totals.totalAmount}</p>
                 </div>

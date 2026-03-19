@@ -68,6 +68,7 @@ This is an enterprise-grade field service management application built with the 
 - ⚡ Shortcut API to create quote from service call context: `POST /api/quotations/from-service-call/:serviceCallId`
 - 🎛️ Explicit template selector in quote modal: Auto, Perkins, Cummins, Emergency Repair, Generic
 - 🏷️ Optional line-item part number field to improve future auto-quote generation from machine/parts history
+- 🧮 Separated costing concerns: Parts line items, Labour (hours × rate), Consumables (% of parts), and editable Travelling cost
 
 ### System Features
 - 📋 Enterprise-level logging middleware

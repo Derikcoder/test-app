@@ -909,6 +909,14 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 12)
+- ✅ Separated quotation costing concerns across UI and backend
+   - Parts remain line items (with optional part number)
+   - Labour cost captured separately (`labourHours` × `labourRate`)
+   - Consumables cost calculated separately using configured percentage of parts cost
+   - Travelling cost captured as separate editable value
+   - Totals now computed server-side using the separated pricing model
+
 ### 2026-03-19 (Session 11)
 - ✅ Added optional line-item part number support for quotations
    - Added `partNumber` to quotation line-item schema in `server/models/Quotation.model.js`
