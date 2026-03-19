@@ -48,15 +48,34 @@ const normalizePartLineItems = (lineItems = []) => {
   }));
 };
 
-const calculateQuotationCosts = ({ lineItems = [], labourHours, labourRate, travellingCost, consumablesRate, isSuperUser = false }) => {
+const DEFAULT_TRAVEL_RATE_PER_KM = 8.5;
+
+const calculateQuotationCosts = ({
+  lineItems = [],
+  labourHours,
+  labourRate,
+  travellingCost,
+  distanceTravelledKm,
+  timeTravelledCost,
+  consumablesRate,
+  isSuperUser = false,
+}) => {
   const normalizedLineItems = normalizePartLineItems(lineItems);
 
   const partsCost = normalizedLineItems.reduce((sum, item) => sum + item.total, 0);
   const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
   const requestedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
   const resolvedLabourRate = isSuperUser ? requestedLabourRate : 650;
-  const requestedTravellingCost = Number.isFinite(Number(travellingCost)) ? Number(travellingCost) : 8.5;
-  const resolvedTravellingCost = isSuperUser ? requestedTravellingCost : 8.5;
+  const resolvedDistanceTravelledKm = Number.isFinite(Number(distanceTravelledKm)) ? Number(distanceTravelledKm) : 0;
+  const resolvedTravelRatePerKm = DEFAULT_TRAVEL_RATE_PER_KM;
+  const resolvedTimeTravelledCost = Number.isFinite(Number(timeTravelledCost))
+    ? Number(timeTravelledCost)
+    : Number.isFinite(Number(travellingCost))
+      ? Number(travellingCost)
+      : 0;
+  const resolvedTravellingCost = Number(
+    ((resolvedDistanceTravelledKm * resolvedTravelRatePerKm) + resolvedTimeTravelledCost).toFixed(2)
+  );
   const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
 
   const labourCost = Number((resolvedLabourHours * resolvedLabourRate).toFixed(2));
@@ -79,6 +98,9 @@ const calculateQuotationCosts = ({ lineItems = [], labourHours, labourRate, trav
     labourCost,
     consumablesRate: resolvedConsumablesRate,
     consumablesCost,
+    distanceTravelledKm: resolvedDistanceTravelledKm,
+    travelRatePerKm: resolvedTravelRatePerKm,
+    timeTravelledCost: resolvedTimeTravelledCost,
     travellingCost: resolvedTravellingCost,
     subtotal,
   };
@@ -161,6 +183,8 @@ export const createQuotation = async (req, res) => {
       labourHours,
       labourRate,
       travellingCost,
+      distanceTravelledKm,
+      timeTravelledCost,
       consumablesRate,
       vatRate,
       validUntil,
@@ -209,6 +233,8 @@ export const createQuotation = async (req, res) => {
       labourHours,
       labourRate,
       travellingCost,
+      distanceTravelledKm,
+      timeTravelledCost,
       consumablesRate,
       isSuperUser: Boolean(req.user?.isSuperUser),
     });
@@ -231,6 +257,9 @@ export const createQuotation = async (req, res) => {
       labourCost: costing.labourCost,
       consumablesRate: costing.consumablesRate,
       consumablesCost: costing.consumablesCost,
+      distanceTravelledKm: costing.distanceTravelledKm,
+      travelRatePerKm: costing.travelRatePerKm,
+      timeTravelledCost: costing.timeTravelledCost,
       travellingCost: costing.travellingCost,
       subtotal: costing.subtotal,
       vatRate: resolvedVatRate,
@@ -270,6 +299,8 @@ export const createQuotationFromServiceCall = async (req, res) => {
       labourHours,
       labourRate,
       travellingCost,
+      distanceTravelledKm,
+      timeTravelledCost,
       consumablesRate,
       vatRate,
       validUntil,
@@ -325,6 +356,8 @@ export const createQuotationFromServiceCall = async (req, res) => {
       labourHours,
       labourRate,
       travellingCost,
+      distanceTravelledKm,
+      timeTravelledCost,
       consumablesRate,
       isSuperUser: Boolean(req.user?.isSuperUser),
     });
@@ -347,6 +380,9 @@ export const createQuotationFromServiceCall = async (req, res) => {
       labourCost: costing.labourCost,
       consumablesRate: costing.consumablesRate,
       consumablesCost: costing.consumablesCost,
+      distanceTravelledKm: costing.distanceTravelledKm,
+      travelRatePerKm: costing.travelRatePerKm,
+      timeTravelledCost: costing.timeTravelledCost,
       travellingCost: costing.travellingCost,
       subtotal: costing.subtotal,
       vatRate: resolvedVatRate,
@@ -421,6 +457,8 @@ export const updateQuotation = async (req, res) => {
       'lineItems',
       'labourHours',
       'labourRate',
+      'distanceTravelledKm',
+      'timeTravelledCost',
       'travellingCost',
       'consumablesRate',
       'vatRate',
@@ -431,6 +469,8 @@ export const updateQuotation = async (req, res) => {
         lineItems: quotation.lineItems,
         labourHours: quotation.labourHours,
         labourRate: quotation.labourRate,
+        distanceTravelledKm: quotation.distanceTravelledKm,
+        timeTravelledCost: quotation.timeTravelledCost,
         travellingCost: quotation.travellingCost,
         consumablesRate: quotation.consumablesRate,
         isSuperUser: Boolean(req.user?.isSuperUser),
@@ -443,6 +483,9 @@ export const updateQuotation = async (req, res) => {
       quotation.labourCost = costing.labourCost;
       quotation.consumablesRate = costing.consumablesRate;
       quotation.consumablesCost = costing.consumablesCost;
+      quotation.distanceTravelledKm = costing.distanceTravelledKm;
+      quotation.travelRatePerKm = costing.travelRatePerKm;
+      quotation.timeTravelledCost = costing.timeTravelledCost;
       quotation.travellingCost = costing.travellingCost;
       quotation.subtotal = costing.subtotal;
 

@@ -909,6 +909,13 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 16)
+- ✅ Implemented function-based travel costing in quotation flow
+   - Formula: `travellingCost = (distanceTravelledKm × 8.5) + timeTravelledCost`
+   - UI now captures `distanceTravelledKm` and `timeTravelledCost`; rate/km is fixed to `R8.50` for now
+   - Backend now computes and stores structured travel fields (`distanceTravelledKm`, `travelRatePerKm`, `timeTravelledCost`) and derived `travellingCost`
+   - Backward compatibility: legacy `travellingCost` payload still maps to the time component when structured travel inputs are absent
+
 ### 2026-03-19 (Session 15)
 - ✅ Added tiered part markup for quote line items in quote modal
    - Unit input is treated as cost and converted to selling unit price automatically

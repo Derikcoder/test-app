@@ -69,9 +69,9 @@ This is an enterprise-grade field service management application built with the 
 - 🎛️ Explicit template selector in quote modal: Auto, Perkins, Cummins, Emergency Repair, Generic
 - 🏷️ Optional line-item part number field to improve future auto-quote generation from machine/parts history
 - 📈 Unit cost entry now auto-applies tiered markup to selling unit price: <R1000 (50%), <R2000 (40%), <R3000 (30%), <R4000 (25%), <R5000 (20%), >=R5000 (20%)
-- 🧮 Separated costing concerns: Parts line items, Labour (hours × rate), Consumables (% of parts), and editable Travelling cost
+- 🧮 Separated costing concerns: Parts line items, Labour (hours × rate), Consumables (% of parts), and function-based Travel costing
+- 🚗 Travel costing formula: `(distanceTravelledKm × R8.50) + timeTravelledCost` (time component is currently manual)
 - 🔒 Labour rate is editable by superAdmin only; backend enforces default `R650/hour` for non-super users
-- 🔒 Travelling cost is editable by superAdmin only; backend enforces default `R8.50` for non-super users
 
 ### System Features
 - 📋 Enterprise-level logging middleware

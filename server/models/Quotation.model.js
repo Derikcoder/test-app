@@ -155,6 +155,24 @@ const quotationSchema = new mongoose.Schema(
       min: [0, 'Consumables cost cannot be negative'],
       default: 0,
     },
+    /** Distance travelled in kilometers (used to compute travel charge) */
+    distanceTravelledKm: {
+      type: Number,
+      min: [0, 'Distance travelled cannot be negative'],
+      default: 0,
+    },
+    /** Travel rate per kilometer */
+    travelRatePerKm: {
+      type: Number,
+      min: [0, 'Travel rate per km cannot be negative'],
+      default: 8.5,
+    },
+    /** Time-based travelling cost component (manual for now) */
+    timeTravelledCost: {
+      type: Number,
+      min: [0, 'Time travelled cost cannot be negative'],
+      default: 0,
+    },
     /** Travel cost charge */
     travellingCost: {
       type: Number,
@@ -325,6 +343,9 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'labourCost',
   'consumablesRate',
   'consumablesCost',
+  'distanceTravelledKm',
+  'travelRatePerKm',
+  'timeTravelledCost',
   'travellingCost',
   'subtotal',
   'vatAmount',

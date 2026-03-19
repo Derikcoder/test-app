@@ -137,7 +137,7 @@ main                 ← Production (stable, never touched directly)
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
 - `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.
-- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), and superAdmin-only editing for labour rate and travelling cost.
+- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), and function-based travel costing inputs (`distanceTravelledKm`, fixed `ratePerKm`, manual `timeTravelledCost`).
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
 ### Client Tests (`client/src/__tests__/`)
@@ -176,7 +176,7 @@ main                 ← Production (stable, never touched directly)
 - `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `quotation.controller.js`: Quotation creation, line items, status management, and create-time pricing calculation (subtotal/VAT/total).
-- `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, and server-side enforcement of default labour/travel values for non-super users.
+- `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, and function-based travel-cost calculation (`distanceTravelledKm × 8.5 + timeTravelledCost`).
 - `invoice.controller.js`: Invoice generation from quotations, payment tracking.
 - `equipment.controller.js`: Equipment/asset CRUD.
 
