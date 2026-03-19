@@ -137,7 +137,7 @@ main                 ← Production (stable, never touched directly)
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
 - `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.
-- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing inputs (`distanceTravelledKm`, superAdmin-controlled `ratePerKm`, manual `timeTravelledCost`), procurement/delivery profitability capture, 14-day default quotation validity with calendar override, and section-level helper-note placement to preserve row alignment.
+- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing inputs (`distanceTravelledKm`, superAdmin-controlled `ratePerKm`, `travelTimeMinutes`, manual `timeTravelledCost`), call-out floor rule support, procurement/delivery profitability capture, 14-day default quotation validity with calendar override, and section-level helper-note placement to preserve row alignment.
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
 ### Client Tests (`client/src/__tests__/`)
@@ -164,7 +164,7 @@ main                 ← Production (stable, never touched directly)
 - `FieldServiceAgent.model.js`: Field agent schema, employee details, and metadata.
 - `Customer.model.js`: Customer schema, contact information, sites, and account status.
 - `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), with assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`).
-- `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call, structured travel fields, procurement/delivery analytics fields, and default 14-day validity.
+- `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call, structured travel fields (including travel time for call-out floor logic), procurement/delivery analytics fields, and default 14-day validity.
 - `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking.
 - `Equipment.model.js`: Equipment/asset tracking schema.
 - `Example.model.js`: Example/template entity schema.
@@ -176,7 +176,7 @@ main                 ← Production (stable, never touched directly)
 - `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `quotation.controller.js`: Quotation creation, line items, status management, and create-time pricing calculation (subtotal/VAT/total).
-- `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, function-based travel-cost calculation (`distanceTravelledKm × 8.5 + timeTravelledCost`), procurement/delivery profit capture, and 14-day default validity fallback.
+- `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, function-based travel-cost calculation (`distanceTravelledKm × ratePerKm + timeTravelledCost`) with call-out floor condition support, procurement/delivery profit capture, and 14-day default validity fallback.
 - `invoice.controller.js`: Invoice generation from quotations, payment tracking.
 - `equipment.controller.js`: Equipment/asset CRUD.
 

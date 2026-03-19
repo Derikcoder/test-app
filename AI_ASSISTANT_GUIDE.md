@@ -909,6 +909,12 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 19)
+- ✅ Added call-out floor rule for travel costing
+   - Rule: if `distanceTravelledKm < 45` and `travelTimeMinutes < 30`, minimum travel charge is `R650.00`
+   - Applied in both frontend totals preview and backend authoritative calculation
+   - Added `travelTimeMinutes` as an explicit field for current manual entry and future Google API enrichment
+
 ### 2026-03-19 (Session 18)
 - ✅ Enforced UI consistency rule for helper notes in quote modal sections
    - Helper comments are placed in the first block of each section to prevent field-row misalignment

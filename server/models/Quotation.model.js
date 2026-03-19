@@ -196,6 +196,12 @@ const quotationSchema = new mongoose.Schema(
       min: [0, 'Travel rate per km cannot be negative'],
       default: 8.5,
     },
+    /** Travel time in minutes (used for call-out floor rule) */
+    travelTimeMinutes: {
+      type: Number,
+      min: [0, 'Travel time cannot be negative'],
+      default: 0,
+    },
     /** Time-based travelling cost component (manual for now) */
     timeTravelledCost: {
       type: Number,
@@ -384,6 +390,7 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'consumablesCost',
   'distanceTravelledKm',
   'travelRatePerKm',
+  'travelTimeMinutes',
   'timeTravelledCost',
   'travellingCost',
   'subtotal',

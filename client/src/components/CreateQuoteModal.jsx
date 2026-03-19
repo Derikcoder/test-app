@@ -11,6 +11,9 @@ const TEMPLATE_OPTIONS = [
 
 const MIN_PROFIT_MARGIN_RATE = 0.2;
 const TRAVEL_RATE_PER_KM = 8.5;
+const CALL_OUT_FLOOR_DISTANCE_KM = 45;
+const CALL_OUT_FLOOR_TIME_MINUTES = 30;
+const CALL_OUT_FLOOR_AMOUNT = 650;
 
 const toDateInputValue = (value) => {
   if (!value) return '';
@@ -142,6 +145,7 @@ const CreateQuoteModal = ({
     labourRate: sourceData.labourRate ?? 650,
     distanceTravelledKm: sourceData.distanceTravelledKm ?? 0,
     travelRatePerKm: sourceData.travelRatePerKm ?? TRAVEL_RATE_PER_KM,
+    travelTimeMinutes: sourceData.travelTimeMinutes ?? 0,
     timeTravelledCost: sourceData.timeTravelledCost ?? 0,
     consumablesRate: sourceData.consumablesRate ?? 2,
     notes: sourceData.notes || '',
@@ -252,8 +256,13 @@ const CreateQuoteModal = ({
     const labourRate = Number(formData.labourRate) || 0;
     const distanceTravelledKm = Number(formData.distanceTravelledKm) || 0;
     const travelRatePerKm = Number(formData.travelRatePerKm) || TRAVEL_RATE_PER_KM;
+    const travelTimeMinutes = Number(formData.travelTimeMinutes) || 0;
     const timeTravelledCost = Number(formData.timeTravelledCost) || 0;
-    const travellingCost = (distanceTravelledKm * travelRatePerKm) + timeTravelledCost;
+    const baseTravelCost = (distanceTravelledKm * travelRatePerKm) + timeTravelledCost;
+    const isCallOutFloorApplicable = distanceTravelledKm < CALL_OUT_FLOOR_DISTANCE_KM && travelTimeMinutes < CALL_OUT_FLOOR_TIME_MINUTES;
+    const travellingCost = isCallOutFloorApplicable
+      ? Math.max(baseTravelCost, CALL_OUT_FLOOR_AMOUNT)
+      : baseTravelCost;
     const consumablesRate = Number(formData.consumablesRate) || 0;
 
     const labourCost = labourHours * labourRate;
@@ -275,7 +284,10 @@ const CreateQuoteModal = ({
       labourCost: labourCost.toFixed(2),
       distanceTravelledKm: distanceTravelledKm.toFixed(2),
       travelRatePerKm: travelRatePerKm.toFixed(2),
+      travelTimeMinutes: travelTimeMinutes.toFixed(2),
       timeTravelledCost: timeTravelledCost.toFixed(2),
+      baseTravelCost: baseTravelCost.toFixed(2),
+      isCallOutFloorApplicable,
       travellingCost: travellingCost.toFixed(2),
       consumablesCost: consumablesCost.toFixed(2),
       halfLabourThreshold: halfLabourThreshold.toFixed(2),
@@ -289,6 +301,7 @@ const CreateQuoteModal = ({
     formData.labourRate,
     formData.distanceTravelledKm,
     formData.travelRatePerKm,
+    formData.travelTimeMinutes,
     formData.timeTravelledCost,
     formData.consumablesRate,
     formData.vatRate,
@@ -314,6 +327,7 @@ const CreateQuoteModal = ({
     if (Number(formData.thirdPartyDeliveryCost) < 0) return 'Third-party delivery cost cannot be negative.';
     if (Number(formData.travelRatePerKm) < 0) return 'Rate per km cannot be negative.';
     if (Number(formData.distanceTravelledKm) < 0) return 'Distance travelled cannot be negative.';
+    if (Number(formData.travelTimeMinutes) < 0) return 'Travel time cannot be negative.';
     if (Number(formData.timeTravelledCost) < 0) return 'Time travelled cost cannot be negative.';
     if (Number(formData.consumablesRate) < 0) return 'Consumables rate cannot be negative.';
 
@@ -357,6 +371,7 @@ const CreateQuoteModal = ({
         labourRate: Number(formData.labourRate) || 650,
         distanceTravelledKm: Number(formData.distanceTravelledKm) || 0,
         travelRatePerKm: Number(formData.travelRatePerKm) || TRAVEL_RATE_PER_KM,
+        travelTimeMinutes: Number(formData.travelTimeMinutes) || 0,
         timeTravelledCost: Number(formData.timeTravelledCost) || 0,
         consumablesRate: Number(formData.consumablesRate) || 2,
         validUntil: formData.validUntil || undefined,
@@ -576,7 +591,7 @@ const CreateQuoteModal = ({
                   {/* UI consistency rule: keep helper notes in the first block of the section, not under individual fields. */}
                   <div className="md:col-span-5 rounded-md border border-white/15 bg-white/5 px-3 py-2">
                     <p className="text-xs text-white/70">
-                      Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin.
+                      Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00.
                     </p>
                   </div>
                   <div>
@@ -670,6 +685,17 @@ const CreateQuoteModal = ({
                     />
                   </div>
                   <div>
+                    <label className="glass-form-label text-white/90">Travel Time (minutes)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.travelTimeMinutes}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, travelTimeMinutes: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    />
+                  </div>
+                  <div>
                     <label className="glass-form-label text-white/90">Time Travelled Cost (R)</label>
                     <input
                       type="number"
@@ -723,6 +749,10 @@ const CreateQuoteModal = ({
                   <p className="font-semibold">Estimated Parts Profit: R {totals.estimatedPartsProfit}</p>
                   <p>Labour Cost: R {totals.labourCost}</p>
                   <p>Travel: ({totals.distanceTravelledKm} km x R {totals.travelRatePerKm}) + R {totals.timeTravelledCost}</p>
+                  <p className="text-xs text-white/70">Travel time: {totals.travelTimeMinutes} minutes | Base travel: R {totals.baseTravelCost}</p>
+                  {totals.isCallOutFloorApplicable ? (
+                    <p className="text-xs text-yellow-200">Call-out floor rule applied: minimum R {CALL_OUT_FLOOR_AMOUNT.toFixed(2)}</p>
+                  ) : null}
                   <p>Travelling Cost: R {totals.travellingCost}</p>
                   <p>Consumables Cost: R {totals.consumablesCost}</p>
                   <p className="text-xs text-white/70 mt-1">Rule reference: 50% labour threshold = R {totals.halfLabourThreshold}</p>
