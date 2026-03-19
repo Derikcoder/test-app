@@ -9,6 +9,8 @@ const TEMPLATE_OPTIONS = [
   { value: 'generic', label: 'Generic Service Template' },
 ];
 
+const MIN_PROFIT_MARGIN_RATE = 0.2;
+
 const getTemplateLineItemsByType = (templateType) => {
   switch (templateType) {
     case 'perkins':
@@ -61,13 +63,16 @@ const getSuggestedTemplateLineItems = ({ machineModelNumber = '', serviceType = 
 const getPartMarginRate = (unitCost) => {
   const cost = Number(unitCost) || 0;
 
-  if (cost < 1000) return 0.5;
-  if (cost < 2000) return 0.4;
-  if (cost < 3000) return 0.3;
-  if (cost < 4000) return 0.25;
-  if (cost < 5000) return 0.2;
+  let tierRate = MIN_PROFIT_MARGIN_RATE;
 
-  return 0.2;
+  if (cost < 1000) tierRate = 0.5;
+  else if (cost < 2000) tierRate = 0.4;
+  else if (cost < 3000) tierRate = 0.3;
+  else if (cost < 4000) tierRate = 0.25;
+  else if (cost < 5000) tierRate = 0.2;
+
+  // Profit floor policy: never allow less than 20% margin.
+  return Math.max(tierRate, MIN_PROFIT_MARGIN_RATE);
 };
 
 const getMarkedUpUnitPrice = (unitCost) => {
@@ -444,7 +449,7 @@ const CreateQuoteModal = ({
                 <p className="text-xs text-white/70">
                   Enter part cost per unit. Selling unit price is auto-calculated with tiered markup:
                   {' '}
-                  &lt;R1000 = 50%, &lt;R2000 = 40%, &lt;R3000 = 30%, &lt;R4000 = 25%, &lt;R5000 = 20%, &gt;=R5000 = 20%.
+                  &lt;R1000 = 50%, &lt;R2000 = 40%, &lt;R3000 = 30%, &lt;R4000 = 25%, &lt;R5000 = 20%, &gt;=R5000 = 20%. Minimum margin floor is 20%.
                 </p>
 
                 {formData.lineItems.map((item, index) => (
