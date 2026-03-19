@@ -324,11 +324,11 @@ quotationSchema.pre('save', async function (next) {
     this.quotationNumber = `QT-${String(count + 1).padStart(6, '0')}`;
   }
 
-  // Set default validUntil to 30 days from now if not provided
+  // Set default validUntil to 14 days from now if not provided
   if (this.isNew && !this.validUntil) {
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    this.validUntil = thirtyDaysFromNow;
+    const fourteenDaysFromNow = new Date();
+    fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
+    this.validUntil = fourteenDaysFromNow;
   }
 
   next();
