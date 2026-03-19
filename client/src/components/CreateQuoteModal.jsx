@@ -58,6 +58,24 @@ const getSuggestedTemplateLineItems = ({ machineModelNumber = '', serviceType = 
   return getTemplateLineItemsByType('generic');
 };
 
+const getPartMarginRate = (unitCost) => {
+  const cost = Number(unitCost) || 0;
+
+  if (cost < 1000) return 0.5;
+  if (cost < 2000) return 0.4;
+  if (cost < 3000) return 0.3;
+  if (cost < 4000) return 0.25;
+  if (cost < 5000) return 0.2;
+
+  return 0.2;
+};
+
+const getMarkedUpUnitPrice = (unitCost) => {
+  const cost = Number(unitCost) || 0;
+  const marginRate = getPartMarginRate(cost);
+  return Number((cost * (1 + marginRate)).toFixed(2));
+};
+
 /**
  * Reusable quote creation modal.
  * Can be used from superAdmin workflows and customer-oriented workflows.
@@ -191,7 +209,7 @@ const CreateQuoteModal = ({
   const totals = useMemo(() => {
     const partsCost = formData.lineItems.reduce((sum, item) => {
       const quantity = Number(item.quantity) || 0;
-      const unitPrice = Number(item.unitPrice) || 0;
+      const unitPrice = getMarkedUpUnitPrice(item.unitPrice);
       return sum + (quantity * unitPrice);
     }, 0);
 
@@ -241,7 +259,7 @@ const CreateQuoteModal = ({
     );
 
     if (hasInvalid) {
-      return 'Each line item must include description, quantity > 0, and unit price >= 0.';
+      return 'Each line item must include description, quantity > 0, and unit cost >= 0.';
     }
 
     if (Number(formData.labourHours) < 0) return 'Labour hours cannot be negative.';
@@ -274,7 +292,7 @@ const CreateQuoteModal = ({
           partNumber: item.partNumber?.trim() || undefined,
           description: item.description,
           quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
+          unitPrice: getMarkedUpUnitPrice(item.unitPrice),
         })),
         vatRate: Number(formData.vatRate) || 15,
         labourHours: Number(formData.labourHours) || 0,
@@ -424,7 +442,9 @@ const CreateQuoteModal = ({
                 </div>
 
                 <p className="text-xs text-white/70">
-                  Add each part as a separate line item. Labour, consumables, and travel are calculated separately below.
+                  Enter part cost per unit. Selling unit price is auto-calculated with tiered markup:
+                  {' '}
+                  &lt;R1000 = 50%, &lt;R2000 = 40%, &lt;R3000 = 30%, &lt;R4000 = 25%, &lt;R5000 = 20%, &gt;=R5000 = 20%.
                 </p>
 
                 {formData.lineItems.map((item, index) => (
@@ -459,7 +479,7 @@ const CreateQuoteModal = ({
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="glass-form-label text-white/80">Unit Price</label>
+                      <label className="glass-form-label text-white/80">Unit Cost (R)</label>
                       <input
                         type="number"
                         min="0"
@@ -469,6 +489,9 @@ const CreateQuoteModal = ({
                         className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
                         required
                       />
+                      <p className="text-xs text-white/65 mt-1">
+                        Margin {Math.round(getPartMarginRate(item.unitPrice) * 100)}% to Sell: R {getMarkedUpUnitPrice(item.unitPrice).toFixed(2)}
+                      </p>
                     </div>
                     <div className="md:col-span-1">
                       <button

@@ -137,7 +137,7 @@ main                 ← Production (stable, never touched directly)
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
 - `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.
-- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows, with machine-model template loading and separated costing inputs (parts, labour, consumables, travel), and superAdmin-only editing for labour rate and travelling cost.
+- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), and superAdmin-only editing for labour rate and travelling cost.
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
 ### Client Tests (`client/src/__tests__/`)

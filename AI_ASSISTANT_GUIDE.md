@@ -909,6 +909,12 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 15)
+- ✅ Added tiered part markup for quote line items in quote modal
+   - Unit input is treated as cost and converted to selling unit price automatically
+   - Markup tiers: <R1000 (50%), <R2000 (40%), <R3000 (30%), <R4000 (25%), <R5000 (20%), >=R5000 (20%)
+   - Frontend totals and submitted quotation line-item unit prices now use marked-up values
+
 ### 2026-03-19 (Session 14)
 - ✅ Enforced superAdmin-only control of travelling cost in quotation costing
    - UI: travelling cost input disabled for non-super users in `client/src/components/CreateQuoteModal.jsx`
