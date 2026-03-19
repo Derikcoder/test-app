@@ -15,6 +15,7 @@ import {
   getQuotations,
   getQuotationById,
   createQuotation,
+  createQuotationFromServiceCall,
   updateQuotation,
   updateQuotationStatus,
   convertQuotationToServiceCall,
@@ -38,6 +39,13 @@ router.get('/', protect, getQuotations);
  * @access  Private (JWT required)
  */
 router.post('/', protect, createQuotation);
+
+/**
+ * @route   POST /api/quotations/from-service-call/:serviceCallId
+ * @desc    Create a quotation seeded from a service call context
+ * @access  Private (JWT required)
+ */
+router.post('/from-service-call/:serviceCallId', protect, createQuotationFromServiceCall);
 
 /**
  * @route   GET /api/quotations/:id

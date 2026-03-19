@@ -3,6 +3,41 @@ import ServiceCall from '../models/ServiceCall.model.js';
 import Customer from '../models/Customer.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
+const buildTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) => {
+  const model = String(machineModelNumber).toLowerCase();
+  const type = String(serviceType).toLowerCase();
+
+  if (model.includes('perkins')) {
+    return [
+      { description: 'Perkins service kit and filters', quantity: 1, unitPrice: 1850 },
+      { description: 'Engine oil replacement and disposal', quantity: 1, unitPrice: 1250 },
+      { description: 'Load test and diagnostics report', quantity: 1, unitPrice: 1450 },
+    ];
+  }
+
+  if (model.includes('cummins')) {
+    return [
+      { description: 'Cummins preventive service kit', quantity: 1, unitPrice: 2100 },
+      { description: 'Cooling and fuel system checks', quantity: 1, unitPrice: 1350 },
+      { description: 'Controller diagnostics and tuning', quantity: 1, unitPrice: 1650 },
+    ];
+  }
+
+  if (type.includes('emergency')) {
+    return [
+      { description: 'Emergency call-out labor', quantity: 2, unitPrice: 950 },
+      { description: 'Fault finding and root-cause analysis', quantity: 1, unitPrice: 1400 },
+      { description: 'Temporary restoration and safety checks', quantity: 1, unitPrice: 950 },
+    ];
+  }
+
+  return [
+    { description: 'Generator inspection and diagnostics', quantity: 1, unitPrice: 1100 },
+    { description: 'Preventive service labor', quantity: 2, unitPrice: 850 },
+    { description: 'Consumables and replacement filters', quantity: 1, unitPrice: 950 },
+  ];
+};
+
 /**
  * @file quotation.controller.js
  * @description Quotation/estimate management controller
@@ -158,6 +193,107 @@ export const createQuotation = async (req, res) => {
     res.status(201).json(quotation);
   } catch (error) {
     logError('Create quotation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Create quotation from a service call
+// @route   POST /api/quotations/from-service-call/:serviceCallId
+// @access  Private
+export const createQuotationFromServiceCall = async (req, res) => {
+  try {
+    const { serviceCallId } = req.params;
+    const {
+      title,
+      description,
+      serviceType,
+      lineItems,
+      vatRate,
+      validUntil,
+      terms,
+      notes,
+    } = req.body;
+
+    const serviceCall = await ServiceCall.findOne({
+      _id: serviceCallId,
+      createdBy: req.user._id,
+    });
+
+    if (!serviceCall) {
+      return res.status(404).json({ message: 'Service call not found' });
+    }
+
+    if (!serviceCall.customer) {
+      return res.status(400).json({
+        message: 'Service call is not linked to a customer. Select a customer and use standard quote creation.',
+      });
+    }
+
+    const customerExists = await Customer.findOne({
+      _id: serviceCall.customer,
+      createdBy: req.user._id,
+    });
+
+    if (!customerExists) {
+      return res.status(404).json({ message: 'Customer not found for this service call' });
+    }
+
+    const resolvedServiceType = serviceType || serviceCall.serviceType || 'Scheduled Maintenance';
+    const machineModelNumber = serviceCall.bookingRequest?.generatorDetails?.machineModelNumber
+      || serviceCall.bookingRequest?.generatorDetails?.generatorMakeModel
+      || '';
+
+    const requestedLineItems = Array.isArray(lineItems) && lineItems.length > 0
+      ? lineItems
+      : buildTemplateLineItems({ machineModelNumber, serviceType: resolvedServiceType });
+
+    const invalidLineItems = requestedLineItems.filter(
+      (item) => !item.description || !item.quantity || item.unitPrice === undefined || item.unitPrice === null
+    );
+
+    if (invalidLineItems.length > 0) {
+      return res.status(400).json({
+        message: 'Each line item must have description, quantity, and unitPrice',
+      });
+    }
+
+    const calculatedLineItems = requestedLineItems.map((item) => ({
+      ...item,
+      total: Number(item.quantity) * Number(item.unitPrice),
+    }));
+
+    const calculatedSubtotal = calculatedLineItems.reduce((sum, item) => sum + item.total, 0);
+    const resolvedVatRate = Number.isFinite(Number(vatRate)) ? Number(vatRate) : 15;
+    const calculatedVatAmount = Number((calculatedSubtotal * (resolvedVatRate / 100)).toFixed(2));
+    const calculatedTotalAmount = Number((calculatedSubtotal + calculatedVatAmount).toFixed(2));
+
+    const quotation = await Quotation.create({
+      customer: serviceCall.customer,
+      siteId: serviceCall.siteId,
+      equipment: serviceCall.equipment,
+      serviceType: resolvedServiceType,
+      title: title || `Quotation for ${serviceCall.callNumber || 'Service Call'}`,
+      description: description || serviceCall.description || '',
+      lineItems: calculatedLineItems,
+      subtotal: calculatedSubtotal,
+      vatRate: resolvedVatRate,
+      vatAmount: calculatedVatAmount,
+      totalAmount: calculatedTotalAmount,
+      validUntil,
+      terms,
+      notes,
+      createdBy: req.user._id,
+    });
+
+    await quotation.populate('customer', 'businessName contactFirstName contactLastName');
+    if (quotation.equipment) {
+      await quotation.populate('equipment', 'equipmentId equipmentType brand model');
+    }
+
+    logInfo(`✅ Quotation created from service call: ${quotation.quotationNumber} (source: ${serviceCall.callNumber})`);
+    res.status(201).json(quotation);
+  } catch (error) {
+    logError('Create quotation from service call error:', error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -1,6 +1,41 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
 
+const getSuggestedTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) => {
+  const model = String(machineModelNumber).toLowerCase();
+  const type = String(serviceType).toLowerCase();
+
+  if (model.includes('perkins')) {
+    return [
+      { description: 'Perkins service kit and filters', quantity: 1, unitPrice: 1850 },
+      { description: 'Engine oil replacement and disposal', quantity: 1, unitPrice: 1250 },
+      { description: 'Load test and diagnostics report', quantity: 1, unitPrice: 1450 },
+    ];
+  }
+
+  if (model.includes('cummins')) {
+    return [
+      { description: 'Cummins preventive service kit', quantity: 1, unitPrice: 2100 },
+      { description: 'Cooling and fuel system checks', quantity: 1, unitPrice: 1350 },
+      { description: 'Controller diagnostics and tuning', quantity: 1, unitPrice: 1650 },
+    ];
+  }
+
+  if (type.includes('emergency')) {
+    return [
+      { description: 'Emergency call-out labor', quantity: 2, unitPrice: 950 },
+      { description: 'Fault finding and root-cause analysis', quantity: 1, unitPrice: 1400 },
+      { description: 'Temporary restoration and safety checks', quantity: 1, unitPrice: 950 },
+    ];
+  }
+
+  return [
+    { description: 'Generator inspection and diagnostics', quantity: 1, unitPrice: 1100 },
+    { description: 'Preventive service labor', quantity: 2, unitPrice: 850 },
+    { description: 'Consumables and replacement filters', quantity: 1, unitPrice: 950 },
+  ];
+};
+
 /**
  * Reusable quote creation modal.
  * Can be used from superAdmin workflows and customer-oriented workflows.
@@ -18,6 +53,9 @@ const CreateQuoteModal = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const canUseServiceCallShortcut = Boolean(sourceData?.serviceCallId && sourceData?.customerId);
+  const machineTemplateSource = sourceData?.machineModelNumber || sourceData?.generatorMakeModel || '';
 
   const initialLineItems = useMemo(
     () => sourceData?.lineItems?.length
@@ -74,6 +112,18 @@ const CreateQuoteModal = ({
     }));
   }, [sourceData]);
 
+  const applySuggestedTemplate = () => {
+    const suggested = getSuggestedTemplateLineItems({
+      machineModelNumber: machineTemplateSource,
+      serviceType: formData.serviceType,
+    });
+
+    setFormData((prev) => ({
+      ...prev,
+      lineItems: suggested,
+    }));
+  };
+
   const closeModal = () => {
     setIsOpen(false);
     setError('');
@@ -127,7 +177,7 @@ const CreateQuoteModal = ({
   }, [formData.lineItems, formData.vatRate]);
 
   const validate = () => {
-    if (!formData.customerId) return 'Please select a customer.';
+    if (!formData.customerId && !canUseServiceCallShortcut) return 'Please select a customer.';
     if (!formData.serviceType.trim()) return 'Service type is required.';
     if (!formData.title.trim()) return 'Title is required.';
     if (!formData.lineItems.length) return 'At least one line item is required.';
@@ -158,9 +208,6 @@ const CreateQuoteModal = ({
       setSubmitting(true);
 
       const payload = {
-        customer: formData.customerId,
-        siteId: formData.siteId || undefined,
-        equipment: formData.equipmentId || undefined,
         serviceType: formData.serviceType,
         title: formData.title,
         description: formData.description,
@@ -175,9 +222,29 @@ const CreateQuoteModal = ({
         terms: formData.terms,
       };
 
-      const response = await api.post('/quotations', payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      let response;
+      if (canUseServiceCallShortcut) {
+        response = await api.post(
+          `/quotations/from-service-call/${sourceData.serviceCallId}`,
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } else {
+        response = await api.post(
+          '/quotations',
+          {
+            ...payload,
+            customer: formData.customerId,
+            siteId: formData.siteId || undefined,
+            equipment: formData.equipmentId || undefined,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
 
       setSuccess(`Quotation ${response.data?.quotationNumber || ''} created successfully.`.trim());
       if (onCreated) onCreated(response.data);
@@ -263,7 +330,12 @@ const CreateQuoteModal = ({
               <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-white font-semibold">Line Items</h3>
-                  <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={applySuggestedTemplate} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">
+                      Load Suggested Template
+                    </button>
+                    <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
+                  </div>
                 </div>
 
                 {formData.lineItems.map((item, index) => (

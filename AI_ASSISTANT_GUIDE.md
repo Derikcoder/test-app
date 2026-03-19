@@ -909,6 +909,14 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 9)
+- ✅ Added machine-model quote templates in reusable quote modal
+   - `CreateQuoteModal.jsx` now supports suggested line items from machine model context
+- ✅ Added quote creation shortcut endpoint from service call context
+   - `POST /api/quotations/from-service-call/:serviceCallId`
+   - Uses service call + historical machine data to seed quote creation
+   - Falls back to template line items when line items are not provided
+
 ### 2026-03-19 (Session 8)
 - ✅ Added reusable quote creation flow for superAdmin and customer-oriented usage
    - Created `client/src/components/CreateQuoteModal.jsx` reusable modal component

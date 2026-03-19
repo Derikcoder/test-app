@@ -485,6 +485,8 @@ const ServiceCalls = () => {
 
  const quoteSourceData = useMemo(() => ({
   serviceType: formData.serviceType,
+  machineModelNumber: formData.machineModelNumber,
+  generatorMakeModel: formData.generatorMakeModel,
   title: `${formData.serviceType} Quotation`,
   description: [
    `Customer Type: ${formData.customerType}`,
@@ -503,6 +505,8 @@ const ServiceCalls = () => {
   ],
  }), [
   formData.serviceType,
+  formData.machineModelNumber,
+  formData.generatorMakeModel,
   formData.customerType,
   formData.contactPerson,
   formData.generatorMakeModel,

@@ -130,9 +130,12 @@ const AgentProfile = () => {
  const buildQuoteSourceFromCall = (call) => {
   const descriptionPreview = getDescriptionPreview(call?.description || '');
   return {
+   serviceCallId: call?._id || '',
    customerId: call?.customer?._id || '',
    siteId: call?.siteId || '',
    equipmentId: call?.equipment?._id || call?.equipment || '',
+   machineModelNumber: call?.bookingRequest?.generatorDetails?.machineModelNumber || '',
+   generatorMakeModel: call?.bookingRequest?.generatorDetails?.generatorMakeModel || '',
    serviceType: call?.serviceType || 'Scheduled Maintenance',
    title: call?.title || `Quotation for ${call?.callNumber || 'Service Call'}`,
    description: descriptionPreview,

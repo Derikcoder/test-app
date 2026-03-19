@@ -64,6 +64,8 @@ This is an enterprise-grade field service management application built with the 
 - 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
 - 📊 Auto-calculated subtotal, VAT, and total during quotation creation
 - 🔁 Quote prefill from historical/service-call machine data
+- 🧠 Machine-model quote templates (Perkins/Cummins/generic fallback)
+- ⚡ Shortcut API to create quote from service call context: `POST /api/quotations/from-service-call/:serviceCallId`
 
 ### System Features
 - 📋 Enterprise-level logging middleware
