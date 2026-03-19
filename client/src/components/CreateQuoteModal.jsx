@@ -64,6 +64,7 @@ const getSuggestedTemplateLineItems = ({ machineModelNumber = '', serviceType = 
  */
 const CreateQuoteModal = ({
   token,
+  isSuperUser = false,
   sourceData = {},
   triggerLabel = 'Create Quote',
   triggerClassName = 'glass-btn-primary font-semibold py-2 px-4',
@@ -506,7 +507,11 @@ const CreateQuoteModal = ({
                       value={formData.labourRate}
                       onChange={(event) => setFormData((prev) => ({ ...prev, labourRate: event.target.value }))}
                       className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      disabled={!isSuperUser}
                     />
+                    {!isSuperUser ? (
+                      <p className="text-xs text-white/65 mt-1">Labour rate is controlled by superAdmin.</p>
+                    ) : null}
                   </div>
                   <div>
                     <label className="glass-form-label text-white/90">Travelling Cost (R)</label>

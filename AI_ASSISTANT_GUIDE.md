@@ -909,6 +909,11 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-19 (Session 13)
+- ✅ Enforced superAdmin-only control of labour rate in quotation costing
+   - UI: labour rate input disabled for non-super users in `client/src/components/CreateQuoteModal.jsx`
+   - Backend: `server/controllers/quotation.controller.js` now forces `labourRate = 650` for non-super users
+
 ### 2026-03-19 (Session 12)
 - ✅ Separated quotation costing concerns across UI and backend
    - Parts remain line items (with optional part number)

@@ -557,6 +557,7 @@ const AgentProfile = () => {
                  </a>
                  <CreateQuoteModal
                   token={user?.token}
+                  isSuperUser={Boolean(user?.isSuperUser)}
                   sourceData={buildQuoteSourceFromCall(call)}
                   triggerLabel="Create Quote"
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
@@ -568,6 +569,7 @@ const AgentProfile = () => {
                  <p className="text-xs text-white/70">No valid customer phone number available for call actions.</p>
                  <CreateQuoteModal
                   token={user?.token}
+                  isSuperUser={Boolean(user?.isSuperUser)}
                   sourceData={buildQuoteSourceFromCall(call)}
                   triggerLabel="Create Quote"
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"

@@ -48,12 +48,13 @@ const normalizePartLineItems = (lineItems = []) => {
   }));
 };
 
-const calculateQuotationCosts = ({ lineItems = [], labourHours, labourRate, travellingCost, consumablesRate }) => {
+const calculateQuotationCosts = ({ lineItems = [], labourHours, labourRate, travellingCost, consumablesRate, isSuperUser = false }) => {
   const normalizedLineItems = normalizePartLineItems(lineItems);
 
   const partsCost = normalizedLineItems.reduce((sum, item) => sum + item.total, 0);
   const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
-  const resolvedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
+  const requestedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
+  const resolvedLabourRate = isSuperUser ? requestedLabourRate : 650;
   const resolvedTravellingCost = Number.isFinite(Number(travellingCost)) ? Number(travellingCost) : 8.5;
   const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
 
@@ -208,6 +209,7 @@ export const createQuotation = async (req, res) => {
       labourRate,
       travellingCost,
       consumablesRate,
+      isSuperUser: Boolean(req.user?.isSuperUser),
     });
 
     const resolvedVatRate = Number.isFinite(Number(vatRate)) ? Number(vatRate) : 15;
@@ -323,6 +325,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       labourRate,
       travellingCost,
       consumablesRate,
+      isSuperUser: Boolean(req.user?.isSuperUser),
     });
 
     const resolvedVatRate = Number.isFinite(Number(vatRate)) ? Number(vatRate) : 15;
@@ -429,6 +432,7 @@ export const updateQuotation = async (req, res) => {
         labourRate: quotation.labourRate,
         travellingCost: quotation.travellingCost,
         consumablesRate: quotation.consumablesRate,
+        isSuperUser: Boolean(req.user?.isSuperUser),
       });
 
       quotation.lineItems = costing.normalizedLineItems;
