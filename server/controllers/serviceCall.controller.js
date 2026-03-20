@@ -1,5 +1,143 @@
 import ServiceCall from '../models/ServiceCall.model.js';
+import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
+
+const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
+
+const getStartOfDay = (date = new Date()) => {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+};
+
+const getEndOfDay = (date = new Date()) => {
+  const value = new Date(date);
+  value.setHours(23, 59, 59, 999);
+  return value;
+};
+
+const getStartOfWeek = (date = new Date()) => {
+  const value = getStartOfDay(date);
+  const weekday = (value.getDay() + 6) % 7;
+  value.setDate(value.getDate() - weekday);
+  return value;
+};
+
+const getEndOfWeek = (date = new Date()) => {
+  const value = getStartOfWeek(date);
+  value.setDate(value.getDate() + 6);
+  value.setHours(23, 59, 59, 999);
+  return value;
+};
+
+const getSelfDispatchParticipationDaysThisWeek = async (createdBy, agentId) => {
+  const weeklyCalls = await ServiceCall.find({
+    createdBy,
+    selfAcceptedBy: agentId,
+    selfAcceptedAt: {
+      $gte: getStartOfWeek(),
+      $lte: getEndOfWeek(),
+    },
+  }).select('selfAcceptedAt');
+
+  return new Set(
+    weeklyCalls
+      .filter((call) => call.selfAcceptedAt)
+      .map((call) => new Date(call.selfAcceptedAt).toISOString().slice(0, 10))
+  ).size;
+};
+
+const appendSelfDispatchAudit = async (serviceCallId, entry) => {
+  await ServiceCall.updateOne(
+    { _id: serviceCallId },
+    {
+      $push: {
+        selfDispatchAudit: {
+          agent: entry.agent,
+          action: entry.action,
+          reason: entry.reason,
+          timestamp: entry.timestamp || new Date(),
+        },
+      },
+    }
+  );
+};
+
+const getAgentSelfDispatchEligibility = async ({ createdBy, agentId }) => {
+  const agent = await FieldServiceAgent.findOne({ _id: agentId, createdBy });
+
+  if (!agent) {
+    return { statusCode: 404, message: 'Agent not found', agent: null, meta: null };
+  }
+
+  if (agent.status !== 'active') {
+    return { statusCode: 403, message: 'Agent is not active', agent, meta: null };
+  }
+
+  if (agent.availability !== 'available') {
+    return { statusCode: 403, message: 'Agent is not currently available for self-dispatch', agent, meta: null };
+  }
+
+  if (agent.selfDispatchSuspended) {
+    return {
+      statusCode: 403,
+      message: agent.selfDispatchSuspendedReason || 'Agent is currently suspended from self-dispatch',
+      agent,
+      meta: null,
+    };
+  }
+
+  const acceptedTodayCount = await ServiceCall.countDocuments({
+    createdBy,
+    selfAcceptedBy: agentId,
+    selfAcceptedAt: {
+      $gte: getStartOfDay(),
+      $lte: getEndOfDay(),
+    },
+  });
+
+  const weeklyParticipationDaysUsed = await getSelfDispatchParticipationDaysThisWeek(createdBy, agentId);
+
+  if (acceptedTodayCount >= 2) {
+    return {
+      statusCode: 403,
+      message: 'Daily self-accept limit reached',
+      agent,
+      meta: {
+        acceptedTodayCount,
+        remainingDailySelfAccepts: 0,
+        weeklyParticipationDaysUsed,
+        remainingWeeklyParticipationDays: Math.max(0, 5 - weeklyParticipationDaysUsed),
+      },
+    };
+  }
+
+  if (weeklyParticipationDaysUsed >= 5) {
+    return {
+      statusCode: 403,
+      message: 'Weekly self-dispatch participation limit reached',
+      agent,
+      meta: {
+        acceptedTodayCount,
+        remainingDailySelfAccepts: Math.max(0, 2 - acceptedTodayCount),
+        weeklyParticipationDaysUsed,
+        remainingWeeklyParticipationDays: 0,
+      },
+    };
+  }
+
+  return {
+    statusCode: 200,
+    message: '',
+    agent,
+    meta: {
+      acceptedTodayCount,
+      remainingDailySelfAccepts: Math.max(0, 2 - acceptedTodayCount),
+      weeklyParticipationDaysUsed,
+      remainingWeeklyParticipationDays: Math.max(0, 5 - weeklyParticipationDaysUsed),
+    },
+  };
+};
 
 // @desc    Get all service calls
 // @route   GET /api/service-calls
@@ -116,6 +254,10 @@ export const createServiceCall = async (req, res) => {
 // @access  Private
 export const updateServiceCall = async (req, res) => {
   try {
+    if (req.body.agentAccepted === true) {
+      return res.status(403).json({ message: 'Use the dedicated self-accept workflow for agent confirmation' });
+    }
+
     const serviceCall = await ServiceCall.findOne({
       _id: req.params.id,
       createdBy: req.user._id
@@ -176,6 +318,165 @@ export const updateServiceCall = async (req, res) => {
     res.json(updatedServiceCall);
   } catch (error) {
     logError('Update service call error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get self-dispatch eligible unassigned service calls for an agent
+// @route   GET /api/service-calls/eligible-unassigned/:agentId
+// @access  Private
+export const getEligibleUnassignedServiceCalls = async (req, res) => {
+  try {
+    const { agentId } = req.params;
+    const eligibility = await getAgentSelfDispatchEligibility({
+      createdBy: req.user._id,
+      agentId,
+    });
+
+    if (eligibility.statusCode !== 200) {
+      return res.status(eligibility.statusCode).json({
+        message: eligibility.message,
+        jobs: [],
+        meta: eligibility.meta,
+      });
+    }
+
+    const jobs = await ServiceCall.find({
+      createdBy: req.user._id,
+      assignedAgent: null,
+      selfDispatchEnabled: { $ne: false },
+      status: { $nin: TERMINAL_SERVICE_CALL_STATUSES },
+    })
+      .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
+      .sort({ createdAt: -1 });
+
+    res.json({ jobs, meta: eligibility.meta });
+  } catch (error) {
+    logError('Get eligible unassigned service calls error:', error);
+    res.status(500).json({ message: error.message, jobs: [] });
+  }
+};
+
+// @desc    Self-accept a service call for an eligible agent
+// @route   POST /api/service-calls/:id/self-accept
+// @access  Private
+export const selfAcceptServiceCall = async (req, res) => {
+  try {
+    const { agentId } = req.body;
+
+    if (!agentId) {
+      return res.status(400).json({ message: 'agentId is required' });
+    }
+
+    const serviceCall = await ServiceCall.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
+
+    if (!serviceCall) {
+      return res.status(404).json({ message: 'Service call not found' });
+    }
+
+    const eligibility = await getAgentSelfDispatchEligibility({
+      createdBy: req.user._id,
+      agentId,
+    });
+
+    if (eligibility.statusCode !== 200) {
+      await appendSelfDispatchAudit(serviceCall._id, {
+        agent: agentId,
+        action: 'rejected',
+        reason: eligibility.message,
+      });
+
+      return res.status(eligibility.statusCode).json({
+        message: eligibility.message,
+        meta: eligibility.meta,
+      });
+    }
+
+    if (serviceCall.assignedAgent) {
+      await appendSelfDispatchAudit(serviceCall._id, {
+        agent: agentId,
+        action: 'rejected',
+        reason: 'This service call has already been claimed',
+      });
+
+      return res.status(409).json({ message: 'This service call has already been claimed' });
+    }
+
+    if (serviceCall.selfDispatchEnabled === false) {
+      await appendSelfDispatchAudit(serviceCall._id, {
+        agent: agentId,
+        action: 'rejected',
+        reason: 'Agent is not eligible for self-dispatch',
+      });
+
+      return res.status(403).json({ message: 'Agent is not eligible for self-dispatch' });
+    }
+
+    if (TERMINAL_SERVICE_CALL_STATUSES.includes(serviceCall.status)) {
+      await appendSelfDispatchAudit(serviceCall._id, {
+        agent: agentId,
+        action: 'rejected',
+        reason: 'This service call is no longer claimable',
+      });
+
+      return res.status(409).json({ message: 'This service call is no longer claimable' });
+    }
+
+    const acceptedAt = new Date();
+    const updatedServiceCall = await ServiceCall.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        createdBy: req.user._id,
+        assignedAgent: null,
+        selfDispatchEnabled: { $ne: false },
+        status: { $nin: TERMINAL_SERVICE_CALL_STATUSES },
+      },
+      {
+        $set: {
+          assignedAgent: agentId,
+          assignedDate: acceptedAt,
+          assignmentNotifiedAt: acceptedAt,
+          agentAccepted: true,
+          status: 'assigned',
+          selfAcceptedBy: agentId,
+          selfAcceptedAt: acceptedAt,
+          dispatchStatus: 'self-dispatch-claimed',
+        },
+        $push: {
+          selfDispatchAudit: {
+            agent: agentId,
+            action: 'accepted',
+            reason: 'Self-accepted by eligible agent',
+            timestamp: acceptedAt,
+          },
+        },
+      },
+      { new: true }
+    )
+      .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
+      .populate('assignedAgent', 'firstName lastName employeeId');
+
+    if (!updatedServiceCall) {
+      await appendSelfDispatchAudit(serviceCall._id, {
+        agent: agentId,
+        action: 'rejected',
+        reason: 'This service call has already been claimed',
+      });
+
+      return res.status(409).json({ message: 'This service call has already been claimed' });
+    }
+
+    logInfo(`✅ Service call self-accepted: ${updatedServiceCall.callNumber} by ${eligibility.agent.employeeId}`);
+    res.json({
+      message: 'Service call self-accepted successfully',
+      serviceCall: updatedServiceCall,
+      meta: eligibility.meta,
+    });
+  } catch (error) {
+    logError('Self-accept service call error:', error);
     res.status(500).json({ message: error.message });
   }
 };

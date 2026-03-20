@@ -98,6 +98,13 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    /** User role for admin functionality - Determines access level and permissions */
+    role: {
+      type: String,
+      enum: ['superAdmin', 'businessAdministrator'],
+      default: 'businessAdministrator',
+      required: [true, 'Role is required'],
+    },
     /** Account active status */
     isActive: {
       type: Boolean,
@@ -207,7 +214,8 @@ userSchema.statics.IMMUTABLE_FIELDS = [
   'businessRegistrationNumber',
   'createdAt',
   '_id',
-  'isSuperUser' // Protect super user status from manipulation
+  'isSuperUser', // Protect super user status from manipulation
+  'role', // Protect user role from modification (only admin can change)
 ];
 
 /**

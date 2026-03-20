@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
@@ -11,7 +11,8 @@ const AgentProfile = () => {
  const { user } = useAuth();
  const [agent, setAgent] = useState(null);
  const [serviceCalls, setServiceCalls] = useState([]);
- const [allServiceCalls, setAllServiceCalls] = useState([]);
+ const [eligibleUnassignedCalls, setEligibleUnassignedCalls] = useState([]);
+ const [selfDispatchMeta, setSelfDispatchMeta] = useState(null);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
  const [actionError, setActionError] = useState('');
@@ -37,25 +38,31 @@ const AgentProfile = () => {
    const callsResponse = await api.get('/service-calls', {
     headers: { Authorization: `Bearer ${user.token}` }
    });
-  setAllServiceCalls(callsResponse.data || []);
-   
+
    // Filter calls assigned to this agent
    const agentCalls = callsResponse.data.filter(
     call => call.assignedAgent?._id === id || call.assignedAgent === id
    );
    setServiceCalls(agentCalls);
+
+  const eligibleResponse = await api.get(`/service-calls/eligible-unassigned/${id}`, {
+   headers: { Authorization: `Bearer ${user.token}` }
+  });
+  setEligibleUnassignedCalls(eligibleResponse.data.jobs || []);
+  setSelfDispatchMeta(eligibleResponse.data.meta || null);
    
   } catch (err) {
+  if (err.response?.data?.jobs) {
+   setEligibleUnassignedCalls([]);
+   setSelfDispatchMeta(err.response?.data?.meta || null);
+   setActionError(err.response?.data?.message || 'Unable to load self-dispatch jobs');
+  } else {
    setError(err.response?.data?.message || 'Failed to fetch agent data');
+  }
   } finally {
    setLoading(false);
   }
  };
-
- const unassignedCalls = useMemo(
-  () => allServiceCalls.filter((call) => !call.assignedAgent),
-  [allServiceCalls]
- );
 
  const acceptUnassignedJob = async (callId) => {
   setActionError('');
@@ -63,23 +70,21 @@ const AgentProfile = () => {
   setAcceptingCallId(callId);
 
   try {
-   await api.put(
-    `/service-calls/${callId}`,
-    {
-     assignedAgent: id,
-     status: 'assigned',
-     agentAccepted: true,
-    },
+  const response = await api.post(
+   `/service-calls/${callId}/self-accept`,
+   { agentId: id },
     {
      headers: { Authorization: `Bearer ${user.token}` },
     }
    );
 
    setActionSuccess("Job accepted successfully and added to this agent's queue.");
+  setSelfDispatchMeta(response.data.meta || null);
    await fetchAgentData();
    setActiveTab('to-attend');
   } catch (err) {
    setActionError(err.response?.data?.message || 'Failed to accept the job. Please try again.');
+  setSelfDispatchMeta(err.response?.data?.meta || null);
   } finally {
    setAcceptingCallId('');
   }
@@ -91,7 +96,7 @@ const AgentProfile = () => {
   completed: serviceCalls.filter(call => call.status === 'completed').length,
   inProgress: serviceCalls.filter(call => call.status === 'in-progress').length,
   toBeAttended: serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open').length,
-  unassigned: unassignedCalls.length,
+  unassigned: eligibleUnassignedCalls.length,
  };
 
  // Filter service calls based on active tab
@@ -104,7 +109,7 @@ const AgentProfile = () => {
    case 'to-attend':
     return serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open');
    case 'unassigned':
-    return unassignedCalls;
+    return eligibleUnassignedCalls;
    default:
     return serviceCalls;
   }
@@ -404,6 +409,11 @@ const AgentProfile = () => {
      {actionSuccess && (
       <div className="glass-alert-success mb-4 p-4 rounded-lg">{actionSuccess}</div>
      )}
+    {selfDispatchMeta && (
+     <div className="glass-card mb-4 p-4 rounded-lg text-sm text-white/80">
+      Self-dispatch remaining today: {selfDispatchMeta.remainingDailySelfAccepts} | Participation days used this week: {selfDispatchMeta.weeklyParticipationDaysUsed}/5
+     </div>
+    )}
 
      {/* Service Calls Section */}
      <div className="glass-card rounded-2xl shadow-xl overflow-hidden">

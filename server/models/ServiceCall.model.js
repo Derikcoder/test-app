@@ -177,6 +177,27 @@ const partsUsedSchema = new mongoose.Schema({
   },
 }, { _id: true });
 
+const selfDispatchAuditSchema = new mongoose.Schema({
+  agent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FieldServiceAgent',
+  },
+  action: {
+    type: String,
+    enum: ['accepted', 'rejected'],
+    required: true,
+  },
+  reason: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+}, { _id: true });
+
 /**
  * Service Call Schema Definition
  * 
@@ -247,6 +268,45 @@ const serviceCallSchema = new mongoose.Schema(
     /** Timestamp for latest assignment alert sent to service crew */
     assignmentNotifiedAt: {
       type: Date,
+    },
+    /** Whether this call can be claimed through self-dispatch rules */
+    selfDispatchEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    /** Current self-dispatch state for the call */
+    dispatchStatus: {
+      type: String,
+      enum: ['admin-queue', 'self-dispatch-open', 'self-dispatch-claimed', 'self-dispatch-closed'],
+      default: 'admin-queue',
+    },
+    /** Active dispatch wave number */
+    dispatchWave: {
+      type: Number,
+      min: [1, 'Dispatch wave must be at least 1'],
+      default: 1,
+    },
+    /** When the current dispatch wave started */
+    dispatchWaveStartedAt: {
+      type: Date,
+    },
+    /** When the current dispatch wave expires */
+    dispatchWaveExpiresAt: {
+      type: Date,
+    },
+    /** Agent who self-accepted the call */
+    selfAcceptedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FieldServiceAgent',
+    },
+    /** Timestamp of successful self-accept */
+    selfAcceptedAt: {
+      type: Date,
+    },
+    /** Inline audit trail for self-dispatch decisions */
+    selfDispatchAudit: {
+      type: [selfDispatchAuditSchema],
+      default: [],
     },
     /** Role of person who created the call */
     createdByRole: {
@@ -432,6 +492,11 @@ serviceCallSchema.statics.EDITABLE_FIELDS = [
   'assignedDate',
   'agentAccepted',
   'assignmentNotifiedAt',
+  'selfDispatchEnabled',
+  'dispatchStatus',
+  'dispatchWave',
+  'dispatchWaveStartedAt',
+  'dispatchWaveExpiresAt',
   'title',
   'description',
   'priority',

@@ -312,6 +312,38 @@ export const updateAgentLocation = async (req, res) => {
   }
 };
 
+// @desc    Update agent self-dispatch access
+// @route   PATCH /api/agents/:id/self-dispatch-access
+// @access  Private
+export const updateAgentSelfDispatchAccess = async (req, res) => {
+  try {
+    const { selfDispatchSuspended, reason = '' } = req.body;
+
+    if (typeof selfDispatchSuspended !== 'boolean') {
+      return res.status(400).json({ message: 'selfDispatchSuspended must be a boolean value' });
+    }
+
+    const agent = await FieldServiceAgent.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id
+    });
+
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    agent.selfDispatchSuspended = selfDispatchSuspended;
+    agent.selfDispatchSuspendedReason = selfDispatchSuspended ? reason : '';
+
+    const updatedAgent = await agent.save();
+    logInfo(`✅ Agent self-dispatch access updated: ${updatedAgent.employeeId} → ${selfDispatchSuspended ? 'suspended' : 'enabled'}`);
+    res.json(updatedAgent);
+  } catch (error) {
+    logError('Update agent self-dispatch access error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Get available agents for assignment
 // @route   GET /api/agents/available/list
 // @access  Private

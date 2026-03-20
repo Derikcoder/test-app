@@ -94,6 +94,7 @@ export const registerUser = async (req, res) => {
       phoneNumber,
       physicalAddress,
       websiteAddress,
+      role, // Optional: defaults to 'businessAdministrator'
     } = req.body;
 
     // Validate all required fields are present
@@ -110,6 +111,13 @@ export const registerUser = async (req, res) => {
     ) {
       logError('Registration failed - Missing required fields', { email, userName });
       return res.status(400).json({ message: 'Please fill in all required fields' });
+    }
+
+    // Validate role if provided
+    const validRoles = ['superAdmin', 'businessAdministrator'];
+    if (role && !validRoles.includes(role)) {
+      logError('Registration failed - Invalid role', { email, role });
+      return res.status(400).json({ message: 'Invalid role specified' });
     }
 
     // Check if user already exists by email or username
@@ -134,6 +142,7 @@ export const registerUser = async (req, res) => {
       phoneNumber,
       physicalAddress,
       websiteAddress,
+      role: role || 'businessAdministrator', // Default to businessAdministrator
       isSuperUser: true,
     });
 
@@ -153,6 +162,7 @@ export const registerUser = async (req, res) => {
         physicalAddress: user.physicalAddress,
         websiteAddress: user.websiteAddress,
         isSuperUser: user.isSuperUser,
+        role: user.role,
         token: generateToken(user._id),
       });
     } else {
@@ -233,6 +243,7 @@ export const loginUser = async (req, res) => {
         physicalAddress: user.physicalAddress,
         websiteAddress: user.websiteAddress,
         isSuperUser: user.isSuperUser,
+        role: user.role,
         token: generateToken(user._id),
       });
     } else {

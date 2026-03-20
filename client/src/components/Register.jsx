@@ -18,6 +18,7 @@ const Register = () => {
   phoneNumber: '',
   physicalAddress: '',
   websiteAddress: '',
+  role: 'businessAdministrator', // Default role
  });
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false);
@@ -229,6 +230,52 @@ const Register = () => {
          className="glass-form-input"
          placeholder="https://www.example.com"
         />
+       </div>
+      </div>
+     </div>
+
+     {/* User Role Section */}
+     <div className="glass-card">
+      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>🔐 Account Role</h3>
+      <p className="text-sm mb-4 opacity-75" style={{ color: 'var(--primary)' }}>
+        Select your account role. This determines your access level and permissions in the system.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div className="glass-form-group">
+        <label className="flex items-center gap-3 cursor-pointer">
+         <input
+          type="radio"
+          name="role"
+          value="businessAdministrator"
+          checked={formData.role === 'businessAdministrator'}
+          onChange={handleChange}
+          className="w-4 h-4"
+         />
+         <div>
+          <p className="font-semibold" style={{ color: 'var(--primary)' }}>Business Administrator</p>
+          <p className="text-xs opacity-75" style={{ color: 'var(--primary)' }}>
+            Manage agents, customers, and service calls. Full operational access.
+          </p>
+         </div>
+        </label>
+       </div>
+       <div className="glass-form-group">
+        <label className="flex items-center gap-3 cursor-pointer">
+         <input
+          type="radio"
+          name="role"
+          value="superAdmin"
+          checked={formData.role === 'superAdmin'}
+          onChange={handleChange}
+          className="w-4 h-4"
+         />
+         <div>
+          <p className="font-semibold" style={{ color: 'var(--primary)' }}>Super Admin</p>
+          <p className="text-xs opacity-75" style={{ color: 'var(--primary)' }}>
+            Business owner. View-only reporting and oversight access.
+          </p>
+         </div>
+        </label>
        </div>
       </div>
      </div>

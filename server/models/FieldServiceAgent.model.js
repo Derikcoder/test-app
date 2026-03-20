@@ -120,6 +120,17 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** Whether this agent is currently blocked from self-dispatch acceptance */
+    selfDispatchSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    /** Reason for current self-dispatch restriction */
+    selfDispatchSuspendedReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     /** Vehicle registration/number assigned to agent */
     vehicleNumber: {
       type: String,
@@ -203,6 +214,8 @@ fieldServiceAgentSchema.statics.EDITABLE_FIELDS = [
   'availability',
   'currentLocation',
   'assignedArea',
+  'selfDispatchSuspended',
+  'selfDispatchSuspendedReason',
   'vehicleNumber',
   'notes'
 ];
