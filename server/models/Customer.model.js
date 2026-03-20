@@ -258,6 +258,14 @@ const customerSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    /** Linked login principal for this customer profile */
+    userAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      unique: true,
+      sparse: true,
+    },
   },
   {
     timestamps: true, // Auto-add createdAt and updatedAt

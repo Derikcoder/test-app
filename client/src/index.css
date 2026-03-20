@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,11 +37,60 @@
   --secondary-gradient: linear-gradient(135deg, #FFFB28 0%, #e6e600 100%);
 }
 
+body {
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+}
+
 /* ============================================================
    GLASSMORPHISM COMPONENTS
    ============================================================ */
 
 @layer components {
+  .auth-surface {
+    background:
+      radial-gradient(1000px 500px at 5% -5%, rgba(255, 251, 40, 0.15), transparent 65%),
+      radial-gradient(900px 560px at 90% 8%, rgba(255, 255, 255, 0.15), transparent 60%),
+      linear-gradient(160deg, #04156f 0%, #07228f 55%, #1c47b9 100%);
+  }
+
+  .auth-aside-card {
+    @apply glass-pane p-7 sm:p-10;
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.08));
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .auth-kicker {
+    @apply mb-3 inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider;
+    color: #0d1b72;
+    background: rgba(255, 251, 40, 0.9);
+  }
+
+  .auth-aside-title {
+    @apply text-3xl font-extrabold leading-tight;
+    color: #ffffff;
+  }
+
+  .auth-aside-copy {
+    @apply mt-4 text-sm leading-relaxed;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .auth-stat-card {
+    @apply rounded-lg px-3 py-3;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .auth-stat-label {
+    @apply text-[10px] font-bold uppercase tracking-wider;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .auth-stat-value {
+    @apply mt-1 text-sm font-bold;
+    color: #ffffff;
+  }
+
   /**
    * Glass Pane Base
    * Core glassmorphism style for containers and cards

@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** March 19, 2026  
+**Last Updated:** March 20, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -42,6 +42,14 @@
 ---
 
 ## 📋 Quick Context
+
+### Recent Changes
+- Multi-principal authentication now supports `superAdmin`, `businessAdministrator`, `fieldServiceAgent`, and `customer`.
+- Passkey onboarding and renewal workflows added for delegated role onboarding.
+- User-to-operational-profile linking lifecycle added with admin attach/detach/reassign endpoints and audit logging.
+- Registration identifiers now follow write-once policy for non-superAdmin users.
+- SuperAdmin registration-identifier overrides now require legal documentation evidence.
+- Dedicated legal override audit collection and read-only admin query endpoint added.
 
 ### What Is This Project?
 A full-stack MERN (MongoDB, Express, React, Node.js) application for managing field service operations. It handles customer intake, field agent management, service call tracking, and includes Google Maps integration for location services.
@@ -99,12 +107,16 @@ test-app/
 │   │   ├── auth.middleware.js      # JWT verification
 │   │   └── logger.middleware.js    # Request/error logging
 │   ├── models/
-│   │   ├── User.model.js           # SuperUser schema
+│   │   ├── User.model.js           # Multi-role identity principal schema
 │   │   ├── FieldServiceAgent.model.js
 │   │   ├── Customer.model.js
-│   │   └── ServiceCall.model.js
+│   │   ├── ServiceCall.model.js
+│   │   ├── OnboardingPasskey.model.js
+│   │   ├── PasskeyRenewalRequest.model.js
+│   │   ├── ProfileLinkAudit.model.js
+│   │   └── RegistrationOverrideAudit.model.js
 │   ├── controllers/
-│   │   ├── auth.controller.js      # Registration, login, profile, forgotPassword, resetPassword
+│   │   ├── auth.controller.js      # Multi-role auth, passkeys, profile policy, admin audits
 │   │   ├── agent.controller.js     # Agent CRUD
 │   │   ├── customer.controller.js  # Customer CRUD
 │   │   └── serviceCall.controller.js
@@ -155,20 +167,23 @@ test-app/
 
 ### 1. Field-Level Permissions
 
-**Critical Feature**: Certain fields are immutable after creation to protect business-critical data.
+**Critical Feature**: Profile updates are governed by immutable and write-once policy layers.
 
 **Protected Fields (User Model):**
 - `userName` - Cannot change (identity)
-- `businessName` - Cannot change (legal entity)
-- `businessRegistrationNumber` - Cannot change (legal identifier)
 - `createdAt` - System-managed
 - `_id` - Database identifier
 - `isSuperUser` - Security flag
+- `role`, profile-link fields - controlled via admin/linking flows
 
+**Write-Once Registration Identifiers (Profile Update Policy):**
+- `businessRegistrationNumber`, `taxNumber`, `vatNumber`
+- Non-superAdmin users can only set these when empty, then they become locked.
+- SuperAdmin can override existing values only with valid `registrationChangeEvidence`.
 **Implementation:**
 - Models define `IMMUTABLE_FIELDS` and `EDITABLE_FIELDS` arrays
-- Controllers validate update requests against these arrays
-- Attempts to modify protected fields return 403 Forbidden
+- Controllers apply immutable checks plus write-once legal-identifier rules
+- Attempts to bypass policy return 400/403 depending on violation
 - See: `server/models/User.model.js` and `server/controllers/auth.controller.js`
 
 **Why This Matters:**

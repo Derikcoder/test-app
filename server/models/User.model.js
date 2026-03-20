@@ -11,6 +11,9 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
+const ROLE_TYPES = ['superAdmin', 'businessAdministrator', 'fieldServiceAgent', 'customer'];
+const BUSINESS_INFO_REQUIRED_ROLES = ['superAdmin', 'customer'];
+
 /**
  * User Schema Definition
  * 
@@ -21,7 +24,8 @@ import crypto from 'crypto';
  * Key Features:
  * - Password hashing with bcrypt
  * - Email validation with regex
- * - Immutable fields (userName, businessName, registrationNumber)
+ * - Immutable core identity fields (userName, role bindings)
+ * - Write-once registration identifiers (enforced in controller)
  * - Timestamp tracking (createdAt, updatedAt)
  */
 const userSchema = new mongoose.Schema(
@@ -49,42 +53,46 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
     },
-    /** Business name - Cannot be changed after registration */
+    /** Business name */
     businessName: {
       type: String,
-      required: [true, 'Business name is required'],
+      required: function requiredBusinessName() {
+        return BUSINESS_INFO_REQUIRED_ROLES.includes(this.role);
+      },
       trim: true,
-      immutable: true,
     },
-    /** Business registration number - Legal identifier, cannot be changed */
+    /** Business registration number - Legal identifier (write-once by policy) */
     businessRegistrationNumber: {
       type: String,
-      required: [true, 'Business registration number is required'],
       trim: true,
-      immutable: true,
+      default: '',
     },
     /** Tax number - Required for tax compliance */
     taxNumber: {
       type: String,
-      required: [true, 'Tax number is required'],
       trim: true,
+      default: '',
     },
     /** VAT number - Required for VAT compliance */
     vatNumber: {
       type: String,
-      required: [true, 'VAT number is required'],
       trim: true,
+      default: '',
     },
     /** Primary contact phone number */
     phoneNumber: {
       type: String,
-      required: [true, 'Phone number is required'],
+      required: function requiredPhoneNumber() {
+        return BUSINESS_INFO_REQUIRED_ROLES.includes(this.role);
+      },
       trim: true,
     },
     /** Physical business address */
     physicalAddress: {
       type: String,
-      required: [true, 'Physical address is required'],
+      required: function requiredPhysicalAddress() {
+        return BUSINESS_INFO_REQUIRED_ROLES.includes(this.role);
+      },
       trim: true,
     },
     /** Optional business website URL */
@@ -101,9 +109,21 @@ const userSchema = new mongoose.Schema(
     /** User role for admin functionality - Determines access level and permissions */
     role: {
       type: String,
-      enum: ['superAdmin', 'businessAdministrator'],
-      default: 'businessAdministrator',
+      enum: ROLE_TYPES,
+      default: 'superAdmin',
       required: [true, 'Role is required'],
+    },
+    /** Linked field agent profile for fieldServiceAgent principal accounts */
+    fieldServiceAgentProfile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FieldServiceAgent',
+      default: null,
+    },
+    /** Linked customer profile for customer principal accounts */
+    customerProfile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Customer',
+      default: null,
     },
     /** Account active status */
     isActive: {
@@ -201,6 +221,42 @@ userSchema.methods.generatePasswordResetToken = function () {
 };
 
 /**
+ * One-to-one linking constraints for role/profile mappings.
+ * - fieldServiceAgent must link only to a field agent profile.
+ * - customer must link only to a customer profile.
+ * - admin roles must not link to operational profiles.
+ */
+userSchema.pre('validate', function validateRoleProfileLinkage(next) {
+  if (this.role === 'fieldServiceAgent' && !this.fieldServiceAgentProfile) {
+    this.invalidate('fieldServiceAgentProfile', 'Field service agent role requires linked fieldServiceAgentProfile');
+  }
+
+  if (this.role === 'customer' && !this.customerProfile) {
+    this.invalidate('customerProfile', 'Customer role requires linked customerProfile');
+  }
+
+  if (this.role === 'fieldServiceAgent' && this.customerProfile) {
+    this.invalidate('customerProfile', 'Field service agent role cannot link to customerProfile');
+  }
+
+  if (this.role === 'customer' && this.fieldServiceAgentProfile) {
+    this.invalidate('fieldServiceAgentProfile', 'Customer role cannot link to fieldServiceAgentProfile');
+  }
+
+  if (
+    ['superAdmin', 'businessAdministrator'].includes(this.role) &&
+    (this.fieldServiceAgentProfile || this.customerProfile)
+  ) {
+    this.invalidate('role', 'Admin roles cannot link to customer or field service agent operational profiles');
+  }
+
+  next();
+});
+
+userSchema.index({ fieldServiceAgentProfile: 1 }, { unique: true, sparse: true });
+userSchema.index({ customerProfile: 1 }, { unique: true, sparse: true });
+
+/**
  * Static Property: Immutable Fields
  * 
  * @description
@@ -210,12 +266,12 @@ userSchema.methods.generatePasswordResetToken = function () {
  */
 userSchema.statics.IMMUTABLE_FIELDS = [
   'userName',
-  'businessName',
-  'businessRegistrationNumber',
   'createdAt',
   '_id',
   'isSuperUser', // Protect super user status from manipulation
   'role', // Protect user role from modification (only admin can change)
+  'fieldServiceAgentProfile',
+  'customerProfile',
 ];
 
 /**
@@ -228,6 +284,8 @@ userSchema.statics.IMMUTABLE_FIELDS = [
 userSchema.statics.EDITABLE_FIELDS = [
   'email',
   'password',
+  'businessName',
+  'businessRegistrationNumber',
   'taxNumber',
   'vatNumber',
   'phoneNumber',

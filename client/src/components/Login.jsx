@@ -35,19 +35,14 @@ import api from '../api/axios';
  * <Route path="/login" element={<Login />} />
  */
 const Login = () => {
- // Hooks
- const navigate = useNavigate();
- const { login } = useAuth();
- 
- // Form state management
- const [formData, setFormData] = useState({
-  email: '',
-  password: '',
- });
- 
- // UI state
- const [error, setError] = useState('');
- const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+    const { login } = useAuth();
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+    });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
  /**
   * Handle Input Changes
@@ -60,17 +55,16 @@ const Login = () => {
   * Uses computed property names to update the correct field.
   * Clears any error messages when user starts typing again.
   */
- const handleChange = (e) => {
-  // Clear error message when user starts typing
-  if (error) {
-   setError('');
-  }
-  
-  setFormData({
-   ...formData,
-   [e.target.name]: e.target.value,
-  });
- };
+    const handleChange = (e) => {
+        if (error) {
+            setError('');
+        }
+
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value,
+        });
+    };
 
  /**
   * Handle Form Submission
@@ -89,28 +83,21 @@ const Login = () => {
   * 
   * @throws Displays user-friendly error if API call fails
   */
- const handleSubmit = async (e) => {
-  e.preventDefault(); // Prevent page reload
-  setError(''); // Clear previous errors
-  setLoading(true); // Show loading state
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
 
-  try {
-   // Call login API endpoint
-   const response = await api.post('/auth/login', formData);
-   
-   // Store user info and JWT token in context and localStorage
-   login(response.data);
-   
-   // Navigate to user profile page
-   navigate('/profile');
-  } catch (err) {
-   // Display error message from backend or generic error
-   setError(err.response?.data?.message || 'Login failed. Please try again.');
-  } finally {
-   // Always reset loading state
-   setLoading(false);
-  }
- };
+        try {
+            const response = await api.post('/auth/login', formData);
+            login(response.data);
+            navigate('/profile');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Login failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
  /**
   * Render Login Form
@@ -125,104 +112,101 @@ const Login = () => {
   * - Submit button with primary brand gradient
   * - Link to registration page with glass link styling
   */
- return (
-  <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-   <div className="glass-form ">
-    {/* Heading */}
-    <h1 className="glass-heading">Welcome Back</h1>
-    <p className="glass-heading-secondary">Login to Appatunid Platform</p>
+    return (
+        <div className="glass-bg-particles min-h-screen bg-fixed auth-surface px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[1.15fr_1fr]">
+                <section className="auth-aside-card">
+                    <p className="auth-kicker">Appatunid Enterprise Suite</p>
+                    <h1 className="auth-aside-title">Service Intelligence for Every Role</h1>
+                    <p className="auth-aside-copy">
+                        Secure sign-in for management, field technicians, and customer portals with auditable identity controls.
+                    </p>
+                    <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="auth-stat-card">
+                            <p className="auth-stat-label">Identity</p>
+                            <p className="auth-stat-value">Role-aware</p>
+                        </div>
+                        <div className="auth-stat-card">
+                            <p className="auth-stat-label">Onboarding</p>
+                            <p className="auth-stat-value">One-time key</p>
+                        </div>
+                        <div className="auth-stat-card">
+                            <p className="auth-stat-label">Operations</p>
+                            <p className="auth-stat-value">Audit trail</p>
+                        </div>
+                    </div>
+                </section>
 
-    {/* Error Message Display */}
-    {error && (
-     <div className="glass-alert-error mb-4">
-      <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-      </svg>
-      <p style={{ color: '#ee5a52' }} className="font-medium">{error}</p>
-     </div>
-    )}
+                <section className="glass-form max-w-none p-7 sm:p-9">
+                    <h2 className="glass-heading text-left">Sign In</h2>
+                    <p className="glass-heading-secondary mb-6 text-left">Access your dashboard with enterprise-grade security.</p>
 
-    {/* Login Form */}
-    <form onSubmit={handleSubmit} className="space-y-6">
-     {/* Email Input */}
-     <div className="glass-form-group">
-      <label htmlFor="email" className="glass-form-label">Email Address</label>
-      <input
-       id="email"
-       type="email"
-       name="email"
-       required
-       value={formData.email}
-       onChange={handleChange}
-       className="glass-form-input"
-       placeholder="you@example.com"
-      />
-     </div>
+                    {error && (
+                        <div className="glass-alert-error mb-5">
+                            <svg className="mr-3 h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            <p className="font-medium" style={{ color: '#ee5a52' }}>{error}</p>
+                        </div>
+                    )}
 
-     {/* Password Input */}
-     <div className="glass-form-group">
-      <label htmlFor="password" className="glass-form-label">Password</label>
-      <input
-       id="password"
-       type="password"
-       name="password"
-       required
-       value={formData.password}
-       onChange={handleChange}
-       className="glass-form-input"
-       placeholder="Enter your password"
-      />
-      {/* Forgot Password Link */}
-      <div className="text-right mt-2">
-       <button
-        type="button"
-        onClick={() => navigate('/forgot-password')}
-        className="text-sm font-medium transition-colors duration-200"
-        style={{ color: 'var(--secondary)' }}
-        onMouseEnter={(e) => e.target.style.color = 'var(--secondary-dark)'}
-        onMouseLeave={(e) => e.target.style.color = 'var(--secondary)'}
-       >
-        Forgot Password?
-       </button>
-      </div>
-     </div>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="glass-form-group mb-0">
+                            <label htmlFor="email" className="glass-form-label">Business Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                name="email"
+                                required
+                                autoComplete="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                className="glass-form-input"
+                                placeholder="you@company.com"
+                            />
+                        </div>
 
-     {/* Submit Button with Loading State */}
-     <button
-      type="submit"
-      disabled={loading}
-      className="glass-btn-primary mt-8"
-     >
-      {loading ? '🔄 Logging in...' : '✨ Login'}
-     </button>
+                        <div className="glass-form-group mb-0">
+                            <div className="mb-2 flex items-center justify-between">
+                                <label htmlFor="password" className="glass-form-label mb-0">Password</label>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/forgot-password')}
+                                    className="text-sm font-semibold transition-colors duration-200"
+                                    style={{ color: 'var(--secondary)' }}
+                                >
+                                    Forgot password?
+                                </button>
+                            </div>
+                            <input
+                                id="password"
+                                type="password"
+                                name="password"
+                                required
+                                autoComplete="current-password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                className="glass-form-input"
+                                placeholder="Enter your secure password"
+                            />
+                        </div>
 
-     {/* Divider */}
-     <div className="glass-divider">
-      <span className="glass-divider-text">OR</span>
-     </div>
+                        <button type="submit" disabled={loading} className="glass-btn-primary mt-2">
+                            {loading ? 'Authenticating...' : 'Sign In Securely'}
+                        </button>
 
-     {/* Link to Registration Page */}
-     <button
-      type="button"
-      onClick={() => navigate('/register')}
-      className="glass-btn-outline"
-     >
-      Create Account
-     </button>
+                        <div className="glass-divider my-5">
+                            <span className="glass-divider-text">NEW TO APPATUNID</span>
+                        </div>
 
-     {/* Footer Link */}
-     <div className="text-center mt-6">
-      <p className="text-sm opacity-75" style={{ color: 'var(--primary)' }}>
-       Don't have an account?{' '}
-       <a href="#" onClick={() => navigate('/register')} className="glass-link">
-        Sign up here
-       </a>
-      </p>
-     </div>
-    </form>
-   </div>
-  </div>
- );
+                        <button type="button" onClick={() => navigate('/register')} className="glass-btn-outline">
+                            Create Enterprise Account
+                        </button>
+                    </form>
+                </section>
+            </div>
+        </div>
+    );
 };
 
 export default Login;

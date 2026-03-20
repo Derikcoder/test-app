@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
 
 ---
 
@@ -125,7 +125,7 @@ main                 ← Production (stable, never touched directly)
 - `Register.jsx`: New user registration form.
 - `ForgotPassword.jsx`: Password reset request form — sends reset email.
 - `ResetPassword.jsx`: Password reset form — consumes reset token from email link.
-- `UserProfile.jsx`: Profile display, edits with protected field logic, and SuperUser stats dashboard.
+- `UserProfile.jsx`: Profile display and edits with write-once registration identifiers, legal-evidence override capture for superAdmin, and role-aware account dashboard.
 - `FieldServiceAgents.jsx`: Field service agent list and CRUD screen.
 - `AgentProfile.jsx`: Agent detail view with job statistics.
 - `Customers.jsx`: Customer list page — all customers filtered by type, with navigation to type-specific profiles.
@@ -160,9 +160,13 @@ main                 ← Production (stable, never touched directly)
 - `logs/request.log`: HTTP request log.
 
 ### Server Models (`server/models/`)
-- `User.model.js`: User schema, password hashing, comparePassword, immutable/editable field lists.
+- `User.model.js`: Multi-principal user schema (`superAdmin`, `businessAdministrator`, `fieldServiceAgent`, `customer`) with role/profile-link constraints and write-once registration policy support.
 - `FieldServiceAgent.model.js`: Field agent schema, employee details, and metadata.
 - `Customer.model.js`: Customer schema, contact information, sites, and account status.
+- `OnboardingPasskey.model.js`: One-time passkey lifecycle for delegated-role onboarding.
+- `PasskeyRenewalRequest.model.js`: Approval-driven passkey renewal requests.
+- `ProfileLinkAudit.model.js`: Audit log for attach/detach/reassign user-profile link corrections.
+- `RegistrationOverrideAudit.model.js`: Immutable legal-evidence snapshot audit for superAdmin registration identifier overrides.
 - `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), with assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`).
 - `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call, structured travel fields (including travel time for call-out floor logic), first-site-visit assessment fields (`isFirstSiteVisit`, `includedAssessmentMinutes`, `chargeableLabourHours`), procurement/delivery analytics fields, and default 14-day validity.
 - `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking.
@@ -170,7 +174,7 @@ main                 ← Production (stable, never touched directly)
 - `Example.model.js`: Example/template entity schema.
 
 ### Server Controllers (`server/controllers/`)
-- `auth.controller.js`: Login, registration, profile updates, password reset, and SuperUser stats.
+- `auth.controller.js`: Multi-principal registration/login, passkey generation/renewal, profile updates with write-once/legal-evidence policy, admin profile-link correction flows, and legal override audit query endpoint.
 - `agent.controller.js`: Field service agent CRUD.
 - `customer.controller.js`: Customer CRUD.
 - `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff.
@@ -181,7 +185,7 @@ main                 ← Production (stable, never touched directly)
 - `equipment.controller.js`: Equipment/asset CRUD.
 
 ### Server Routes (`server/routes/`)
-- `auth.routes.js`: `/api/auth` — login, register, profile, password reset, stats.
+- `auth.routes.js`: `/api/auth` — login, register, profile, password reset, passkey lifecycle endpoints, profile-link correction endpoints, and legal override audit query endpoint.
 - `agent.routes.js`: `/api/agents` — agent endpoints.
 - `customer.routes.js`: `/api/customers` — customer endpoints.
 - `serviceCall.routes.js`: `/api/service-calls` — service call endpoints.

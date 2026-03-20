@@ -14,10 +14,16 @@ const UserProfile = () => {
  
  // Form state for editable fields
  const [formData, setFormData] = useState({
+  businessName: user?.businessName || '',
+  businessRegistrationNumber: user?.businessRegistrationNumber || '',
   email: user?.email || '',
   phoneNumber: user?.phoneNumber || '',
   taxNumber: user?.taxNumber || '',
   vatNumber: user?.vatNumber || '',
+  legalDocumentType: '',
+  legalDocumentReference: '',
+  legalDocumentUri: '',
+  legalChangeReason: '',
   physicalAddress: user?.physicalAddress || '',
   websiteAddress: user?.websiteAddress || '',
   password: '',
@@ -28,6 +34,23 @@ const UserProfile = () => {
   navigate('/login');
   return null;
  }
+
+ const roleDisplayName = {
+  superAdmin: 'Super Admin',
+  businessAdministrator: 'Business Administrator',
+  fieldServiceAgent: 'Field Service Agent',
+  customer: 'Customer',
+ };
+
+ const profileRole = roleDisplayName[user.role] || 'Platform User';
+ const canOverrideRegistrationIdentifiers = user.role === 'superAdmin' || user.isSuperUser === true;
+ const isRegistrationFieldLocked = (value) => !canOverrideRegistrationIdentifiers && Boolean(value?.trim());
+ const registrationIdentifierFields = ['businessRegistrationNumber', 'taxNumber', 'vatNumber'];
+ const requiresLegalEvidenceForOverride = canOverrideRegistrationIdentifiers && registrationIdentifierFields.some((field) => {
+  const existingValue = (user[field] || '').trim();
+  const incomingValue = (formData[field] || '').trim();
+  return Boolean(existingValue) && incomingValue !== existingValue;
+ });
 
  const handleLogout = () => {
   logout();
@@ -40,10 +63,16 @@ const UserProfile = () => {
   setSuccessMessage('');
   // Reset form data to current user values
   setFormData({
+    businessName: user.businessName || '',
+   businessRegistrationNumber: user.businessRegistrationNumber || '',
    email: user.email,
    phoneNumber: user.phoneNumber,
    taxNumber: user.taxNumber,
    vatNumber: user.vatNumber,
+   legalDocumentType: '',
+   legalDocumentReference: '',
+   legalDocumentUri: '',
+   legalChangeReason: '',
    physicalAddress: user.physicalAddress,
    websiteAddress: user.websiteAddress || '',
    password: '',
@@ -56,10 +85,16 @@ const UserProfile = () => {
   setError('');
   setSuccessMessage('');
   setFormData({
+    businessName: user.businessName || '',
+   businessRegistrationNumber: user.businessRegistrationNumber || '',
    email: user.email,
    phoneNumber: user.phoneNumber,
    taxNumber: user.taxNumber,
    vatNumber: user.vatNumber,
+   legalDocumentType: '',
+   legalDocumentReference: '',
+   legalDocumentUri: '',
+   legalChangeReason: '',
    physicalAddress: user.physicalAddress,
    websiteAddress: user.websiteAddress || '',
    password: '',
@@ -91,11 +126,26 @@ const UserProfile = () => {
    return;
   }
 
+  if (requiresLegalEvidenceForOverride) {
+   const hasAllEvidence =
+    formData.legalDocumentType.trim() &&
+    formData.legalDocumentReference.trim() &&
+    formData.legalDocumentUri.trim() &&
+    formData.legalChangeReason.trim().length >= 15;
+
+   if (!hasAllEvidence) {
+    setError('Legal documentation details are required when changing existing registration identifiers');
+    return;
+   }
+  }
+
   setLoading(true);
 
   try {
    // Prepare update data (only send password if it's being changed)
    const updateData = {
+    businessName: formData.businessName,
+    businessRegistrationNumber: formData.businessRegistrationNumber,
     email: formData.email,
     phoneNumber: formData.phoneNumber,
     taxNumber: formData.taxNumber,
@@ -103,6 +153,15 @@ const UserProfile = () => {
     physicalAddress: formData.physicalAddress,
     websiteAddress: formData.websiteAddress,
    };
+
+    if (requiresLegalEvidenceForOverride) {
+     updateData.registrationChangeEvidence = {
+      legalDocumentType: formData.legalDocumentType.trim(),
+      legalDocumentReference: formData.legalDocumentReference.trim(),
+      legalDocumentUri: formData.legalDocumentUri.trim(),
+      legalChangeReason: formData.legalChangeReason.trim(),
+     };
+    }
 
    if (formData.password) {
     updateData.password = formData.password;
@@ -138,128 +197,322 @@ const UserProfile = () => {
  return (
   <>
    <Sidebar />
-   <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 py-12 px-4 sm:px-6 lg:px-8">
-    <div className="max-w-[1200px] mx-auto ">
-     {/* Header */}
-     <div className="glass-card rounded-2xl shadow-xl overflow-hidden mb-6">
-      <div className="bg-gradient-to-r from-blue-900/50 to-blue-800/50 backdrop-blur-md border-b border-white/20 px-8 py-6">
-       <div className="flex justify-between items-center">
-        <div>
-         <h1 className="glass-heading text-3xl">{user.businessName}</h1>
-         <p className="text-white/70 mt-1">SuperUser Account</p>
+   <div className="glass-bg-particles auth-surface min-h-screen bg-fixed py-10 px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl">
+     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.15fr_1fr]">
+      <section className="auth-aside-card">
+       <p className="auth-kicker">Identity Console</p>
+       <h1 className="auth-aside-title">{user.businessName || 'Enterprise Account'}</h1>
+       <p className="auth-aside-copy">
+        Centralized profile and governance summary for your platform account.
+       </p>
+       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="auth-stat-card">
+         <p className="auth-stat-label">Role</p>
+         <p className="auth-stat-value">{profileRole}</p>
         </div>
+        <div className="auth-stat-card">
+         <p className="auth-stat-label">Status</p>
+         <p className="auth-stat-value">{user.isActive ? 'Active' : 'Inactive'}</p>
+        </div>
+        <div className="auth-stat-card">
+         <p className="auth-stat-label">Principal</p>
+         <p className="auth-stat-value">{user.isSuperUser ? 'Admin' : 'Operational'}</p>
+        </div>
+       </div>
+       <div className="mt-8 flex flex-wrap gap-3">
+        <button
+         onClick={isEditing ? handleCancelEdit : handleEditClick}
+         className="glass-btn-outline w-auto px-5 py-2"
+        >
+         {isEditing ? 'Cancel Editing' : 'Edit Profile'}
+        </button>
         <button
          onClick={handleLogout}
-         className="glass-btn-secondary font-semibold py-2 px-6"
+         className="glass-btn-secondary w-auto px-5 py-2"
         >
          Logout
         </button>
        </div>
-      </div>
-     </div>
+      </section>
 
-     {/* User Information */}
-     <div className="p-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-       <div className="glass-card p-6">
-        <h2 className="glass-heading-secondary mb-4 flex items-center">
-         <svg className="w-5 h-5 mr-2 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      <section className="glass-form max-w-none p-7 sm:p-9">
+       <h2 className="glass-heading text-left">Account Profile</h2>
+       <p className="glass-heading-secondary mb-6 text-left">Review and maintain your enterprise identity data.</p>
+
+       {error && (
+        <div className="glass-alert-error mb-4">
+         <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
          </svg>
-         User Details
-        </h2>
-        <div className="space-y-3">
-         <div>
-          <p className="text-sm text-white/70">Username</p>
-          <p className="font-semibold text-white">{user.userName}</p>
-         </div>
-         <div>
-          <p className="text-sm text-white/70">Email</p>
-          <p className="font-semibold text-white">{user.email}</p>
-         </div>
-         <div>
-          <p className="text-sm text-white/70">Phone Number</p>
-          <p className="font-semibold text-white">{user.phoneNumber}</p>
-         </div>
+         <p className="font-medium" style={{ color: '#ee5a52' }}>{error}</p>
         </div>
-       </div>
+       )}
 
-       <div className="glass-card p-6">
-        <h2 className="glass-heading-secondary mb-4 flex items-center">
-         <svg className="w-5 h-5 mr-2 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+       {successMessage && (
+        <div className="glass-alert-success mb-4">
+         <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
          </svg>
-         Business Information
-        </h2>
-        <div className="space-y-3">
-         <div>
-          <p className="text-sm text-white/70">Business Name</p>
-          <p className="font-semibold text-white">{user.businessName}</p>
+         <p className="font-medium">{successMessage}</p>
+        </div>
+       )}
+
+       {!isEditing ? (
+        <div className="space-y-5">
+         <div className="glass-card p-5">
+          <h3 className="glass-heading-secondary mb-3 text-left">User Details</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Username</p>
+            <p className="font-semibold text-white">{user.userName}</p>
+           </div>
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Email</p>
+            <p className="font-semibold text-white">{user.email}</p>
+           </div>
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Phone Number</p>
+            <p className="font-semibold text-white">{user.phoneNumber || 'Not provided'}</p>
+           </div>
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Role</p>
+            <p className="font-semibold text-white">{profileRole}</p>
+           </div>
+          </div>
          </div>
-         <div>
-          <p className="text-sm text-white/70">Registration Number</p>
-          <p className="font-semibold text-white">{user.businessRegistrationNumber}</p>
+
+         <div className="glass-card p-5">
+          <h3 className="glass-heading-secondary mb-3 text-left">Business Information</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Business Name</p>
+            <p className="font-semibold text-white">{user.businessName || 'Not provided'}</p>
+           </div>
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Registration Number</p>
+            <p className="font-semibold text-white">{user.businessRegistrationNumber || 'Not provided'}</p>
+           </div>
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Tax Number</p>
+            <p className="font-semibold text-white">{user.taxNumber || 'Not provided'}</p>
+           </div>
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">VAT Number</p>
+            <p className="font-semibold text-white">{user.vatNumber || 'Not provided'}</p>
+           </div>
+          </div>
          </div>
-         <div>
-          <p className="text-sm text-white/70">Website</p>
-          {user.websiteAddress ? (
-           <a
-            href={user.websiteAddress}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="glass-link font-semibold"
-           >
-            {user.websiteAddress}
-           </a>
-          ) : (
-           <p className="font-semibold text-white/50">Not provided</p>
-          )}
+
+         <div className="glass-card p-5">
+          <h3 className="glass-heading-secondary mb-3 text-left">Address & Web</h3>
+          <div className="space-y-3">
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Physical Address</p>
+            <p className="font-semibold text-white">{user.physicalAddress || 'Not provided'}</p>
+           </div>
+           <div>
+            <p className="text-xs uppercase tracking-wider text-white/70">Website</p>
+            {user.websiteAddress ? (
+             <a
+              href={user.websiteAddress}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glass-link font-semibold"
+             >
+              {user.websiteAddress}
+             </a>
+            ) : (
+             <p className="font-semibold text-white/50">Not provided</p>
+            )}
+           </div>
+          </div>
          </div>
         </div>
-       </div>
-      </div>
-
-      {/* Tax Information */}
-      <div className="glass-card p-6 mb-6">
-       <h2 className="glass-heading-secondary mb-4 flex items-center">
-        <svg className="w-5 h-5 mr-2 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Tax Information
-       </h2>
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-         <p className="text-sm text-white/70">Tax Number</p>
-         <p className="font-semibold text-white">{user.taxNumber}</p>
-        </div>
-        <div>
-         <p className="text-sm text-white/70">VAT Number</p>
-         <p className="font-semibold text-white">{user.vatNumber}</p>
-        </div>
-       </div>
-      </div>
-
-      {/* Address */}
-      <div className="glass-card p-6">
-       <h2 className="glass-heading-secondary mb-4 flex items-center">
-        <svg className="w-5 h-5 mr-2 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        Physical Address
-       </h2>
-       <p className="text-white">{user.physicalAddress}</p>
-      </div>
-
-      {/* Account Status Badge */}
-      <div className="mt-6 flex items-center justify-center">
-       <span className="glass-alert-success inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold">
-        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-        </svg>
-        Active SuperUser Account
-       </span>
-      </div>
+       ) : (
+        <form onSubmit={handleSubmit} className="space-y-5">
+         <div className="glass-card p-5">
+          <h3 className="glass-heading-secondary mb-3 text-left">Editable Fields</h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+           <div className="glass-form-group mb-0">
+            <label className="glass-form-label">Business Name</label>
+            <input
+             type="text"
+             name="businessName"
+             value={formData.businessName}
+             onChange={handleInputChange}
+             className="glass-form-input"
+             required
+            />
+           </div>
+             <div className="glass-form-group mb-0">
+              <label className="glass-form-label">Registration Number</label>
+              <input
+               type="text"
+               name="businessRegistrationNumber"
+               value={formData.businessRegistrationNumber}
+               onChange={handleInputChange}
+               className="glass-form-input"
+               disabled={isRegistrationFieldLocked(user.businessRegistrationNumber || '')}
+              />
+              {isRegistrationFieldLocked(user.businessRegistrationNumber || '') && (
+               <p className="mt-1 text-xs text-white/60">Locked after initial save. Contact super admin for corrections.</p>
+              )}
+             </div>
+           <div className="glass-form-group mb-0">
+            <label className="glass-form-label">Email</label>
+            <input
+             type="email"
+             name="email"
+             value={formData.email}
+             onChange={handleInputChange}
+             className="glass-form-input"
+             required
+            />
+           </div>
+           <div className="glass-form-group mb-0">
+            <label className="glass-form-label">Phone Number</label>
+            <input
+             type="text"
+             name="phoneNumber"
+             value={formData.phoneNumber}
+             onChange={handleInputChange}
+             className="glass-form-input"
+            />
+           </div>
+           <div className="glass-form-group mb-0">
+            <label className="glass-form-label">Tax Number</label>
+            <input
+             type="text"
+             name="taxNumber"
+             value={formData.taxNumber}
+             onChange={handleInputChange}
+             className="glass-form-input"
+             disabled={isRegistrationFieldLocked(user.taxNumber || '')}
+            />
+            {isRegistrationFieldLocked(user.taxNumber || '') && (
+             <p className="mt-1 text-xs text-white/60">Locked after initial save. Contact super admin for corrections.</p>
+            )}
+           </div>
+           <div className="glass-form-group mb-0">
+            <label className="glass-form-label">VAT Number</label>
+            <input
+             type="text"
+             name="vatNumber"
+             value={formData.vatNumber}
+             onChange={handleInputChange}
+             className="glass-form-input"
+             disabled={isRegistrationFieldLocked(user.vatNumber || '')}
+            />
+            {isRegistrationFieldLocked(user.vatNumber || '') && (
+             <p className="mt-1 text-xs text-white/60">Locked after initial save. Contact super admin for corrections.</p>
+            )}
+           </div>
+           {canOverrideRegistrationIdentifiers && (
+            <>
+             <div className="glass-form-group mb-0 sm:col-span-2">
+              <p className="text-xs text-white/70">Super admin overrides of existing registration fields require legal documentation.</p>
+             </div>
+             <div className="glass-form-group mb-0">
+              <label className="glass-form-label">Legal Document Type</label>
+              <input
+               type="text"
+               name="legalDocumentType"
+               value={formData.legalDocumentType}
+               onChange={handleInputChange}
+               className="glass-form-input"
+               placeholder="e.g. Court Order, CIPC Amendment"
+              />
+             </div>
+             <div className="glass-form-group mb-0">
+              <label className="glass-form-label">Legal Document Reference</label>
+              <input
+               type="text"
+               name="legalDocumentReference"
+               value={formData.legalDocumentReference}
+               onChange={handleInputChange}
+               className="glass-form-input"
+               placeholder="Case/File/Certificate number"
+              />
+             </div>
+             <div className="glass-form-group mb-0 sm:col-span-2">
+              <label className="glass-form-label">Legal Document URL</label>
+              <input
+               type="url"
+               name="legalDocumentUri"
+               value={formData.legalDocumentUri}
+               onChange={handleInputChange}
+               className="glass-form-input"
+               placeholder="https://..."
+              />
+             </div>
+             <div className="glass-form-group mb-0 sm:col-span-2">
+              <label className="glass-form-label">Legal Change Reason</label>
+              <textarea
+               name="legalChangeReason"
+               value={formData.legalChangeReason}
+               onChange={handleInputChange}
+               className="glass-form-textarea"
+               rows="3"
+               placeholder="Provide legal basis compelling this registration update"
+              />
+             </div>
+            </>
+           )}
+           <div className="glass-form-group mb-0 sm:col-span-2">
+            <label className="glass-form-label">Physical Address</label>
+            <textarea
+             name="physicalAddress"
+             value={formData.physicalAddress}
+             onChange={handleInputChange}
+             className="glass-form-textarea"
+             rows="3"
+            />
+           </div>
+           <div className="glass-form-group mb-0 sm:col-span-2">
+            <label className="glass-form-label">Website Address</label>
+            <input
+             type="url"
+             name="websiteAddress"
+             value={formData.websiteAddress}
+             onChange={handleInputChange}
+             className="glass-form-input"
+            />
+           </div>
+           <div className="glass-form-group mb-0">
+            <label className="glass-form-label">New Password (Optional)</label>
+            <input
+             type="password"
+             name="password"
+             value={formData.password}
+             onChange={handleInputChange}
+             className="glass-form-input"
+             placeholder="Leave blank to keep current"
+            />
+           </div>
+           <div className="glass-form-group mb-0">
+            <label className="glass-form-label">Confirm New Password</label>
+            <input
+             type="password"
+             name="confirmPassword"
+             value={formData.confirmPassword}
+             onChange={handleInputChange}
+             className="glass-form-input"
+            />
+           </div>
+          </div>
+         </div>
+         <div className="flex flex-col gap-3 sm:flex-row">
+          <button type="button" onClick={handleCancelEdit} className="glass-btn-outline flex-1">
+           Cancel
+          </button>
+          <button type="submit" disabled={loading} className="glass-btn-primary flex-1">
+           {loading ? 'Saving updates...' : 'Save Profile Changes'}
+          </button>
+         </div>
+        </form>
+       )}
+      </section>
      </div>
     </div>
    </div>

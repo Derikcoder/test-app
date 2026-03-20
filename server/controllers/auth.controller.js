@@ -14,8 +14,70 @@
 import User from '../models/User.model.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import OnboardingPasskey from '../models/OnboardingPasskey.model.js';
+import PasskeyRenewalRequest from '../models/PasskeyRenewalRequest.model.js';
+import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
+import Customer from '../models/Customer.model.js';
+import ProfileLinkAudit from '../models/ProfileLinkAudit.model.js';
+import RegistrationOverrideAudit from '../models/RegistrationOverrideAudit.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import { sendPasswordResetEmail } from '../utils/emailService.js';
+
+const ROLE_TYPES = ['superAdmin', 'businessAdministrator', 'fieldServiceAgent', 'customer'];
+const PASSKEY_REQUIRED_ROLES = ['businessAdministrator', 'fieldServiceAgent'];
+const BUSINESS_INFO_REQUIRED_ROLES = ['superAdmin', 'customer'];
+const PASSKEY_EXPIRY_MS = 60 * 1000;
+const RENEWAL_REQUEST_EXPIRY_MS = 15 * 60 * 1000;
+
+const generateOneTimePasskey = () => String(crypto.randomInt(1000000, 10000000));
+
+const LINK_CONFIG = {
+  fieldServiceAgent: {
+    expectedRole: 'fieldServiceAgent',
+    userField: 'fieldServiceAgentProfile',
+    model: FieldServiceAgent,
+    modelName: 'FieldServiceAgent',
+    profileLabel: 'Field service agent',
+  },
+  customer: {
+    expectedRole: 'customer',
+    userField: 'customerProfile',
+    model: Customer,
+    modelName: 'Customer',
+    profileLabel: 'Customer',
+  },
+};
+
+const ensureValidLinkType = (profileType) => LINK_CONFIG[profileType] || null;
+
+const validateRegistrationChangeEvidence = (evidence) => {
+  if (!evidence || typeof evidence !== 'object') {
+    return 'Legal documentation is required to override registration identifiers';
+  }
+
+  const {
+    legalDocumentType,
+    legalDocumentReference,
+    legalDocumentUri,
+    legalChangeReason,
+  } = evidence;
+
+  if (!legalDocumentType || !legalDocumentReference || !legalDocumentUri || !legalChangeReason) {
+    return 'legalDocumentType, legalDocumentReference, legalDocumentUri, and legalChangeReason are required';
+  }
+
+  const normalizedUri = String(legalDocumentUri).trim();
+  if (!/^https?:\/\//i.test(normalizedUri)) {
+    return 'legalDocumentUri must be a valid http(s) URL';
+  }
+
+  if (String(legalChangeReason).trim().length < 15) {
+    return 'legalChangeReason must be at least 15 characters';
+  }
+
+  return null;
+};
 
 /**
  * Generate JWT Token
@@ -94,46 +156,167 @@ export const registerUser = async (req, res) => {
       phoneNumber,
       physicalAddress,
       websiteAddress,
-      role, // Optional: defaults to 'businessAdministrator'
+      role,
+      passkey,
+      fieldServiceAgentProfileId,
+      customerProfileId,
     } = req.body;
 
-    // Validate all required fields are present
-    if (
-      !userName ||
-      !email ||
-      !password ||
-      !businessName ||
-      !businessRegistrationNumber ||
-      !taxNumber ||
-      !vatNumber ||
-      !phoneNumber ||
-      !physicalAddress
-    ) {
+    const requestedRole = role || 'superAdmin';
+    const normalizedEmail = email ? email.toLowerCase() : '';
+
+    // Validate required fields common to all role registrations
+    if (!userName || !email || !password) {
       logError('Registration failed - Missing required fields', { email, userName });
       return res.status(400).json({ message: 'Please fill in all required fields' });
     }
 
-    // Validate role if provided
-    const validRoles = ['superAdmin', 'businessAdministrator'];
-    if (role && !validRoles.includes(role)) {
-      logError('Registration failed - Invalid role', { email, role });
+    if (!ROLE_TYPES.includes(requestedRole)) {
+      logError('Registration failed - Invalid role', { email, role: requestedRole });
       return res.status(400).json({ message: 'Invalid role specified' });
     }
 
+    if (requestedRole === 'fieldServiceAgent' && !fieldServiceAgentProfileId) {
+      return res.status(400).json({
+        message: 'fieldServiceAgentProfileId is required for fieldServiceAgent registration',
+      });
+    }
+
+    if (requestedRole === 'customer' && !customerProfileId) {
+      return res.status(400).json({
+        message: 'customerProfileId is required for customer registration',
+      });
+    }
+
+    if (
+      ['superAdmin', 'businessAdministrator'].includes(requestedRole) &&
+      (fieldServiceAgentProfileId || customerProfileId)
+    ) {
+      return res.status(400).json({
+        message: 'Admin roles cannot be linked to field service agent or customer profiles',
+      });
+    }
+
+    if (requestedRole === 'fieldServiceAgent' && customerProfileId) {
+      return res.status(400).json({
+        message: 'fieldServiceAgent role cannot include customerProfileId',
+      });
+    }
+
+    if (requestedRole === 'customer' && fieldServiceAgentProfileId) {
+      return res.status(400).json({
+        message: 'customer role cannot include fieldServiceAgentProfileId',
+      });
+    }
+
+    if (
+      BUSINESS_INFO_REQUIRED_ROLES.includes(requestedRole) &&
+      (!businessName || !phoneNumber || !physicalAddress)
+    ) {
+      logError('Registration failed - Missing role-required business fields', {
+        email,
+        role: requestedRole,
+      });
+      return res.status(400).json({
+        message: 'Business name, phone number, and physical address are required for this account role',
+      });
+    }
+
+    if (PASSKEY_REQUIRED_ROLES.includes(requestedRole) && !passkey) {
+      return res.status(400).json({
+        message: 'A valid one-time passkey is required for this role',
+      });
+    }
+
     // Check if user already exists by email or username
-    const userExists = await User.findOne({ $or: [{ email }, { userName }] });
+    const userExists = await User.findOne({ $or: [{ email: normalizedEmail }, { userName }] });
 
     if (userExists) {
       logError('Registration failed - User already exists', { email, userName });
       return res.status(400).json({
-        message: userExists.email === email ? 'Email already registered' : 'Username already taken',
+        message: userExists.email === normalizedEmail ? 'Email already registered' : 'Username already taken',
       });
+    }
+
+    let matchingPasskeyRecord = null;
+    if (PASSKEY_REQUIRED_ROLES.includes(requestedRole)) {
+      matchingPasskeyRecord = await OnboardingPasskey.findOne({
+        targetEmail: normalizedEmail,
+        targetRole: requestedRole,
+        status: 'active',
+      }).sort({ createdAt: -1 });
+
+      if (!matchingPasskeyRecord) {
+        return res.status(403).json({
+          message: 'No active onboarding passkey found. Request a new key from a business administrator.',
+          renewalRequired: true,
+        });
+      }
+
+      if (matchingPasskeyRecord.expiresAt.getTime() <= Date.now()) {
+        matchingPasskeyRecord.status = 'expired';
+        await matchingPasskeyRecord.save();
+
+        return res.status(403).json({
+          message: 'Passkey expired. Request a new passkey.',
+          renewalRequired: true,
+        });
+      }
+
+      const isPasskeyValid = await matchingPasskeyRecord.comparePasskey(passkey);
+      if (!isPasskeyValid) {
+        matchingPasskeyRecord.attempts += 1;
+        if (matchingPasskeyRecord.attempts >= matchingPasskeyRecord.maxAttempts) {
+          matchingPasskeyRecord.status = 'revoked';
+        }
+        await matchingPasskeyRecord.save();
+
+        return res.status(401).json({ message: 'Invalid passkey' });
+      }
+    }
+
+    let fieldServiceAgentProfile = null;
+    if (requestedRole === 'fieldServiceAgent') {
+      fieldServiceAgentProfile = await FieldServiceAgent.findById(fieldServiceAgentProfileId);
+
+      if (!fieldServiceAgentProfile) {
+        return res.status(404).json({ message: 'Field service agent profile not found' });
+      }
+
+      if (fieldServiceAgentProfile.userAccount) {
+        return res.status(409).json({ message: 'Field service agent profile already linked to a user account' });
+      }
+
+      if (fieldServiceAgentProfile.email.toLowerCase() !== normalizedEmail) {
+        return res.status(400).json({
+          message: 'Email must match the linked field service agent profile email',
+        });
+      }
+    }
+
+    let customerProfile = null;
+    if (requestedRole === 'customer') {
+      customerProfile = await Customer.findById(customerProfileId);
+
+      if (!customerProfile) {
+        return res.status(404).json({ message: 'Customer profile not found' });
+      }
+
+      if (customerProfile.userAccount) {
+        return res.status(409).json({ message: 'Customer profile already linked to a user account' });
+      }
+
+      if (customerProfile.email.toLowerCase() !== normalizedEmail) {
+        return res.status(400).json({
+          message: 'Email must match the linked customer profile email',
+        });
+      }
     }
 
     // Create new user (password will be hashed automatically)
     const user = await User.create({
       userName,
-      email,
+      email: normalizedEmail,
       password,
       businessName,
       businessRegistrationNumber,
@@ -142,9 +325,27 @@ export const registerUser = async (req, res) => {
       phoneNumber,
       physicalAddress,
       websiteAddress,
-      role: role || 'businessAdministrator', // Default to businessAdministrator
-      isSuperUser: true,
+      role: requestedRole,
+      isSuperUser: ['superAdmin', 'businessAdministrator'].includes(requestedRole),
+      fieldServiceAgentProfile: fieldServiceAgentProfile ? fieldServiceAgentProfile._id : null,
+      customerProfile: customerProfile ? customerProfile._id : null,
     });
+
+    if (fieldServiceAgentProfile) {
+      fieldServiceAgentProfile.userAccount = user._id;
+      await fieldServiceAgentProfile.save();
+    }
+
+    if (customerProfile) {
+      customerProfile.userAccount = user._id;
+      await customerProfile.save();
+    }
+
+    if (matchingPasskeyRecord) {
+      matchingPasskeyRecord.status = 'consumed';
+      matchingPasskeyRecord.consumedAt = new Date();
+      await matchingPasskeyRecord.save();
+    }
 
     if (user) {
       logInfo(`✅ User registered successfully: ${user.email}`);
@@ -163,6 +364,8 @@ export const registerUser = async (req, res) => {
         websiteAddress: user.websiteAddress,
         isSuperUser: user.isSuperUser,
         role: user.role,
+        fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
+        customerProfile: user.customerProfile || null,
         token: generateToken(user._id),
       });
     } else {
@@ -244,6 +447,8 @@ export const loginUser = async (req, res) => {
         websiteAddress: user.websiteAddress,
         isSuperUser: user.isSuperUser,
         role: user.role,
+        fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
+        customerProfile: user.customerProfile || null,
         token: generateToken(user._id),
       });
     } else {
@@ -360,12 +565,11 @@ export const getFieldPermissions = async (req, res) => {
  * 
  * @description
  * Updates editable fields in user profile with field-level permission enforcement.
- * Blocks attempts to modify protected fields (userName, businessRegistrationNumber, etc.).
+ * Blocks attempts to modify protected fields (userName, role bindings, etc.) and
+ * enforces write-once rules for registration identifiers unless requester is superAdmin.
  * 
  * Protected Fields (Cannot Update):
  * - userName
- * - businessName
- * - businessRegistrationNumber
  * - createdAt
  * - _id
  * - isSuperUser
@@ -373,6 +577,8 @@ export const getFieldPermissions = async (req, res) => {
  * Editable Fields (Can Update):
  * - email
  * - password (with validation)
+ * - businessName
+ * - businessRegistrationNumber (write-once unless superAdmin)
  * - taxNumber
  * - vatNumber
  * - phoneNumber
@@ -398,6 +604,17 @@ export const updateUserProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    const isSuperAdmin = req.user?.role === 'superAdmin' || req.user?.isSuperUser === true;
+    const writeOnceRegistrationFields = ['businessRegistrationNumber', 'taxNumber', 'vatNumber'];
+    const hasValue = (value) => {
+      if (typeof value === 'string') return value.trim().length > 0;
+      return value !== null && value !== undefined && value !== '';
+    };
+    const previousRegistrationValues = writeOnceRegistrationFields.reduce((acc, field) => {
+      acc[field] = user[field];
+      return acc;
+    }, {});
+
     /**
      * Field-Level Permission Check
      * Detect if client is attempting to update any immutable fields
@@ -406,6 +623,22 @@ export const updateUserProfile = async (req, res) => {
     const attemptedImmutableUpdates = User.IMMUTABLE_FIELDS.filter(
       field => req.body[field] !== undefined && req.body[field] !== user[field]
     );
+
+    const attemptedLockedRegistrationUpdates = isSuperAdmin
+      ? []
+      : writeOnceRegistrationFields.filter((field) => (
+        req.body[field] !== undefined &&
+        hasValue(user[field]) &&
+        req.body[field] !== user[field]
+      ));
+
+    const attemptedSuperAdminRegistrationOverrides = isSuperAdmin
+      ? writeOnceRegistrationFields.filter((field) => (
+        req.body[field] !== undefined &&
+        hasValue(user[field]) &&
+        req.body[field] !== user[field]
+      ))
+      : [];
 
     // Block update if protected fields are being modified
     if (attemptedImmutableUpdates.length > 0) {
@@ -420,12 +653,55 @@ export const updateUserProfile = async (req, res) => {
       });
     }
 
+    if (attemptedLockedRegistrationUpdates.length > 0) {
+      logError('Profile update blocked - Attempted to modify write-once registration identifiers', {
+        fields: attemptedLockedRegistrationUpdates,
+        userId: user._id,
+      });
+      return res.status(403).json({
+        message: 'Registration identifiers cannot be edited after they are first saved',
+        protectedFields: attemptedLockedRegistrationUpdates,
+        info: 'Only superAdmin can update registration identifiers after initial capture',
+      });
+    }
+
+    if (attemptedSuperAdminRegistrationOverrides.length > 0) {
+      const evidenceValidationError = validateRegistrationChangeEvidence(req.body.registrationChangeEvidence);
+      if (evidenceValidationError) {
+        logError('Profile update blocked - Missing/invalid legal evidence for superAdmin override', {
+          fields: attemptedSuperAdminRegistrationOverrides,
+          userId: user._id,
+          reason: evidenceValidationError,
+        });
+        return res.status(400).json({
+          message: 'Valid legal documentation is required to update existing registration identifiers',
+          requiredFields: [
+            'registrationChangeEvidence.legalDocumentType',
+            'registrationChangeEvidence.legalDocumentReference',
+            'registrationChangeEvidence.legalDocumentUri',
+            'registrationChangeEvidence.legalChangeReason',
+          ],
+          info: evidenceValidationError,
+        });
+      }
+
+      logInfo('SuperAdmin override approved with legal documentation', {
+        userId: user._id,
+        fields: attemptedSuperAdminRegistrationOverrides,
+        legalDocumentType: req.body.registrationChangeEvidence.legalDocumentType,
+        legalDocumentReference: req.body.registrationChangeEvidence.legalDocumentReference,
+        legalDocumentUri: req.body.registrationChangeEvidence.legalDocumentUri,
+      });
+    }
+
     /**
      * Update Editable Fields
      * Only apply updates if field is present in request body
      * Uses conditional checks to avoid overwriting with undefined
      */
     if (req.body.email !== undefined) user.email = req.body.email;
+    if (req.body.businessName !== undefined) user.businessName = req.body.businessName;
+    if (req.body.businessRegistrationNumber !== undefined) user.businessRegistrationNumber = req.body.businessRegistrationNumber;
     if (req.body.taxNumber !== undefined) user.taxNumber = req.body.taxNumber;
     if (req.body.vatNumber !== undefined) user.vatNumber = req.body.vatNumber;
     if (req.body.phoneNumber !== undefined) user.phoneNumber = req.body.phoneNumber;
@@ -447,6 +723,27 @@ export const updateUserProfile = async (req, res) => {
 
     // Save updated user (triggers validation and pre-save hooks)
     const updatedUser = await user.save();
+
+    if (attemptedSuperAdminRegistrationOverrides.length > 0) {
+      const newRegistrationValues = writeOnceRegistrationFields.reduce((acc, field) => {
+        acc[field] = updatedUser[field];
+        return acc;
+      }, {});
+
+      await RegistrationOverrideAudit.create({
+        targetUser: updatedUser._id,
+        actingSuperAdmin: req.user._id,
+        overriddenFields: attemptedSuperAdminRegistrationOverrides,
+        previousValues: previousRegistrationValues,
+        newValues: newRegistrationValues,
+        legalEvidenceSnapshot: {
+          legalDocumentType: req.body.registrationChangeEvidence.legalDocumentType,
+          legalDocumentReference: req.body.registrationChangeEvidence.legalDocumentReference,
+          legalDocumentUri: req.body.registrationChangeEvidence.legalDocumentUri,
+          legalChangeReason: req.body.registrationChangeEvidence.legalChangeReason,
+        },
+      });
+    }
     
     logInfo(`✅ Profile updated successfully for user: ${updatedUser.email}`);
 
@@ -463,6 +760,9 @@ export const updateUserProfile = async (req, res) => {
       physicalAddress: updatedUser.physicalAddress,
       websiteAddress: updatedUser.websiteAddress,
       isSuperUser: updatedUser.isSuperUser,
+      role: updatedUser.role,
+      fieldServiceAgentProfile: updatedUser.fieldServiceAgentProfile || null,
+      customerProfile: updatedUser.customerProfile || null,
       isActive: updatedUser.isActive,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
@@ -475,6 +775,559 @@ export const updateUserProfile = async (req, res) => {
       message: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+};
+
+/**
+ * Generate One-Time Onboarding Passkey
+ *
+ * @async
+ * @function generateOnboardingPasskey
+ * @route POST /api/auth/passkeys/generate
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const generateOnboardingPasskey = async (req, res) => {
+  try {
+    const { targetEmail, targetRole } = req.body;
+
+    if (!targetEmail || !targetRole) {
+      return res.status(400).json({ message: 'targetEmail and targetRole are required' });
+    }
+
+    if (!PASSKEY_REQUIRED_ROLES.includes(targetRole)) {
+      return res.status(400).json({
+        message: 'Passkeys can only be generated for businessAdministrator and fieldServiceAgent roles',
+      });
+    }
+
+    const normalizedTargetEmail = targetEmail.toLowerCase();
+    const plainPasskey = generateOneTimePasskey();
+    const passkeyHash = await bcrypt.hash(plainPasskey, 10);
+    const expiresAt = new Date(Date.now() + PASSKEY_EXPIRY_MS);
+
+    await OnboardingPasskey.updateMany(
+      {
+        targetEmail: normalizedTargetEmail,
+        targetRole,
+        status: 'active',
+      },
+      {
+        $set: {
+          status: 'revoked',
+        },
+      }
+    );
+
+    const onboardingPasskey = await OnboardingPasskey.create({
+      targetEmail: normalizedTargetEmail,
+      targetRole,
+      passkeyHash,
+      issuedByUser: req.user._id,
+      expiresAt,
+    });
+
+    logInfo('Onboarding passkey generated', {
+      generatedBy: req.user._id,
+      targetEmail: normalizedTargetEmail,
+      targetRole,
+      passkeyId: onboardingPasskey._id,
+      expiresAt,
+    });
+
+    return res.status(201).json({
+      message: 'Onboarding passkey generated successfully',
+      passkey: plainPasskey,
+      expiresAt,
+      targetEmail: normalizedTargetEmail,
+      targetRole,
+    });
+  } catch (error) {
+    logError('Generate onboarding passkey error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Request Passkey Renewal
+ *
+ * @async
+ * @function requestPasskeyRenewal
+ * @route POST /api/auth/passkeys/request-renewal
+ * @access Public
+ */
+export const requestPasskeyRenewal = async (req, res) => {
+  try {
+    const { targetEmail, targetRole } = req.body;
+
+    if (!targetEmail || !targetRole) {
+      return res.status(400).json({ message: 'targetEmail and targetRole are required' });
+    }
+
+    if (!PASSKEY_REQUIRED_ROLES.includes(targetRole)) {
+      return res.status(400).json({
+        message: 'Renewal requests are only supported for businessAdministrator and fieldServiceAgent roles',
+      });
+    }
+
+    const normalizedTargetEmail = targetEmail.toLowerCase();
+    const rawRequestToken = crypto.randomBytes(24).toString('hex');
+    const requestTokenHash = crypto.createHash('sha256').update(rawRequestToken).digest('hex');
+    const expiresAt = new Date(Date.now() + RENEWAL_REQUEST_EXPIRY_MS);
+
+    await PasskeyRenewalRequest.updateMany(
+      {
+        targetEmail: normalizedTargetEmail,
+        targetRole,
+        status: 'pending',
+      },
+      {
+        $set: {
+          status: 'expired',
+          processedAt: new Date(),
+        },
+      }
+    );
+
+    const renewalRequest = await PasskeyRenewalRequest.create({
+      requestTokenHash,
+      targetEmail: normalizedTargetEmail,
+      targetRole,
+      requestedByIp: req.ip || '',
+      expiresAt,
+    });
+
+    // Placeholder for notification integration (email/SMS/in-app queue)
+    logInfo('Passkey renewal request created', {
+      requestId: renewalRequest._id,
+      targetEmail: normalizedTargetEmail,
+      targetRole,
+      expiresAt,
+      renewalActionToken: rawRequestToken,
+    });
+
+    return res.status(201).json({
+      message: 'Renewal request submitted. A business administrator must approve a new passkey.',
+      requestSubmitted: true,
+      ...(process.env.NODE_ENV === 'development' && {
+        renewalActionToken: rawRequestToken,
+      }),
+    });
+  } catch (error) {
+    logError('Request passkey renewal error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Fulfill Passkey Renewal Request
+ *
+ * @async
+ * @function fulfillPasskeyRenewal
+ * @route POST /api/auth/passkeys/fulfill-renewal/:requestToken
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const fulfillPasskeyRenewal = async (req, res) => {
+  try {
+    const { requestToken } = req.params;
+
+    if (!requestToken) {
+      return res.status(400).json({ message: 'requestToken is required' });
+    }
+
+    const requestTokenHash = crypto.createHash('sha256').update(requestToken).digest('hex');
+
+    const renewalRequest = await PasskeyRenewalRequest.findOne({
+      requestTokenHash,
+      status: 'pending',
+    });
+
+    if (!renewalRequest) {
+      return res.status(404).json({ message: 'Renewal request not found or already processed' });
+    }
+
+    if (renewalRequest.expiresAt.getTime() <= Date.now()) {
+      renewalRequest.status = 'expired';
+      renewalRequest.processedAt = new Date();
+      await renewalRequest.save();
+
+      return res.status(400).json({ message: 'Renewal request has expired' });
+    }
+
+    const plainPasskey = generateOneTimePasskey();
+    const passkeyHash = await bcrypt.hash(plainPasskey, 10);
+    const expiresAt = new Date(Date.now() + PASSKEY_EXPIRY_MS);
+
+    await OnboardingPasskey.updateMany(
+      {
+        targetEmail: renewalRequest.targetEmail,
+        targetRole: renewalRequest.targetRole,
+        status: 'active',
+      },
+      {
+        $set: {
+          status: 'revoked',
+        },
+      }
+    );
+
+    await OnboardingPasskey.create({
+      targetEmail: renewalRequest.targetEmail,
+      targetRole: renewalRequest.targetRole,
+      passkeyHash,
+      issuedByUser: req.user._id,
+      expiresAt,
+    });
+
+    renewalRequest.status = 'fulfilled';
+    renewalRequest.processedByUser = req.user._id;
+    renewalRequest.processedAt = new Date();
+    await renewalRequest.save();
+
+    return res.status(201).json({
+      message: 'Renewal request fulfilled and new passkey generated',
+      passkey: plainPasskey,
+      expiresAt,
+      targetEmail: renewalRequest.targetEmail,
+      targetRole: renewalRequest.targetRole,
+    });
+  } catch (error) {
+    logError('Fulfill passkey renewal error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Attach User to Operational Profile
+ *
+ * @async
+ * @function attachUserProfileLink
+ * @route POST /api/auth/admin/profile-links/attach
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const attachUserProfileLink = async (req, res) => {
+  try {
+    const { userId, profileType, profileId, reason } = req.body;
+
+    if (!userId || !profileType || !profileId) {
+      return res.status(400).json({ message: 'userId, profileType, and profileId are required' });
+    }
+
+    const linkConfig = ensureValidLinkType(profileType);
+    if (!linkConfig) {
+      return res.status(400).json({ message: 'Invalid profileType. Use fieldServiceAgent or customer.' });
+    }
+
+    const principalUser = await User.findById(userId);
+    if (!principalUser) {
+      return res.status(404).json({ message: 'User account not found' });
+    }
+
+    if (principalUser.role !== linkConfig.expectedRole) {
+      return res.status(400).json({
+        message: `${linkConfig.profileLabel} profile links require user role ${linkConfig.expectedRole}`,
+      });
+    }
+
+    if (principalUser[linkConfig.userField]) {
+      return res.status(409).json({
+        message: `User already has a linked ${linkConfig.profileLabel.toLowerCase()} profile. Use reassign endpoint instead.`,
+      });
+    }
+
+    const targetProfile = await linkConfig.model.findById(profileId);
+    if (!targetProfile) {
+      return res.status(404).json({ message: `${linkConfig.profileLabel} profile not found` });
+    }
+
+    if (targetProfile.userAccount) {
+      return res.status(409).json({ message: `${linkConfig.profileLabel} profile is already linked to another user` });
+    }
+
+    principalUser[linkConfig.userField] = targetProfile._id;
+    targetProfile.userAccount = principalUser._id;
+
+    await principalUser.save();
+    await targetProfile.save();
+
+    await ProfileLinkAudit.create({
+      action: 'attach',
+      profileType,
+      principalUser: principalUser._id,
+      previousProfile: null,
+      newProfile: targetProfile._id,
+      profileRefModel: linkConfig.modelName,
+      performedBy: req.user._id,
+      reason: reason || '',
+      metadata: {
+        endpoint: 'attachUserProfileLink',
+      },
+    });
+
+    return res.status(200).json({
+      message: `${linkConfig.profileLabel} profile attached successfully`,
+      userId: principalUser._id,
+      profileType,
+      profileId: targetProfile._id,
+    });
+  } catch (error) {
+    logError('Attach user profile link error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Detach User from Operational Profile
+ *
+ * @async
+ * @function detachUserProfileLink
+ * @route POST /api/auth/admin/profile-links/detach
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const detachUserProfileLink = async (req, res) => {
+  try {
+    const { userId, profileType, reason } = req.body;
+
+    if (!userId || !profileType) {
+      return res.status(400).json({ message: 'userId and profileType are required' });
+    }
+
+    const linkConfig = ensureValidLinkType(profileType);
+    if (!linkConfig) {
+      return res.status(400).json({ message: 'Invalid profileType. Use fieldServiceAgent or customer.' });
+    }
+
+    const principalUser = await User.findById(userId);
+    if (!principalUser) {
+      return res.status(404).json({ message: 'User account not found' });
+    }
+
+    const linkedProfileId = principalUser[linkConfig.userField];
+    if (!linkedProfileId) {
+      return res.status(404).json({
+        message: `No ${linkConfig.profileLabel.toLowerCase()} profile is linked to this user`,
+      });
+    }
+
+    const linkedProfile = await linkConfig.model.findById(linkedProfileId);
+    if (linkedProfile && linkedProfile.userAccount?.toString() === principalUser._id.toString()) {
+      linkedProfile.userAccount = null;
+      await linkedProfile.save();
+    }
+
+    principalUser[linkConfig.userField] = null;
+    await principalUser.save();
+
+    await ProfileLinkAudit.create({
+      action: 'detach',
+      profileType,
+      principalUser: principalUser._id,
+      previousProfile: linkedProfileId,
+      newProfile: null,
+      profileRefModel: linkConfig.modelName,
+      performedBy: req.user._id,
+      reason: reason || '',
+      metadata: {
+        endpoint: 'detachUserProfileLink',
+      },
+    });
+
+    return res.status(200).json({
+      message: `${linkConfig.profileLabel} profile detached successfully`,
+      userId: principalUser._id,
+      profileType,
+      previousProfileId: linkedProfileId,
+    });
+  } catch (error) {
+    logError('Detach user profile link error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Reassign User to Another Operational Profile
+ *
+ * @async
+ * @function reassignUserProfileLink
+ * @route POST /api/auth/admin/profile-links/reassign
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const reassignUserProfileLink = async (req, res) => {
+  try {
+    const { userId, profileType, newProfileId, reason } = req.body;
+
+    if (!userId || !profileType || !newProfileId) {
+      return res.status(400).json({ message: 'userId, profileType, and newProfileId are required' });
+    }
+
+    const linkConfig = ensureValidLinkType(profileType);
+    if (!linkConfig) {
+      return res.status(400).json({ message: 'Invalid profileType. Use fieldServiceAgent or customer.' });
+    }
+
+    const principalUser = await User.findById(userId);
+    if (!principalUser) {
+      return res.status(404).json({ message: 'User account not found' });
+    }
+
+    if (principalUser.role !== linkConfig.expectedRole) {
+      return res.status(400).json({
+        message: `${linkConfig.profileLabel} profile links require user role ${linkConfig.expectedRole}`,
+      });
+    }
+
+    const previousProfileId = principalUser[linkConfig.userField];
+    if (!previousProfileId) {
+      return res.status(404).json({
+        message: `No ${linkConfig.profileLabel.toLowerCase()} profile is currently linked to this user`,
+      });
+    }
+
+    if (previousProfileId.toString() === newProfileId) {
+      return res.status(200).json({
+        message: 'User is already linked to the requested profile',
+        userId: principalUser._id,
+        profileType,
+        profileId: previousProfileId,
+      });
+    }
+
+    const nextProfile = await linkConfig.model.findById(newProfileId);
+    if (!nextProfile) {
+      return res.status(404).json({ message: `${linkConfig.profileLabel} profile not found` });
+    }
+
+    if (nextProfile.userAccount && nextProfile.userAccount.toString() !== principalUser._id.toString()) {
+      return res.status(409).json({
+        message: `${linkConfig.profileLabel} profile is already linked to another user`,
+      });
+    }
+
+    const previousProfile = await linkConfig.model.findById(previousProfileId);
+    if (previousProfile && previousProfile.userAccount?.toString() === principalUser._id.toString()) {
+      previousProfile.userAccount = null;
+      await previousProfile.save();
+    }
+
+    principalUser[linkConfig.userField] = nextProfile._id;
+    nextProfile.userAccount = principalUser._id;
+
+    await principalUser.save();
+    await nextProfile.save();
+
+    await ProfileLinkAudit.create({
+      action: 'reassign',
+      profileType,
+      principalUser: principalUser._id,
+      previousProfile: previousProfileId,
+      newProfile: nextProfile._id,
+      profileRefModel: linkConfig.modelName,
+      performedBy: req.user._id,
+      reason: reason || '',
+      metadata: {
+        endpoint: 'reassignUserProfileLink',
+      },
+    });
+
+    return res.status(200).json({
+      message: `${linkConfig.profileLabel} profile reassigned successfully`,
+      userId: principalUser._id,
+      profileType,
+      previousProfileId,
+      newProfileId: nextProfile._id,
+    });
+  } catch (error) {
+    logError('Reassign user profile link error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * List Legal Registration Override Audits
+ *
+ * @async
+ * @function listRegistrationOverrideAudits
+ * @route GET /api/auth/admin/registration-overrides/audits
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const listRegistrationOverrideAudits = async (req, res) => {
+  try {
+    const {
+      startDate,
+      endDate,
+      targetUser,
+      documentReference,
+      page = '1',
+      limit = '20',
+    } = req.query;
+
+    const queryFilter = {};
+
+    if (targetUser) {
+      queryFilter.targetUser = targetUser;
+    }
+
+    if (documentReference) {
+      queryFilter['legalEvidenceSnapshot.legalDocumentReference'] = {
+        $regex: String(documentReference).trim(),
+        $options: 'i',
+      };
+    }
+
+    if (startDate || endDate) {
+      const createdAtFilter = {};
+
+      if (startDate) {
+        const parsedStartDate = new Date(startDate);
+        if (Number.isNaN(parsedStartDate.getTime())) {
+          return res.status(400).json({ message: 'Invalid startDate. Use a valid ISO date.' });
+        }
+        createdAtFilter.$gte = parsedStartDate;
+      }
+
+      if (endDate) {
+        const parsedEndDate = new Date(endDate);
+        if (Number.isNaN(parsedEndDate.getTime())) {
+          return res.status(400).json({ message: 'Invalid endDate. Use a valid ISO date.' });
+        }
+        createdAtFilter.$lte = parsedEndDate;
+      }
+
+      queryFilter.createdAt = createdAtFilter;
+    }
+
+    const parsedPage = Number.parseInt(page, 10);
+    const parsedLimit = Number.parseInt(limit, 10);
+    const pageNumber = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limitNumber = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 20;
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const [records, total] = await Promise.all([
+      RegistrationOverrideAudit.find(queryFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber)
+        .lean(),
+      RegistrationOverrideAudit.countDocuments(queryFilter),
+    ]);
+
+    return res.status(200).json({
+      records,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        total,
+        totalPages: Math.ceil(total / limitNumber) || 1,
+      },
+      filtersApplied: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+        targetUser: targetUser || null,
+        documentReference: documentReference || null,
+      },
+    });
+  } catch (error) {
+    logError('List registration override audits error:', error);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -522,7 +1375,7 @@ export const forgotPassword = async (req, res) => {
     
     if (!user) {
       logInfo(`Password reset requested for non-existent email: ${email}`);
-      return res.json({ message: successMessage });
+      return res.status(200).json({ message: successMessage });
     }
     
     // Generate password reset token
@@ -542,7 +1395,7 @@ export const forgotPassword = async (req, res) => {
       
       logInfo(`✅ Password reset email sent to: ${user.email}`);
       
-      res.json({ 
+      res.status(200).json({ 
         message: successMessage,
         // In development, return token for testing (remove in production)
         ...(process.env.NODE_ENV === 'development' && { resetToken, resetUrl })
@@ -635,7 +1488,7 @@ export const resetPassword = async (req, res) => {
     logInfo(`✅ Password reset successful for user: ${user.email}`);
     
     // Return success with login token
-    res.json({
+    res.status(200).json({
       message: 'Password reset successful! You are now logged in.',
       token: generateToken(user._id),
       user: {

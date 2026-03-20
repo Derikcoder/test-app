@@ -147,6 +147,14 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    /** Linked login principal for this field service agent profile */
+    userAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      unique: true,
+      sparse: true,
+    },
   },
   {
     timestamps: true, // Auto-add createdAt and updatedAt

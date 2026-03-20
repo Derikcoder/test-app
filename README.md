@@ -32,7 +32,7 @@ This is an enterprise-grade field service management application built with the 
 ### Authentication & User Management
 - 🔐 JWT-based authentication system
 - 👤 Comprehensive user profiles with business information
-- 🛡️ Field-level permissions (read-only protected fields)
+- 🛡️ Field-level permissions with immutable + write-once legal identifier policies
 - 🔒 Secure password hashing with bcrypt
 
 ### Customer Management
@@ -359,6 +359,13 @@ http://localhost:5000/api
 |--------|----------|-------------|---------------|
 | `POST` | `/auth/register` | Register new user | No |
 | `POST` | `/auth/login` | Login user | No |
+| `POST` | `/auth/passkeys/generate` | Generate delegated-role onboarding passkey | Yes |
+| `POST` | `/auth/passkeys/request-renewal` | Request passkey renewal token | No |
+| `POST` | `/auth/passkeys/fulfill-renewal/:requestToken` | Approve renewal and issue new passkey | Yes |
+| `POST` | `/auth/admin/profile-links/attach` | Attach user to operational profile | Yes |
+| `POST` | `/auth/admin/profile-links/detach` | Detach user from operational profile | Yes |
+| `POST` | `/auth/admin/profile-links/reassign` | Reassign user to another profile | Yes |
+| `GET` | `/auth/admin/registration-overrides/audits` | Query legal override audits (date/user/reference filters) | Yes |
 | `GET` | `/auth/profile` | Get user profile | Yes |
 | `PUT` | `/auth/profile` | Update user profile | Yes |
 | `GET` | `/auth/field-permissions` | Get field permissions | Yes |
@@ -495,14 +502,20 @@ function MyComponent() {
 
 ### Field-Level Permissions
 
-Certain user profile fields are **read-only** after initial registration:
-- `userName`
-- `email`
-- `businessRegistrationNumber`
-- `taxNumber`
-- `vatNumber`
+User profile updates now follow two policy layers:
+- **Immutable fields**: identity and system fields (for example `userName`, `_id`, `createdAt`, role/link control fields)
+- **Write-once registration identifiers**: `businessRegistrationNumber`, `taxNumber`, `vatNumber`
 
-These fields can only be modified by system administrators directly in the database.
+Write-once behavior:
+- Non-superAdmin users can set registration identifiers when empty.
+- After first save, those identifiers are locked for non-superAdmin users.
+- SuperAdmin overrides of existing values require legal evidence payload (`registrationChangeEvidence`).
+
+Legal override evidence fields:
+- `legalDocumentType`
+- `legalDocumentReference`
+- `legalDocumentUri` (http/https)
+- `legalChangeReason` (minimum 15 chars)
 
 See [AUTH_GUIDE.md](AUTH_GUIDE.md) for detailed authentication documentation.
 
@@ -626,7 +639,7 @@ MongoDB Database
 1. **CORS** - Cross-origin resource sharing configured
 2. **JWT Authentication** - Token-based auth for protected routes
 3. **Password Hashing** - Bcrypt with salt rounds
-4. **Field Protection** - Certain fields immutable after creation
+4. **Field Protection** - Immutable identity fields + write-once registration identifiers with legal-evidence override controls
 5. **Environment Variables** - Sensitive data in .env files
 6. **Input Validation** - Mongoose schema validation
 

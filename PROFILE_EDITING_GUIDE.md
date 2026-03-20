@@ -1,7 +1,7 @@
 # Profile Editing Feature - User Guide
 
 ## Overview
-The SuperUser profile page now has full editing capabilities, allowing you to update personal and business information while protecting critical fields.
+The profile page supports role-aware editing with immutable and write-once policy enforcement, including legal-evidence override support for superAdmin users.
 
 ## Accessing the Profile Editor
 
@@ -18,19 +18,19 @@ The SuperUser profile page now has full editing capabilities, allowing you to up
 |-------|-------------|-------|
 | **Email** | Contact email address | Must be valid email format |
 | **Phone Number** | Business phone number | Any format accepted |
-| **Tax Number** | Tax identification number | Required field |
-| **VAT Number** | VAT registration number | Required field |
+| **Business Name** | Business display/legal name | Editable by user |
+| **Registration Number** | Official registration number | Write-once for non-superAdmin |
+| **Tax Number** | Tax identification number | Write-once for non-superAdmin |
+| **VAT Number** | VAT registration number | Write-once for non-superAdmin |
 | **Physical Address** | Business address | Multiline text field |
 | **Website** | Business website URL | Optional - must start with http/https |
 | **Password** | Account password | Optional - min 6 characters |
 
 ### 🔒 Protected Fields (Cannot be Changed)
 
-These fields are **permanently locked** after account creation:
+These fields are **permanently locked** in profile updates:
 
 - **Username** - Login identifier
-- **Business Name** - Registered business name
-- **Registration Number** - Official business registration
 - **Created Date** - Account creation timestamp
 
 ## Features
@@ -79,14 +79,29 @@ These fields are **permanently locked** after account creation:
 5. Click **"Save Changes"**
 6. Password is updated - use it for next login
 
-### To Update Tax Information:
+### To Capture Registration Identifiers (First-Time):
 
 1. Click **"Edit Profile"**
-2. Find "Tax Information" section
-3. Update:
+2. Find the registration/tax section
+3. Enter empty values for:
+   - Registration Number
    - Tax Number
    - VAT Number
 4. Click **"Save Changes"**
+
+Once saved, these fields become locked for non-superAdmin users.
+
+### SuperAdmin Legal Override Flow:
+
+When a superAdmin changes an already populated registration/tax/VAT value:
+
+1. Provide legal evidence fields in the same form:
+   - Legal Document Type
+   - Legal Document Reference
+   - Legal Document URL
+   - Legal Change Reason
+2. Submit profile update
+3. Backend validates legal evidence and records immutable legal override audit entry
 
 ## Error Handling
 
@@ -99,8 +114,13 @@ These fields are **permanently locked** after account creation:
 - Solution: Use a longer password
 
 **"Cannot update protected fields"**
-- You attempted to modify username/business name/registration number
-- Backend automatically blocks this - it's working as designed
+- You attempted to modify immutable identity/system fields
+
+**"Registration identifiers cannot be edited after they are first saved"**
+- Non-superAdmin attempted to change existing registration/tax/VAT values
+
+**"Valid legal documentation is required to update existing registration identifiers"**
+- SuperAdmin attempted override without complete legal evidence payload
 
 **"Failed to update profile"**
 - Check your internet connection

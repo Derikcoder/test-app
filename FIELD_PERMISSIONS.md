@@ -4,30 +4,47 @@
 The user profile system has field-level permissions that protect critical information while allowing updates to operational data.
 
 ## Protected Fields (CANNOT be updated)
-These fields are **immutable** after account creation:
+These fields are **immutable** through normal profile updates:
 
 | Field | Description | Reason |
 |-------|-------------|--------|
 | `userName` | User's login name | Identity field - cannot be changed |
-| `businessName` | Registered business name | Legal entity name - permanent |
-| `businessRegistrationNumber` | Official registration number | Legal identifier - permanent |
+| `role` | Principal role | Controlled via admin workflows |
+| `fieldServiceAgentProfile` | Linked field agent profile | Managed by admin link endpoints |
+| `customerProfile` | Linked customer profile | Managed by admin link endpoints |
 | `createdAt` | Account creation date | Historical record - automatic |
 | `_id` | User ID | System identifier |
 | `isSuperUser` | Super user status | Security protection |
 
 ## Editable Fields (CAN be updated)
-These fields can be modified by the user at any time:
+These fields can be modified by the user, subject to policy checks:
 
 | Field | Description | Example |
 |-------|-------------|---------|
 | `email` | Contact email address | `newemail@example.com` |
 | `password` | Account password | Requires min 6 characters |
+| `businessName` | Registered business name display | `My Updated Business Name` |
 | `taxNumber` | Tax identification number | `TAX-123456` |
 | `vatNumber` | VAT registration number | `VAT-789012` |
+| `businessRegistrationNumber` | Official registration number | `REG-123456` |
 | `phoneNumber` | Business phone number | `+27-123-456-7890` |
 | `physicalAddress` | Business physical address | `456 New Street, City` |
 | `websiteAddress` | Business website URL | `https://example.com` |
 | `isActive` | Account active status | `true` / `false` |
+
+## Write-Once Registration Identifier Policy
+
+`businessRegistrationNumber`, `taxNumber`, and `vatNumber` are write-once for non-superAdmin users:
+
+- If current value is empty, user can save initial value.
+- Once set, non-superAdmin updates are blocked with `403`.
+- SuperAdmin can override existing values only with valid legal evidence.
+
+Required superAdmin legal evidence payload (`registrationChangeEvidence`):
+- `legalDocumentType`
+- `legalDocumentReference`
+- `legalDocumentUri` (must be http/https URL)
+- `legalChangeReason` (minimum 15 characters)
 
 ## API Endpoints
 
@@ -40,8 +57,8 @@ Authorization: Bearer <token>
 **Response:**
 ```json
 {
-  "editable": ["email", "password", "taxNumber", "vatNumber", "phoneNumber", "physicalAddress", "websiteAddress", "isActive"],
-  "protected": ["userName", "businessName", "businessRegistrationNumber", "createdAt", "_id", "isSuperUser"],
+  "editable": ["email", "password", "businessName", "businessRegistrationNumber", "taxNumber", "vatNumber", "phoneNumber", "physicalAddress", "websiteAddress", "isActive"],
+  "protected": ["userName", "createdAt", "_id", "isSuperUser", "role", "fieldServiceAgentProfile", "customerProfile"],
   "info": {
     "editable": "These fields can be updated by the user",
     "protected": "These fields are immutable and cannot be changed after account creation"
@@ -81,7 +98,7 @@ Content-Type: application/json
 {
   "message": "Cannot update protected fields",
   "protectedFields": ["businessName"],
-  "info": "Names, registration numbers, and dates cannot be changed"
+  "info": "Only superAdmin can update registration identifiers after initial capture"
 }
 ```
 
@@ -112,7 +129,7 @@ await fetch('/api/auth/profile', {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    businessName: 'New Business Name',  // ❌ This will be rejected
+    userName: 'new-username',            // ❌ This will be rejected
     phoneNumber: '+27-987-654-3210'     // ✅ This would work alone
   })
 });
@@ -147,12 +164,14 @@ Expected: `403 Forbidden` with message about protected fields
 ## Implementation Details
 
 ### Model Level (server/models/User.model.js)
-- Protected fields marked with `immutable: true`
+- Core protected fields enforced via `IMMUTABLE_FIELDS`
 - Static arrays define `EDITABLE_FIELDS` and `IMMUTABLE_FIELDS`
 
 ### Controller Level (server/controllers/auth.controller.js)
 - `updateUserProfile` validates attempted changes
-- Blocks updates if any immutable field is modified
+- Blocks updates if immutable fields are modified
+- Enforces write-once registration identifiers for non-superAdmin
+- Requires legal evidence for superAdmin registration identifier overrides
 - Logs all attempts for security audit
 - Returns detailed error messages
 
