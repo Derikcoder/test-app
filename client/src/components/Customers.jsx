@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
-import RegisterNewCustomer from './RegisterNewCustomer';
 
 const CUSTOMER_TYPE_LABELS = {
  headOffice:      'Head Office',
@@ -51,7 +50,6 @@ const Customers = () => {
 
  const [search, setSearch] = useState('');
  const [typeFilter, setTypeFilter] = useState('all');
- const [showRegister, setShowRegister] = useState(false);
 
  useEffect(() => {
   fetchCustomers();
@@ -117,7 +115,7 @@ const Customers = () => {
        <p className="text-white/70 mt-1">All registered customers</p>
       </div>
       <button
-       onClick={() => setShowRegister(true)}
+        onClick={() => navigate('/customers/register')}
        className="glass-btn-primary px-6 py-3 flex items-center gap-2 whitespace-nowrap"
       >
        + Register Customer
@@ -230,12 +228,6 @@ const Customers = () => {
     </div>
    </div>
 
-   {showRegister && (
-    <RegisterNewCustomer
-     onClose={() => setShowRegister(false)}
-     onSuccess={() => { setShowRegister(false); fetchCustomers(); }}
-    />
-   )}
   </>
  );
 };

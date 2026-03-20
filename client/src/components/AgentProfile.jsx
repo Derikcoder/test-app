@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
@@ -11,8 +11,12 @@ const AgentProfile = () => {
  const { user } = useAuth();
  const [agent, setAgent] = useState(null);
  const [serviceCalls, setServiceCalls] = useState([]);
+ const [allServiceCalls, setAllServiceCalls] = useState([]);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
+ const [actionError, setActionError] = useState('');
+ const [actionSuccess, setActionSuccess] = useState('');
+ const [acceptingCallId, setAcceptingCallId] = useState('');
  const [activeTab, setActiveTab] = useState('all');
 
  useEffect(() => {
@@ -33,6 +37,7 @@ const AgentProfile = () => {
    const callsResponse = await api.get('/service-calls', {
     headers: { Authorization: `Bearer ${user.token}` }
    });
+  setAllServiceCalls(callsResponse.data || []);
    
    // Filter calls assigned to this agent
    const agentCalls = callsResponse.data.filter(
@@ -47,12 +52,46 @@ const AgentProfile = () => {
   }
  };
 
+ const unassignedCalls = useMemo(
+  () => allServiceCalls.filter((call) => !call.assignedAgent),
+  [allServiceCalls]
+ );
+
+ const acceptUnassignedJob = async (callId) => {
+  setActionError('');
+  setActionSuccess('');
+  setAcceptingCallId(callId);
+
+  try {
+   await api.put(
+    `/service-calls/${callId}`,
+    {
+     assignedAgent: id,
+     status: 'assigned',
+     agentAccepted: true,
+    },
+    {
+     headers: { Authorization: `Bearer ${user.token}` },
+    }
+   );
+
+   setActionSuccess("Job accepted successfully and added to this agent's queue.");
+   await fetchAgentData();
+   setActiveTab('to-attend');
+  } catch (err) {
+   setActionError(err.response?.data?.message || 'Failed to accept the job. Please try again.');
+  } finally {
+   setAcceptingCallId('');
+  }
+ };
+
  // Calculate statistics
  const stats = {
   total: serviceCalls.length,
   completed: serviceCalls.filter(call => call.status === 'completed').length,
   inProgress: serviceCalls.filter(call => call.status === 'in-progress').length,
   toBeAttended: serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open').length,
+  unassigned: unassignedCalls.length,
  };
 
  // Filter service calls based on active tab
@@ -64,6 +103,8 @@ const AgentProfile = () => {
     return serviceCalls.filter(call => call.status === 'in-progress');
    case 'to-attend':
     return serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open');
+   case 'unassigned':
+    return unassignedCalls;
    default:
     return serviceCalls;
   }
@@ -279,7 +320,7 @@ const AgentProfile = () => {
      </div>
 
      {/* Statistics Cards */}
-     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
       <div className="glass-card rounded-xl shadow-md p-6">
        <div className="flex items-center justify-between">
         <div>
@@ -335,7 +376,34 @@ const AgentProfile = () => {
         </div>
        </div>
       </div>
+
+      <button
+       type="button"
+       onClick={() => setActiveTab('unassigned')}
+       className={`glass-card rounded-xl shadow-md p-6 text-left transition hover:bg-white/10 ${
+        activeTab === 'unassigned' ? 'ring-2 ring-yellow-300/60' : ''
+       }`}
+      >
+       <div className="flex items-center justify-between">
+        <div>
+         <p className="text-white/70 text-sm font-medium">Unassigned Jobs</p>
+         <p className="text-3xl font-bold text-orange-300 mt-2">{stats.unassigned}</p>
+        </div>
+        <div className="w-12 h-12 bg-orange-500/40 rounded-lg flex items-center justify-center border border-orange-400/50">
+         <svg className="w-6 h-6 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+         </svg>
+        </div>
+       </div>
+      </button>
      </div>
+
+     {actionError && (
+      <div className="glass-alert-error mb-4 p-4 rounded-lg">{actionError}</div>
+     )}
+     {actionSuccess && (
+      <div className="glass-alert-success mb-4 p-4 rounded-lg">{actionSuccess}</div>
+     )}
 
      {/* Service Calls Section */}
      <div className="glass-card rounded-2xl shadow-xl overflow-hidden">
@@ -383,6 +451,16 @@ const AgentProfile = () => {
          }`}
         >
          Completed ({stats.completed})
+        </button>
+        <button
+         onClick={() => setActiveTab('unassigned')}
+         className={`px-4 py-2 font-medium transition -mb-px ${
+          activeTab === 'unassigned'
+           ? 'text-yellow-300 border-b-2 border-yellow-300'
+           : 'text-white/80 hover:text-white'
+         }`}
+        >
+         Unassigned ({stats.unassigned})
         </button>
        </div>
       </div>
@@ -563,6 +641,20 @@ const AgentProfile = () => {
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
                   onCreated={fetchAgentData}
                  />
+                  {activeTab === 'unassigned' && (
+                   <button
+                    type="button"
+                    onClick={() => acceptUnassignedJob(call._id)}
+                    disabled={acceptingCallId === call._id}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-white transition ${
+                     acceptingCallId === call._id
+                      ? 'cursor-not-allowed border-white/20 bg-white/10 opacity-70'
+                      : 'border-orange-300/40 bg-orange-500/35 hover:bg-orange-500/45'
+                    }`}
+                   >
+                    {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
+                   </button>
+                  )}
                 </div>
                ) : (
                 <div className="flex flex-wrap gap-2 items-center">
@@ -575,6 +667,20 @@ const AgentProfile = () => {
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
                   onCreated={fetchAgentData}
                  />
+                 {activeTab === 'unassigned' && (
+                  <button
+                   type="button"
+                   onClick={() => acceptUnassignedJob(call._id)}
+                   disabled={acceptingCallId === call._id}
+                   className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-white transition ${
+                    acceptingCallId === call._id
+                     ? 'cursor-not-allowed border-white/20 bg-white/10 opacity-70'
+                     : 'border-orange-300/40 bg-orange-500/35 hover:bg-orange-500/45'
+                   }`}
+                  >
+                   {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
+                  </button>
+                 )}
                 </div>
                )}
               </div>

@@ -20,6 +20,7 @@ import UserProfile from './components/UserProfile';
 import FieldServiceAgents from './components/FieldServiceAgents';
 import AgentProfile from './components/AgentProfile';
 import Customers from './components/Customers';
+import RegisterNewCustomer from './components/RegisterNewCustomer';
 import HeadOfficeCustomer from './components/HeadOfficeCustomer';
 import BranchCustomer from './components/BranchCustomer';
 import FranchiseCustomer from './components/FranchiseCustomer';
@@ -122,6 +123,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Customers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/register"
+            element={
+              <ProtectedRoute>
+                <RegisterNewCustomer />
               </ProtectedRoute>
             }
           />
