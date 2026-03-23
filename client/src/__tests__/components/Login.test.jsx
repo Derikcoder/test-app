@@ -51,20 +51,20 @@ describe('Login Component', () => {
 
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /sign in securely/i })).toBeInTheDocument();
     });
 
     it('should render link to registration page', () => {
       renderLogin();
 
-      const registerButton = screen.getByRole('button', { name: /create account/i });
+      const registerButton = screen.getByRole('button', { name: /create enterprise account/i });
       expect(registerButton).toBeInTheDocument();
     });
 
     it('should render heading', () => {
       renderLogin();
 
-      expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
     });
   });
 
@@ -75,7 +75,7 @@ describe('Login Component', () => {
       const passwordInput = screen.getByLabelText(/password/i);
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
-      const submitButton = screen.getByRole('button', { name: /login/i });
+      const submitButton = screen.getByRole('button', { name: /sign in securely/i });
       fireEvent.click(submitButton);
 
       // HTML5 validation should prevent submission
@@ -89,7 +89,7 @@ describe('Login Component', () => {
       const emailInput = screen.getByLabelText(/email/i);
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
-      const submitButton = screen.getByRole('button', { name: /login/i });
+      const submitButton = screen.getByRole('button', { name: /sign in securely/i });
       fireEvent.click(submitButton);
 
       // HTML5 validation should prevent submission
@@ -123,7 +123,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /login/i });
+      const submitButton = screen.getByRole('button', { name: /sign in securely/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -158,7 +158,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /login/i });
+      const submitButton = screen.getByRole('button', { name: /sign in securely/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } });
@@ -182,7 +182,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /login/i });
+      const submitButton = screen.getByRole('button', { name: /sign in securely/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -200,7 +200,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /login/i });
+      const submitButton = screen.getByRole('button', { name: /sign in securely/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -224,7 +224,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const submitButton = screen.getByRole('button', { name: /login/i });
+      const submitButton = screen.getByRole('button', { name: /sign in securely/i });
 
       // Submit with wrong credentials
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });

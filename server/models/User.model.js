@@ -53,19 +53,21 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
     },
-    /** Business name */
+    /** Business name - Cannot be changed after registration */
     businessName: {
       type: String,
       required: function requiredBusinessName() {
         return BUSINESS_INFO_REQUIRED_ROLES.includes(this.role);
       },
       trim: true,
+      immutable: true, // Protects business name from being changed
     },
     /** Business registration number - Legal identifier (write-once by policy) */
     businessRegistrationNumber: {
       type: String,
       trim: true,
       default: '',
+      immutable: true, // Protects registration number - critical legal identifier
     },
     /** Tax number - Required for tax compliance */
     taxNumber: {
@@ -266,6 +268,8 @@ userSchema.index({ customerProfile: 1 }, { unique: true, sparse: true });
  */
 userSchema.statics.IMMUTABLE_FIELDS = [
   'userName',
+  'businessName',
+  'businessRegistrationNumber',
   'createdAt',
   '_id',
   'isSuperUser', // Protect super user status from manipulation
@@ -284,8 +288,6 @@ userSchema.statics.IMMUTABLE_FIELDS = [
 userSchema.statics.EDITABLE_FIELDS = [
   'email',
   'password',
-  'businessName',
-  'businessRegistrationNumber',
   'taxNumber',
   'vatNumber',
   'phoneNumber',
