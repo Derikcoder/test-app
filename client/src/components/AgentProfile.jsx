@@ -665,6 +665,7 @@ const AgentProfile = () => {
                   token={user?.token}
                   isSuperUser={Boolean(user?.isSuperUser)}
                   sourceData={buildQuoteSourceFromCall(call)}
+                    sourceProfilePath={`/agents/${id}`}
                   triggerLabel="Create Quote"
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
                   onCreated={fetchAgentData}
@@ -697,6 +698,7 @@ const AgentProfile = () => {
                   token={user?.token}
                   isSuperUser={Boolean(user?.isSuperUser)}
                   sourceData={buildQuoteSourceFromCall(call)}
+                  sourceProfilePath={`/agents/${id}`}
                   triggerLabel="Create Quote"
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
                   onCreated={fetchAgentData}

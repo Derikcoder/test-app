@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
 const TEMPLATE_OPTIONS = [
@@ -119,10 +120,13 @@ const CreateQuoteModal = ({
   token,
   isSuperUser = false,
   sourceData = {},
+  sourceProfilePath = '/profile',
   triggerLabel = 'Submit Quote',
   triggerClassName = 'glass-btn-primary font-semibold py-2 px-4',
   onCreated,
 }) => {
+  const navigate = useNavigate();
+  const redirectTimeoutRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [customers, setCustomers] = useState([]);
@@ -134,6 +138,8 @@ const CreateQuoteModal = ({
   const [autoResolutionInfo, setAutoResolutionInfo] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('auto');
   const [createdQuotationId, setCreatedQuotationId] = useState('');
+  const [createdQuotationNumber, setCreatedQuotationNumber] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
   const [shareChannels, setShareChannels] = useState({
     email: false,
     whatsapp: false,
@@ -248,12 +254,74 @@ const CreateQuoteModal = ({
   };
 
   const closeModal = () => {
+    if (redirectTimeoutRef.current) {
+      clearTimeout(redirectTimeoutRef.current);
+      redirectTimeoutRef.current = null;
+    }
     setIsOpen(false);
     setError('');
     setSuccess('');
     setSendSuccess('');
     setAutoResolutionInfo(null);
     setCreatedQuotationId('');
+    setCreatedQuotationNumber('');
+    setShareUrl('');
+  };
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const triggerPdfDownload = (blobData, quotationNumber = '') => {
+    const fileName = `${quotationNumber || 'quotation'}.pdf`;
+    const objectUrl = window.URL.createObjectURL(blobData);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(objectUrl);
+  };
+
+  const fetchPdfBlob = async (quotationId) => {
+    const response = await api.get(`/quotations/${quotationId}/pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: 'blob',
+    });
+    return response.data;
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!createdQuotationId) return;
+
+    try {
+      setError('');
+      const pdfBlob = await fetchPdfBlob(createdQuotationId);
+      triggerPdfDownload(pdfBlob, createdQuotationNumber);
+      setSendSuccess('Quotation PDF downloaded successfully.');
+    } catch (downloadError) {
+      setError(downloadError?.response?.data?.message || 'Failed to download quotation PDF.');
+    }
+  };
+
+  const tryNativeShare = async ({ quotationNumber, shareableUrl }) => {
+    if (!navigator.share || !shareableUrl) return false;
+
+    try {
+      await navigator.share({
+        title: `Quotation ${quotationNumber || ''}`.trim(),
+        text: `Quotation ${quotationNumber || ''}`.trim(),
+        url: shareableUrl,
+      });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const updateLineItem = (index, key, value) => {
@@ -459,11 +527,19 @@ const CreateQuoteModal = ({
       }
 
       setCreatedQuotationId(response.data?._id || '');
-      setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted successfully.`.trim());
+      setCreatedQuotationNumber(response.data?.quotationNumber || '');
+      setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted successfully. Redirecting to source profile...`.trim());
       if (response.data?.autoResolution?.source || response.data?.autoResolution?.confidence) {
         setAutoResolutionInfo(response.data.autoResolution);
       }
       if (onCreated) onCreated(response.data);
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+      redirectTimeoutRef.current = setTimeout(() => {
+        closeModal();
+        navigate(sourceProfilePath || '/profile');
+      }, 4000);
     } catch (submitError) {
       setError(submitError?.response?.data?.message || 'Failed to submit quotation.');
     } finally {
@@ -496,6 +572,8 @@ const CreateQuoteModal = ({
 
       const whatsappUrl = response?.data?.whatsappUrl;
       const telegramUrl = response?.data?.telegramUrl;
+      const generatedShareUrl = response?.data?.shareUrl || '';
+      setShareUrl(generatedShareUrl);
 
       if (whatsappUrl) {
         window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
@@ -505,10 +583,27 @@ const CreateQuoteModal = ({
         window.open(telegramUrl, '_blank', 'noopener,noreferrer');
       }
 
+      const sharedNatively = await tryNativeShare({
+        quotationNumber: response?.data?.quotationNumber || createdQuotationNumber,
+        shareableUrl: generatedShareUrl,
+      });
+
+      if (!sharedNatively && generatedShareUrl && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(generatedShareUrl);
+        } catch {
+          // Ignore clipboard failures.
+        }
+      }
+
       const usedChannels = Array.isArray(response?.data?.channels) && response.data.channels.length
         ? response.data.channels
         : selectedChannels;
-      setSendSuccess(`Quote PDF prepared for: ${usedChannels.join(', ')}.`);
+      setSendSuccess(
+        sharedNatively
+          ? `Quote PDF prepared for: ${usedChannels.join(', ')}. Opened native device share options.`
+          : `Quote PDF prepared for: ${usedChannels.join(', ')}.${generatedShareUrl ? ' Share link copied when possible.' : ''}`
+      );
     } catch (sendError) {
       setError(sendError?.response?.data?.message || 'Failed to send quote to selected channels.');
     } finally {
@@ -1016,12 +1111,25 @@ const CreateQuoteModal = ({
                 </button>
                 <button
                   type="button"
+                  disabled={!createdQuotationId || sending}
+                  onClick={handleDownloadPdf}
+                  className="glass-btn-secondary font-semibold py-2 px-5 disabled:opacity-60"
+                >
+                  Download PDF
+                </button>
+                <button
+                  type="button"
                   onClick={closeModal}
                   className="glass-btn-secondary font-semibold py-2 px-5"
                 >
                   Close
                 </button>
               </div>
+              {shareUrl ? (
+                <p className="text-xs text-white/70 mt-1 break-all">
+                  Share link: {shareUrl}
+                </p>
+              ) : null}
             </form>
           </div>
         </div>

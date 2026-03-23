@@ -915,6 +915,7 @@ const ServiceCalls = () => {
            token={user?.token}
            isSuperUser={Boolean(user?.isSuperUser)}
            sourceData={quoteSourceData}
+           sourceProfilePath="/profile"
            triggerLabel="Create Quote"
            triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 py-3 px-6 text-sm font-semibold text-white transition"
           />

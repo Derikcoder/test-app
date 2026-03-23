@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import CreateQuoteModal from '../../components/CreateQuoteModal';
 import api from '../../api/axios';
 
@@ -31,6 +32,8 @@ const baseProps = {
 };
 
 describe('CreateQuoteModal', () => {
+  const renderWithRouter = (ui) => render(<MemoryRouter>{ui}</MemoryRouter>);
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.get).mockResolvedValue({ data: [] });
@@ -43,7 +46,7 @@ describe('CreateQuoteModal', () => {
   });
 
   it('should render prefilled customer label when selected customer is not in fetched customer list', async () => {
-    render(<CreateQuoteModal {...baseProps} />);
+    renderWithRouter(<CreateQuoteModal {...baseProps} />);
 
     fireEvent.click(screen.getByRole('button', { name: /create quote/i }));
 
@@ -73,7 +76,7 @@ describe('CreateQuoteModal', () => {
       ],
     });
 
-    render(<CreateQuoteModal {...standardQuoteProps} />);
+    renderWithRouter(<CreateQuoteModal {...standardQuoteProps} />);
 
     fireEvent.click(screen.getByRole('button', { name: /create quote/i }));
 
@@ -86,7 +89,7 @@ describe('CreateQuoteModal', () => {
   });
 
   it('should submit via service-call shortcut endpoint when serviceCallId and customerId are provided', async () => {
-    render(<CreateQuoteModal {...baseProps} />);
+    renderWithRouter(<CreateQuoteModal {...baseProps} />);
 
     fireEvent.click(screen.getByRole('button', { name: /create quote/i }));
 
@@ -136,7 +139,7 @@ describe('CreateQuoteModal', () => {
       },
     });
 
-    render(<CreateQuoteModal {...baseProps} />);
+    renderWithRouter(<CreateQuoteModal {...baseProps} />);
 
     fireEvent.click(screen.getByRole('button', { name: /create quote/i }));
 

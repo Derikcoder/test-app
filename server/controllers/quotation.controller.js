@@ -351,7 +351,12 @@ export const createQuotation = async (req, res) => {
 
     // Validate line items structure
     const invalidLineItems = lineItems.filter(
-      item => !item.description || !item.quantity || !item.unitPrice
+      (item) =>
+        !item.description
+        || Number(item.quantity) <= 0
+        || item.unitPrice === undefined
+        || item.unitPrice === null
+        || Number(item.unitPrice) < 0
     );
 
     if (invalidLineItems.length > 0) {
@@ -473,8 +478,26 @@ export const createQuotationFromServiceCall = async (req, res) => {
     }
 
     if (!serviceCall.customer) {
+      const contactEmail = serviceCall?.bookingRequest?.contact?.contactEmail
+        ? String(serviceCall.bookingRequest.contact.contactEmail).toLowerCase().trim()
+        : '';
+
+      if (contactEmail) {
+        const matchedCustomer = await Customer.findOne({
+          createdBy: req.user._id,
+          email: contactEmail,
+        }).select('_id');
+
+        if (matchedCustomer) {
+          serviceCall.customer = matchedCustomer._id;
+          await serviceCall.save();
+        }
+      }
+    }
+
+    if (!serviceCall.customer) {
       return res.status(400).json({
-        message: 'Service call is not linked to a customer. Select a customer and use standard quote creation.',
+        message: 'Service call is not linked to a customer. Register/select the customer first so the quotation can inherit customer data.',
       });
     }
 
@@ -504,7 +527,12 @@ export const createQuotationFromServiceCall = async (req, res) => {
       : buildTemplateLineItems({ machineModelNumber, serviceType: resolvedServiceType });
 
     const invalidLineItems = requestedLineItems.filter(
-      (item) => !item.description || !item.quantity || item.unitPrice === undefined || item.unitPrice === null
+      (item) =>
+        !item.description
+        || Number(item.quantity) <= 0
+        || item.unitPrice === undefined
+        || item.unitPrice === null
+        || Number(item.unitPrice) < 0
     );
 
     if (invalidLineItems.length > 0) {
@@ -572,6 +600,16 @@ export const createQuotationFromServiceCall = async (req, res) => {
       autoResolutionSnapshot: autoResolution,
       createdBy: req.user._id,
     });
+
+    // Persist quotation linkage on the service call so pro-forma and final invoice
+    // workflows can seed from the accepted quote data path.
+    serviceCall.quotation = quotation._id;
+    serviceCall.progressStatus = 'Awaiting Approval';
+    const quoteHistoryNote = `Quote ${quotation.quotationNumber} created on ${new Date().toISOString()}`;
+    serviceCall.quotationHistory = serviceCall.quotationHistory
+      ? `${serviceCall.quotationHistory}; ${quoteHistoryNote}`
+      : quoteHistoryNote;
+    await serviceCall.save();
 
     await quotation.populate('customer', 'businessName contactFirstName contactLastName');
     if (quotation.equipment) {

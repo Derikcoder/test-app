@@ -1,5 +1,6 @@
 import ServiceCall from '../models/ServiceCall.model.js';
 import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
+import Customer from '../models/Customer.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
 const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
@@ -208,6 +209,30 @@ export const createServiceCall = async (req, res) => {
 
     const normalizedPriority = priority ? String(priority).toLowerCase() : undefined;
 
+    const normalizedContactEmail = bookingRequest?.contact?.contactEmail
+      ? String(bookingRequest.contact.contactEmail).toLowerCase().trim()
+      : '';
+
+    let resolvedCustomer = customer || null;
+
+    // If no explicit customer was passed, attempt automatic linkage.
+    if (!resolvedCustomer) {
+      if (req.user?.customerProfile) {
+        // Customer principals can always link to their assigned customer profile.
+        resolvedCustomer = req.user.customerProfile;
+      } else if (normalizedContactEmail) {
+        // For admin/operator bookings, match by contact email in the same tenant.
+        const matchedCustomer = await Customer.findOne({
+          createdBy: req.user._id,
+          email: normalizedContactEmail,
+        }).select('_id');
+
+        if (matchedCustomer) {
+          resolvedCustomer = matchedCustomer._id;
+        }
+      }
+    }
+
     // Validation runs before pre-save hooks, so ensure a call number is always present.
     // If not provided by client, generate the next sequence number here.
     let resolvedCallNumber = callNumber;
@@ -221,13 +246,13 @@ export const createServiceCall = async (req, res) => {
       return res.status(400).json({ message: 'Please fill in all required fields' });
     }
 
-    if (!customer && !bookingRequest) {
+    if (!resolvedCustomer && !bookingRequest) {
       return res.status(400).json({ message: 'A linked customer or booking request details are required' });
     }
 
     const serviceCall = await ServiceCall.create({
       callNumber: resolvedCallNumber,
-      customer,
+      customer: resolvedCustomer,
       assignedAgent,
       title,
       description,
