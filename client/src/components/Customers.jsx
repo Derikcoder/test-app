@@ -43,6 +43,14 @@ const customerTypeRoute = (type, id) => {
 const Customers = () => {
  const { user } = useAuth();
  const navigate = useNavigate();
+ const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
+ const roleLabelMap = {
+  superAdmin: 'Super Admin',
+  businessAdministrator: 'Business Administrator',
+  fieldServiceAgent: 'Field Service Agent',
+  customer: 'Customer',
+ };
+ const roleLabel = roleLabelMap[user?.role] || (isSuperAdmin ? 'Super Admin' : 'Platform User');
 
  const [customers, setCustomers] = useState([]);
  const [loading, setLoading] = useState(true);
@@ -113,6 +121,18 @@ const Customers = () => {
       <div>
        <h1 className="glass-heading text-3xl">Customers</h1>
        <p className="text-white/70 mt-1">All registered customers</p>
+         <div className="mt-3 flex flex-wrap gap-2">
+          <span className="inline-flex items-center rounded-full border border-indigo-400/60 bg-indigo-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-200">
+           Entity: Customers
+          </span>
+          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+           isSuperAdmin
+            ? 'border-fuchsia-400/60 bg-fuchsia-500/20 text-fuchsia-200'
+            : 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200'
+          }`}>
+           Role: {roleLabel}
+          </span>
+         </div>
       </div>
       <button
         onClick={() => navigate('/customers/register')}

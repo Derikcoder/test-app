@@ -5,6 +5,7 @@
 
 import {
   getSharedInvoiceDetails,
+  sendInvoice,
   submitSharedInvoiceDecision,
 } from '../../../controllers/invoice.controller.js';
 import Invoice from '../../../models/Invoice.model.js';
@@ -140,6 +141,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         invoiceNumber: 'INV-000123',
         documentType: 'proForma',
         workflowStatus: 'awaitingApproval',
+        workflowTransitions: [],
         siteInstruction: {
           problemsFound: 'Radiator leak detected',
         },
@@ -167,6 +169,27 @@ describe('Invoice Controller - Public Share Endpoints', () => {
           rejectedAt: null,
         })
       );
+
+      expect(invoice.customerDecision).toEqual(
+        expect.objectContaining({
+          decision: 'approved',
+          reference: 'PO-7788',
+          notes: 'Proceed with urgent repair',
+          decidedAt: expect.any(Date),
+          channel: 'publicLink',
+        })
+      );
+
+      expect(invoice.workflowTransitions).toHaveLength(1);
+      expect(invoice.workflowTransitions[0]).toEqual(
+        expect.objectContaining({
+          fromStatus: 'awaitingApproval',
+          toStatus: 'approved',
+          changedByRole: 'customer',
+          channel: 'publicLink',
+        })
+      );
+
       expect(invoice.save).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith({
         message: 'Pro-forma approved successfully.',
@@ -226,6 +249,110 @@ describe('Invoice Controller - Public Share Endpoints', () => {
 
       expect(res.status).toHaveBeenCalledWith(409);
       expect(res.json).toHaveBeenCalledWith({ message: 'This pro-forma has already been approved.' });
+    });
+  });
+
+  describe('sendInvoice strict validation', () => {
+    beforeEach(() => {
+      req = {
+        params: { id: 'invoice-id-123' },
+        body: {},
+        protocol: 'https',
+        get: jest.fn().mockReturnValue('field.example.com'),
+        user: { _id: 'user-123' },
+      };
+
+      res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+    });
+
+    test('returns 400 for invalid channels', async () => {
+      const invoice = {
+        _id: 'invoice-id-123',
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        customer: { email: 'customer@example.com', phoneNumber: '0821234567' },
+      };
+
+      req.body = { channels: ['email', 'fax'] };
+      Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
+
+      await sendInvoice(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Invalid channels requested: fax. Allowed channels: email, whatsapp, telegram',
+      });
+    });
+
+    test('returns 400 when email channel is selected but customer email is missing', async () => {
+      const invoice = {
+        _id: 'invoice-id-123',
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        customer: { phoneNumber: '0821234567' },
+      };
+
+      req.body = { channels: ['email'] };
+      Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
+
+      await sendInvoice(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Customer email is required to send via email channel.' });
+    });
+
+    test('returns 400 when email format is invalid for email channel', async () => {
+      const invoice = {
+        _id: 'invoice-id-123',
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        customer: { email: 'bad-email', phoneNumber: '0821234567' },
+      };
+
+      req.body = { channels: ['email'] };
+      Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
+
+      await sendInvoice(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Customer email format is invalid for email delivery.' });
+    });
+
+    test('returns 400 when WhatsApp channel is selected but customer phone is missing', async () => {
+      const invoice = {
+        _id: 'invoice-id-123',
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        customer: { email: 'customer@example.com' },
+      };
+
+      req.body = { channels: ['whatsapp'] };
+      Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
+
+      await sendInvoice(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Customer phone number is required to send via WhatsApp channel.' });
+    });
+
+    test('returns 400 when WhatsApp phone format is invalid', async () => {
+      const invoice = {
+        _id: 'invoice-id-123',
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        customer: { email: 'customer@example.com', phoneNumber: '123' },
+      };
+
+      req.body = { channels: ['whatsapp'] };
+      Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
+
+      await sendInvoice(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Customer phone number format is invalid for WhatsApp delivery.' });
     });
   });
 });
