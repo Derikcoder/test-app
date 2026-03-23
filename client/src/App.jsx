@@ -10,25 +10,36 @@
  * - Route definitions for all pages
  */
 
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Register from './components/Register';
-import Login from './components/Login';
-import ForgotPassword from './components/ForgotPassword';
-import ResetPassword from './components/ResetPassword';
-import InvoiceApprovalPage from './components/InvoiceApprovalPage';
-import UserProfile from './components/UserProfile';
-import FieldServiceAgents from './components/FieldServiceAgents';
-import AgentProfile from './components/AgentProfile';
-import Customers from './components/Customers';
-import RegisterNewCustomer from './components/RegisterNewCustomer';
-import HeadOfficeCustomer from './components/HeadOfficeCustomer';
-import BranchCustomer from './components/BranchCustomer';
-import FranchiseCustomer from './components/FranchiseCustomer';
-import SingleBusinessCustomer from './components/SingleBusinessCustomer';
-import ResidentialCustomer from './components/ResidentialCustomer';
-import ServiceCalls from './components/ServiceCalls';
-import Quotations from './components/Quotations';
+
+const Register = lazy(() => import('./components/Register'));
+const Login = lazy(() => import('./components/Login'));
+const ForgotPassword = lazy(() => import('./components/ForgotPassword'));
+const ResetPassword = lazy(() => import('./components/ResetPassword'));
+const InvoiceApprovalPage = lazy(() => import('./components/InvoiceApprovalPage'));
+const UserProfile = lazy(() => import('./components/UserProfile'));
+const FieldServiceAgents = lazy(() => import('./components/FieldServiceAgents'));
+const AgentProfile = lazy(() => import('./components/AgentProfile'));
+const Customers = lazy(() => import('./components/Customers'));
+const RegisterNewCustomer = lazy(() => import('./components/RegisterNewCustomer'));
+const HeadOfficeCustomer = lazy(() => import('./components/HeadOfficeCustomer'));
+const BranchCustomer = lazy(() => import('./components/BranchCustomer'));
+const FranchiseCustomer = lazy(() => import('./components/FranchiseCustomer'));
+const SingleBusinessCustomer = lazy(() => import('./components/SingleBusinessCustomer'));
+const ResidentialCustomer = lazy(() => import('./components/ResidentialCustomer'));
+const ServiceCalls = lazy(() => import('./components/ServiceCalls'));
+const Quotations = lazy(() => import('./components/Quotations'));
+
+const PageLoader = () => (
+  <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+    <div className="glass-card p-8 text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-b-transparent mx-auto mb-4"></div>
+      <p className="text-lg font-semibold opacity-90" style={{ color: 'white' }}>Loading page...</p>
+    </div>
+  </div>
+);
 
 /**
  * Protected Route Wrapper Component
@@ -88,115 +99,117 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* Public Routes - Accessible without authentication */}
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
-          <Route path="/invoice-approval/:token" element={<InvoiceApprovalPage />} />
-          
-          {/* Protected Routes - Require authentication */}
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quotations"
-            element={
-              <ProtectedRoute>
-                <Quotations />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/agents"
-            element={
-              <ProtectedRoute>
-                <FieldServiceAgents />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/agents/:id"
-            element={
-              <ProtectedRoute>
-                <AgentProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers"
-            element={
-              <ProtectedRoute>
-                <Customers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers/register"
-            element={
-              <ProtectedRoute>
-                <RegisterNewCustomer />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers/head-office/:id"
-            element={
-              <ProtectedRoute>
-                <HeadOfficeCustomer />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers/branch/:id"
-            element={
-              <ProtectedRoute>
-                <BranchCustomer />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers/franchise/:id"
-            element={
-              <ProtectedRoute>
-                <FranchiseCustomer />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers/single-business/:id"
-            element={
-              <ProtectedRoute>
-                <SingleBusinessCustomer />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers/residential/:id"
-            element={
-              <ProtectedRoute>
-                <ResidentialCustomer />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/service-calls"
-            element={
-              <ProtectedRoute>
-                <ServiceCalls />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Default Route - Redirect to login */}
-          <Route path="/" element={<Navigate to="/login" />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public Routes - Accessible without authentication */}
+            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/invoice-approval/:token" element={<InvoiceApprovalPage />} />
+
+            {/* Protected Routes - Require authentication */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quotations"
+              element={
+                <ProtectedRoute>
+                  <Quotations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agents"
+              element={
+                <ProtectedRoute>
+                  <FieldServiceAgents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agents/:id"
+              element={
+                <ProtectedRoute>
+                  <AgentProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers"
+              element={
+                <ProtectedRoute>
+                  <Customers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/register"
+              element={
+                <ProtectedRoute>
+                  <RegisterNewCustomer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/head-office/:id"
+              element={
+                <ProtectedRoute>
+                  <HeadOfficeCustomer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/branch/:id"
+              element={
+                <ProtectedRoute>
+                  <BranchCustomer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/franchise/:id"
+              element={
+                <ProtectedRoute>
+                  <FranchiseCustomer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/single-business/:id"
+              element={
+                <ProtectedRoute>
+                  <SingleBusinessCustomer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/residential/:id"
+              element={
+                <ProtectedRoute>
+                  <ResidentialCustomer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/service-calls"
+              element={
+                <ProtectedRoute>
+                  <ServiceCalls />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Default Route - Redirect to login */}
+            <Route path="/" element={<Navigate to="/login" />} />
+          </Routes>
+        </Suspense>
       </Router>
     </AuthProvider>
   );
