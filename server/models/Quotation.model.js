@@ -339,6 +339,11 @@ const quotationSchema = new mongoose.Schema(
       trim: true,
       default: 'Payment due within 30 days. Quotation valid for 14 days from date of issue.',
     },
+    /** Auto-template resolution diagnostics snapshot for audit/history visibility */
+    autoResolutionSnapshot: {
+      type: Object,
+      default: null,
+    },
     /** Reference to User who created this quotation */
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -456,7 +461,8 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'convertedDate',
   'notes',
   'internalNotes',
-  'terms'
+  'terms',
+  'autoResolutionSnapshot'
 ];
 
 const Quotation = mongoose.model('Quotation', quotationSchema);

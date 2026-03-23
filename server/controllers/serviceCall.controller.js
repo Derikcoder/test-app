@@ -147,6 +147,9 @@ export const getServiceCalls = async (req, res) => {
     const serviceCalls = await ServiceCall.find({ createdBy: req.user._id })
       .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
       .populate('assignedAgent', 'firstName lastName employeeId')
+      .populate('quotation', 'quotationNumber title status totalAmount')
+      .populate('proFormaInvoice', 'invoiceNumber documentType workflowStatus totalAmount depositRequired depositAmount')
+      .populate('invoice', 'invoiceNumber documentType workflowStatus totalAmount paymentStatus')
       .sort({ createdAt: -1 });
     res.json(serviceCalls);
   } catch (error) {
@@ -165,7 +168,10 @@ export const getServiceCallById = async (req, res) => {
       createdBy: req.user._id
     })
       .populate('customer')
-      .populate('assignedAgent');
+      .populate('assignedAgent')
+      .populate('quotation')
+      .populate('proFormaInvoice')
+      .populate('invoice');
 
     if (!serviceCall) {
       return res.status(404).json({ message: 'Service call not found' });

@@ -128,6 +128,7 @@ main                 ← Production (stable, never touched directly)
 - `UserProfile.jsx`: Profile display and edits with write-once registration identifiers, legal-evidence override capture for superAdmin, and role-aware account dashboard.
 - `FieldServiceAgents.jsx`: Field service agent list and CRUD screen.
 - `AgentProfile.jsx`: Agent detail view with job statistics.
+- `InvoiceApprovalPage.jsx`: Public customer review page for shared pro-forma documents with approve/reject actions.
 - `Customers.jsx`: Customer list page — all customers filtered by type, with navigation to type-specific profiles.
 - `RegisterNewCustomer.jsx`: Reusable modal/form for registering any customer type. Callable from any screen.
 - `HeadOfficeCustomer.jsx`: Profile view for Head Office accounts (parent of branches/franchises).
@@ -181,7 +182,7 @@ main                 ← Production (stable, never touched directly)
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `quotation.controller.js`: Quotation creation, line items, status management, and create-time pricing calculation (subtotal/VAT/total).
 - `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, function-based travel-cost calculation (`distanceTravelledKm × ratePerKm + timeTravelledCost`) with call-out floor condition support, first-site-visit included assessment logic, procurement/delivery profit capture, 14-day default validity fallback, PDF generation, quote delivery endpoints (optional Email/WhatsApp/Telegram), and auto-conversion of approved quotations into in-progress service jobcards.
-- `invoice.controller.js`: Invoice generation from quotations, payment tracking.
+- `invoice.controller.js`: Invoice generation from quotations, pro-forma workflow, payment tracking, PDF sharing, and public customer approval/rejection endpoints.
 - `equipment.controller.js`: Equipment/asset CRUD.
 
 ### Server Routes (`server/routes/`)
@@ -190,7 +191,7 @@ main                 ← Production (stable, never touched directly)
 - `customer.routes.js`: `/api/customers` — customer endpoints.
 - `serviceCall.routes.js`: `/api/service-calls` — service call endpoints.
 - `quotation.routes.js`: `/api/quotations` — quotation endpoints including PDF generation, send/distribution, and tokenized share access.
-- `invoice.routes.js`: `/api/invoices` — invoice endpoints.
+- `invoice.routes.js`: `/api/invoices` — invoice endpoints including pro-forma workflows, tokenized public PDF access, and public customer approval/rejection routes.
 - `equipment.routes.js`: `/api/equipment` — equipment endpoints.
 - `example.routes.js`: `/api/example` — example/template endpoints.
 

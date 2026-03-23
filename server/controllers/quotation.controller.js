@@ -1,6 +1,7 @@
 import Quotation from '../models/Quotation.model.js';
 import ServiceCall from '../models/ServiceCall.model.js';
 import Customer from '../models/Customer.model.js';
+import { resolveAutoMachineDataForQuote } from '../services/quotationAutoResolver.service.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import PDFDocument from 'pdfkit';
 import crypto from 'crypto';
@@ -190,9 +191,9 @@ const calculateQuotationCosts = ({
     : baseTravellingCost;
   const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
 
-  const resolvedChargeableLabourHours = isFirstVisitCallOutPackage
-    ? Number(Math.max(resolvedLabourHours - includedAssessmentHours, 0).toFixed(2))
-    : resolvedLabourHours;
+  // Labour is always billed at full hours. The call-out floor fee (R650) is the separate
+  // assessment/dispatch charge — it does NOT replace any portion of billable labour time.
+  const resolvedChargeableLabourHours = resolvedLabourHours;
   const labourCost = Number((resolvedChargeableLabourHours * resolvedLabourRate).toFixed(2));
 
   // Pricing rule (kept explicit for policy visibility):
@@ -486,10 +487,17 @@ export const createQuotationFromServiceCall = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found for this service call' });
     }
 
-    const resolvedServiceType = serviceType || serviceCall.serviceType || 'Scheduled Maintenance';
-    const machineModelNumber = serviceCall.bookingRequest?.generatorDetails?.machineModelNumber
-      || serviceCall.bookingRequest?.generatorDetails?.generatorMakeModel
-      || '';
+    const initialServiceType = serviceType || serviceCall.serviceType || 'Scheduled Maintenance';
+    const autoResolution = await resolveAutoMachineDataForQuote({
+      customerId: serviceCall.customer,
+      siteId: serviceCall.siteId,
+      serviceType: initialServiceType,
+      bookingRequest: serviceCall.bookingRequest,
+      createdBy: req.user._id,
+    });
+
+    const resolvedServiceType = autoResolution.templateSeed.serviceType || initialServiceType;
+    const machineModelNumber = autoResolution.templateSeed.machineModelNumber || '';
 
     const requestedLineItems = Array.isArray(lineItems) && lineItems.length > 0
       ? lineItems
@@ -561,6 +569,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       validUntil: validUntil || getDefaultValidUntilDate(),
       terms,
       notes,
+      autoResolutionSnapshot: autoResolution,
       createdBy: req.user._id,
     });
 
@@ -569,8 +578,14 @@ export const createQuotationFromServiceCall = async (req, res) => {
       await quotation.populate('equipment', 'equipmentId equipmentType brand model');
     }
 
+    const responsePayload = quotation.toObject();
+    responsePayload.autoResolution = autoResolution;
+
+    logInfo(
+      `Auto quote resolver source: ${autoResolution.source} (confidence: ${autoResolution.confidence}) for call ${serviceCall.callNumber}`
+    );
     logInfo(`✅ Quotation created from service call: ${quotation.quotationNumber} (source: ${serviceCall.callNumber})`);
-    res.status(201).json(quotation);
+    res.status(201).json(responsePayload);
   } catch (error) {
     logError('Create quotation from service call error:', error);
     res.status(500).json({ message: error.message });

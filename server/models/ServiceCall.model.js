@@ -236,6 +236,11 @@ const serviceCallSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Invoice',
     },
+    /** Reference to active pro-forma invoice used as field source of truth */
+    proFormaInvoice: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Invoice',
+    },
     /** Reference to Customer who requested the service */
     customer: {
       type: mongoose.Schema.Types.ObjectId,
@@ -485,6 +490,7 @@ serviceCallSchema.statics.IMMUTABLE_FIELDS = [
 serviceCallSchema.statics.EDITABLE_FIELDS = [
   'quotation',
   'invoice',
+  'proFormaInvoice',
   'customer',
   'siteId',
   'equipment',

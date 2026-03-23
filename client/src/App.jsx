@@ -16,6 +16,7 @@ import Register from './components/Register';
 import Login from './components/Login';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
+import InvoiceApprovalPage from './components/InvoiceApprovalPage';
 import UserProfile from './components/UserProfile';
 import FieldServiceAgents from './components/FieldServiceAgents';
 import AgentProfile from './components/AgentProfile';
@@ -27,6 +28,7 @@ import FranchiseCustomer from './components/FranchiseCustomer';
 import SingleBusinessCustomer from './components/SingleBusinessCustomer';
 import ResidentialCustomer from './components/ResidentialCustomer';
 import ServiceCalls from './components/ServiceCalls';
+import Quotations from './components/Quotations';
 
 /**
  * Protected Route Wrapper Component
@@ -92,6 +94,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/invoice-approval/:token" element={<InvoiceApprovalPage />} />
           
           {/* Protected Routes - Require authentication */}
           <Route
@@ -99,6 +102,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quotations"
+            element={
+              <ProtectedRoute>
+                <Quotations />
               </ProtectedRoute>
             }
           />

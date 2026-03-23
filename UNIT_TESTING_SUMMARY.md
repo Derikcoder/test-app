@@ -4,6 +4,15 @@
 
 Complete unit testing infrastructure has been implemented for the WKD Field Service Management application. This document summarizes what was created and how to use it.
 
+## Latest Test Update (2026-03-23)
+
+- Added `client/src/__tests__/components/CreateQuoteModal.test.jsx` with 3 passing tests.
+- New coverage validates quotation customer dropdown behavior when launched from service calls:
+  - Prefilled fallback customer label is rendered when `/customers` does not return the selected customer id.
+  - Returned `/customers` data overrides fallback label when the selected customer exists.
+  - Quote submission uses `POST /quotations/from-service-call/:serviceCallId` for service-call shortcut flow.
+- Latest client regression run result: **4 test files, 37 tests, 37 passed**.
+
 ## ✅ What Was Implemented
 
 ### 1. Testing Infrastructure Setup

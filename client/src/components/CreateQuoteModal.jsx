@@ -15,6 +15,18 @@ const CALL_OUT_FLOOR_DISTANCE_KM = 45;
 const CALL_OUT_FLOOR_TIME_MINUTES = 30;
 const CALL_OUT_FLOOR_AMOUNT = 650;
 const INCLUDED_ASSESSMENT_MINUTES = 15;
+const AUTO_RESOLUTION_SOURCE_LABELS = {
+  'equipment-history': 'Equipment history',
+  'booking-request': 'Service booking data',
+  'generic-fallback': 'Generic fallback',
+};
+
+const formatDate = (value) => {
+  if (!value) return 'N/A';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'N/A';
+  return parsed.toLocaleDateString();
+};
 
 const toDateInputValue = (value) => {
   if (!value) return '';
@@ -119,6 +131,7 @@ const CreateQuoteModal = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [sendSuccess, setSendSuccess] = useState('');
+  const [autoResolutionInfo, setAutoResolutionInfo] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('auto');
   const [createdQuotationId, setCreatedQuotationId] = useState('');
   const [shareChannels, setShareChannels] = useState({
@@ -127,8 +140,10 @@ const CreateQuoteModal = ({
     telegram: true,
   });
 
-  const canUseServiceCallShortcut = Boolean(sourceData?.serviceCallId && sourceData?.customerId);
+  const isServiceCallContext = Boolean(sourceData?.serviceCallId);
+  const canUseServiceCallShortcut = Boolean(sourceData?.serviceCallId);
   const machineTemplateSource = sourceData?.machineModelNumber || sourceData?.generatorMakeModel || '';
+  const prefilledCustomerLabel = sourceData?.customerLabel || 'Service Call Customer';
 
   const initialLineItems = useMemo(
     () => sourceData?.lineItems?.length
@@ -163,8 +178,24 @@ const CreateQuoteModal = ({
     lineItems: initialLineItems,
   });
 
+  const hasSelectedCustomerInList = useMemo(
+    () => customers.some((customer) => customer?._id === formData.customerId),
+    [customers, formData.customerId]
+  );
+
+  const selectedCustomerOptionLabel = useMemo(() => {
+    if (!formData.customerId) return '';
+
+    const selected = customers.find((customer) => customer?._id === formData.customerId);
+    if (selected) {
+      return selected.businessName || `${selected.contactFirstName || ''} ${selected.contactLastName || ''}`.trim();
+    }
+
+    return prefilledCustomerLabel;
+  }, [customers, formData.customerId, prefilledCustomerLabel]);
+
   useEffect(() => {
-    if (!isOpen || !token) return;
+    if (!isOpen || !token || isServiceCallContext) return;
 
     const fetchCustomers = async () => {
       try {
@@ -181,7 +212,7 @@ const CreateQuoteModal = ({
     };
 
     fetchCustomers();
-  }, [isOpen, token]);
+  }, [isOpen, token, isServiceCallContext]);
 
   useEffect(() => {
     setFormData((prev) => ({
@@ -221,6 +252,7 @@ const CreateQuoteModal = ({
     setError('');
     setSuccess('');
     setSendSuccess('');
+    setAutoResolutionInfo(null);
     setCreatedQuotationId('');
   };
 
@@ -274,8 +306,9 @@ const CreateQuoteModal = ({
     const baseTravelCost = (distanceTravelledKm * travelRatePerKm) + timeTravelledCost;
     const isCallOutFloorApplicable = distanceTravelledKm < CALL_OUT_FLOOR_DISTANCE_KM && travelTimeMinutes < CALL_OUT_FLOOR_TIME_MINUTES;
     const isFirstVisitCallOutPackage = isCallOutFloorApplicable && isFirstSiteVisit;
-    const includedAssessmentHours = isFirstVisitCallOutPackage ? (INCLUDED_ASSESSMENT_MINUTES / 60) : 0;
-    const chargeableLabourHours = Math.max(labourHours - includedAssessmentHours, 0);
+    // Labour is always billed at full hours. The R650 call-out floor is a separate
+    // dispatch/assessment charge and does not replace any billed labour time.
+    const chargeableLabourHours = labourHours;
     const travellingCost = isCallOutFloorApplicable
       ? Math.max(baseTravelCost, CALL_OUT_FLOOR_AMOUNT)
       : baseTravelCost;
@@ -358,6 +391,7 @@ const CreateQuoteModal = ({
     setError('');
     setSuccess('');
     setSendSuccess('');
+    setAutoResolutionInfo(null);
 
     const validationError = validate();
     if (validationError) {
@@ -426,6 +460,9 @@ const CreateQuoteModal = ({
 
       setCreatedQuotationId(response.data?._id || '');
       setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted successfully.`.trim());
+      if (response.data?.autoResolution?.source || response.data?.autoResolution?.confidence) {
+        setAutoResolutionInfo(response.data.autoResolution);
+      }
       if (onCreated) onCreated(response.data);
     } catch (submitError) {
       setError(submitError?.response?.data?.message || 'Failed to submit quotation.');
@@ -499,26 +536,83 @@ const CreateQuoteModal = ({
 
             {error ? <div className="mb-4 rounded-lg border border-red-300/50 bg-red-500/20 px-4 py-2 text-white">{error}</div> : null}
             {success ? <div className="mb-4 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-4 py-2 text-white">{success}</div> : null}
+            {autoResolutionInfo ? (
+              <div className="mb-4 rounded-lg border border-cyan-300/50 bg-cyan-500/20 px-4 py-2 text-white">
+                <p className="text-sm font-semibold">Auto template source selected</p>
+                <p className="text-sm text-white/90">
+                  Source: {AUTO_RESOLUTION_SOURCE_LABELS[autoResolutionInfo.source] || autoResolutionInfo.source || 'Unknown'}
+                  {autoResolutionInfo.confidence ? ` (${autoResolutionInfo.confidence} confidence)` : ''}
+                </p>
+                {autoResolutionInfo.equipment ? (
+                  <p className="text-xs text-white/80 mt-1">
+                    Equipment: {[
+                      autoResolutionInfo.equipment.equipmentId,
+                      autoResolutionInfo.equipment.brand,
+                      autoResolutionInfo.equipment.model,
+                    ].filter(Boolean).join(' | ') || 'Not specified'}
+                  </p>
+                ) : null}
+                {autoResolutionInfo.historyStats ? (
+                  <p className="text-xs text-white/80 mt-1">
+                    History considered: {autoResolutionInfo.historyStats.totalHistoryEventsConsidered || 0} events across {autoResolutionInfo.historyStats.totalEquipmentEvaluated || 0} equipment records.
+                  </p>
+                ) : null}
+                {Array.isArray(autoResolutionInfo.recentServiceHistory) && autoResolutionInfo.recentServiceHistory.length > 0 ? (
+                  <div className="mt-2 rounded-md border border-white/15 bg-white/5 px-3 py-2">
+                    <p className="text-xs font-semibold text-white/90 mb-1">Recent Service History</p>
+                    <ul className="text-xs text-white/80 space-y-1 list-disc list-inside">
+                      {autoResolutionInfo.recentServiceHistory.slice(0, 5).map((entry, index) => (
+                        <li key={`history-entry-${index}`}>
+                          {(entry.callNumber || 'Call')}
+                          {entry.serviceType ? ` | ${entry.serviceType}` : ''}
+                          {entry.status ? ` | ${entry.status}` : ''}
+                          {entry.completedDate ? ` | ${formatDate(entry.completedDate)}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {autoResolutionInfo.bookingSeed ? (
+                  <p className="text-xs text-white/80 mt-2">
+                    Booking reference: {autoResolutionInfo.bookingSeed.machineModelNumber || autoResolutionInfo.bookingSeed.generatorMakeModel || 'No machine model provided'}
+                    {autoResolutionInfo.bookingSeed.siteName ? ` at ${autoResolutionInfo.bookingSeed.siteName}` : ''}.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {sendSuccess ? <div className="mb-4 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-4 py-2 text-white">{sendSuccess}</div> : null}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="glass-form-label text-white/90">Customer</label>
-                  <select
-                    value={formData.customerId}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, customerId: event.target.value }))}
-                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
-                    disabled={loadingCustomers}
-                    required
-                  >
-                    <option value="" className="text-black">Select customer</option>
-                    {customers.map((customer) => (
-                      <option key={customer._id} value={customer._id} className="text-black">
-                        {customer.businessName || `${customer.contactFirstName || ''} ${customer.contactLastName || ''}`.trim()}
-                      </option>
-                    ))}
-                  </select>
+                  {isServiceCallContext ? (
+                    <input
+                      value={selectedCustomerOptionLabel || 'Linked Service Call Customer'}
+                      readOnly
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    />
+                  ) : (
+                    <select
+                      value={formData.customerId}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, customerId: event.target.value }))}
+                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      disabled={loadingCustomers}
+                      required
+                    >
+                      <option value="" className="text-black">Select customer</option>
+                      {formData.customerId && !hasSelectedCustomerInList ? (
+                        <option value={formData.customerId} className="text-black">
+                          {selectedCustomerOptionLabel}
+                        </option>
+                      ) : null}
+                      {customers.map((customer) => (
+                        <option key={customer._id} value={customer._id} className="text-black">
+                          {customer.businessName || `${customer.contactFirstName || ''} ${customer.contactLastName || ''}`.trim()}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -577,11 +671,8 @@ const CreateQuoteModal = ({
               </div>
 
               <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div>
                   <h3 className="text-white font-semibold">Parts</h3>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
-                  </div>
                 </div>
 
                 <p className="text-xs text-white/70">
@@ -651,6 +742,10 @@ const CreateQuoteModal = ({
                     </div>
                   </div>
                 ))}
+
+                <div className="flex justify-end pt-2">
+                  <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
+                </div>
               </div>
 
               <div className="rounded-lg border border-white/20 bg-white/5 p-4">
@@ -659,7 +754,7 @@ const CreateQuoteModal = ({
                   {/* UI consistency rule: keep helper notes in the first block of the section, not under individual fields. */}
                   <div className="md:col-span-5 rounded-md border border-white/15 bg-white/5 px-3 py-2">
                     <p className="text-xs text-white/70">
-                      Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00. For first-time customer/site visits, this package includes the first 15 minutes on-site assessment.
+                      Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00. Labour is always billed at full hours — the call-out floor fee is a separate dispatch/assessment charge.
                     </p>
                   </div>
                   <div>
@@ -829,9 +924,9 @@ const CreateQuoteModal = ({
                   <p className="font-semibold">Estimated Parts Profit: R {totals.estimatedPartsProfit}</p>
                   <p>Labour Hours: {totals.labourHours}</p>
                   {totals.isFirstVisitCallOutPackage ? (
-                    <p className="text-xs text-yellow-200">Included on-site assessment: {INCLUDED_ASSESSMENT_MINUTES} min (first visit call-out)</p>
+                    <p className="text-xs text-yellow-200">First visit call-out floor: R {CALL_OUT_FLOOR_AMOUNT.toFixed(2)} (min. travel charge)</p>
                   ) : null}
-                  <p>Chargeable Labour Hours: {totals.chargeableLabourHours}</p>
+                  <p>Labour Hours: {totals.chargeableLabourHours}</p>
                   <p>Labour Cost: R {totals.labourCost}</p>
                   <p>Travel: ({totals.distanceTravelledKm} km x R {totals.travelRatePerKm}) + R {totals.timeTravelledCost}</p>
                   <p className="text-xs text-white/70">Travel time: {totals.travelTimeMinutes} minutes | Base travel: R {totals.baseTravelCost}</p>

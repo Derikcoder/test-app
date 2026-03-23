@@ -85,6 +85,14 @@ This is an enterprise-grade field service management application built with the 
 - 📅 Default quotation validity is now 14 days, with calendar override available for customer-specific arrangements
 - 🔒 Labour rate is editable by superAdmin only; backend enforces default `R650/hour` for non-super users
 
+### Invoice & Pro-Forma Workflow
+- 🧾 Pro-forma site instruction workflow lets field agents capture additional work, discovered problems, solutions, and deposit requirements on site
+- 📤 Billing delivery endpoint supports email plus WhatsApp/Telegram share links for customer review
+- 🔗 Public invoice share summary endpoint available at `GET /api/invoices/share/:token`
+- 📄 Public PDF access available at `GET /api/invoices/share/:token/pdf`
+- ✅ Public customer approval/rejection endpoint available at `POST /api/invoices/share/:token/decision`
+- 🌐 Customer-facing approval route available at `/invoice-approval/:token`
+
 ### System Features
 - 📋 Enterprise-level logging middleware
 - 🔍 Request/response tracking
@@ -140,6 +148,7 @@ test-app/
 │   │   │   ├── UserProfile.jsx     # User profile management
 │   │   │   ├── FieldServiceAgents.jsx  # Agent CRUD operations
 │   │   │   ├── AgentProfile.jsx    # Agent details & statistics
+│   │   │   ├── InvoiceApprovalPage.jsx # Public customer pro-forma approval screen
 │   │   │   ├── Customers.jsx       # Customer intake form
 │   │   │   └── ServiceCalls.jsx    # Service call management
 │   │   └── context/

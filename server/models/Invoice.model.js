@@ -87,6 +87,48 @@ const paymentRecordSchema = new mongoose.Schema({
   },
 }, { _id: true, timestamps: true });
 
+const siteInstructionSchema = new mongoose.Schema({
+  problemsFound: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  recommendedSolution: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  requiredPartsAndMaterials: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  thirdPartyServiceNotes: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  approvalReference: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  approvalNotes: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  approvalRequestedAt: {
+    type: Date,
+  },
+  approvedAt: {
+    type: Date,
+  },
+  rejectedAt: {
+    type: Date,
+  },
+}, { _id: false });
+
 /**
  * Invoice Schema Definition
  * 
@@ -136,10 +178,34 @@ const invoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       trim: true,
     },
+    /** Human-readable title/summary for the billing document */
+    title: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Detailed scope/description for billing document */
+    description: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     /** Reference to Equipment that was serviced */
     equipment: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Equipment',
+    },
+    /** Draft pro-forma or final invoice */
+    documentType: {
+      type: String,
+      enum: ['proForma', 'final'],
+      default: 'final',
+    },
+    /** Operational workflow state for pro-forma approval and invoice finalization */
+    workflowStatus: {
+      type: String,
+      enum: ['draft', 'awaitingApproval', 'approved', 'rejected', 'finalized'],
+      default: 'draft',
     },
     /** Service type/category */
     serviceType: {
@@ -174,6 +240,47 @@ const invoiceSchema = new mongoose.Schema(
         message: 'Invoice must have at least one line item',
       },
     },
+    /** Parts fulfilment mode to support profitability analysis */
+    partsFulfilmentMode: {
+      type: String,
+      enum: ['inHouseProcurement', 'thirdPartyDelivery'],
+      default: 'inHouseProcurement',
+    },
+    /** Third-party provider name when delivery service is used */
+    deliveryProvider: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Actual cost paid to procure parts */
+    partsProcurementCost: {
+      type: Number,
+      min: [0, 'Parts procurement cost cannot be negative'],
+      default: 0,
+    },
+    /** Third-party delivery charge */
+    thirdPartyDeliveryCost: {
+      type: Number,
+      min: [0, 'Third-party delivery cost cannot be negative'],
+      default: 0,
+    },
+    /** Derived parts profit estimate */
+    estimatedPartsProfit: {
+      type: Number,
+      default: 0,
+    },
+    /** Labor hours used for billing */
+    laborHours: {
+      type: Number,
+      min: [0, 'Labor hours cannot be negative'],
+      default: 0,
+    },
+    /** Labor rate per hour used for billing */
+    laborRate: {
+      type: Number,
+      min: [0, 'Labor rate cannot be negative'],
+      default: 650,
+    },
     /** Labor cost (calculated from hours × rate) */
     laborCost: {
       type: Number,
@@ -184,6 +291,49 @@ const invoiceSchema = new mongoose.Schema(
     partsCost: {
       type: Number,
       min: [0, 'Parts cost cannot be negative'],
+      default: 0,
+    },
+    /** Distance travelled in kilometers */
+    distanceTravelledKm: {
+      type: Number,
+      min: [0, 'Distance travelled cannot be negative'],
+      default: 0,
+    },
+    /** Travel rate per kilometer */
+    travelRatePerKm: {
+      type: Number,
+      min: [0, 'Travel rate per km cannot be negative'],
+      default: 8.5,
+    },
+    /** Travel time in minutes */
+    travelTimeMinutes: {
+      type: Number,
+      min: [0, 'Travel time cannot be negative'],
+      default: 0,
+    },
+    /** Additional time-based travel charge */
+    timeTravelledCost: {
+      type: Number,
+      min: [0, 'Time travelled cost cannot be negative'],
+      default: 0,
+    },
+    /** Final travel charge */
+    travelCost: {
+      type: Number,
+      min: [0, 'Travel cost cannot be negative'],
+      default: 0,
+    },
+    /** Consumables rate percentage */
+    consumablesRate: {
+      type: Number,
+      min: [0, 'Consumables rate cannot be negative'],
+      max: [100, 'Consumables rate cannot exceed 100%'],
+      default: 0,
+    },
+    /** Consumables cost total */
+    consumablesCost: {
+      type: Number,
+      min: [0, 'Consumables cost cannot be negative'],
       default: 0,
     },
     /** Subtotal amount (sum of all line items, before VAT) */
@@ -243,6 +393,28 @@ const invoiceSchema = new mongoose.Schema(
       default: 30, // 30 days
       min: [0, 'Payment terms cannot be negative'],
     },
+    /** Whether a deposit is required before additional work begins */
+    depositRequired: {
+      type: Boolean,
+      default: false,
+    },
+    /** Deposit amount required for customer approval */
+    depositAmount: {
+      type: Number,
+      min: [0, 'Deposit amount cannot be negative'],
+      default: 0,
+    },
+    /** Why the deposit is required */
+    depositReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Structured site instruction content captured by field agents */
+    siteInstruction: {
+      type: siteInstructionSchema,
+      default: () => ({}),
+    },
     /** Invoice notes/description */
     notes: {
       type: String,
@@ -260,6 +432,31 @@ const invoiceSchema = new mongoose.Schema(
       accountNumber: { type: String, trim: true },
       accountHolder: { type: String, trim: true },
       branchCode: { type: String, trim: true },
+    },
+    /** Public share token for PDF links */
+    shareToken: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    /** Optional expiry for public share links */
+    shareTokenExpiresAt: {
+      type: Date,
+    },
+    /** Delivery channels used for latest send action */
+    lastSentChannels: {
+      type: [String],
+      default: [],
+    },
+    /** Last generated WhatsApp link */
+    lastWhatsAppLink: {
+      type: String,
+      trim: true,
+    },
+    /** Last generated Telegram link */
+    lastTelegramLink: {
+      type: String,
+      trim: true,
     },
     /** PDF file reference/path (when invoice PDF is generated) */
     pdfFile: {
@@ -369,14 +566,32 @@ invoiceSchema.statics.EDITABLE_FIELDS = [
   'quotation',
   'customer',
   'siteId',
+  'title',
+  'description',
   'equipment',
+  'documentType',
+  'workflowStatus',
   'serviceType',
   'serviceDate',
   'issueDate',
   'dueDate',
   'lineItems',
+  'partsFulfilmentMode',
+  'deliveryProvider',
+  'partsProcurementCost',
+  'thirdPartyDeliveryCost',
+  'estimatedPartsProfit',
+  'laborHours',
+  'laborRate',
   'laborCost',
   'partsCost',
+  'distanceTravelledKm',
+  'travelRatePerKm',
+  'travelTimeMinutes',
+  'timeTravelledCost',
+  'travelCost',
+  'consumablesRate',
+  'consumablesCost',
   'subtotal',
   'vatAmount',
   'totalAmount',
@@ -387,9 +602,18 @@ invoiceSchema.statics.EDITABLE_FIELDS = [
   'payments',
   'paidDate',
   'paymentTerms',
+  'depositRequired',
+  'depositAmount',
+  'depositReason',
+  'siteInstruction',
   'notes',
   'terms',
   'bankDetails',
+  'shareToken',
+  'shareTokenExpiresAt',
+  'lastSentChannels',
+  'lastWhatsAppLink',
+  'lastTelegramLink',
   'pdfFile'
 ];
 

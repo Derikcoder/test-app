@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
+import SiteInstructionModal from './SiteInstructionModal';
 
 const AgentProfile = () => {
  const { id } = useParams();
@@ -177,7 +178,8 @@ const AgentProfile = () => {
   const descriptionPreview = getDescriptionPreview(call?.description || '');
   return {
    serviceCallId: call?._id || '',
-   customerId: call?.customer?._id || '',
+   customerId: call?.customer?._id || call?.customer || '',
+   customerLabel: getCustomerLabel(call),
    siteId: call?.siteId || '',
    equipmentId: call?.equipment?._id || call?.equipment || '',
    machineModelNumber: call?.bookingRequest?.generatorDetails?.machineModelNumber || '',
@@ -612,6 +614,22 @@ const AgentProfile = () => {
                  : 'Not scheduled'}
                </span>
               </div>
+              {call.proFormaInvoice ? (
+               <div>
+                <span className="text-white/60">Site Instruction:</span>
+                <span className="ml-2 text-cyan-200">
+                 {call.proFormaInvoice.invoiceNumber} ({call.proFormaInvoice.workflowStatus})
+                </span>
+               </div>
+              ) : null}
+              {call.invoice ? (
+               <div>
+                <span className="text-white/60">Final Invoice:</span>
+                <span className="ml-2 text-emerald-200">
+                 {call.invoice.invoiceNumber} ({call.invoice.paymentStatus || call.invoice.workflowStatus})
+                </span>
+               </div>
+              ) : null}
               {(call.serviceLocation || call.location) && (
                <div className="col-span-2">
                 <span className="text-white/60">Location:</span>
@@ -651,6 +669,12 @@ const AgentProfile = () => {
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
                   onCreated={fetchAgentData}
                  />
+                 <SiteInstructionModal
+                  token={user?.token}
+                  serviceCall={call}
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-500/35 hover:bg-cyan-500/45 border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  onUpdated={fetchAgentData}
+                 />
                   {activeTab === 'unassigned' && (
                    <button
                     type="button"
@@ -676,6 +700,12 @@ const AgentProfile = () => {
                   triggerLabel="Create Quote"
                   triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
                   onCreated={fetchAgentData}
+                 />
+                 <SiteInstructionModal
+                  token={user?.token}
+                  serviceCall={call}
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-500/35 hover:bg-cyan-500/45 border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  onUpdated={fetchAgentData}
                  />
                  {activeTab === 'unassigned' && (
                   <button

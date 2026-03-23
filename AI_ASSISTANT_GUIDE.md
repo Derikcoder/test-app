@@ -50,6 +50,8 @@
 - Registration identifiers now follow write-once policy for non-superAdmin users.
 - SuperAdmin registration-identifier overrides now require legal documentation evidence.
 - Dedicated legal override audit collection and read-only admin query endpoint added.
+- Quote creation from service-call views now pre-fills customer dropdown labels from booking/service-call context when `/customers` does not include the selected customer id.
+- Added `CreateQuoteModal` unit tests covering customer dropdown fallback, fetched-customer override behavior, and service-call shortcut quote submission endpoint.
 
 ### What Is This Project?
 A full-stack MERN (MongoDB, Express, React, Node.js) application for managing field service operations. It handles customer intake, field agent management, service call tracking, and includes Google Maps integration for location services.
@@ -923,6 +925,15 @@ git merge consolidation
 ---
 
 ## 🔄 Recent Changes
+
+### 2026-03-23 (Session 23)
+- ✅ Added public customer approval flow for pro-forma site instructions
+   - New public invoice share summary endpoint: `GET /api/invoices/share/:token`
+   - New public decision endpoint: `POST /api/invoices/share/:token/decision`
+   - New customer-facing React route: `/invoice-approval/:token`
+- ✅ Updated billing delivery links to include approval action path
+   - Pro-forma email delivery now includes both secure PDF access and the approval-page link
+   - WhatsApp and Telegram share messages now include the approval page for pro-forma documents
 
 ### 2026-03-19 (Session 22)
 - ✅ Made quote sharing channels optional in submit flow
