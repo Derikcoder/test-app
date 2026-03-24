@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-03-20
+Last updated: 2026-03-23
 
 ---
 
@@ -140,6 +140,42 @@ main                 ← Production (stable, never touched directly)
 - `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.
 - `CreateQuoteModal.jsx`: Reusable quotation submission modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing inputs (`distanceTravelledKm`, superAdmin-controlled `ratePerKm`, `travelTimeMinutes`, manual `timeTravelledCost`), call-out floor rule support, first-site-visit 15-minute assessment inclusion, procurement/delivery profitability capture, 14-day default quotation validity with calendar override, section-level helper-note placement to preserve row alignment, and optional post-submit PDF share action (Email/WhatsApp/Telegram).
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
+
+### Frontend UI System — Role-Aware Visual Cues
+
+**Purpose:** Make user context (role, access mode, entity type) instantly visible across all pages to prevent operational confusion and support multi-role governance workflows.
+
+**Color Legend (Sidebar + All Page Headers):**
+Integrated into `Sidebar.jsx` as persistent global entity legend and replicated on all operational page headers:
+- 🟦 **Cyan** — Field Agents
+- 🟦 **Indigo** — Customers
+- 🟨 **Amber** — Service Calls
+- 🟧 **Orange** — Quotations
+- 🟩 **Emerald** — Invoices / Pro-Forma
+- 🟪 **Fuchsia** — Super Admin role indicator
+- 🟦 **Cyan** — Field Service Agent / Non-admin role indicator
+
+**Sidebar Global Legend (`Sidebar.jsx`):**
+- Persistent 5-item entity legend in footer showing color + name for all core entities
+- Dynamic role badge showing "Super Admin" (fuchsia) vs. operational role (cyan)
+- Access mode chip showing "Governance Mode" (superAdmin) vs. "Operational Mode"
+- Maintains visual context across all navigation
+
+**Page Header Implementation (All Operational Pages):**
+Each page now includes role and entity context chips in header, immediately below page title:
+- **Entity Chip** — Colored label matching entity legend (e.g., "Entity: Service Calls" in amber)
+- **Role Chip** — Dynamic role badge (fuchsia for super-admin, cyan for operational) with role label
+- Applied to: Customers, ServiceCalls, Quotations, FieldServiceAgents, AgentProfile
+
+**Pro-Forma Invoice Context (Modal + Public Pages):**
+- `SiteInstructionModal.jsx` — Emerald entity chip + role/access context
+- `InvoiceApprovalPage.jsx` — Emerald entity chip + "Public Customer Approval" access context
+
+**Implementation Notes:**
+- Props drilling pattern: parent passes `roleLabel` and `isSuperAdmin` to modals
+- Tailwind utility classes for high-contrast dark mode (slate-950 backgrounds, colored borders/text)
+- No color-related logic in JavaScript — pure declarative styling via Tailwind classes
+- Sidebar legend is the single source of truth for color semantics
 
 ### Client Tests (`client/src/__tests__/`)
 - `setup.js`: Test environment setup (jsdom, mocks).

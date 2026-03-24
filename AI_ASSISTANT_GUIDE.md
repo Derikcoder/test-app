@@ -44,6 +44,46 @@
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: March 23, 2026 — Pro-forma Workflow Hardening + Role-Aware UI System
+**Commit:** `79c4424`  
+**Focus:** Backend pro-forma payment workflow validation + comprehensive frontend role-aware visual cues
+
+**Backend (Pro-forma Invoice Workflow):**
+- ✅ Hardened invoice workflow state transitions with strict validation:
+  - `draft` → `sent` (requires email recipient validation)
+  - `sent` → `approved`/`rejected` (customer decision required)
+  - `approved` → `finalized` (with deposit & payment tracking)
+- ✅ Extended invoice schema for lifecycle management: `sentAt`, `approvedAt`, `rejectedAt`, `rejectedReason`, `finalizedAt`, `depositRequired`, `depositAmount`, `paymentReceived`
+- ✅ Implemented strict send validation requiring valid recipient email before customer approval step
+- ✅ Service call auto-customer resolution improved: falls back to booking email, then cached customer, then manual selection
+- ✅ Expanded unit test coverage for controller workflows and customer resolution logic
+
+**Frontend (Role-Aware Visual System):**
+- ✅ Created global sidebar entity legend with standardized color language:
+  - **Cyan**: Field Agents
+  - **Indigo**: Customers
+  - **Amber**: Service Calls
+  - **Orange**: Quotations
+  - **Emerald**: Invoices / Pro-Forma
+  - **Fuchsia**: Super Admin role indicator
+  - **Cyan**: Non-admin role indicator
+- ✅ Added role-aware header context chips to all operational pages:
+  - AgentProfile.jsx — with role badge + access mode
+  - FieldServiceAgents.jsx — with admin/ops view indicators
+  - Customers.jsx — with indigo entity chip
+  - ServiceCalls.jsx — with amber entity chip
+  - Quotations.jsx — with orange entity chip
+- ✅ Extended pro-forma editing modal (SiteInstructionModal) with:
+  - Dynamic role-aware chips (Super Admin vs. Operational)
+  - Emerald entity chip for invoice context
+  - Props: `roleLabel`, `isSuperAdmin` from parent AgentProfile
+- ✅ Added public invoice approval screen (InvoiceApprovalPage) visual context:
+  - Emerald entity chip "Entity: Invoices / Pro-Forma"
+  - Cyan access chip "Access: Public Customer Approval"
+- ✅ Fixed axios auth header fallback logic to support `userInfo?.token` for agent/customer data loading paths
+
+**Previous Session Changes:**
 - Multi-principal authentication now supports `superAdmin`, `businessAdministrator`, `fieldServiceAgent`, and `customer`.
 - Passkey onboarding and renewal workflows added for delegated role onboarding.
 - User-to-operational-profile linking lifecycle added with admin attach/detach/reassign endpoints and audit logging.
@@ -141,16 +181,19 @@ test-app/
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx  # Global auth state
 │   │   └── components/
+│   │       ├── Sidebar.jsx              # 🔄 Navigation + global entity legend
 │   │       ├── Login.jsx
 │   │       ├── Register.jsx
 │   │       ├── UserProfile.jsx
-│   │       ├── ForgotPassword.jsx # 🆕 Password reset request
-│   │       ├── ResetPassword.jsx  # 🆕 Password reset form
-│   │       ├── FieldServiceAgents.jsx
-│   │       ├── AgentProfile.jsx
-│   │       ├── Customers.jsx      # Google Maps integration
-│   │       ├── ServiceCalls.jsx   # ⚠️ Placeholder
-│   │       └── Sidebar.jsx
+│   │       ├── ForgotPassword.jsx       # 🆕 Password reset request
+│   │       ├── ResetPassword.jsx        # 🆕 Password reset form
+│   │       ├── FieldServiceAgents.jsx   # 🔄 Agent directory + role context
+│   │       ├── AgentProfile.jsx         # 🔄 Agent detail + role context + pro-forma
+│   │       ├── Customers.jsx            # 🔄 Customer list + entity chip
+│   │       ├── ServiceCalls.jsx         # 🔄 Service call queue + entity chip
+│   │       ├── Quotations.jsx           # 🔄 Quotation list + entity chip
+│   │       ├── SiteInstructionModal.jsx # 🔄 Pro-forma editor + entity/role chips
+│   │       └── InvoiceApprovalPage.jsx  # 🔄 Public invoice approval + context chips
 │   ├── index.html
 │   └── vite.config.js      # Dev server + proxy config
 │

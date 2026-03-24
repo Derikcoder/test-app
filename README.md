@@ -87,11 +87,22 @@ This is an enterprise-grade field service management application built with the 
 
 ### Invoice & Pro-Forma Workflow
 - 🧾 Pro-forma site instruction workflow lets field agents capture additional work, discovered problems, solutions, and deposit requirements on site
+- 📤 Strict invoice workflow validation: `draft` → `sent` → `approved`/`rejected` → `finalized` with lifecycle timestamps and payment tracking
+- 💾 Extended invoice schema with: `sentAt`, `approvedAt`, `rejectedAt`, `rejectedReason`, `finalizedAt`, `depositRequired`, `depositAmount`, `paymentReceived`
+- ✅ Email recipient validation required before invoice can transition to customer approval step
 - 📤 Billing delivery endpoint supports email plus WhatsApp/Telegram share links for customer review
 - 🔗 Public invoice share summary endpoint available at `GET /api/invoices/share/:token`
 - 📄 Public PDF access available at `GET /api/invoices/share/:token/pdf`
 - ✅ Public customer approval/rejection endpoint available at `POST /api/invoices/share/:token/decision`
 - 🌐 Customer-facing approval route available at `/invoice-approval/:token`
+
+### Role-Aware Visual System
+- 🎯 Unified color legend in sidebar footer for instant entity recognition across all pages
+- 🎨 **Color Language:** Cyan (Field Agents), Indigo (Customers), Amber (Service Calls), Orange (Quotations), Emerald (Invoices/Pro-Forma)
+- 👤 **Role Context Chips:** Every operational page displays current user role (Super Admin in fuchsia, operational roles in cyan)
+- 📋 **Access Mode Indicators:** Visual distinction between governance mode (superAdmin) and operational mode
+- 🔍 **Entity Chips:** Page headers display colored entity type chip matching sidebar legend
+- 🌐 **Consistent Propagation:** Role and entity context visible on all operational pages (Customers, Service Calls, Quotations, Agent Profile) and invoice workflows (SiteInstructionModal, InvoiceApprovalPage)
 
 ### System Features
 - 📋 Enterprise-level logging middleware
@@ -99,7 +110,7 @@ This is an enterprise-grade field service management application built with the 
 - 🚦 Health check endpoints
 - 🔄 Hot module replacement (HMR)
 - 📱 Responsive design with Tailwind CSS
-- 🎨 Modern UI with sidebar navigation
+- 🎨 Modern UI with role-aware sidebar navigation and entity legend
 
 ## 🛠️ Tech Stack
 
@@ -858,6 +869,32 @@ npm update
 - **[PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md)** - Detailed codebase structure
 - **[FIELD_PERMISSIONS.md](FIELD_PERMISSIONS.md)** - Field-level permission rules
 - **[PROFILE_EDITING_GUIDE.md](PROFILE_EDITING_GUIDE.md)** - User profile editing guide
+- **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
+- **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
+
+## 📋 Recent Updates
+
+### March 23, 2026 — Role-Aware UI System & Pro-forma Workflow Hardening
+
+**Backend Enhancements:**
+- ✅ **Strict Invoice Workflow Validation:** Implemented state machine for invoice lifecycle with required email validation before customer approval
+- ✅ **Extended Invoice Schema:** Added lifecycle timestamps (`sentAt`, `approvedAt`, `rejectedAt`, `finalizedAt`) and payment tracking fields
+- ✅ **Improved Customer Resolution:** Enhanced service call auto-linking with fallback chain (booking email → cached customer → manual selection)
+- ✅ **Expanded Test Coverage:** Added comprehensive unit tests for workflow transitions and customer resolution logic
+
+**Frontend UX Enhancements:**
+- ✅ **Global Entity Legend:** Added persistent color-coded entity legend to sidebar for consistent visual language across all pages
+- ✅ **Role Context Chips:** Every operational page now displays user role (Super Admin ↔ Field Agent/Operational) and access mode
+- ✅ **Color-Coded Entity Headers:** Applied colored entity chips to all operational pages matching sidebar legend:
+  - Indigo for Customers
+  - Amber for Service Calls
+  - Orange for Quotations
+  - Emerald for Invoices/Pro-Forma
+- ✅ **Pro-forma Modal Enhancement:** SiteInstructionModal now includes role/entity context for clarity
+- ✅ **Public Invoice UI:** InvoiceApprovalPage includes context chips for public customer approval flows
+- ✅ **Auth Header Fix:** Enhanced Axios fallback logic to support multiple user object key patterns
+
+**Impact:** Users can now instantly distinguish operational context through consistent visual design, and invoice workflows are hardened with strict validation rules preventing incomplete customer approvals.
 
 ## 📞 Support
 
