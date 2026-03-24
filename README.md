@@ -111,6 +111,7 @@ This is an enterprise-grade field service management application built with the 
 - 🔄 Hot module replacement (HMR)
 - 📱 Responsive design with Tailwind CSS
 - 🎨 Modern UI with role-aware sidebar navigation and entity legend
+- 🧪 Customer registration QA infrastructure with Postman E2E collection, interactive test runner, and mandatory structured failure logging
 
 ## 🛠️ Tech Stack
 
@@ -193,11 +194,20 @@ test-app/
 │   │   ├── customer.routes.js      # Customer routes
 │   │   └── serviceCall.routes.js   # Service call routes
 │   ├── logs/                       # Application logs
+│   │   └── register_customers_test_errors.log # Customer registration test failures
+│   ├── tests/
+│   │   └── postman/
+│   │       ├── register_customers_collection.json # Customer registration API test suite
+│   │       └── POSTMAN_INSTRUCTIONS.md            # Postman execution guide
 │   ├── package.json                # Backend dependencies
 │   └── .env                        # Backend environment variables
 │
 ├── setup-and-run.sh                # Automated setup script
 ├── install-mongodb.sh              # MongoDB installation helper
+├── register_customers_testcases.md # Customer registration E2E test specification
+├── scripts/
+│   ├── log-register-customers-test-result.sh # Structured test result logger
+│   └── run-register-customers-tests.sh       # Interactive registration test runner
 ├── package.json                    # Root scripts
 ├── AUTH_GUIDE.md                   # Authentication documentation
 ├── LOGGING_GUIDE.md                # Logging system documentation
