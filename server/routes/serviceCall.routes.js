@@ -12,12 +12,14 @@
 import express from 'express';
 import {
   getServiceCalls,
+  getEligibleUnassignedServiceCalls,
   getServiceCallById,
   createServiceCall,
   updateServiceCall,
   deleteServiceCall,
   addParts,
   uploadPhotos,
+  selfAcceptServiceCall,
   submitRating,
   getServiceCallsByStatus,
   getServiceCallsByAgent
@@ -39,6 +41,20 @@ router.get('/', protect, getServiceCalls);
  * @access  Private (JWT required)
  */
 router.post('/', protect, createServiceCall);
+
+/**
+ * @route   GET /api/service-calls/eligible-unassigned/:agentId
+ * @desc    Get self-dispatch eligible unassigned service calls for an agent
+ * @access  Private (JWT required)
+ */
+router.get('/eligible-unassigned/:agentId', protect, getEligibleUnassignedServiceCalls);
+
+/**
+ * @route   POST /api/service-calls/:id/self-accept
+ * @desc    Self-accept an eligible unassigned service call
+ * @access  Private (JWT required)
+ */
+router.post('/:id/self-accept', protect, selfAcceptServiceCall);
 
 /**
  * @route   GET /api/service-calls/:id

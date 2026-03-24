@@ -67,3 +67,26 @@ export const protect = async (req, res, next) => {
     res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
+
+/**
+ * Role Authorization Middleware
+ *
+ * @function authorizeRoles
+ * @param {...string} allowedRoles - Roles allowed to access the route
+ * @returns {Function} Express middleware
+ */
+export const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized, no authenticated user' });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: 'Forbidden. You do not have permission to perform this action.',
+      });
+    }
+
+    next();
+  };
+};

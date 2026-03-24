@@ -32,7 +32,7 @@ This is an enterprise-grade field service management application built with the 
 ### Authentication & User Management
 - 🔐 JWT-based authentication system
 - 👤 Comprehensive user profiles with business information
-- 🛡️ Field-level permissions (read-only protected fields)
+- 🛡️ Field-level permissions with immutable + write-once legal identifier policies
 - 🔒 Secure password hashing with bcrypt
 
 ### Customer Management
@@ -46,12 +46,63 @@ This is an enterprise-grade field service management application built with the 
 - 📈 Job statistics and performance metrics
 - 📅 Service history tracking
 - 🎯 Agent availability and assignment status
+- 📞 Direct customer contact actions from agent profile (WhatsApp-first + regular call)
 
 ### Service Call Management
 - 📞 Service call creation and tracking
 - 🔄 Status workflow management
 - 📅 Scheduling and assignment
 - 📝 Detailed service notes and history
+- 🧾 Service history classification (first service call vs existing customer)
+- 🗓️ Existing customer last-service date support with auto-fill by contact email
+- 🧭 Existing-customer lifecycle capture (services in progress + progress status)
+- 🧾 Quotation and invoicing history capture in structured booking request
+- 🚨 SuperUser operations queue for unassigned call alerts and assignment to field agents
+- 🧩 Reusable quote creation component available from agent profile and service calls views
+
+### Quotation Management
+- 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
+- ✅ Quote submission flow uses `Submit Quote` action semantics
+- 📄 Real quotation PDF generation endpoint available at `GET /api/quotations/:id/pdf`
+- 📤 Quote delivery endpoint available at `POST /api/quotations/:id/send` for optional Email/WhatsApp/Telegram distribution
+- 🔗 Public share link support for customer PDF access: `GET /api/quotations/share/:token/pdf`
+- 📊 Auto-calculated subtotal, VAT, and total during quotation creation
+- 🔁 Quote prefill from historical/service-call machine data
+- 🧠 Machine-model quote templates (Perkins/Cummins/generic fallback)
+- ⚡ Shortcut API to create quote from service call context: `POST /api/quotations/from-service-call/:serviceCallId`
+- 🎛️ Explicit template selector in quote modal: Auto, Perkins, Cummins, Emergency Repair, Generic
+- 🏷️ Optional line-item part number field to improve future auto-quote generation from machine/parts history
+- 📈 Unit cost entry now auto-applies tiered markup to selling unit price: <R1000 (50%), <R2000 (40%), <R3000 (30%), <R4000 (25%), <R5000 (20%), >=R5000 (20%)
+- 🧮 Separated costing concerns: Parts line items, Labour (hours × rate), Consumables (% of parts), and function-based Travel costing
+- 🚗 Travel costing formula: `(distanceTravelledKm × ratePerKm) + timeTravelledCost` (distance is variable; time component is currently manual)
+- 🛣️ Default `ratePerKm` is `R8.50` and can only be changed by superAdmin
+- 📞 Call-out floor rule: if `distanceTravelledKm < 45` and `travelTimeMinutes < 30`, travel charge is floored to a minimum of `R650.00`
+- ⏱️ `travelTimeMinutes` is now captured explicitly to support Google API distance/time enrichment later
+- 🧰 First-time customer/site visit package: includes first 15 minutes on-site assessment before billable labour is calculated
+- 🧾 Accepted quotations auto-convert to service jobcards and are created in `in-progress` status for operations visibility
+- 📦 Parts fulfilment capture for profitability analysis: in-house procurement vs third-party delivery (e.g., Picup)
+- 💸 Captures procurement and delivery economics: `partsProcurementCost`, `thirdPartyDeliveryCost`, and derived `estimatedPartsProfit`
+- 📅 Default quotation validity is now 14 days, with calendar override available for customer-specific arrangements
+- 🔒 Labour rate is editable by superAdmin only; backend enforces default `R650/hour` for non-super users
+
+### Invoice & Pro-Forma Workflow
+- 🧾 Pro-forma site instruction workflow lets field agents capture additional work, discovered problems, solutions, and deposit requirements on site
+- 📤 Strict invoice workflow validation: `draft` → `sent` → `approved`/`rejected` → `finalized` with lifecycle timestamps and payment tracking
+- 💾 Extended invoice schema with: `sentAt`, `approvedAt`, `rejectedAt`, `rejectedReason`, `finalizedAt`, `depositRequired`, `depositAmount`, `paymentReceived`
+- ✅ Email recipient validation required before invoice can transition to customer approval step
+- 📤 Billing delivery endpoint supports email plus WhatsApp/Telegram share links for customer review
+- 🔗 Public invoice share summary endpoint available at `GET /api/invoices/share/:token`
+- 📄 Public PDF access available at `GET /api/invoices/share/:token/pdf`
+- ✅ Public customer approval/rejection endpoint available at `POST /api/invoices/share/:token/decision`
+- 🌐 Customer-facing approval route available at `/invoice-approval/:token`
+
+### Role-Aware Visual System
+- 🎯 Unified color legend in sidebar footer for instant entity recognition across all pages
+- 🎨 **Color Language:** Cyan (Field Agents), Indigo (Customers), Amber (Service Calls), Orange (Quotations), Emerald (Invoices/Pro-Forma)
+- 👤 **Role Context Chips:** Every operational page displays current user role (Super Admin in fuchsia, operational roles in cyan)
+- 📋 **Access Mode Indicators:** Visual distinction between governance mode (superAdmin) and operational mode
+- 🔍 **Entity Chips:** Page headers display colored entity type chip matching sidebar legend
+- 🌐 **Consistent Propagation:** Role and entity context visible on all operational pages (Customers, Service Calls, Quotations, Agent Profile) and invoice workflows (SiteInstructionModal, InvoiceApprovalPage)
 
 ### System Features
 - 📋 Enterprise-level logging middleware
@@ -59,7 +110,7 @@ This is an enterprise-grade field service management application built with the 
 - 🚦 Health check endpoints
 - 🔄 Hot module replacement (HMR)
 - 📱 Responsive design with Tailwind CSS
-- 🎨 Modern UI with sidebar navigation
+- 🎨 Modern UI with role-aware sidebar navigation and entity legend
 
 ## 🛠️ Tech Stack
 
@@ -108,6 +159,7 @@ test-app/
 │   │   │   ├── UserProfile.jsx     # User profile management
 │   │   │   ├── FieldServiceAgents.jsx  # Agent CRUD operations
 │   │   │   ├── AgentProfile.jsx    # Agent details & statistics
+│   │   │   ├── InvoiceApprovalPage.jsx # Public customer pro-forma approval screen
 │   │   │   ├── Customers.jsx       # Customer intake form
 │   │   │   └── ServiceCalls.jsx    # Service call management
 │   │   └── context/
@@ -327,6 +379,13 @@ http://localhost:5000/api
 |--------|----------|-------------|---------------|
 | `POST` | `/auth/register` | Register new user | No |
 | `POST` | `/auth/login` | Login user | No |
+| `POST` | `/auth/passkeys/generate` | Generate delegated-role onboarding passkey | Yes |
+| `POST` | `/auth/passkeys/request-renewal` | Request passkey renewal token | No |
+| `POST` | `/auth/passkeys/fulfill-renewal/:requestToken` | Approve renewal and issue new passkey | Yes |
+| `POST` | `/auth/admin/profile-links/attach` | Attach user to operational profile | Yes |
+| `POST` | `/auth/admin/profile-links/detach` | Detach user from operational profile | Yes |
+| `POST` | `/auth/admin/profile-links/reassign` | Reassign user to another profile | Yes |
+| `GET` | `/auth/admin/registration-overrides/audits` | Query legal override audits (date/user/reference filters) | Yes |
 | `GET` | `/auth/profile` | Get user profile | Yes |
 | `PUT` | `/auth/profile` | Update user profile | Yes |
 | `GET` | `/auth/field-permissions` | Get field permissions | Yes |
@@ -360,6 +419,21 @@ http://localhost:5000/api
 | `GET` | `/service-calls/:id` | Get service call by ID | Yes |
 | `PUT` | `/service-calls/:id` | Update service call | Yes |
 | `DELETE` | `/service-calls/:id` | Delete service call | Yes |
+
+Service call creation supports structured booking history fields in `bookingRequest`:
+- `serviceHistoryType`: `first-service-call` or `existing-customer`
+- `dateOfLastService`: required for existing-customer flow
+- `servicesInProgress`: active service work context for existing-customer flow
+- `progressStatus`: current progress state of in-flight service work
+- `quotationHistory`: quotation references/history notes
+- `invoicingHistory`: invoice references/history notes
+- `preferredDate`: preferred service call date
+
+Service call assignment workflow supports these fields:
+- `assignedAgent`: selected field service agent
+- `assignedDate`: timestamp when assignment occurred
+- `agentAccepted`: whether the assigned agent has accepted the job
+- `assignmentNotifiedAt`: timestamp when assignment alert was queued for crew follow-up
 
 ### System Endpoints
 
@@ -448,14 +522,20 @@ function MyComponent() {
 
 ### Field-Level Permissions
 
-Certain user profile fields are **read-only** after initial registration:
-- `userName`
-- `email`
-- `businessRegistrationNumber`
-- `taxNumber`
-- `vatNumber`
+User profile updates now follow two policy layers:
+- **Immutable fields**: identity and system fields (for example `userName`, `_id`, `createdAt`, role/link control fields)
+- **Write-once registration identifiers**: `businessRegistrationNumber`, `taxNumber`, `vatNumber`
 
-These fields can only be modified by system administrators directly in the database.
+Write-once behavior:
+- Non-superAdmin users can set registration identifiers when empty.
+- After first save, those identifiers are locked for non-superAdmin users.
+- SuperAdmin overrides of existing values require legal evidence payload (`registrationChangeEvidence`).
+
+Legal override evidence fields:
+- `legalDocumentType`
+- `legalDocumentReference`
+- `legalDocumentUri` (http/https)
+- `legalChangeReason` (minimum 15 chars)
 
 See [AUTH_GUIDE.md](AUTH_GUIDE.md) for detailed authentication documentation.
 
@@ -579,7 +659,7 @@ MongoDB Database
 1. **CORS** - Cross-origin resource sharing configured
 2. **JWT Authentication** - Token-based auth for protected routes
 3. **Password Hashing** - Bcrypt with salt rounds
-4. **Field Protection** - Certain fields immutable after creation
+4. **Field Protection** - Immutable identity fields + write-once registration identifiers with legal-evidence override controls
 5. **Environment Variables** - Sensitive data in .env files
 6. **Input Validation** - Mongoose schema validation
 
@@ -716,17 +796,49 @@ npm update
    - Follow existing code structure and patterns
    - Add comments for complex logic
 
-2. **Git Workflow**
+2. **Branch Architecture**
+
+   This project follows a **parent → child → consolidation → production** branching model.
+   Each branch represents a standalone, portable module that can be carried into other projects.
+
+   ```
+   main                 ← Production (stable, never touched directly)
+     └── consolidation  ← QA/merge point (all branches merged here before main)
+           └── foundation    ← Base framework (parent of all features)
+                 ├── feature/invoicing-engine
+                 ├── feature/customer-portal
+                 ├── feature/field-agent-app
+                 └── feature/<module-name>
+   ```
+
+   | Branch | Purpose |
+   |--------|---------|
+   | `main` | Stable production code only. Never commit here directly. |
+   | `consolidation` | Integration branch. All features merge here for QA before promoting to `main`. |
+   | `foundation` | Living base framework. All feature branches are created from here. |
+   | `feature/*` | Standalone module branches. Named after the functionality they deliver. |
+
+   **Workflow:**
    ```bash
-   # Create feature branch
-   git checkout -b feature/your-feature-name
-   
-   # Make changes and commit
+   # Start a new module from foundation
+   git checkout foundation
+   git checkout -b feature/your-module-name
+
+   # Work on the feature, commit regularly
    git add .
    git commit -m "feat: Add new feature"
-   
-   # Push and create pull request
-   git push origin feature/your-feature-name
+
+   # When ready, merge back to foundation
+   git checkout foundation
+   git merge feature/your-module-name
+
+   # When foundation is stable, promote to consolidation for QA
+   git checkout consolidation
+   git merge foundation
+
+   # Once QA passes, consolidation is merged into main
+   git checkout main
+   git merge consolidation
    ```
 
 3. **Commit Message Format**
@@ -757,6 +869,32 @@ npm update
 - **[PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md)** - Detailed codebase structure
 - **[FIELD_PERMISSIONS.md](FIELD_PERMISSIONS.md)** - Field-level permission rules
 - **[PROFILE_EDITING_GUIDE.md](PROFILE_EDITING_GUIDE.md)** - User profile editing guide
+- **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
+- **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
+
+## 📋 Recent Updates
+
+### March 23, 2026 — Role-Aware UI System & Pro-forma Workflow Hardening
+
+**Backend Enhancements:**
+- ✅ **Strict Invoice Workflow Validation:** Implemented state machine for invoice lifecycle with required email validation before customer approval
+- ✅ **Extended Invoice Schema:** Added lifecycle timestamps (`sentAt`, `approvedAt`, `rejectedAt`, `finalizedAt`) and payment tracking fields
+- ✅ **Improved Customer Resolution:** Enhanced service call auto-linking with fallback chain (booking email → cached customer → manual selection)
+- ✅ **Expanded Test Coverage:** Added comprehensive unit tests for workflow transitions and customer resolution logic
+
+**Frontend UX Enhancements:**
+- ✅ **Global Entity Legend:** Added persistent color-coded entity legend to sidebar for consistent visual language across all pages
+- ✅ **Role Context Chips:** Every operational page now displays user role (Super Admin ↔ Field Agent/Operational) and access mode
+- ✅ **Color-Coded Entity Headers:** Applied colored entity chips to all operational pages matching sidebar legend:
+  - Indigo for Customers
+  - Amber for Service Calls
+  - Orange for Quotations
+  - Emerald for Invoices/Pro-Forma
+- ✅ **Pro-forma Modal Enhancement:** SiteInstructionModal now includes role/entity context for clarity
+- ✅ **Public Invoice UI:** InvoiceApprovalPage includes context chips for public customer approval flows
+- ✅ **Auth Header Fix:** Enhanced Axios fallback logic to support multiple user object key patterns
+
+**Impact:** Users can now instantly distinguish operational context through consistent visual design, and invoice workflows are hardened with strict validation rules preventing incomplete customer approvals.
 
 ## 📞 Support
 

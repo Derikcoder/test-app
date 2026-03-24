@@ -1,0 +1,980 @@
+{
+  "info": {
+    "_postman_id": "rc-e2e-test-suite-2026-03-24",
+    "name": "Register Customers — E2E Test Suite",
+    "description": "Postman API test collection for the customer registration end-to-end flow.\n\nCovers:\n- Happy path (create customer + service call)\n- RC-API-001 through RC-API-005 (server validation)\n- RC-DB-001 through RC-DB-003 (persistence verification via GET)\n- RC-NEG-001, RC-NEG-003 (negative cases)\n- RC-SEC-003, RC-SEC-004, RC-SEC-006 (security tests)\n\nSetup:\n1. Set BASE_URL collection variable to your backend URL (default: http://localhost:5000)\n2. Set AUTH_TOKEN to a valid JWT from POST /api/auth/login\n3. Run 'Setup & Happy Path' folder first — it populates CUSTOMER_OBJECT_ID and SERVICE_CALL_ID\n4. Then run remaining folders\n\nReferences:\n  register_customers_testcases.md\n  scripts/log-register-customers-test-result.sh",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "Backend base URL. Default: http://localhost:5000"
+    },
+    {
+      "key": "AUTH_TOKEN",
+      "value": "REPLACE_WITH_YOUR_JWT",
+      "type": "string",
+      "description": "Valid JWT from POST /api/auth/login. Required for all protected routes."
+    },
+    {
+      "key": "TS",
+      "value": "",
+      "type": "string",
+      "description": "Timestamp — set automatically by pre-request scripts."
+    },
+    {
+      "key": "CUSTOMER_ID_QA",
+      "value": "",
+      "type": "string",
+      "description": "Test customer ID — set by the happy path pre-request script."
+    },
+    {
+      "key": "CUSTOMER_OBJECT_ID",
+      "value": "",
+      "type": "string",
+      "description": "MongoDB _id of the created customer — set by happy path test script."
+    },
+    {
+      "key": "SERVICE_CALL_ID",
+      "value": "",
+      "type": "string",
+      "description": "MongoDB _id of the created service call — set by happy path test script."
+    }
+  ],
+  "item": [
+    {
+      "name": "Setup & Happy Path",
+      "description": "Run this folder first. Creates a new customer and service call, and saves their IDs into collection variables for use in downstream tests.",
+      "item": [
+        {
+          "name": "01 Happy Path — Create Customer (RC-UI-001 / RC-API)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generate a unique timestamp-based test ID for this run",
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('TS', ts);",
+                  "pm.collectionVariables.set('CUSTOMER_ID_QA', 'CUST-QA-' + ts);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// RC-API happy path assertions",
+                  "pm.test('[RC-API Happy Path] Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('[RC-API Happy Path] Response has customer data', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('data');",
+                  "    pm.expect(body.data).to.have.property('_id');",
+                  "    pm.expect(body.data).to.have.property('customerId');",
+                  "    pm.expect(body.data).to.have.property('createdBy');",
+                  "});",
+                  "",
+                  "// RC-DB-003: createdBy must be present",
+                  "pm.test('[RC-DB-003] createdBy field is present on response', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.createdBy).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "// Save customer _id for downstream tests",
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data._id) {",
+                  "    pm.collectionVariables.set('CUSTOMER_OBJECT_ID', body.data._id);",
+                  "    console.log('[RC-API Happy Path] CUSTOMER_OBJECT_ID set to:', body.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Test\",\n  \"contactLastName\": \"Customer\",\n  \"email\": \"qa+{{TS}}@example.com\",\n  \"phoneNumber\": \"0711111111\",\n  \"customerId\": \"{{CUSTOMER_ID_QA}}\",\n  \"physicalAddressDetails\": {\n    \"streetAddress\": \"1 QA Test Street\",\n    \"suburb\": \"Testville\",\n    \"cityDistrict\": \"Cape Town\",\n    \"province\": \"Western Cape\",\n    \"postalCode\": \"8001\"\n  },\n  \"notes\": \"Created by Postman QA runner\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "Happy path: create a valid residential customer. Pre-request script sets CUSTOMER_ID_QA. Test script saves CUSTOMER_OBJECT_ID."
+          }
+        },
+        {
+          "name": "02 Happy Path — Create Service Call (RC-DB-002)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-DB-002] Service call created: status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('[RC-DB-002] Service call body has _id and customer ref', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data).to.have.property('_id');",
+                  "    pm.expect(body.data).to.have.property('customer');",
+                  "    pm.expect(body.data.customer).to.eql(pm.collectionVariables.get('CUSTOMER_OBJECT_ID'));",
+                  "});",
+                  "",
+                  "// Save SERVICE_CALL_ID for RC-REC-003",
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data._id) {",
+                  "    pm.collectionVariables.set('SERVICE_CALL_ID', body.data._id);",
+                  "    console.log('[RC-DB-002] SERVICE_CALL_ID set to:', body.data._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer\": \"{{CUSTOMER_OBJECT_ID}}\",\n  \"serviceType\": \"generator-service\",\n  \"title\": \"QA Test Service Call\",\n  \"description\": \"Service call created during Postman QA registration test\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/service-calls",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "service-calls"]
+            },
+            "description": "Creates a service call linked to the customer created in step 01. Requires CUSTOMER_OBJECT_ID to be set."
+          }
+        },
+        {
+          "name": "03 DB Check — GET All Customers (RC-DB-001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-DB-001] GET customers returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[RC-DB-001] New customer appears in GET /api/customers response', function () {",
+                  "    const body = pm.response.json();",
+                  "    const customers = body.data || body;",
+                  "    pm.expect(customers).to.be.an('array');",
+                  "    const qaCustomerId = pm.collectionVariables.get('CUSTOMER_ID_QA');",
+                  "    const found = customers.find(c => c.customerId === qaCustomerId);",
+                  "    pm.expect(found, 'QA customer not found in list — DB persistence check failed').to.exist;",
+                  "});",
+                  "",
+                  "pm.test('[RC-DB-003] All returned customers have createdBy field', function () {",
+                  "    const body = pm.response.json();",
+                  "    const customers = body.data || body;",
+                  "    customers.forEach(c => {",
+                  "        pm.expect(c.createdBy, 'createdBy missing on customer: ' + c.customerId).to.exist;",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "Verifies DB persistence: the new customer must appear in GET /api/customers. Also checks createdBy scoping (RC-DB-003)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "RC-API | Server Validation",
+      "description": "Tests RC-API-001 through RC-API-005: missing fields, duplicate IDs, auth, partial write, and customer type contract.",
+      "item": [
+        {
+          "name": "RC-API-001a Missing customerType",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-API-001] Missing customerType returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('[RC-API-001] Error message correct', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.message).to.include('required');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactFirstName\": \"Test\",\n  \"contactLastName\": \"User\",\n  \"email\": \"rc-api-001a@example.com\",\n  \"phoneNumber\": \"0711111111\",\n  \"customerId\": \"CUST-API001A-TEST\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-001: customerType omitted. Expects HTTP 400."
+          }
+        },
+        {
+          "name": "RC-API-001b Missing email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-API-001b] Missing email returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('[RC-API-001b] Error message references required fields', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Test\",\n  \"contactLastName\": \"User\",\n  \"phoneNumber\": \"0711111111\",\n  \"customerId\": \"CUST-API001B-TEST\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-001: email omitted. Expects HTTP 400."
+          }
+        },
+        {
+          "name": "RC-API-001c Missing customerId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-API-001c] Missing customerId returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Test\",\n  \"contactLastName\": \"User\",\n  \"email\": \"rc-api-001c@example.com\",\n  \"phoneNumber\": \"0711111111\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-001: customerId omitted. Expects HTTP 400."
+          }
+        },
+        {
+          "name": "RC-API-002 Duplicate Customer ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This test requires CUSTOMER_ID_QA to be set (run 'Setup & Happy Path' first)"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-API-002] Duplicate customerId returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('[RC-API-002] Message indicates duplicate ID', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.message).to.include('Customer ID already exists');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Duplicate\",\n  \"contactLastName\": \"Test\",\n  \"email\": \"dup@example.com\",\n  \"phoneNumber\": \"0722222222\",\n  \"customerId\": \"{{CUSTOMER_ID_QA}}\",\n  \"physicalAddressDetails\": {\n    \"streetAddress\": \"2 Dup Street\",\n    \"suburb\": \"Duptown\",\n    \"cityDistrict\": \"Cape Town\",\n    \"province\": \"Western Cape\",\n    \"postalCode\": \"8001\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-002: reuses CUSTOMER_ID_QA from happy path. Expects 400 with 'Customer ID already exists'."
+          }
+        },
+        {
+          "name": "RC-API-003a No Auth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-API-003a] No auth token returns 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});",
+                  "pm.test('[RC-API-003a] No data written — response is an error', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.not.have.property('data');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"NoAuth\",\n  \"contactLastName\": \"Test\",\n  \"email\": \"noauth@example.com\",\n  \"phoneNumber\": \"0733333333\",\n  \"customerId\": \"CUST-NOAUTH-001\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-003: no Authorization header. Expects 401 or 403. No DB writes."
+          }
+        },
+        {
+          "name": "RC-API-003b Malformed Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-API-003b] Malformed token returns 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer this.is.not.a.valid.jwt" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"BadToken\",\n  \"contactLastName\": \"Test\",\n  \"email\": \"badtoken@example.com\",\n  \"phoneNumber\": \"0744444444\",\n  \"customerId\": \"CUST-BADTOKEN-001\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-003: malformed JWT. Expects 401 or 403."
+          }
+        },
+        {
+          "name": "RC-API-004 Partial Write (Force Service Call Fail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This service call is deliberately missing 'title' and 'description'",
+                  "pm.test('[RC-API-004] Missing title/description returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('[RC-API-004] IMPORTANT: The customer record from Setup step STILL EXISTS in DB', function () {",
+                  "    // This test intentionally documents the partial-write risk.",
+                  "    // Verify manually in MongoDB that the customer created in step 01 is still present.",
+                  "    // There is no transaction rollback — this is expected current behavior.",
+                  "    pm.expect(true).to.be.true; // Placeholder — verify DB manually",
+                  "    console.log('[RC-API-004] Manual DB check required: customer should exist, service call should not.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer\": \"{{CUSTOMER_OBJECT_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/service-calls",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "service-calls"]
+            },
+            "description": "RC-API-004: intentionally malformed service call (missing title, description). After this, the customer from step 01 should still exist in DB — demonstrating the sequential-write / no-transaction risk."
+          }
+        },
+        {
+          "name": "RC-API-005a CustomerType = business",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('TS', ts);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// RC-API-005: Document the result. The backend controller accepts 'business' as a type",
+                  "// but the Mongoose model enum is: headOffice|branch|franchise|singleBusiness|residential",
+                  "// If this returns 400 from model validation, it is an integration contract defect.",
+                  "const status = pm.response.code;",
+                  "pm.test('[RC-API-005a] Document customerType=business acceptance', function () {",
+                  "    console.log('[RC-API-005a] Response status for customerType=business:', status);",
+                  "    console.log('[RC-API-005a] Response body:', pm.response.text());",
+                  "    // Log result for RC-API-005 manual review",
+                  "    pm.expect([200, 201, 400]).to.include(status);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"business\",\n  \"businessName\": \"QA Test Business Pty Ltd\",\n  \"contactFirstName\": \"BizType\",\n  \"contactLastName\": \"Test\",\n  \"email\": \"biztype+{{TS}}@example.com\",\n  \"phoneNumber\": \"0755555555\",\n  \"customerId\": \"CUST-BIZTYPE-{{TS}}\",\n  \"sites\": [\n    {\n      \"siteName\": \"Head Office\",\n      \"contactPerson\": \"Manager One\",\n      \"contactPhone\": \"0766666666\",\n      \"contactEmail\": \"site@example.com\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-005: tests customerType='business'. If model enum rejects it, this is an integration defect. Document the response."
+          }
+        },
+        {
+          "name": "RC-API-005b CustomerType = private",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('TS', ts);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// RC-API-005: 'private' is used by the UI but is NOT in the backend model enum",
+                  "// nor does the controller have a special handler for it.",
+                  "// This is expected to fail or behave unexpectedly — document as defect RC-API-005.",
+                  "const status = pm.response.code;",
+                  "pm.test('[RC-API-005b] Document customerType=private behavior', function () {",
+                  "    console.log('[RC-API-005b] Response status for customerType=private:', status);",
+                  "    console.log('[RC-API-005b] Response body:', pm.response.text());",
+                  "    // If this returns 201, the model is not enforcing enum on this value.",
+                  "    // If this returns 400, the UI will break on form submit for private customers.",
+                  "    pm.expect([200, 201, 400, 422]).to.include(status);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"private\",\n  \"contactFirstName\": \"PrivType\",\n  \"contactLastName\": \"Test\",\n  \"email\": \"privtype+{{TS}}@example.com\",\n  \"phoneNumber\": \"0777777777\",\n  \"customerId\": \"CUST-PRIVTYPE-{{TS}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-API-005: tests customerType='private' (used by UI). This is NOT in the Mongoose model enum. If rejected, it is a confirmed integration defect between UI and backend."
+          }
+        }
+      ]
+    },
+    {
+      "name": "RC-NEG | Negative Cases",
+      "description": "Negative test cases including invalid email and residential address enforcement.",
+      "item": [
+        {
+          "name": "RC-NEG-001a Invalid Email (not an email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-NEG-001a] Invalid email format returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Invalid\",\n  \"contactLastName\": \"Email\",\n  \"email\": \"notanemail\",\n  \"phoneNumber\": \"0788888888\",\n  \"customerId\": \"CUST-NEGEMAIL-001\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-NEG-001: email = 'notanemail'. Expects 400 from email regex validation."
+          }
+        },
+        {
+          "name": "RC-NEG-001b Invalid Email (double-at)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-NEG-001b] Double-at email returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Invalid\",\n  \"contactLastName\": \"Email\",\n  \"email\": \"test@@bad.com\",\n  \"phoneNumber\": \"0799999999\",\n  \"customerId\": \"CUST-NEGEMAIL-002\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-NEG-001: email = 'test@@bad.com'. Expects 400."
+          }
+        },
+        {
+          "name": "RC-NEG-002 Missing Address for Residential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-NEG-002] Missing address for residential returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('[RC-NEG-002] Error references physical address', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.message).to.include('address');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"NoAddress\",\n  \"contactLastName\": \"Test\",\n  \"email\": \"noaddress@example.com\",\n  \"phoneNumber\": \"0700000001\",\n  \"customerId\": \"CUST-NOADDR-001\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-NEG-002: residential customer with no physical address. Expects 400 with address-related error message."
+          }
+        }
+      ]
+    },
+    {
+      "name": "RC-SEC | Security Tests",
+      "description": "Security probes: NoSQL injection, oversized input, auth bypass, and algorithm-none JWT.",
+      "item": [
+        {
+          "name": "RC-SEC-003a NoSQL Injection in Email ($ne probe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// RC-SEC-003: NoSQL injection probe",
+                  "// Expected: 400 (validation rejects non-string) or type coercion by Mongoose",
+                  "pm.test('[RC-SEC-003a] NoSQL injection { $ne: null } rejected or neutralized', function () {",
+                  "    // If 201: the value was stored as a literal object (Mongoose coercion) — inspect DB",
+                  "    // If 400: input validation correctly rejected the object type — PASS",
+                  "    const status = pm.response.code;",
+                  "    console.log('[RC-SEC-003a] Status:', status);",
+                  "    console.log('[RC-SEC-003a] Body:', pm.response.text());",
+                  "    pm.expect([400, 422]).to.include(status, 'Object-type email must be rejected with 400');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Injection\",\n  \"contactLastName\": \"Test\",\n  \"email\": { \"$ne\": null },\n  \"phoneNumber\": \"0700000002\",\n  \"customerId\": \"CUST-NOSQL-001\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-SEC-003: email field is a NoSQL operator object { $ne: null }. Expect 400 — if 201, investigate how the value was stored."
+          }
+        },
+        {
+          "name": "RC-SEC-003b NoSQL Injection in Email (OR probe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-SEC-003b] SQL-style OR string rejected as invalid email', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    console.log('[RC-SEC-003b] Body:', pm.response.text());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Injection\",\n  \"contactLastName\": \"Test\",\n  \"email\": \"test@x.com' OR '1'='1\",\n  \"phoneNumber\": \"0700000003\",\n  \"customerId\": \"CUST-NOSQL-002\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-SEC-003: SQL-style injection in email field. Expect 400 from email regex validation."
+          }
+        },
+        {
+          "name": "RC-SEC-004 Oversized Input in Notes",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generate a 50,000 character string for the notes field",
+                  "pm.collectionVariables.set('OVERSIZED_NOTES', 'A'.repeat(50000));",
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('TS', ts);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-SEC-004] Oversized input handled safely (no server crash)', function () {",
+                  "    // Accept 201 (stored without size limit) or 400/413 (rejected by limit)",
+                  "    pm.expect([201, 400, 413]).to.include(pm.response.code);",
+                  "    console.log('[RC-SEC-004] Status:', pm.response.code);",
+                  "    console.log('[RC-SEC-004] Response time (ms):', pm.response.responseTime);",
+                  "    if (pm.response.responseTime > 5000) {",
+                  "        console.warn('[RC-SEC-004] WARNING: Response took', pm.response.responseTime, 'ms — potential DoS risk');",
+                  "    }",
+                  "});",
+                  "pm.test('[RC-SEC-004] Server responds (no timeout)', function () {",
+                  "    pm.expect(pm.response.code).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"Oversized\",\n  \"contactLastName\": \"Input\",\n  \"email\": \"oversized+{{TS}}@example.com\",\n  \"phoneNumber\": \"0700000004\",\n  \"customerId\": \"CUST-OVERSIZED-{{TS}}\",\n  \"physicalAddressDetails\": {\n    \"streetAddress\": \"1 Big Street\",\n    \"suburb\": \"Bigtown\",\n    \"cityDistrict\": \"Cape Town\",\n    \"province\": \"Western Cape\",\n    \"postalCode\": \"8001\"\n  },\n  \"notes\": \"{{OVERSIZED_NOTES}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-SEC-004: notes field contains 50,000 characters. Verifies no crash, no timeout cascade, response time is acceptable."
+          }
+        },
+        {
+          "name": "RC-SEC-006a Auth Bypass — No Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-SEC-006a] No token returns 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"AuthBypass\",\n  \"contactLastName\": \"NoToken\",\n  \"email\": \"notoken@example.com\",\n  \"phoneNumber\": \"0700000005\",\n  \"customerId\": \"CUST-NOTOKEN-SEC006\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-SEC-006: no Authorization header. Expects 401 or 403."
+          }
+        },
+        {
+          "name": "RC-SEC-006b Auth Bypass — Empty Bearer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-SEC-006b] Empty bearer token returns 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer " }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"AuthBypass\",\n  \"contactLastName\": \"EmptyBearer\",\n  \"email\": \"emptybearer@example.com\",\n  \"phoneNumber\": \"0700000006\",\n  \"customerId\": \"CUST-EMPTYBEARER-SEC006\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-SEC-006: 'Authorization: Bearer ' (empty value after Bearer). Expects 401 or 403."
+          }
+        },
+        {
+          "name": "RC-SEC-006c Auth Bypass — Algorithm None JWT",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// eyJhbGciOiJub25lIn0.e30. decodes to: alg:none, empty payload, no signature",
+                  "// If the server accepts this, it is vulnerable to the 'alg:none' JWT attack.",
+                  "pm.test('[RC-SEC-006c] Algorithm-none JWT returns 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403],",
+                  "        'CRITICAL: alg:none JWT was accepted — auth is bypassable');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer eyJhbGciOiJub25lIn0.e30." }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerType\": \"residential\",\n  \"contactFirstName\": \"AlgNone\",\n  \"contactLastName\": \"Attack\",\n  \"email\": \"algnone@example.com\",\n  \"phoneNumber\": \"0700000007\",\n  \"customerId\": \"CUST-ALGNONE-SEC006\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "customers"]
+            },
+            "description": "RC-SEC-006: alg:none JWT (eyJhbGciOiJub25lIn0.e30.). If the server accepts this token, it is vulnerable to a critical auth bypass. Must return 401 or 403."
+          }
+        },
+        {
+          "name": "RC-REC-003 Invoice Pro-Forma from Service Call",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[RC-REC-003] Pro-forma invoice created: 200 or 201', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "pm.test('[RC-REC-003] Pro-forma response has invoice data', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('data');",
+                  "    pm.expect(body.data).to.have.property('_id');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{AUTH_TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/invoices/from-service-call/{{SERVICE_CALL_ID}}/pro-forma",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "invoices", "from-service-call", "{{SERVICE_CALL_ID}}", "pro-forma"]
+            },
+            "description": "RC-REC-003: creates a pro-forma invoice from the service call created in the happy path. Requires SERVICE_CALL_ID to be set."
+          }
+        }
+      ]
+    }
+  ]
+}

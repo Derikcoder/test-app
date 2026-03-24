@@ -45,9 +45,9 @@ const createTransporter = async () => {
   }
   
   // For production: Use real SMTP credentials
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 587,
+    port: parseInt(process.env.SMTP_PORT, 10) || 587,
     secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.SMTP_USER,
@@ -322,7 +322,130 @@ export const sendEmail = async ({ to, subject, html, text }) => {
   }
 };
 
+/**
+ * Send Quotation Email with PDF attachment
+ *
+ * @async
+ * @param {Object} options - Quotation email payload
+ * @param {string} options.to - Recipient email
+ * @param {string} options.customerName - Recipient display name
+ * @param {string} options.quotationNumber - Quotation number
+ * @param {string} options.shareUrl - Public share URL for PDF
+ * @param {Buffer} options.pdfBuffer - Generated PDF bytes
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendQuotationEmail = async ({ to, customerName, quotationNumber, shareUrl, pdfBuffer }) => {
+  if (!to) {
+    throw new Error('Customer email is required to send quotation');
+  }
+
+  const transporter = await createTransporter();
+
+  const mailOptions = {
+    from: `${process.env.FROM_NAME || 'Appatunid'} <${process.env.FROM_EMAIL || 'noreply@appatunid.com'}>`,
+    to,
+    subject: `Quotation ${quotationNumber} - Appatunid`,
+    html: `
+      <p>Hello ${customerName || 'Customer'},</p>
+      <p>Please find your quotation <strong>${quotationNumber}</strong> attached as a PDF.</p>
+      <p>You can also view/download it from this secure link:</p>
+      <p><a href="${shareUrl}">${shareUrl}</a></p>
+      <p>Kind regards,<br/>Appatunid Team</p>
+    `,
+    text: `Hello ${customerName || 'Customer'},\n\nYour quotation ${quotationNumber} is attached as a PDF.\nSecure link: ${shareUrl}\n\nKind regards,\nAppatunid Team`,
+    attachments: [
+      {
+        filename: `${quotationNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+    ],
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('📧 Quotation email sent!');
+    console.log('📬 Preview URL:', nodemailer.getTestMessageUrl(info));
+  }
+
+  return info;
+};
+
+/**
+ * Send Invoice / Pro-Forma Email with PDF attachment
+ *
+ * @async
+ * @param {Object} options - Billing document email payload
+ * @param {string} options.to - Recipient email
+ * @param {string} options.customerName - Recipient display name
+ * @param {string} options.documentNumber - Invoice / pro-forma number
+ * @param {string} options.documentLabel - Human-readable document label
+ * @param {string} options.shareUrl - Public share URL for PDF
+ * @param {string} [options.approvalUrl] - Public approval page URL for customer action
+ * @param {Buffer} options.pdfBuffer - Generated PDF bytes
+ * @param {boolean} options.approvalRequired - Whether customer approval is being requested
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendInvoiceDocumentEmail = async ({
+  to,
+  customerName,
+  documentNumber,
+  documentLabel,
+  shareUrl,
+  approvalUrl,
+  pdfBuffer,
+  approvalRequired = false,
+}) => {
+  if (!to) {
+    throw new Error('Customer email is required to send billing document');
+  }
+
+  const transporter = await createTransporter();
+  const actionText = approvalRequired
+    ? 'Please review the attached pro-forma site instruction and approve it before additional work commences.'
+    : 'Please find your final invoice attached.';
+  const approvalHtml = approvalRequired && approvalUrl
+    ? `<p>Approve or reject the pro-forma here:</p><p><a href="${approvalUrl}">${approvalUrl}</a></p>`
+    : '';
+  const approvalText = approvalRequired && approvalUrl
+    ? `\nApproval page: ${approvalUrl}\n`
+    : '';
+
+  const mailOptions = {
+    from: `${process.env.FROM_NAME || 'Appatunid'} <${process.env.FROM_EMAIL || 'noreply@appatunid.com'}>`,
+    to,
+    subject: `${documentLabel} ${documentNumber} - Appatunid`,
+    html: `
+      <p>Hello ${customerName || 'Customer'},</p>
+      <p>${actionText}</p>
+      <p>Document: <strong>${documentNumber}</strong></p>
+      <p>You can also view/download it from this secure link:</p>
+      <p><a href="${shareUrl}">${shareUrl}</a></p>
+      ${approvalHtml}
+      <p>Kind regards,<br/>Appatunid Team</p>
+    `,
+    text: `Hello ${customerName || 'Customer'},\n\n${actionText}\nDocument: ${documentNumber}\nSecure link: ${shareUrl}${approvalText}\nKind regards,\nAppatunid Team`,
+    attachments: [
+      {
+        filename: `${documentNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      },
+    ],
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('📧 Billing document email sent!');
+    console.log('📬 Preview URL:', nodemailer.getTestMessageUrl(info));
+  }
+
+  return info;
+};
+
 // Export createTransporter for testing
 export { createTransporter };
 
-export default { sendPasswordResetEmail, sendEmail, createTransporter };
+export default { sendPasswordResetEmail, sendEmail, sendQuotationEmail, sendInvoiceDocumentEmail, createTransporter };

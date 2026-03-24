@@ -15,11 +15,14 @@ import {
   getQuotations,
   getQuotationById,
   createQuotation,
+  createQuotationFromServiceCall,
   updateQuotation,
   updateQuotationStatus,
   convertQuotationToServiceCall,
   deleteQuotation,
-  generateQuotationPDF
+  generateQuotationPDF,
+  generateSharedQuotationPDF,
+  sendQuotation,
 } from '../controllers/quotation.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -38,6 +41,20 @@ router.get('/', protect, getQuotations);
  * @access  Private (JWT required)
  */
 router.post('/', protect, createQuotation);
+
+/**
+ * @route   POST /api/quotations/from-service-call/:serviceCallId
+ * @desc    Create a quotation seeded from a service call context
+ * @access  Private (JWT required)
+ */
+router.post('/from-service-call/:serviceCallId', protect, createQuotationFromServiceCall);
+
+/**
+ * @route   GET /api/quotations/share/:token/pdf
+ * @desc    Public PDF download/view via secure share token
+ * @access  Public
+ */
+router.get('/share/:token/pdf', generateSharedQuotationPDF);
 
 /**
  * @route   GET /api/quotations/:id
@@ -59,6 +76,13 @@ router.put('/:id', protect, updateQuotation);
  * @access  Private (JWT required)
  */
 router.patch('/:id/status', protect, updateQuotationStatus);
+
+/**
+ * @route   POST /api/quotations/:id/send
+ * @desc    Send quotation via optional email/whatsapp/telegram channels with PDF
+ * @access  Private (JWT required)
+ */
+router.post('/:id/send', protect, sendQuotation);
 
 /**
  * @route   POST /api/quotations/:id/convert

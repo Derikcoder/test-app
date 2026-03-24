@@ -13,7 +13,40 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-  },  test: {
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+
+          if (id.includes('/node_modules/@react-google-maps/api/')) {
+            return 'maps-vendor';
+          }
+
+          if (
+            id.includes('/node_modules/react-router-dom/') ||
+            id.includes('/node_modules/@remix-run/router/')
+          ) {
+            return 'router-vendor';
+          }
+
+          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) {
+            return 'react-vendor';
+          }
+
+          if (id.includes('/node_modules/axios/')) {
+            return 'http-vendor';
+          }
+
+          return undefined;
+        },
+      },
+    },
+  },
+  test: {
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/__tests__/setup.js'],
@@ -25,4 +58,5 @@ export default defineConfig({
         'src/__tests__/',
       ],
     },
-  },})
+  },
+})

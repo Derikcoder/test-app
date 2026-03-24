@@ -120,6 +120,17 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** Whether this agent is currently blocked from self-dispatch acceptance */
+    selfDispatchSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    /** Reason for current self-dispatch restriction */
+    selfDispatchSuspendedReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     /** Vehicle registration/number assigned to agent */
     vehicleNumber: {
       type: String,
@@ -135,6 +146,14 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    /** Linked login principal for this field service agent profile */
+    userAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      unique: true,
+      sparse: true,
     },
   },
   {
@@ -203,6 +222,8 @@ fieldServiceAgentSchema.statics.EDITABLE_FIELDS = [
   'availability',
   'currentLocation',
   'assignedArea',
+  'selfDispatchSuspended',
+  'selfDispatchSuspendedReason',
   'vehicleNumber',
   'notes'
 ];

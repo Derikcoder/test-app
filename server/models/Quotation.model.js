@@ -17,6 +17,11 @@ import mongoose from 'mongoose';
  * Includes description, quantity, pricing, and totals.
  */
 const lineItemSchema = new mongoose.Schema({
+  /** Optional part number / SKU */
+  partNumber: {
+    type: String,
+    trim: true,
+  },
   /** Item/service description */
   description: {
     type: String,
@@ -113,6 +118,119 @@ const quotationSchema = new mongoose.Schema(
         message: 'Quotation must have at least one line item',
       },
     },
+    /** Parts fulfilment mode to support profitability analysis */
+    partsFulfilmentMode: {
+      type: String,
+      enum: ['inHouseProcurement', 'thirdPartyDelivery'],
+      default: 'inHouseProcurement',
+    },
+    /** Third-party provider name when delivery service is used (e.g. Picup) */
+    deliveryProvider: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Actual cost paid to procure parts */
+    partsProcurementCost: {
+      type: Number,
+      min: [0, 'Parts procurement cost cannot be negative'],
+      default: 0,
+    },
+    /** Delivery fee charged by third-party delivery services */
+    thirdPartyDeliveryCost: {
+      type: Number,
+      min: [0, 'Third-party delivery cost cannot be negative'],
+      default: 0,
+    },
+    /** Estimated parts profit = parts revenue - procurement and delivery costs */
+    estimatedPartsProfit: {
+      type: Number,
+      default: 0,
+    },
+    /** Total parts cost (sum of line items) */
+    partsCost: {
+      type: Number,
+      min: [0, 'Parts cost cannot be negative'],
+      default: 0,
+    },
+    /** Labour hours used for quote costing */
+    labourHours: {
+      type: Number,
+      min: [0, 'Labour hours cannot be negative'],
+      default: 0,
+    },
+    /** First-time customer/site visit indicator for call-out package rules */
+    isFirstSiteVisit: {
+      type: Boolean,
+      default: true,
+    },
+    /** Included on-site assessment minutes in first-visit call-out package */
+    includedAssessmentMinutes: {
+      type: Number,
+      min: [0, 'Included assessment minutes cannot be negative'],
+      default: 15,
+    },
+    /** Labour hours billable after included on-site assessment allowance */
+    chargeableLabourHours: {
+      type: Number,
+      min: [0, 'Chargeable labour hours cannot be negative'],
+      default: 0,
+    },
+    /** Labour rate per hour (used in wage calculation) */
+    labourRate: {
+      type: Number,
+      min: [0, 'Labour rate cannot be negative'],
+      default: 650,
+    },
+    /** Labour cost total (labourHours × labourRate) */
+    labourCost: {
+      type: Number,
+      min: [0, 'Labour cost cannot be negative'],
+      default: 0,
+    },
+    /** Consumables rate percentage applied to parts cost */
+    consumablesRate: {
+      type: Number,
+      min: [0, 'Consumables rate cannot be negative'],
+      max: [100, 'Consumables rate cannot exceed 100%'],
+      default: 2,
+    },
+    /** Consumables cost total */
+    consumablesCost: {
+      type: Number,
+      min: [0, 'Consumables cost cannot be negative'],
+      default: 0,
+    },
+    /** Distance travelled in kilometers (used to compute travel charge) */
+    distanceTravelledKm: {
+      type: Number,
+      min: [0, 'Distance travelled cannot be negative'],
+      default: 0,
+    },
+    /** Travel rate per kilometer */
+    travelRatePerKm: {
+      type: Number,
+      min: [0, 'Travel rate per km cannot be negative'],
+      default: 8.5,
+    },
+    /** Travel time in minutes (used for call-out floor rule) */
+    travelTimeMinutes: {
+      type: Number,
+      min: [0, 'Travel time cannot be negative'],
+      default: 0,
+    },
+    /** Time-based travelling cost component (manual for now) */
+    timeTravelledCost: {
+      type: Number,
+      min: [0, 'Time travelled cost cannot be negative'],
+      default: 0,
+    },
+    /** Travel cost charge */
+    travellingCost: {
+      type: Number,
+      min: [0, 'Travelling cost cannot be negative'],
+      default: 8.5,
+    },
     /** Subtotal amount (sum of all line items, before VAT) */
     subtotal: {
       type: Number,
@@ -142,6 +260,11 @@ const quotationSchema = new mongoose.Schema(
     validUntil: {
       type: Date,
       required: [true, 'Valid until date is required'],
+      default: () => {
+        const date = new Date();
+        date.setDate(date.getDate() + 14);
+        return date;
+      },
     },
     /** Current quotation status */
     status: {
@@ -152,6 +275,31 @@ const quotationSchema = new mongoose.Schema(
     /** Date quotation was sent to customer */
     sentDate: {
       type: Date,
+    },
+    /** Public share token used for customer PDF links (WhatsApp/email) */
+    shareToken: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    /** Optional expiry for share token links */
+    shareTokenExpiresAt: {
+      type: Date,
+    },
+    /** Delivery channels used for latest send action */
+    lastSentChannels: {
+      type: [String],
+      default: [],
+    },
+    /** Last generated WhatsApp delivery link (if applicable) */
+    lastWhatsAppLink: {
+      type: String,
+      trim: true,
+    },
+    /** Last generated Telegram delivery link (if applicable) */
+    lastTelegramLink: {
+      type: String,
+      trim: true,
     },
     /** Date quotation was approved by customer */
     approvedDate: {
@@ -189,7 +337,12 @@ const quotationSchema = new mongoose.Schema(
     terms: {
       type: String,
       trim: true,
-      default: 'Payment due within 30 days. Quotation valid for 30 days from date of issue.',
+      default: 'Payment due within 30 days. Quotation valid for 14 days from date of issue.',
+    },
+    /** Auto-template resolution diagnostics snapshot for audit/history visibility */
+    autoResolutionSnapshot: {
+      type: Object,
+      default: null,
     },
     /** Reference to User who created this quotation */
     createdBy: {
@@ -224,11 +377,11 @@ quotationSchema.pre('save', async function (next) {
     this.quotationNumber = `QT-${String(count + 1).padStart(6, '0')}`;
   }
 
-  // Set default validUntil to 30 days from now if not provided
+  // Set default validUntil to 14 days from now if not provided
   if (this.isNew && !this.validUntil) {
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    this.validUntil = thirtyDaysFromNow;
+    const fourteenDaysFromNow = new Date();
+    fourteenDaysFromNow.setDate(fourteenDaysFromNow.getDate() + 14);
+    this.validUntil = fourteenDaysFromNow;
   }
 
   next();
@@ -271,6 +424,25 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'title',
   'description',
   'lineItems',
+  'partsFulfilmentMode',
+  'deliveryProvider',
+  'partsProcurementCost',
+  'thirdPartyDeliveryCost',
+  'estimatedPartsProfit',
+  'partsCost',
+  'labourHours',
+  'isFirstSiteVisit',
+  'includedAssessmentMinutes',
+  'chargeableLabourHours',
+  'labourRate',
+  'labourCost',
+  'consumablesRate',
+  'consumablesCost',
+  'distanceTravelledKm',
+  'travelRatePerKm',
+  'travelTimeMinutes',
+  'timeTravelledCost',
+  'travellingCost',
   'subtotal',
   'vatAmount',
   'totalAmount',
@@ -278,6 +450,10 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'validUntil',
   'status',
   'sentDate',
+  'shareToken',
+  'shareTokenExpiresAt',
+  'lastSentChannels',
+  'lastWhatsAppLink',
   'approvedDate',
   'rejectedDate',
   'rejectionReason',
@@ -285,7 +461,8 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'convertedDate',
   'notes',
   'internalNotes',
-  'terms'
+  'terms',
+  'autoResolutionSnapshot'
 ];
 
 const Quotation = mongoose.model('Quotation', quotationSchema);

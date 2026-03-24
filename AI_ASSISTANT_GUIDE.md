@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** March 17, 2026  
+**Last Updated:** March 20, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -43,6 +43,56 @@
 
 ## 📋 Quick Context
 
+### Recent Changes
+
+#### Session: March 23, 2026 — Pro-forma Workflow Hardening + Role-Aware UI System
+**Commit:** `79c4424`  
+**Focus:** Backend pro-forma payment workflow validation + comprehensive frontend role-aware visual cues
+
+**Backend (Pro-forma Invoice Workflow):**
+- ✅ Hardened invoice workflow state transitions with strict validation:
+  - `draft` → `sent` (requires email recipient validation)
+  - `sent` → `approved`/`rejected` (customer decision required)
+  - `approved` → `finalized` (with deposit & payment tracking)
+- ✅ Extended invoice schema for lifecycle management: `sentAt`, `approvedAt`, `rejectedAt`, `rejectedReason`, `finalizedAt`, `depositRequired`, `depositAmount`, `paymentReceived`
+- ✅ Implemented strict send validation requiring valid recipient email before customer approval step
+- ✅ Service call auto-customer resolution improved: falls back to booking email, then cached customer, then manual selection
+- ✅ Expanded unit test coverage for controller workflows and customer resolution logic
+
+**Frontend (Role-Aware Visual System):**
+- ✅ Created global sidebar entity legend with standardized color language:
+  - **Cyan**: Field Agents
+  - **Indigo**: Customers
+  - **Amber**: Service Calls
+  - **Orange**: Quotations
+  - **Emerald**: Invoices / Pro-Forma
+  - **Fuchsia**: Super Admin role indicator
+  - **Cyan**: Non-admin role indicator
+- ✅ Added role-aware header context chips to all operational pages:
+  - AgentProfile.jsx — with role badge + access mode
+  - FieldServiceAgents.jsx — with admin/ops view indicators
+  - Customers.jsx — with indigo entity chip
+  - ServiceCalls.jsx — with amber entity chip
+  - Quotations.jsx — with orange entity chip
+- ✅ Extended pro-forma editing modal (SiteInstructionModal) with:
+  - Dynamic role-aware chips (Super Admin vs. Operational)
+  - Emerald entity chip for invoice context
+  - Props: `roleLabel`, `isSuperAdmin` from parent AgentProfile
+- ✅ Added public invoice approval screen (InvoiceApprovalPage) visual context:
+  - Emerald entity chip "Entity: Invoices / Pro-Forma"
+  - Cyan access chip "Access: Public Customer Approval"
+- ✅ Fixed axios auth header fallback logic to support `userInfo?.token` for agent/customer data loading paths
+
+**Previous Session Changes:**
+- Multi-principal authentication now supports `superAdmin`, `businessAdministrator`, `fieldServiceAgent`, and `customer`.
+- Passkey onboarding and renewal workflows added for delegated role onboarding.
+- User-to-operational-profile linking lifecycle added with admin attach/detach/reassign endpoints and audit logging.
+- Registration identifiers now follow write-once policy for non-superAdmin users.
+- SuperAdmin registration-identifier overrides now require legal documentation evidence.
+- Dedicated legal override audit collection and read-only admin query endpoint added.
+- Quote creation from service-call views now pre-fills customer dropdown labels from booking/service-call context when `/customers` does not include the selected customer id.
+- Added `CreateQuoteModal` unit tests covering customer dropdown fallback, fetched-customer override behavior, and service-call shortcut quote submission endpoint.
+
 ### What Is This Project?
 A full-stack MERN (MongoDB, Express, React, Node.js) application for managing field service operations. It handles customer intake, field agent management, service call tracking, and includes Google Maps integration for location services.
 
@@ -56,7 +106,7 @@ A full-stack MERN (MongoDB, Express, React, Node.js) application for managing fi
 - ✅ User/Agent/Customer/Service Call CRUD operations
 - ✅ Field-level permissions implemented
 - ✅ Google Maps integration setup
-- ⚠️ Service Calls UI is placeholder (needs full implementation)
+- ⚠️ Service Calls UI is partially implemented and still evolving
 - ✅ Comprehensive logging system
 - ✅ Industry-standard code comments throughout
 
@@ -99,12 +149,16 @@ test-app/
 │   │   ├── auth.middleware.js      # JWT verification
 │   │   └── logger.middleware.js    # Request/error logging
 │   ├── models/
-│   │   ├── User.model.js           # SuperUser schema
+│   │   ├── User.model.js           # Multi-role identity principal schema
 │   │   ├── FieldServiceAgent.model.js
 │   │   ├── Customer.model.js
-│   │   └── ServiceCall.model.js
+│   │   ├── ServiceCall.model.js
+│   │   ├── OnboardingPasskey.model.js
+│   │   ├── PasskeyRenewalRequest.model.js
+│   │   ├── ProfileLinkAudit.model.js
+│   │   └── RegistrationOverrideAudit.model.js
 │   ├── controllers/
-│   │   ├── auth.controller.js      # Registration, login, profile, forgotPassword, resetPassword
+│   │   ├── auth.controller.js      # Multi-role auth, passkeys, profile policy, admin audits
 │   │   ├── agent.controller.js     # Agent CRUD
 │   │   ├── customer.controller.js  # Customer CRUD
 │   │   └── serviceCall.controller.js
@@ -127,16 +181,19 @@ test-app/
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx  # Global auth state
 │   │   └── components/
+│   │       ├── Sidebar.jsx              # 🔄 Navigation + global entity legend
 │   │       ├── Login.jsx
 │   │       ├── Register.jsx
 │   │       ├── UserProfile.jsx
-│   │       ├── ForgotPassword.jsx # 🆕 Password reset request
-│   │       ├── ResetPassword.jsx  # 🆕 Password reset form
-│   │       ├── FieldServiceAgents.jsx
-│   │       ├── AgentProfile.jsx
-│   │       ├── Customers.jsx      # Google Maps integration
-│   │       ├── ServiceCalls.jsx   # ⚠️ Placeholder
-│   │       └── Sidebar.jsx
+│   │       ├── ForgotPassword.jsx       # 🆕 Password reset request
+│   │       ├── ResetPassword.jsx        # 🆕 Password reset form
+│   │       ├── FieldServiceAgents.jsx   # 🔄 Agent directory + role context
+│   │       ├── AgentProfile.jsx         # 🔄 Agent detail + role context + pro-forma
+│   │       ├── Customers.jsx            # 🔄 Customer list + entity chip
+│   │       ├── ServiceCalls.jsx         # 🔄 Service call queue + entity chip
+│   │       ├── Quotations.jsx           # 🔄 Quotation list + entity chip
+│   │       ├── SiteInstructionModal.jsx # 🔄 Pro-forma editor + entity/role chips
+│   │       └── InvoiceApprovalPage.jsx  # 🔄 Public invoice approval + context chips
 │   ├── index.html
 │   └── vite.config.js      # Dev server + proxy config
 │
@@ -155,20 +212,23 @@ test-app/
 
 ### 1. Field-Level Permissions
 
-**Critical Feature**: Certain fields are immutable after creation to protect business-critical data.
+**Critical Feature**: Profile updates are governed by immutable and write-once policy layers.
 
 **Protected Fields (User Model):**
 - `userName` - Cannot change (identity)
-- `businessName` - Cannot change (legal entity)
-- `businessRegistrationNumber` - Cannot change (legal identifier)
 - `createdAt` - System-managed
 - `_id` - Database identifier
 - `isSuperUser` - Security flag
+- `role`, profile-link fields - controlled via admin/linking flows
 
+**Write-Once Registration Identifiers (Profile Update Policy):**
+- `businessRegistrationNumber`, `taxNumber`, `vatNumber`
+- Non-superAdmin users can only set these when empty, then they become locked.
+- SuperAdmin can override existing values only with valid `registrationChangeEvidence`.
 **Implementation:**
 - Models define `IMMUTABLE_FIELDS` and `EDITABLE_FIELDS` arrays
-- Controllers validate update requests against these arrays
-- Attempts to modify protected fields return 403 Forbidden
+- Controllers apply immutable checks plus write-once legal-identifier rules
+- Attempts to bypass policy return 400/403 depending on violation
 - See: `server/models/User.model.js` and `server/controllers/auth.controller.js`
 
 **Why This Matters:**
@@ -853,12 +913,227 @@ curl -X GET http://localhost:5000/api/auth/profile \
 
 ### Git Repository
 - **Remote**: https://github.com/Derikcoder/test-app
-- **Branch**: main
-- **Last Commit**: Initial commit with full-stack application
+- **Active Branch**: `foundation`
+- **Branch Model**: Parent → Child → Consolidation → Production
+
+#### Branch Architecture
+
+This project uses a structured branching model where **each branch is a standalone, portable module** — designed so individual branches can be carried into other projects as reusable components. The framework is being built as a **digital transformation platform for service industry businesses**.
+
+```
+main                 ← Production (stable, never touched directly)
+  └── consolidation  ← QA / integration merge point
+        └── foundation    ← Base framework (parent of all features)
+              ├── feature/invoicing-engine
+              ├── feature/customer-portal
+              ├── feature/field-agent-app
+              └── feature/<module-name>
+```
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable production code only. Never commit here directly. |
+| `consolidation` | Integration branch. All features merge here for QA before `main`. |
+| `foundation` | Living base framework. All feature branches are born from here. |
+| `feature/*` | Standalone modules, named after the functionality they deliver. |
+
+#### Branch Workflow
+```bash
+# Start a new module from foundation
+git checkout foundation
+git checkout -b feature/your-module-name
+
+# Work on the feature, commit regularly
+git add .
+git commit -m "feat: describe what you built"
+
+# Merge back to foundation when done
+git checkout foundation
+git merge feature/your-module-name
+
+# Promote stable foundation to consolidation for QA
+git checkout consolidation
+git merge foundation
+
+# After QA passes, merge consolidation into main
+git checkout main
+git merge consolidation
+```
+
+#### Naming Conventions
+- Feature branches: `feature/<module-name>` (e.g. `feature/invoicing-engine`)
+- Hotfix branches: `hotfix/<description>` (e.g. `hotfix/login-token-expiry`)
+- Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`
 
 ---
 
 ## 🔄 Recent Changes
+
+### 2026-03-23 (Session 23)
+### 2026-03-24 (Session 24)
+- ✅ Built customer registration test infrastructure (29 test cases across 6 phases)
+    - Created `register_customers_testcases.md` — full test specification inc. mandatory security tests
+    - Created `scripts/log-register-customers-test-result.sh` — strict 16-field failure logger
+    - Initialized `server/logs/register_customers_test_errors.log` — append-only error log
+    - Created `scripts/run-register-customers-tests.sh` — interactive terminal runner (695 lines)
+       - Supports `--filter <phase>`, `--from <test-id>`, `--dry-run`
+    - Created `server/tests/postman/register_customers_collection.json` — Postman E2E collection
+       - 20 requests, 4 folders: Setup & Happy Path, RC-API, RC-NEG, RC-SEC
+       - Collection variables auto-populated: `CUSTOMER_OBJECT_ID`, `SERVICE_CALL_ID`, `TS`, `CUSTOMER_ID_QA`
+    - Created `server/tests/postman/POSTMAN_INSTRUCTIONS.md` — step-by-step Postman guide
+    - Updated `AI_ASSISTANT_GUIDE.md` with full Testing Infrastructure section for AI agents
+
+- ✅ Added public customer approval flow for pro-forma site instructions
+   - New public invoice share summary endpoint: `GET /api/invoices/share/:token`
+   - New public decision endpoint: `POST /api/invoices/share/:token/decision`
+   - New customer-facing React route: `/invoice-approval/:token`
+- ✅ Updated billing delivery links to include approval action path
+   - Pro-forma email delivery now includes both secure PDF access and the approval-page link
+   - WhatsApp and Telegram share messages now include the approval page for pro-forma documents
+
+### 2026-03-19 (Session 22)
+- ✅ Made quote sharing channels optional in submit flow
+   - Quote modal now allows per-send channel selection instead of hardcoded channels
+   - Telegram is available as a first-class share option for dev/test workflows
+- ✅ Added Telegram quote-share support in backend send endpoint
+   - `POST /api/quotations/:id/send` now supports `telegram` in `channels`
+   - Endpoint returns `telegramUrl` and stores `lastTelegramLink` for audit visibility
+
+### 2026-03-19 (Session 21)
+- ✅ Added quote delivery pipeline (PDF + channels)
+   - Implemented real PDF generation for quotations using `pdfkit`
+   - Added send endpoint to deliver quote PDF via email and generate WhatsApp share link
+   - Added tokenized public PDF share route for customer access
+- ✅ Updated UX wording from “Create Quote” to “Submit Quote” in quote modal
+- ✅ Accepted quotation workflow now auto-converts to service jobcard
+   - On approval, quotation is converted and linked service call is created with `in-progress` status
+   - Supports operational visibility of accepted work as active jobs
+
+### 2026-03-19 (Session 20)
+- ✅ Added first-visit assessment inclusion to call-out pricing logic
+   - For first-time customer/site visits under call-out-floor conditions, first 15 minutes on-site assessment is included
+   - Backend now computes and stores `chargeableLabourHours` after included assessment allowance
+   - UI added first-site-visit toggle and labour-hour breakdown to reflect included assessment policy
+
+### 2026-03-19 (Session 19)
+- ✅ Added call-out floor rule for travel costing
+   - Rule: if `distanceTravelledKm < 45` and `travelTimeMinutes < 30`, minimum travel charge is `R650.00`
+   - Applied in both frontend totals preview and backend authoritative calculation
+   - Added `travelTimeMinutes` as an explicit field for current manual entry and future Google API enrichment
+
+### 2026-03-19 (Session 18)
+- ✅ Enforced UI consistency rule for helper notes in quote modal sections
+   - Helper comments are placed in the first block of each section to prevent field-row misalignment
+   - Removed per-input helper text under costing fields
+- ✅ Refined travel input policy in quote modal and backend
+   - `distanceTravelledKm` remains the variable operational input (future Google API source)
+   - `ratePerKm` is controlled and only editable by superAdmin
+
+### 2026-03-19 (Session 17)
+- ✅ Added procurement and delivery profitability capture to quotation flow
+   - New quotation fields: `partsFulfilmentMode`, `deliveryProvider`, `partsProcurementCost`, `thirdPartyDeliveryCost`, `estimatedPartsProfit`
+   - UI now captures in-house vs third-party delivery mode (e.g. Picup) and related costs
+   - Backend computes `estimatedPartsProfit = partsCost - partsProcurementCost - thirdPartyDeliveryCost`
+- ✅ Set default quotation validity period to 14 days while keeping manual calendar override
+   - Frontend defaults `validUntil` to 14 days from today
+   - Backend and schema provide 14-day fallback defaults for robust create flows
+
+### 2026-03-19 (Session 16)
+- ✅ Implemented function-based travel costing in quotation flow
+   - Formula: `travellingCost = (distanceTravelledKm × 8.5) + timeTravelledCost`
+   - UI now captures `distanceTravelledKm` and `timeTravelledCost`; rate/km is fixed to `R8.50` for now
+   - Backend now computes and stores structured travel fields (`distanceTravelledKm`, `travelRatePerKm`, `timeTravelledCost`) and derived `travellingCost`
+   - Backward compatibility: legacy `travellingCost` payload still maps to the time component when structured travel inputs are absent
+
+### 2026-03-19 (Session 15)
+- ✅ Added tiered part markup for quote line items in quote modal
+   - Unit input is treated as cost and converted to selling unit price automatically
+   - Markup tiers: <R1000 (50%), <R2000 (40%), <R3000 (30%), <R4000 (25%), <R5000 (20%), >=R5000 (20%)
+   - Frontend totals and submitted quotation line-item unit prices now use marked-up values
+
+### 2026-03-19 (Session 14)
+- ✅ Enforced superAdmin-only control of travelling cost in quotation costing
+   - UI: travelling cost input disabled for non-super users in `client/src/components/CreateQuoteModal.jsx`
+   - Backend: `server/controllers/quotation.controller.js` now forces `travellingCost = 8.5` for non-super users
+
+### 2026-03-19 (Session 13)
+- ✅ Enforced superAdmin-only control of labour rate in quotation costing
+   - UI: labour rate input disabled for non-super users in `client/src/components/CreateQuoteModal.jsx`
+   - Backend: `server/controllers/quotation.controller.js` now forces `labourRate = 650` for non-super users
+
+### 2026-03-19 (Session 12)
+- ✅ Separated quotation costing concerns across UI and backend
+   - Parts remain line items (with optional part number)
+   - Labour cost captured separately (`labourHours` × `labourRate`)
+   - Consumables cost calculated separately using configured percentage of parts cost
+   - Travelling cost captured as separate editable value
+   - Totals now computed server-side using the separated pricing model
+
+### 2026-03-19 (Session 11)
+- ✅ Added optional line-item part number support for quotations
+   - Added `partNumber` to quotation line-item schema in `server/models/Quotation.model.js`
+   - Updated `client/src/components/CreateQuoteModal.jsx` to capture part number before description (optional)
+   - Preserved non-required behavior to support rare no-part-number items
+
+### 2026-03-19 (Session 10)
+- ✅ Added explicit quote template selector in `client/src/components/CreateQuoteModal.jsx`
+   - Template options: Auto, Perkins, Cummins, Emergency Repair, Generic
+   - Added apply action to load selected template line items on demand
+
+### 2026-03-19 (Session 9)
+- ✅ Added machine-model quote templates in reusable quote modal
+   - `CreateQuoteModal.jsx` now supports suggested line items from machine model context
+- ✅ Added quote creation shortcut endpoint from service call context
+   - `POST /api/quotations/from-service-call/:serviceCallId`
+   - Uses service call + historical machine data to seed quote creation
+   - Falls back to template line items when line items are not provided
+
+### 2026-03-19 (Session 8)
+- ✅ Added reusable quote creation flow for superAdmin and customer-oriented usage
+   - Created `client/src/components/CreateQuoteModal.jsx` reusable modal component
+   - Integrated quote creation button into `client/src/components/AgentProfile.jsx` service-call cards
+   - Integrated quote creation button into `client/src/components/ServiceCalls.jsx`
+- ✅ Fixed quotation backend create contract in `server/controllers/quotation.controller.js`
+   - Added required `serviceType` validation and persistence
+   - Added subtotal/VAT/total calculations before save
+
+### 2026-03-19 (Session 7)
+- ✅ Improved customer contact flow in agent profile
+   - Added WhatsApp-first customer contact button and regular call button in `client/src/components/AgentProfile.jsx`
+   - Added South Africa-friendly phone normalization fallback for `wa.me` and `tel:` links
+   - Extended service call customer populate in `server/controllers/serviceCall.controller.js` to include customer phone fields used by contact actions
+
+### 2026-03-19 (Session 6)
+- ✅ Added superUser operations queue for service call assignment
+   - Updated `client/src/components/ServiceCalls.jsx` to show unassigned call alerts and awaiting-acceptance counters
+   - Added inline assignment controls to assign unassigned calls to field service agents
+- ✅ Extended service call assignment workflow metadata
+   - Added `assignedDate`, `agentAccepted`, and `assignmentNotifiedAt` in `server/models/ServiceCall.model.js`
+   - Updated `server/controllers/serviceCall.controller.js` to auto-stamp assignment metadata and default status behavior when an agent is assigned
+
+### 2026-03-19 (Session 5)
+- ✅ Extended service booking lifecycle capture for existing-customer flow
+   - Added `servicesInProgress`, `progressStatus`, `quotationHistory`, and `invoicingHistory` to `bookingRequest` in `server/models/ServiceCall.model.js`
+   - Updated `client/src/components/ServiceCalls.jsx` to:
+      - Capture lifecycle fields in the existing-customer path
+      - Validate required lifecycle fields for existing customers
+      - Persist lifecycle fields in the submitted `bookingRequest` payload
+      - Include lifecycle fields in booking summary/description text
+- ✅ Stabilized Google Maps script loading in customer registration
+   - Refined script initialization in `client/src/components/RegisterNewCustomer.jsx` to avoid duplicate custom element definition warnings (`gmp-internal-* already defined`)
+
+### 2026-03-19 (Session 4)
+- ✅ Enhanced service call booking flow with service history support
+    - Added `serviceHistoryType` and `dateOfLastService` to `bookingRequest` schema in `server/models/ServiceCall.model.js`
+    - Updated `server/controllers/serviceCall.controller.js` create flow to ensure `callNumber` is resolved before validation
+    - Extended `client/src/components/ServiceCalls.jsx` with:
+       - First service call vs existing customer selection
+       - Conditional date validation for each flow
+       - Existing-customer auto-fill of last service date using prior calls matched by contact email
+    - Updated service history display blocks in:
+       - `client/src/components/Customers.jsx`
+       - `client/src/components/AgentProfile.jsx`
+    - Fixed gradient class typo in `Customers.jsx` (`from-blue-899` -> `from-blue-900`)
 
 ### 2026-03-17 (Session 3)
 - ✅ Standardized runtime startup behavior and documentation
@@ -1086,3 +1361,192 @@ curl -X GET http://localhost:5000/api/auth/profile \
 ---
 
 *This guide is living documentation. Update it whenever significant changes are made to the project.*
+
+---
+
+## 🧪 Testing Infrastructure — Customer Registration Suite
+
+> **For AI Agents:** This section documents the full automated testing pipeline for the customer
+> registration flow. Reference it when diagnosing test failures, running the suite, or advising
+> the developer on next steps after a failure is reported.
+
+### Overview
+
+The customer registration test suite covers the complete end-to-end flow:
+`POST /api/customers` (create customer) → `POST /api/service-calls` (create service call)
+
+It spans **29 test cases** across **6 phases**, with mandatory structured failure logging and
+an interactive terminal runner as well as a Postman collection.
+
+---
+
+### File Inventory
+
+| File | Purpose |
+|---|---|
+| `register_customers_testcases.md` | Master test specification — 29 test cases, all phases, failure template |
+| `server/tests/postman/register_customers_collection.json` | Postman collection v2.1.0 — 20 requests, 4 folders |
+| `server/tests/postman/POSTMAN_INSTRUCTIONS.md` | User-facing step-by-step guide for running the Postman collection |
+| `scripts/run-register-customers-tests.sh` | Interactive terminal runner (695 lines) — all 29 test cases |
+| `scripts/log-register-customers-test-result.sh` | Strict failure logger — enforces 16-field structured records |
+| `server/logs/register_customers_test_errors.log` | Append-only error log — all failures written here |
+| `server/logs/test_run_<timestamp>.log` | Per-run summary — auto-generated by the terminal runner |
+
+---
+
+### Test Case IDs — Full Reference
+
+| Phase | IDs | Count | Description |
+|---|---|---|---|
+| UI | RC-UI-001 – RC-UI-005 | 5 | Frontend validation, form behaviour, Google Maps |
+| API | RC-API-001 – RC-API-005 | 5 | Backend validation, missing fields, duplicate IDs, auth |
+| DB | RC-DB-001 – RC-DB-003 | 3 | Persistence verification via GET + mongosh |
+| Recollection | RC-REC-001 – RC-REC-003 | 3 | UI re-display accuracy, service call link visibility |
+| Negative | RC-NEG-001 – RC-NEG-003 | 3 | Invalid email, missing required address fields |
+| Security | RC-SEC-001 – RC-SEC-010 | 10 | NoSQL injection, oversized input, auth bypass, alg:none |
+
+> All RC-SEC-* tests are **mandatory**. Failures must be escalated and cannot be deferred.
+
+---
+
+### Known Architectural Risks
+
+**1. Sequential Write — No Transaction (RC-API-005c)**
+- The registration flow performs two separate writes: `POST /api/customers` then `POST /api/service-calls`
+- There is no MongoDB transaction wrapping these
+- If the second write fails, the customer record persists without a linked service call — partial state
+- Test ID: **RC-API-005c**
+- Mitigation required: wrap both writes in a `mongoose.startSession()` transaction, or implement a
+   compensating delete if the service call creation fails
+
+**2. CustomerType Contract Mismatch (RC-API-005d / RC-API-005e)**
+- The frontend emits `customerType: "business"` and `customerType: "private"`
+- The backend `Customer.model.js` enum is: `headOffice | branch | franchise | singleBusiness | residential`
+- Neither `"business"` nor `"private"` appear in the backend enum
+- If these return `201 Created`, it is a **confirmed integration defect** (silent data corruption)
+- Test IDs: **RC-API-005d**, **RC-API-005e**
+- If failures occur: open `client/src/components/RegisterNewCustomer.jsx` and align the emitted values
+   to the backend enum
+
+---
+
+### Running the Interactive Terminal Runner
+
+```bash
+# Run all 29 test cases interactively
+bash ./scripts/run-register-customers-tests.sh
+
+# Run only Security phase tests
+bash ./scripts/run-register-customers-tests.sh --filter Security
+
+# Resume from a specific test (useful after fixing a failure)
+bash ./scripts/run-register-customers-tests.sh --from RC-DB-001
+
+# Preview all test cases without prompting (no results collected)
+bash ./scripts/run-register-customers-tests.sh --dry-run
+
+# Combine: dry-run only UI phase
+bash ./scripts/run-register-customers-tests.sh --filter UI --dry-run
+```
+
+**Filter phase values:** `UI` | `API` | `DB` | `Recollection` | `Negative` | `Security`
+
+For each `fail` or `blocked`, the runner prompts for 9 metadata fields, then calls the logger
+script automatically. The developer must not skip metadata collection.
+
+---
+
+### Invoking the Logger Script Directly
+
+Use this when logging failures from Postman (outside the terminal runner):
+
+```bash
+bash ./scripts/log-register-customers-test-result.sh \
+   --test-id    <RC-XXX-000> \
+   --status     <pass|fail|blocked> \
+   --phase      <UI|API|DB|Recollection|Security> \
+   --title      "<short description>" \
+   --why        "<root cause>" \
+   --how        "<how the failure occurred>" \
+   --required-action "<remediation step>" \
+   --severity   <low|medium|high|critical> \
+   --security-impact "<none|description>"
+```
+
+**Required for `fail` status:** `--why`, `--how`, `--required-action`, `--severity`, `--security-impact`
+(script exits non-zero if any are missing)
+
+**Optional flags:** `--api-status`, `--api-message`, `--db-evidence`, `--ui-evidence`, `--owner`
+
+**Output:** appends a 16-field structured record to `server/logs/register_customers_test_errors.log`
+
+---
+
+### Postman Collection — Variable Dependency
+
+The Postman collection requires two manual variables and auto-populates four:
+
+| Variable | Set By | Required Before |
+|---|---|---|
+| `BASE_URL` | Manual (`http://localhost:5000`) | All requests |
+| `AUTH_TOKEN` | Manual (JWT from `/api/auth/login`) | All requests |
+| `TS` | Auto — pre-request script in Request 01 | Requests 02+ |
+| `CUSTOMER_ID_QA` | Auto — pre-request script in Request 01 | RC-API-004 |
+| `CUSTOMER_OBJECT_ID` | Auto — test script in Request 01 (from response) | Request 02, RC-DB-002 |
+| `SERVICE_CALL_ID` | Auto — test script in Request 02 (from response) | RC-DB-002 |
+
+**Mandatory run order:** `Setup & Happy Path` → `RC-API` → `RC-NEG` → `RC-SEC`
+
+See `server/tests/postman/POSTMAN_INSTRUCTIONS.md` for full setup and run instructions.
+
+---
+
+### Log File Formats
+
+**`server/logs/register_customers_test_errors.log`** — append-only, one entry per failure:
+```
+[TIMESTAMP] TEST_ID=<id> STATUS=<fail|blocked> PHASE=<phase> TITLE="<title>"
+WHY="<root cause>" HOW="<how it failed>" REQUIRED_ACTION="<fix>"
+SEVERITY=<level> SECURITY_IMPACT="<impact>"
+[optional: API_STATUS, API_MESSAGE, DB_EVIDENCE, UI_EVIDENCE, OWNER]
+---
+```
+
+**`server/logs/test_run_<timestamp>.log`** — auto-generated per run by the terminal runner:
+- Lists all test IDs and their result (pass/fail/blocked/skip)
+- Includes total counts: passed, failed, blocked, skipped
+- Includes timestamp and filter applied (if any)
+
+---
+
+### AI Agent Response Playbook — When a Test Failure Is Reported
+
+1. **Identify the test ID** (e.g., `RC-SEC-006c`, `RC-API-001`)
+2. **Look up the test in** `register_customers_testcases.md` for the expected result and the failure
+    impact statement
+3. **Check the error log** for an existing entry: `server/logs/register_customers_test_errors.log`
+4. **If not yet logged**, provide the developer with the exact logger command to run (see examples above)
+5. **Suggest the fix** based on the test description and known architectural risks above
+6. **Security tests (RC-SEC-*)**: always classify as high or critical unless confirmed otherwise;
+    never suggest deferring security failures
+7. **After applying a fix**: advise re-running with `--from <RC-XXX>` to resume from the fixed test
+
+---
+
+### 2026-03-24 (Session 24) — Testing Infrastructure
+
+*(Also reflected in Recent Changes below.)*
+
+- ✅ Created comprehensive customer registration test specification
+   - `register_customers_testcases.md` — 29 test cases, 6 phases, mandatory security tests
+- ✅ Built structured failure logger
+   - `scripts/log-register-customers-test-result.sh` — enforces 16-field records, exits non-zero on
+      incomplete failure metadata
+- ✅ Initialized append-only error log: `server/logs/register_customers_test_errors.log`
+- ✅ Built interactive terminal test runner (695 lines)
+   - `scripts/run-register-customers-tests.sh` — `--filter`, `--from`, `--dry-run` options
+- ✅ Built Postman collection (980 lines, 20 requests, 4 folders)
+   - `server/tests/postman/register_customers_collection.json`
+- ✅ Created user-facing Postman instructions
+   - `server/tests/postman/POSTMAN_INSTRUCTIONS.md`
+- ✅ Updated `AI_ASSISTANT_GUIDE.md` with full testing infrastructure section

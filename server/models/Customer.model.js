@@ -118,18 +118,27 @@ const siteSchema = new mongoose.Schema({
  */
 const customerSchema = new mongoose.Schema(
   {
-    /** Customer type - Determines fields and validation */
+    /** Customer type - Determines profile view, fields, and validation */
     customerType: {
       type: String,
-      enum: ['business', 'residential'],
+      enum: ['headOffice', 'branch', 'franchise', 'singleBusiness', 'residential'],
       required: [true, 'Customer type is required'],
-      default: 'residential',
+      default: 'singleBusiness',
+    },
+    /**
+     * Parent account reference — used by branch and franchise customers.
+     * Points to the headOffice customer record they belong to.
+     */
+    parentAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Customer',
+      default: null,
     },
     /** Business/company name - Cannot be changed after creation */
     businessName: {
       type: String,
       required: function() {
-        return this.customerType === 'business';
+        return ['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(this.customerType);
       },
       trim: true,
       immutable: true, // Protects business identity
@@ -218,7 +227,7 @@ const customerSchema = new mongoose.Schema(
       validate: {
         validator: function(sites) {
           // Business customers must have at least one site
-          if (this.customerType === 'business' && sites.length === 0) {
+          if (['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(this.customerType) && sites.length === 0) {
             return false;
           }
           return true;
@@ -248,6 +257,14 @@ const customerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    /** Linked login principal for this customer profile */
+    userAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      unique: true,
+      sparse: true,
     },
   },
   {

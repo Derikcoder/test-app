@@ -21,6 +21,7 @@ import {
   getTopRatedAgents,
   updateAgentAvailability,
   updateAgentLocation,
+  updateAgentSelfDispatchAccess,
   getAvailableAgents
 } from '../controllers/agent.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
@@ -103,5 +104,12 @@ router.patch('/:id/availability', protect, updateAgentAvailability);
  * @access  Private (JWT required)
  */
 router.patch('/:id/location', protect, updateAgentLocation);
+
+/**
+ * @route   PATCH /api/agents/:id/self-dispatch-access
+ * @desc    Update agent self-dispatch eligibility access
+ * @access  Private (JWT required)
+ */
+router.patch('/:id/self-dispatch-access', protect, updateAgentSelfDispatchAccess);
 
 export default router;

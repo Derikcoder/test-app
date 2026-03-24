@@ -1,8 +1,8 @@
 # Authentication System - Quick Reference
 
-## 🎯 SuperUser Registration & Login System
+## 🎯 Multi-Principal Authentication System
 
-Your app now has a complete authentication system with MongoDB integration!
+The app now supports a complete multi-principal authentication system with MongoDB integration.
 
 ## 📍 Entry Point
 - **Default Route:** `/` → Redirects to `/login`
@@ -17,9 +17,9 @@ Your app now has a complete authentication system with MongoDB integration!
 - **email** - Email address (unique)
 - **password** - Minimum 6 characters
 - **businessName** - Business name
-- **businessRegistrationNumber** - Registration number
-- **taxNumber** - Tax number
-- **vatNumber** - VAT number
+- **businessRegistrationNumber** - Registration number (optional, write-once)
+- **taxNumber** - Tax number (optional, write-once)
+- **vatNumber** - VAT number (optional, write-once)
 - **phoneNumber** - Contact phone
 - **physicalAddress** - Business address
 - **websiteAddress** - Website URL (optional)
@@ -31,7 +31,7 @@ Both servers are currently running:
 - **Backend:** http://localhost:5000
 - **Frontend:** http://localhost:3000
 
-### 2. Register a SuperUser
+### 2. Register a Principal User
 1. Open http://localhost:3000
 2. You'll be redirected to the login page
 3. Click "Don't have an account? Register"
@@ -48,10 +48,28 @@ Both servers are currently running:
 ## 📡 API Endpoints
 
 ### Authentication Routes
-- `POST /api/auth/register` - Register new super user
+- `POST /api/auth/register` - Register new principal user
 - `POST /api/auth/login` - Login user
+- `POST /api/auth/passkeys/generate` - Generate onboarding passkey (admin roles)
+- `POST /api/auth/passkeys/request-renewal` - Request passkey renewal
+- `POST /api/auth/passkeys/fulfill-renewal/:requestToken` - Fulfill renewal request
 - `GET /api/auth/profile` - Get user profile (Protected)
 - `PUT /api/auth/profile` - Update user profile (Protected)
+- `POST /api/auth/admin/profile-links/attach` - Attach operational profile
+- `POST /api/auth/admin/profile-links/detach` - Detach operational profile
+- `POST /api/auth/admin/profile-links/reassign` - Reassign operational profile
+- `GET /api/auth/admin/registration-overrides/audits` - Query legal override audits
+
+### Role Model
+- `superAdmin`
+- `businessAdministrator`
+- `fieldServiceAgent`
+- `customer`
+
+### Registration Identifier Policy
+- `businessRegistrationNumber`, `taxNumber`, `vatNumber` are write-once for non-superAdmin users.
+- SuperAdmin changes to existing values require `registrationChangeEvidence`.
+- Approved superAdmin overrides create immutable legal audit records.
 
 ### Example API Usage
 

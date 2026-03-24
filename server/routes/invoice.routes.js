@@ -17,10 +17,17 @@ import {
   getInvoicesByPaymentStatus,
   getOverdueInvoicesSummary,
   createInvoice,
+  upsertProFormaInvoiceFromServiceCall,
   recordPayment,
   updateInvoice,
+  updateInvoiceWorkflowStatus,
+  finalizeInvoice,
+  sendInvoice,
   deleteInvoice,
-  generateInvoicePDF
+  generateInvoicePDF,
+  generateSharedInvoicePDF,
+  getSharedInvoiceDetails,
+  submitSharedInvoiceDecision,
 } from '../controllers/invoice.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -39,6 +46,34 @@ router.get('/', protect, getInvoices);
  * @access  Private (JWT required)
  */
 router.post('/', protect, createInvoice);
+
+/**
+ * @route   POST /api/invoices/from-service-call/:serviceCallId/pro-forma
+ * @desc    Create or return a pro-forma invoice draft seeded from service call / quotation data
+ * @access  Private (JWT required)
+ */
+router.post('/from-service-call/:serviceCallId/pro-forma', protect, upsertProFormaInvoiceFromServiceCall);
+
+/**
+ * @route   GET /api/invoices/share/:token
+ * @desc    Public shared invoice / pro-forma summary via secure share token
+ * @access  Public
+ */
+router.get('/share/:token', getSharedInvoiceDetails);
+
+/**
+ * @route   POST /api/invoices/share/:token/decision
+ * @desc    Public customer approve/reject action for shared pro-forma
+ * @access  Public
+ */
+router.post('/share/:token/decision', submitSharedInvoiceDecision);
+
+/**
+ * @route   GET /api/invoices/share/:token/pdf
+ * @desc    Public PDF download/view via secure share token
+ * @access  Public
+ */
+router.get('/share/:token/pdf', generateSharedInvoicePDF);
 
 /**
  * @route   GET /api/invoices/overdue/summary
@@ -67,6 +102,27 @@ router.get('/:id', protect, getInvoiceById);
  * @access  Private (JWT required)
  */
 router.put('/:id', protect, updateInvoice);
+
+/**
+ * @route   PATCH /api/invoices/:id/workflow-status
+ * @desc    Update pro-forma approval / billing workflow status
+ * @access  Private (JWT required)
+ */
+router.patch('/:id/workflow-status', protect, updateInvoiceWorkflowStatus);
+
+/**
+ * @route   POST /api/invoices/:id/finalize
+ * @desc    Finalize a pro-forma as the final invoice and mark service call invoiced
+ * @access  Private (JWT required)
+ */
+router.post('/:id/finalize', protect, finalizeInvoice);
+
+/**
+ * @route   POST /api/invoices/:id/send
+ * @desc    Send pro-forma / invoice via email, WhatsApp, and/or Telegram
+ * @access  Private (JWT required)
+ */
+router.post('/:id/send', protect, sendInvoice);
 
 /**
  * @route   POST /api/invoices/:id/payment
