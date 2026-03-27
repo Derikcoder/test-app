@@ -1076,6 +1076,7 @@ npm update
 
 ## Additional Documentation
 
+- **[user-manual/README.md](user-manual/README.md)** - Human-facing manual index for setup, API, workflows, security, and user-story navigation
 - **[AUTH_GUIDE.md](AUTH_GUIDE.md)** - Complete authentication system documentation
 - **[LOGGING_GUIDE.md](LOGGING_GUIDE.md)** - Logging system and best practices
 - **[PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md)** - Detailed codebase structure

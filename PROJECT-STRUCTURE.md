@@ -87,6 +87,7 @@ main                 ← Production (stable, never touched directly)
 - `AI_ASSISTANT_GUIDE.md`: Primary briefing for AI assistants — read this first before making changes.
 - `PROJECT-STRUCTURE.md`: This document — enterprise-grade structural reference.
 - `API_COLLECTION.md`: Live API endpoint inventory, integration structure, and API management plan.
+- `user-manual/`: Human-facing documentation layer with section-based navigation for setup, API, workflows, security, and user stories.
 - `schemas/`: JSON Schema contract registry used to plumb API contracts into one typed system map.
 - `schemas/project.schema.json`: Root JSON Schema registry for shared and domain API contracts.
 - `schemas/shared/`: Shared reusable schema contracts (types, response envelopes, auth policy).
@@ -124,6 +125,22 @@ main                 ← Production (stable, never touched directly)
 - `.github/copilot-instructions.md`: GitHub Copilot custom instructions for this repo.
 - `client/`: React + Vite frontend application.
 - `server/`: Express + MongoDB backend API.
+
+### User Manual Scaffold
+
+The repository now includes a first-pass `user-manual/` structure to improve human navigation without moving the existing canonical root docs yet.
+
+```text
+user-manual/
+├── README.md            # Manual index / navigation hub
+├── setup/               # Environment, HTTPS, Postman onboarding
+├── api/                 # API register and contract navigation
+├── workflows/           # Process maps and operational flows
+├── security/            # Secret handling and security practices
+└── user-stories/        # Role-based journey documentation
+```
+
+Initial section landing pages currently point back to existing root and test documentation until content is consolidated.
 
 ### Local HTTPS Certificate Layout
 

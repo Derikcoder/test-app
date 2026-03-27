@@ -73,6 +73,20 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 
 ### Recent Changes
 
+#### Session: March 27, 2026 — User Manual Scaffold For Human Navigation
+
+**Focus:** Introduce a dedicated documentation navigation layer for human readers while preserving stable root-level documents for tooling and AI workflows.
+
+- ✅ Added `user-manual/README.md` as the manual index
+- ✅ Added section landing pages for:
+  - `user-manual/setup/`
+  - `user-manual/api/`
+  - `user-manual/workflows/`
+  - `user-manual/security/`
+  - `user-manual/user-stories/`
+- ✅ Kept `README.md`, `AI_ASSISTANT_GUIDE.md`, and `PROJECT-STRUCTURE.md` at the root as stable anchor documents
+- ✅ Wired root docs to reference the new manual scaffold without breaking existing links
+
 #### Session: March 26, 2026 — API Contract Plumbing via JSON Schemas + Registration Flow Models
 
 **Focus:** Standardize how every API is integrated, tracked, and explained through schema contracts plus flow documentation.
