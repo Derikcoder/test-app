@@ -1,5 +1,9 @@
 # Local Development Certificates
 
+Manual navigation shortcut:
+
+- For the full local HTTPS + Postman testing path, use [../user-manual/setup/postman-local-https-runbook.md](../user-manual/setup/postman-local-https-runbook.md)
+
 This folder stores shared local TLS certificates used by both:
 
 - Backend (Express HTTPS server)

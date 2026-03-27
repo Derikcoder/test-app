@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 ---
 
@@ -141,6 +141,8 @@ user-manual/
 ```
 
 Initial section landing pages currently point back to existing root and test documentation until content is consolidated.
+
+The setup section now includes a consolidated operational runbook at `user-manual/setup/postman-local-https-runbook.md` for local HTTPS + Postman JWT flow.
 
 ### Local HTTPS Certificate Layout
 

@@ -1084,6 +1084,7 @@ npm update
 - **[PROFILE_EDITING_GUIDE.md](PROFILE_EDITING_GUIDE.md)** - User profile editing guide
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
 - **[API_COLLECTION.md](API_COLLECTION.md)** - API inventory, integration structure, and API management plan
+- **[user-manual/setup/postman-local-https-runbook.md](user-manual/setup/postman-local-https-runbook.md)** - Single end-to-end path for local HTTPS setup, JWT auth, and Postman run order
 - **[schemas/project.schema.json](schemas/project.schema.json)** - Root JSON Schema registry that wires all shared and domain API contracts
 - **[schemas/shared/common.types.json](schemas/shared/common.types.json)** - Shared reusable primitives, enums, and endpoint descriptor schema
 - **[docs/flowchart%20LR](docs/flowchart%20LR)** - Technical registration swimlane flow

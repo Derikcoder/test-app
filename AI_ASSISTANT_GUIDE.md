@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** March 26, 2026  
+**Last Updated:** March 27, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -72,6 +72,15 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: March 27, 2026 — Postman + Local HTTPS Setup Runbook Consolidation
+
+**Focus:** Consolidate local HTTPS setup and Postman authentication/testing into one practical day-to-day runbook.
+
+- ✅ Added `user-manual/setup/postman-local-https-runbook.md` as the primary guided setup/testing path
+- ✅ Updated `user-manual/setup/README.md` to promote the runbook as the first-start path
+- ✅ Added navigation shortcuts from `certs/README.md` and `server/tests/postman/POSTMAN_INSTRUCTIONS.md` to the unified runbook
+- ✅ Preserved existing canonical setup/test docs while improving discoverability for daily usage
 
 #### Session: March 27, 2026 — User Manual Scaffold For Human Navigation
 

@@ -1,5 +1,9 @@
 # Register Customers — Postman Collection Instructions
 
+Manual navigation shortcut:
+
+- For a single end-to-end setup path that combines local HTTPS, env setup, login token flow, and run order, use [../../../user-manual/setup/postman-local-https-runbook.md](../../../user-manual/setup/postman-local-https-runbook.md)
+
 **Collection file:** `server/tests/postman/register_customers_collection.json`  
 **Test case reference:** `register_customers_testcases.md` (workspace root)  
 **Error log:** `server/logs/register_customers_test_errors.log`
