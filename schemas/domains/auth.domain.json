@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/domains/auth.domain.json",
+  "title": "Auth Domain",
+  "description": "API contracts for /api/auth — user registration, authentication, profile management, passkey lifecycle, and admin profile-link operations. This domain is the identity root: all other private domains require a JWT produced here.",
+
+  "type": "object",
+  "properties": {
+    "domain":    { "const": "auth" },
+    "basePath":  { "const": "/api/auth" },
+    "version":   { "const": "1.0.0" },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "../shared/common.types.json#/$defs/EndpointDescriptor" },
+      "default": [
+        {
+          "operationId":    "registerUser",
+          "method":         "POST",
+          "path":           "/api/auth/register",
+          "access":         "public",
+          "summary":        "Register a new super-user / business owner account",
+          "requestBodyRef": "RegisterRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "409": "ConflictError" }
+        },
+        {
+          "operationId":    "loginUser",
+          "method":         "POST",
+          "path":           "/api/auth/login",
+          "access":         "public",
+          "summary":        "Authenticate and receive a signed JWT token",
+          "requestBodyRef": "LoginRequest",
+          "responses":      { "200": "TokenResponse", "400": "ValidationError", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":  "getUserProfile",
+          "method":       "GET",
+          "path":         "/api/auth/profile",
+          "access":       "private",
+          "summary":      "Get the authenticated user's full profile",
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "updateUserProfile",
+          "method":         "PUT",
+          "path":           "/api/auth/profile",
+          "access":         "private",
+          "summary":        "Update mutable profile fields (immutable fields are rejected)",
+          "requestBodyRef": "UpdateProfileRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ImmutableFieldError", "401": "UnauthorizedError" },
+          "notes":          "Immutable fields: userName, businessName, businessRegistrationNumber. Controller checks against User.IMMUTABLE_FIELDS."
+        },
+        {
+          "operationId":    "getFieldPermissions",
+          "method":         "GET",
+          "path":           "/api/auth/field-permissions",
+          "access":         "private",
+          "summary":        "Return list of editable and protected fields for the authenticated user's model",
+          "responses":      { "200": "SuccessResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "forgotPassword",
+          "method":         "POST",
+          "path":           "/api/auth/forgot-password",
+          "access":         "public",
+          "summary":        "Request a password reset token — sends email if account exists",
+          "requestBodyRef": "ForgotPasswordRequest",
+          "responses":      { "200": "NoContentResponse", "400": "ValidationError" },
+          "notes":          "Always returns 200 regardless of whether email exists — prevents user enumeration."
+        },
+        {
+          "operationId":    "resetPassword",
+          "method":         "PUT",
+          "path":           "/api/auth/reset-password/:token",
+          "access":         "public",
+          "summary":        "Reset password using a valid reset token from the forgot-password email",
+          "pathParams":     [{ "name": "token", "schema": "string", "description": "Opaque reset token from email link" }],
+          "requestBodyRef": "ResetPasswordRequest",
+          "responses":      { "200": "NoContentResponse", "400": "ValidationError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "generateOnboardingPasskey",
+          "method":         "POST",
+          "path":           "/api/auth/passkeys/generate",
+          "access":         "private",
+          "summary":        "Generate a new onboarding passkey for inviting a field agent or administrator",
+          "requestBodyRef": "GeneratePasskeyRequest",
+          "responses":      { "201": "CreatedResponse", "401": "UnauthorizedError", "403": "ForbiddenError" }
+        },
+        {
+          "operationId":    "requestPasskeyRenewal",
+          "method":         "POST",
+          "path":           "/api/auth/passkeys/request-renewal",
+          "access":         "public",
+          "summary":        "Request renewal of an expired or lost onboarding passkey",
+          "requestBodyRef": "PasskeyRenewalRequest",
+          "responses":      { "200": "NoContentResponse", "400": "ValidationError" }
+        },
+        {
+          "operationId":  "fulfillPasskeyRenewal",
+          "method":       "POST",
+          "path":         "/api/auth/passkeys/fulfill-renewal/:requestToken",
+          "access":       "private",
+          "summary":      "Fulfill a pending passkey renewal request (admin action)",
+          "pathParams":   [{ "name": "requestToken", "schema": "string" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "attachUserProfileLink",
+          "method":         "POST",
+          "path":           "/api/auth/admin/profile-links/attach",
+          "access":         "role-restricted",
+          "roles":          ["superAdmin", "businessAdministrator"],
+          "summary":        "Attach an operational profile (agent or customer) to a user account",
+          "requestBodyRef": "ProfileLinkRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "403": "ForbiddenError" }
+        },
+        {
+          "operationId":    "detachUserProfileLink",
+          "method":         "POST",
+          "path":           "/api/auth/admin/profile-links/detach",
+          "access":         "role-restricted",
+          "roles":          ["superAdmin", "businessAdministrator"],
+          "summary":        "Detach an operational profile from a user account",
+          "requestBodyRef": "ProfileLinkRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "403": "ForbiddenError" }
+        },
+        {
+          "operationId":    "reassignUserProfileLink",
+          "method":         "POST",
+          "path":           "/api/auth/admin/profile-links/reassign",
+          "access":         "role-restricted",
+          "roles":          ["superAdmin", "businessAdministrator"],
+          "summary":        "Move an operational profile from one user account to another",
+          "requestBodyRef": "ProfileLinkReassignRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "403": "ForbiddenError" }
+        },
+        {
+          "operationId":   "listRegistrationOverrideAudits",
+          "method":        "GET",
+          "path":          "/api/auth/admin/registration-overrides/audits",
+          "access":        "role-restricted",
+          "roles":         ["superAdmin"],
+          "summary":       "Query the legal override audit log for registration-level changes",
+          "queryParamsRef":"RegistrationOverrideAuditQuery",
+          "responses":     { "200": "PaginatedResponse", "401": "UnauthorizedError", "403": "ForbiddenError" }
+        }
+      ]
+    }
+  },
+
+  "$defs": {
+
+    "RegisterRequest": {
+      "type": "object",
+      "description": "Body for POST /api/auth/register",
+      "required": ["userName", "email", "password"],
+      "properties": {
+        "userName":                    { "type": "string", "description": "Unique login handle — immutable after creation" },
+        "email":                       { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "password":                    { "type": "string", "minLength": 6 },
+        "businessName":                { "type": "string", "description": "Required for superAdmin and customer roles — immutable after creation" },
+        "businessRegistrationNumber":  { "type": "string", "description": "Legal identifier — immutable after creation" },
+        "taxNumber":                   { "type": "string" },
+        "vatNumber":                   { "type": "string" },
+        "role":                        { "$ref": "../shared/common.types.json#/$defs/UserRole" }
+      },
+      "additionalProperties": false
+    },
+
+    "LoginRequest": {
+      "type": "object",
+      "description": "Body for POST /api/auth/login",
+      "required": ["email", "password"],
+      "properties": {
+        "email":    { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "password": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateProfileRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/auth/profile — mutable fields only. Immutable fields (userName, businessName, businessRegistrationNumber) are silently rejected by the controller.",
+      "properties": {
+        "email":      { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "taxNumber":  { "type": "string" },
+        "vatNumber":  { "type": "string" },
+        "phoneNumber":{ "$ref": "../shared/common.types.json#/$defs/PhoneNumber" }
+      },
+      "additionalProperties": false
+    },
+
+    "ForgotPasswordRequest": {
+      "type": "object",
+      "required": ["email"],
+      "properties": {
+        "email": { "$ref": "../shared/common.types.json#/$defs/Email" }
+      },
+      "additionalProperties": false
+    },
+
+    "ResetPasswordRequest": {
+      "type": "object",
+      "required": ["password"],
+      "properties": {
+        "password": { "type": "string", "minLength": 6 }
+      },
+      "additionalProperties": false
+    },
+
+    "GeneratePasskeyRequest": {
+      "type": "object",
+      "description": "Body for POST /api/auth/passkeys/generate",
+      "required": ["targetRole"],
+      "properties": {
+        "targetRole": { "$ref": "../shared/common.types.json#/$defs/UserRole" },
+        "notes":      { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "PasskeyRenewalRequest": {
+      "type": "object",
+      "description": "Body for POST /api/auth/passkeys/request-renewal",
+      "required": ["email"],
+      "properties": {
+        "email":  { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "ProfileLinkRequest": {
+      "type": "object",
+      "description": "Body for attach and detach profile-link endpoints",
+      "required": ["userId", "profileId", "profileModel"],
+      "properties": {
+        "userId":       { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "profileId":    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "profileModel": { "type": "string", "enum": ["FieldServiceAgent", "Customer"], "description": "Mongoose model name of the operational profile" }
+      },
+      "additionalProperties": false
+    },
+
+    "ProfileLinkReassignRequest": {
+      "type": "object",
+      "description": "Body for reassign profile-link endpoint",
+      "required": ["fromUserId", "toUserId", "profileId", "profileModel"],
+      "properties": {
+        "fromUserId":   { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "toUserId":     { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "profileId":    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "profileModel": { "type": "string", "enum": ["FieldServiceAgent", "Customer"] }
+      },
+      "additionalProperties": false
+    },
+
+    "RegistrationOverrideAuditQuery": {
+      "type": "object",
+      "description": "Query params for GET /api/auth/admin/registration-overrides/audits",
+      "properties": {
+        "userId":    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "from":      { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "to":        { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "page":      { "type": "integer", "minimum": 1, "default": 1 },
+        "limit":     { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+      },
+      "additionalProperties": false
+    }
+
+  }
+}

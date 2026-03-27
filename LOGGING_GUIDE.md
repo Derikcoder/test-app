@@ -1,20 +1,22 @@
-# 📋 Error Logging & Debugging Guide
+# Error Logging and Debugging Guide
 
-## ✅ Error Logging System Enabled
+## Error Logging System Enabled
 
-Your application now has comprehensive error logging to help debug issues!
+Your application has comprehensive error logging to help debug issues.
 
-## 📁 Log Files Location
+## Log Files Location
 
-All logs are stored in: `/server/logs/`
+All logs are stored in `server/logs/`.
 
-### Log Files:
-- **`error.log`** - All errors and exceptions
-- **`request.log`** - All HTTP requests and general info
+### Log Files
 
-## 🔍 How to View Logs
+- `error.log` - All errors and exceptions
+- `request.log` - All HTTP requests and general info
+
+## How to View Logs
 
 ### View Error Log (Real-time)
+
 ```bash
 # From project root
 tail -f server/logs/error.log
@@ -24,6 +26,7 @@ watch -n 1 cat server/logs/error.log
 ```
 
 ### View Request Log (Real-time)
+
 ```bash
 # From project root
 tail -f server/logs/request.log
@@ -33,11 +36,13 @@ tail -50 server/logs/request.log
 ```
 
 ### View All Errors
+
 ```bash
 cat server/logs/error.log
 ```
 
 ### Clear Logs
+
 ```bash
 # Clear error log
 > server/logs/error.log
@@ -49,45 +54,49 @@ cat server/logs/error.log
 rm server/logs/*.log
 ```
 
-## 🐛 What Gets Logged
+## What Gets Logged
 
-### Errors Logged:
-- ❌ All server exceptions with stack traces
-- ❌ Database connection errors
-- ❌ Registration failures (missing fields, duplicate users)
-- ❌ Login failures (invalid credentials)
-- ❌ 404 - Route not found errors
-- ❌ Validation errors
-- ❌ MongoDB errors
+### Errors Logged
 
-### Requests Logged:
-- 📝 All HTTP requests (method, URL, IP, timestamp)
-- ℹ️ Server startup info
-- ✅ Successful registrations
-- ✅ Successful logins
-- ℹ️ General application events
+- All server exceptions with stack traces
+- Database connection errors
+- Registration failures such as missing fields or duplicate users
+- Login failures such as invalid credentials
+- `404` route-not-found errors
+- Validation errors
+- MongoDB errors
 
-## 🚨 Common Issues & How to Debug
+### Requests Logged
 
-### Registration Failing?
+- All HTTP requests with method, URL, IP, and timestamp
+- Server startup info
+- Successful registrations
+- Successful logins
+- General application events
 
-1. **Check error log:**
-```bash
-cat server/logs/error.log
-```
+## Common Issues and How to Debug
 
-2. **Look for:**
+### Registration Failing
+
+1. Check the error log:
+
+   ```bash
+   cat server/logs/error.log
+   ```
+
+1. Look for:
    - MongoDB connection errors
    - Missing required fields
-   - Duplicate email/username
+   - Duplicate email or username
    - Validation errors
 
-3. **Check request log for registration attempts:**
-```bash
-grep "Registration" server/logs/request.log
-```
+1. Check the request log for registration attempts:
 
-### Login Failing?
+   ```bash
+   grep "Registration" server/logs/request.log
+   ```
+
+### Login Failing
 
 ```bash
 # Check for login errors
@@ -97,7 +106,7 @@ grep "Login" server/logs/error.log
 grep "Login" server/logs/request.log
 ```
 
-### MongoDB Not Connected?
+### MongoDB Not Connected
 
 ```bash
 # Check logs for MongoDB connection messages
@@ -105,9 +114,10 @@ grep -i "mongo" server/logs/error.log
 grep -i "mongo" server/logs/request.log
 ```
 
-## 📊 Log Format
+## Log Format
 
-### Error Log Entry:
+### Error Log Entry
+
 ```json
 {
   "timestamp": "2026-02-24T10:00:00.000Z",
@@ -126,7 +136,8 @@ grep -i "mongo" server/logs/request.log
 }
 ```
 
-### Request Log Entry:
+### Request Log Entry
+
 ```json
 {
   "timestamp": "2026-02-24T10:00:00.000Z",
@@ -140,25 +151,25 @@ grep -i "mongo" server/logs/request.log
 }
 ```
 
-## 🔧 Tips
+## Tips
 
-- Logs are **automatically created** when the server starts
-- Logs **persist** between server restarts
-- Passwords are **masked** as `***` in logs for security
-- Error logs include **full stack traces** in development mode
-- Console output shows **real-time** emoji indicators:
-  - ℹ️ = Info
-  - ✅ = Success  
-  - ❌ = Error
-  - 📝 = Request
+- Logs are automatically created when the server starts
+- Logs persist between server restarts
+- Passwords are masked as `***` in logs for security
+- Error logs include full stack traces in development mode
+- Console output shows real-time indicators:
+  - `Info`
+  - `Success`
+  - `Error`
+  - `Request`
 
-## 🧪 Testing Error Logging
+## Testing Error Logging
 
 Try these to test logging:
 
 ```bash
 # Make a test registration request
-curl -X POST http://localhost:5000/api/auth/register \
+curl -k -X POST https://localhost:5000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "userName": "testuser",
@@ -170,13 +181,11 @@ curl -X POST http://localhost:5000/api/auth/register \
 cat server/logs/error.log
 ```
 
-## 📍 Next Steps
+## Next Steps
 
-1. **Try registration** at http://localhost:3000/register
-2. **Check error logs** if it fails: `cat server/logs/error.log`
-3. **Fix the issue** based on the error message
-4. **Verify MongoDB is connected** (see main README.md for setup)
+1. Try registration at `https://localhost:3000/register`
+2. Check error logs if it fails: `cat server/logs/error.log`
+3. Fix the issue based on the error message
+4. Verify MongoDB is connected using the main [README.md](README.md)
 
----
-
-Need help? The logs will show you exactly what's going wrong! 🚀
+Need help? The logs will usually show exactly what is going wrong.

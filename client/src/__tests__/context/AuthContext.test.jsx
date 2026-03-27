@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../../context/AuthContext';
 
 // Test component that uses auth context
@@ -76,6 +76,7 @@ describe('AuthContext', () => {
 
     it('should handle invalid JSON in localStorage gracefully', async () => {
       localStorage.setItem('userInfo', 'invalid json');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Should not crash, should handle gracefully
       expect(() => {
@@ -85,12 +86,18 @@ describe('AuthContext', () => {
           </AuthProvider>
         );
       }).not.toThrow();
+
+      await waitFor(() => {
+        expect(localStorage.getItem('userInfo')).toBeNull();
+      });
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
   describe('login', () => {
     it('should set user data and store in localStorage', async () => {
-      const { container } = render(
+      render(
         <AuthProvider>
           <TestComponent />
         </AuthProvider>
@@ -102,7 +109,7 @@ describe('AuthContext', () => {
 
       // Click login button
       const loginButton = screen.getByText('Login');
-      loginButton.click();
+      fireEvent.click(loginButton);
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('test@example.com');
@@ -126,7 +133,7 @@ describe('AuthContext', () => {
 
       // Login
       const loginButton = screen.getByText('Login');
-      loginButton.click();
+      fireEvent.click(loginButton);
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('test@example.com');
@@ -165,7 +172,7 @@ describe('AuthContext', () => {
 
       // Click logout button
       const logoutButton = screen.getByText('Logout');
-      logoutButton.click();
+      fireEvent.click(logoutButton);
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('No user');
@@ -188,7 +195,7 @@ describe('AuthContext', () => {
 
       // Click logout when no one is logged in
       const logoutButton = screen.getByText('Logout');
-      logoutButton.click();
+      fireEvent.click(logoutButton);
 
       // Should not crash
       await waitFor(() => {
@@ -213,7 +220,7 @@ describe('AuthContext', () => {
 
       // Click update button
       const updateButton = screen.getByText('Update');
-      updateButton.click();
+      fireEvent.click(updateButton);
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('updated@example.com');

@@ -2,15 +2,15 @@
   "info": {
     "_postman_id": "rc-e2e-test-suite-2026-03-24",
     "name": "Register Customers — E2E Test Suite",
-    "description": "Postman API test collection for the customer registration end-to-end flow.\n\nCovers:\n- Happy path (create customer + service call)\n- RC-API-001 through RC-API-005 (server validation)\n- RC-DB-001 through RC-DB-003 (persistence verification via GET)\n- RC-NEG-001, RC-NEG-003 (negative cases)\n- RC-SEC-003, RC-SEC-004, RC-SEC-006 (security tests)\n\nSetup:\n1. Set BASE_URL collection variable to your backend URL (default: http://localhost:5000)\n2. Set AUTH_TOKEN to a valid JWT from POST /api/auth/login\n3. Run 'Setup & Happy Path' folder first — it populates CUSTOMER_OBJECT_ID and SERVICE_CALL_ID\n4. Then run remaining folders\n\nReferences:\n  register_customers_testcases.md\n  scripts/log-register-customers-test-result.sh",
+    "description": "Postman API test collection for the customer registration end-to-end flow.\n\nCovers:\n- Happy path (create customer + service call)\n- RC-API-001 through RC-API-005 (server validation)\n- RC-DB-001 through RC-DB-003 (persistence verification via GET)\n- RC-NEG-001, RC-NEG-003 (negative cases)\n- RC-SEC-003, RC-SEC-004, RC-SEC-006 (security tests)\n\nSetup:\n1. Set BASE_URL collection variable to your backend URL (default: https://localhost:5000)\n2. Set AUTH_TOKEN to a valid JWT from POST /api/auth/login\n3. If Postman rejects the local self-signed cert, trust it locally or disable SSL certificate verification for local development\n4. Run 'Setup & Happy Path' folder first — it populates CUSTOMER_OBJECT_ID and SERVICE_CALL_ID\n5. Then run remaining folders\n\nReferences:\n  register_customers_testcases.md\n  scripts/log-register-customers-test-result.sh",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "BASE_URL",
-      "value": "http://localhost:5000",
+      "value": "https://localhost:5000",
       "type": "string",
-      "description": "Backend base URL. Default: http://localhost:5000"
+      "description": "Backend base URL. Default: https://localhost:5000"
     },
     {
       "key": "AUTH_TOKEN",
@@ -137,7 +137,10 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(body.data).to.have.property('_id');",
                   "    pm.expect(body.data).to.have.property('customer');",
-                  "    pm.expect(body.data.customer).to.eql(pm.collectionVariables.get('CUSTOMER_OBJECT_ID'));",
+                  "    const customerId = (typeof body.data.customer === 'object' && body.data.customer !== null)",
+                  "        ? body.data.customer._id",
+                  "        : body.data.customer;",
+                  "    pm.expect(customerId).to.eql(pm.collectionVariables.get('CUSTOMER_OBJECT_ID'));",
                   "});",
                   "",
                   "// Save SERVICE_CALL_ID for RC-REC-003",

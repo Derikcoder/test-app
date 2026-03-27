@@ -88,6 +88,9 @@ PORT=5000
 MONGODB_URI=mongodb://localhost:27017/field-service-db
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 NODE_ENV=development
+SSL_ENABLED=true
+SSL_CERT_FILE=../certs/localhost+1.pem
+SSL_KEY_FILE=../certs/localhost+1-key.pem
 EOF
     print_success "Created server/.env with default values"
     print_warning "⚠ IMPORTANT: Update JWT_SECRET in server/.env before production!"
@@ -99,7 +102,11 @@ fi
 if [[ ! -f "client/.env" ]]; then
     print_warning "client/.env not found. Creating template..."
     cat > client/.env << 'EOF'
-VITE_API_URL=http://localhost:5000
+VITE_API_URL=https://localhost:5000
+VITE_API_PROXY_TARGET=https://localhost:5000
+VITE_SSL_ENABLED=true
+VITE_SSL_CERT_FILE=../certs/localhost+1.pem
+VITE_SSL_KEY_FILE=../certs/localhost+1-key.pem
 VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 EOF
     print_success "Created client/.env with default values"
@@ -214,8 +221,8 @@ print_header "Setup Complete! 🚀"
 
 echo -e "${GREEN}All services are running:${NC}"
 echo -e "  ${BLUE}•${NC} MongoDB:        mongodb://localhost:27017"
-echo -e "  ${BLUE}•${NC} Backend Server: http://localhost:5000"
-echo -e "  ${BLUE}•${NC} Frontend Client: http://localhost:3000"
+echo -e "  ${BLUE}•${NC} Backend Server: https://localhost:5000"
+echo -e "  ${BLUE}•${NC} Frontend Client: https://localhost:3000"
 echo ""
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo ""

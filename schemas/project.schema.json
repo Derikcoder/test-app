@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/project.schema.json",
+  "title": "WKD Field Service — Project Schema Registry",
+  "description": "Root schema that wires together all shared foundational types and domain API contracts for the WKD Field Service Management System. Use this file as the single entry point when validating or tooling against the full API surface. Each domain file is self-contained; this registry exists to declare the complete contract boundary of the project.",
+
+  "type": "object",
+  "required": ["project", "version", "shared", "domains"],
+  "properties": {
+
+    "project": {
+      "const": "wkd-field-service",
+      "description": "Project identifier"
+    },
+
+    "version": {
+      "const": "1.0.0",
+      "description": "Schema registry version — bump when endpoints are added or removed"
+    },
+
+    "stack": {
+      "type": "object",
+      "description": "Runtime technology summary — informational only",
+      "properties": {
+        "backend":  { "const": "Express 4 + Mongoose 7 + MongoDB" },
+        "frontend": { "const": "React 18 + Vite + Tailwind CSS" },
+        "auth":     { "const": "JWT — protect middleware + authorizeRoles" },
+        "runtime":  { "const": "Node.js 20" }
+      }
+    },
+
+    "authNotes": {
+      "type": "object",
+      "description": "Global authentication rules that apply across all endpoints",
+      "properties": {
+        "jwtHeader":      { "const": "Authorization: Bearer <token>" },
+        "tokenEndpoint":  { "const": "POST /api/auth/login" },
+        "tokenExpiry":    { "const": "30d" },
+        "refreshPolicy":  { "const": "Single-use token. Re-authenticate to get a new token." },
+        "roleHierarchy":  {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["superAdmin", "businessAdministrator", "fieldServiceAgent", "customer"],
+          "description": "superAdmin has universal access. businessAdministrator manages agents and operations. fieldServiceAgent accesses their own assigned calls. customer accesses their own data and invoice share links."
+        }
+      }
+    },
+
+    "shared": {
+      "type": "object",
+      "description": "Shared foundational schema files — consumed by all domain schemas via relative $ref",
+      "properties": {
+        "commonTypes": {
+          "$ref": "./shared/common.types.json",
+          "description": "Primitive and composite types, enums, LineItem, EndpointDescriptor"
+        },
+        "responses": {
+          "$ref": "./shared/responses.json",
+          "description": "Standard HTTP response envelope shapes (SuccessResponse, PaginatedResponse, error types)"
+        },
+        "authPolicy": {
+          "$ref": "./shared/auth.policy.json",
+          "description": "AccessPolicy descriptors — Public, Private, RoleRestricted, PublicTokenized"
+        }
+      }
+    },
+
+    "domains": {
+      "type": "object",
+      "description": "All API domain schemas — one per resource group. Each domain file contains its endpoints array and request/response $defs.",
+      "properties": {
+
+        "auth": {
+          "$ref": "./domains/auth.domain.json",
+          "description": "Authentication and user management — /api/auth (14 endpoints)"
+        },
+
+        "customers": {
+          "$ref": "./domains/customers.domain.json",
+          "description": "Customer records and site sub-resources — /api/customers (9 endpoints)"
+        },
+
+        "agents": {
+          "$ref": "./domains/agents.domain.json",
+          "description": "Field service agents — availability, location, self-dispatch — /api/agents (12 endpoints)"
+        },
+
+        "serviceCalls": {
+          "$ref": "./domains/service-calls.domain.json",
+          "description": "Work orders — lifecycle, self-accept, parts, photos, ratings — /api/service-calls (12 endpoints)"
+        },
+
+        "equipment": {
+          "$ref": "./domains/equipment.domain.json",
+          "description": "Customer-owned assets and service history — /api/equipment (8 endpoints)"
+        },
+
+        "quotations": {
+          "$ref": "./domains/quotations.domain.json",
+          "description": "Cost estimates with line items, VAT, share token, convert-to-invoice — /api/quotations (10 endpoints)"
+        },
+
+        "invoices": {
+          "$ref": "./domains/invoices.domain.json",
+          "description": "Financial documents with full workflow, payment records, customer approval, audit trail — /api/invoices (15 endpoints)"
+        }
+
+      },
+      "required": ["auth", "customers", "agents", "serviceCalls", "equipment", "quotations", "invoices"],
+      "additionalProperties": false
+    },
+
+    "endpointSummary": {
+      "type": "object",
+      "description": "Flat endpoint count by domain — informational, derived from domain files",
+      "properties": {
+        "auth":         { "const": 14 },
+        "customers":    { "const": 9 },
+        "agents":       { "const": 12 },
+        "serviceCalls": { "const": 12 },
+        "equipment":    { "const": 8 },
+        "quotations":   { "const": 10 },
+        "invoices":     { "const": 15 },
+        "total":        { "const": 80 }
+      }
+    },
+
+    "immutableFieldRegistry": {
+      "type": "object",
+      "description": "Cross-domain registry of fields that are set at creation and cannot be modified. Controllers enforce this via Model.IMMUTABLE_FIELDS checks.",
+      "properties": {
+        "User":        { "type": "array", "items": { "type": "string" }, "default": ["userName", "businessName", "businessRegistrationNumber"] },
+        "Agent":       { "type": "array", "items": { "type": "string" }, "default": ["firstName", "lastName", "employeeId"] },
+        "Customer":    { "type": "array", "items": { "type": "string" }, "default": ["businessName", "customerId"] },
+        "ServiceCall": { "type": "array", "items": { "type": "string" }, "default": ["callNumber"] },
+        "Quotation":   { "type": "array", "items": { "type": "string" }, "default": ["quotationNumber"] },
+        "Invoice":     { "type": "array", "items": { "type": "string" }, "default": ["invoiceNumber"] }
+      }
+    }
+
+  }
+}

@@ -39,6 +39,25 @@ const normalizeSites = (sites = []) => {
   });
 };
 
+const classifyCustomerPersistenceError = (error) => {
+  if (error?.code === 11000) {
+    const duplicateField = Object.keys(error.keyPattern || {})[0] || 'field';
+    return {
+      status: 409,
+      message: `Duplicate value for ${duplicateField}`,
+    };
+  }
+
+  if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+    return {
+      status: 400,
+      message: error.message,
+    };
+  }
+
+  return null;
+};
+
 // @desc    Get all customers
 // @route   GET /api/customers
 // @access  Private
@@ -154,9 +173,14 @@ export const createCustomer = async (req, res) => {
     });
 
     logInfo(`✅ Customer created: ${customer.customerType === 'business' ? customer.businessName : `${customer.contactFirstName} ${customer.contactLastName}`} (${customer.customerId})`);
-    res.status(201).json(customer);
+    res.status(201).json({ data: customer });
   } catch (error) {
     logError('Create customer error:', error);
+    const classifiedError = classifyCustomerPersistenceError(error);
+    if (classifiedError) {
+      return res.status(classifiedError.status).json({ message: classifiedError.message });
+    }
+
     res.status(500).json({ message: error.message });
   }
 };

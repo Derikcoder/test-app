@@ -2,7 +2,7 @@
 
 A comprehensive full-stack MERN application for managing field service operations, including customer intake, agent management, service call tracking, and Google Maps integration.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Key Features](#key-features)
@@ -11,7 +11,9 @@ A comprehensive full-stack MERN application for managing field service operation
 - [Quick Start](#quick-start)
 - [Manual Setup](#manual-setup)
 - [Environment Configuration](#environment-configuration)
+- [Local HTTPS Setup](#local-https-setup)
 - [API Documentation](#api-documentation)
+- [API Schema Registry & Flow Maps](#api-schema-registry--flow-maps)
 - [Authentication & Authorization](#authentication--authorization)
 - [Development Workflow](#development-workflow)
 - [Available Scripts](#available-scripts)
@@ -21,27 +23,30 @@ A comprehensive full-stack MERN application for managing field service operation
 - [Contributing](#contributing)
 - [Additional Documentation](#additional-documentation)
 
-## 🎯 Overview
+## Overview
 
 This is an enterprise-grade field service management application built with the MERN stack (MongoDB, Express.js, React, Node.js). It provides a complete solution for managing field service operations, from customer intake and agent assignment to service call tracking and business analytics.
 
 **Target Use Case:** Service-based businesses that need to manage field agents, customer service requests, job scheduling, and maintain detailed operational records.
 
-## ✨ Key Features
+## Key Features
 
 ### Authentication & User Management
+
 - 🔐 JWT-based authentication system
 - 👤 Comprehensive user profiles with business information
 - 🛡️ Field-level permissions with immutable + write-once legal identifier policies
 - 🔒 Secure password hashing with bcrypt
 
 ### Customer Management
+
 - 📝 Customer intake with detailed information capture
 - 🗺️ Google Maps integration for location services
 - 📍 Address autocomplete and geolocation
 - 📊 Service request tracking per customer
 
 ### Field Agent Management
+
 - 👨‍🔧 Complete agent profile management (CRUD operations)
 - 📈 Job statistics and performance metrics
 - 📅 Service history tracking
@@ -49,6 +54,7 @@ This is an enterprise-grade field service management application built with the 
 - 📞 Direct customer contact actions from agent profile (WhatsApp-first + regular call)
 
 ### Service Call Management
+
 - 📞 Service call creation and tracking
 - 🔄 Status workflow management
 - 📅 Scheduling and assignment
@@ -61,6 +67,7 @@ This is an enterprise-grade field service management application built with the 
 - 🧩 Reusable quote creation component available from agent profile and service calls views
 
 ### Quotation Management
+
 - 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
 - ✅ Quote submission flow uses `Submit Quote` action semantics
 - 📄 Real quotation PDF generation endpoint available at `GET /api/quotations/:id/pdf`
@@ -86,6 +93,7 @@ This is an enterprise-grade field service management application built with the 
 - 🔒 Labour rate is editable by superAdmin only; backend enforces default `R650/hour` for non-super users
 
 ### Invoice & Pro-Forma Workflow
+
 - 🧾 Pro-forma site instruction workflow lets field agents capture additional work, discovered problems, solutions, and deposit requirements on site
 - 📤 Strict invoice workflow validation: `draft` → `sent` → `approved`/`rejected` → `finalized` with lifecycle timestamps and payment tracking
 - 💾 Extended invoice schema with: `sentAt`, `approvedAt`, `rejectedAt`, `rejectedReason`, `finalizedAt`, `depositRequired`, `depositAmount`, `paymentReceived`
@@ -97,6 +105,7 @@ This is an enterprise-grade field service management application built with the 
 - 🌐 Customer-facing approval route available at `/invoice-approval/:token`
 
 ### Role-Aware Visual System
+
 - 🎯 Unified color legend in sidebar footer for instant entity recognition across all pages
 - 🎨 **Color Language:** Cyan (Field Agents), Indigo (Customers), Amber (Service Calls), Orange (Quotations), Emerald (Invoices/Pro-Forma)
 - 👤 **Role Context Chips:** Every operational page displays current user role (Super Admin in fuchsia, operational roles in cyan)
@@ -105,6 +114,7 @@ This is an enterprise-grade field service management application built with the 
 - 🌐 **Consistent Propagation:** Role and entity context visible on all operational pages (Customers, Service Calls, Quotations, Agent Profile) and invoice workflows (SiteInstructionModal, InvoiceApprovalPage)
 
 ### System Features
+
 - 📋 Enterprise-level logging middleware
 - 🔍 Request/response tracking
 - 🚦 Health check endpoints
@@ -113,38 +123,42 @@ This is an enterprise-grade field service management application built with the 
 - 🎨 Modern UI with role-aware sidebar navigation and entity legend
 - 🧪 Customer registration QA infrastructure with Postman E2E collection, interactive test runner, and mandatory structured failure logging
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **React** | ^18.2.0 | UI library for building component-based interfaces |
-| **React Router** | ^6.30.3 | Client-side routing and navigation |
-| **Vite** | ^5.0.8 | Next-generation build tool and dev server |
-| **Tailwind CSS** | ^3.4.0 | Utility-first CSS framework |
-| **Axios** | ^1.6.2 | HTTP client for API requests |
-| **@react-google-maps/api** | ^2.20.6 | Google Maps React components |
+
+| Technology                 | Version | Purpose                                            |
+| -------------------------- | ------- | -------------------------------------------------- |
+| **React**                  | ^18.2.0 | UI library for building component-based interfaces |
+| **React Router**           | ^6.30.3 | Client-side routing and navigation                 |
+| **Vite**                   | ^5.0.8  | Next-generation build tool and dev server          |
+| **Tailwind CSS**           | ^3.4.0  | Utility-first CSS framework                        |
+| **Axios**                  | ^1.6.2  | HTTP client for API requests                       |
+| **@react-google-maps/api** | ^2.20.6 | Google Maps React components                       |
 
 ### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Node.js** | v16+ | JavaScript runtime environment |
-| **Express.js** | ^4.18.2 | Web application framework |
-| **MongoDB** | 8.0+ | NoSQL database |
-| **Mongoose** | ^8.0.3 | MongoDB object modeling and validation |
-| **JWT** | ^9.0.3 | JSON Web Token authentication |
-| **bcryptjs** | ^2.4.3 | Password hashing |
-| **dotenv** | ^16.3.1 | Environment variable management |
+
+| Technology     | Version | Purpose                                |
+| -------------- | ------- | -------------------------------------- |
+| **Node.js**    | v16+    | JavaScript runtime environment         |
+| **Express.js** | ^4.18.2 | Web application framework              |
+| **MongoDB**    | 8.0+    | NoSQL database                         |
+| **Mongoose**   | ^8.0.3  | MongoDB object modeling and validation |
+| **JWT**        | ^9.0.3  | JSON Web Token authentication          |
+| **bcryptjs**   | ^2.4.3  | Password hashing                       |
+| **dotenv**     | ^16.3.1 | Environment variable management        |
 
 ### Development Tools
+
 - **Nodemon** - Auto-reload server on changes
 - **ESLint** - Code linting and style enforcement
+- **Postman** - API testing and execution of the customer registration E2E collection
 - **PostCSS** - CSS processing
 - **Autoprefixer** - CSS vendor prefixing
 
-## 📁 Project Structure
+## Project Structure
 
-```
+```text
 test-app/
 ├── client/                          # React frontend application
 │   ├── src/
@@ -202,10 +216,15 @@ test-app/
 │   ├── package.json                # Backend dependencies
 │   └── .env                        # Backend environment variables
 │
+├── certs/                         # Local HTTPS certificate workspace (gitignored cert/key files)
+│   ├── README.md                  # Certificate placement and generation guide
+│   └── CERTIFICATE_INVENTORY.md   # Certificate metadata, expiry, and fingerprint log
+│
 ├── setup-and-run.sh                # Automated setup script
 ├── install-mongodb.sh              # MongoDB installation helper
 ├── register_customers_testcases.md # Customer registration E2E test specification
 ├── scripts/
+│   ├── check-cert-expiry.sh        # Local certificate expiry and fingerprint verification
 │   ├── log-register-customers-test-result.sh # Structured test result logger
 │   └── run-register-customers-tests.sh       # Interactive registration test runner
 ├── package.json                    # Root scripts
@@ -217,7 +236,7 @@ test-app/
 
 For a detailed breakdown of each component's responsibilities, see [PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md).
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Automated Setup (Recommended)
 
@@ -233,6 +252,7 @@ cd test-app
 ```
 
 This script will:
+
 - ✅ Check all prerequisites (Node.js, npm, MongoDB)
 - ✅ Offer to install MongoDB if not present
 - ✅ Create environment file templates
@@ -241,17 +261,18 @@ This script will:
 - ✅ Start the backend server (port 5000)
 - ✅ Start the frontend client (port 3000)
 
-Once running, open **http://localhost:3000** in your browser.
+Once running, open `https://localhost:3000` in your browser.
 
 ### Option 2: Manual Setup
 
 See [Manual Setup](#manual-setup) section below for step-by-step instructions.
 
-## 🔧 Manual Setup
+## Manual Setup
 
 ### Prerequisites
 
 Ensure you have the following installed:
+
 - **Node.js** (v16 or higher) - [Download](https://nodejs.org/)
 - **npm** (comes with Node.js)
 - **MongoDB** (v8.0 or higher) - [Installation Guide](https://www.mongodb.com/docs/manual/installation/)
@@ -260,27 +281,30 @@ Ensure you have the following installed:
 ### Installation Steps
 
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/Derikcoder/test-app.git
    cd test-app
    ```
 
 2. **Install Dependencies**
-   
+
    Install all dependencies at once:
+
    ```bash
    npm run install:all
    ```
-   
+
    Or install individually:
+
    ```bash
    # Root dependencies
    npm install
-   
+
    # Server dependencies
    cd server
    npm install
-   
+
    # Client dependencies
    cd ../client
    npm install
@@ -288,43 +312,46 @@ Ensure you have the following installed:
    ```
 
 3. **Configure Environment Variables**
-   
+
    Create `.env` files for both server and client (see [Environment Configuration](#environment-configuration) below).
 
 4. **Start MongoDB**
+
    ```bash
    # Using systemctl (Linux)
    sudo systemctl start mongod
-   
+
    # Using brew (macOS)
    brew services start mongodb-community
-   
+
    # Manual start
    mongod --dbpath /path/to/data/directory
    ```
 
 5. **Start the Application**
-   
+
    Open two terminal windows:
-   
+
    **Terminal 1 - Backend Server:**
+
    ```bash
    cd server
    npm run dev
    ```
-   
+
    **Terminal 2 - Frontend Client:**
+
    ```bash
    cd client
    npm run dev
    ```
 
 6. **Access the Application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
-   - MongoDB: mongodb://localhost:27017
+   - Frontend: `https://localhost:3000`
+   - Backend API: `https://localhost:5000`
+   - MongoDB: `mongodb://localhost:27017`
 
-## ⚙️ Environment Configuration
+## Environment Configuration
 
 ### Server Environment Variables
 
@@ -341,14 +368,21 @@ MONGODB_URI=mongodb://localhost:27017/field-service-db
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 
+# Local HTTPS (self-signed certs)
+SSL_ENABLED=true
+SSL_CERT_FILE=../certs/localhost+1.pem
+SSL_KEY_FILE=../certs/localhost+1-key.pem
+
 # Optional: MongoDB Atlas (cloud database)
 # MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/field-service-db
 ```
 
 **⚠️ Important Security Notes:**
+
 - Never commit `.env` files to version control
 - Change `JWT_SECRET` to a strong, random string in production
 - Use MongoDB Atlas or a secure database connection in production
+- Follow the Development Rule in the Development Workflow section for all secret and local TLS handling
 
 ### Client Environment Variables
 
@@ -356,7 +390,13 @@ Create `client/.env`:
 
 ```env
 # API Configuration
-VITE_API_URL=http://localhost:5000
+VITE_API_URL=https://localhost:5000
+VITE_API_PROXY_TARGET=https://localhost:5000
+
+# Local HTTPS (Vite dev server certs)
+VITE_SSL_ENABLED=true
+VITE_SSL_CERT_FILE=../certs/localhost+1.pem
+VITE_SSL_KEY_FILE=../certs/localhost+1-key.pem
 
 # Google Maps API Key
 VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
@@ -365,72 +405,142 @@ VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 You can copy the template from [client/.env.example](client/.env.example) and fill in your values.
 
 **Important Notes:**
+
 - `VITE_` variables are bundled into the frontend and are visible to users
 - Treat client-side API keys as public and restrict them in Google Cloud (HTTP referrers, API restrictions)
 - Never commit `client/.env` to git; keep keys local or injected via CI/CD
+- For local HTTPS, commit only the env variable names and example paths; never commit the raw `.pem`, `.key`, `.p12`, or `.pfx` files
 
 **🗺️ Getting a Google Maps API Key:**
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
 3. Enable "Maps JavaScript API" and "Places API"
 4. Create credentials (API Key)
 5. Add the key to `client/.env`
 
-## 📡 API Documentation
+## Local HTTPS Setup
+
+Use this when developing with local SSL certificates (for browser APIs that require secure context and parity with production HTTPS behavior).
+
+Development rule:
+
+- Raw certificate and key files are treated as local secret material and must not be committed
+- The repository only tracks documentation, inventory metadata, `.env.example` templates, and environment-variable file paths
+- Actual certificate locations are configured through `SSL_CERT_FILE`, `SSL_KEY_FILE`, `VITE_SSL_CERT_FILE`, and `VITE_SSL_KEY_FILE`
+
+### 1) Place certificates in shared root path
+
+- Shared certs:
+  - `certs/localhost+1.pem`
+  - `certs/localhost+1-key.pem`
+
+These files stay local on your machine. The env vars point to them; git must not contain their contents.
+
+If your cert files are stored elsewhere, set explicit file paths in env vars:
+
+- Server: `SSL_CERT_FILE`, `SSL_KEY_FILE`
+- Client: `VITE_SSL_CERT_FILE`, `VITE_SSL_KEY_FILE`
+
+### 2) Verify environment variables
+
+Server (`server/.env`):
+
+```env
+SSL_ENABLED=true
+SSL_CERT_FILE=../certs/localhost+1.pem
+SSL_KEY_FILE=../certs/localhost+1-key.pem
+```
+
+Client (`client/.env`):
+
+```env
+VITE_API_URL=https://localhost:5000
+VITE_API_PROXY_TARGET=https://localhost:5000
+VITE_SSL_ENABLED=true
+VITE_SSL_CERT_FILE=../certs/localhost+1.pem
+VITE_SSL_KEY_FILE=../certs/localhost+1-key.pem
+```
+
+### 3) Start services
+
+```bash
+./start-dev.sh
+```
+
+Then access:
+
+- Frontend: `https://localhost:3000`
+- Backend API: `https://localhost:5000/api`
+
+### 4) Self-signed cert notes
+
+- Your browser may show a warning on first visit; trust the local certificate to continue.
+- For CLI testing with curl against self-signed certs, use `-k`:
+
+```bash
+curl -k https://localhost:5000/api/health
+```
+
+- If certificate filenames change, update the env vars instead of renaming tracked documentation to match local secrets.
+
+## API Documentation
 
 ### Base URL
-```
-http://localhost:5000/api
+
+```text
+https://localhost:5000/api
 ```
 
 ### Authentication Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `POST` | `/auth/register` | Register new user | No |
-| `POST` | `/auth/login` | Login user | No |
-| `POST` | `/auth/passkeys/generate` | Generate delegated-role onboarding passkey | Yes |
-| `POST` | `/auth/passkeys/request-renewal` | Request passkey renewal token | No |
-| `POST` | `/auth/passkeys/fulfill-renewal/:requestToken` | Approve renewal and issue new passkey | Yes |
-| `POST` | `/auth/admin/profile-links/attach` | Attach user to operational profile | Yes |
-| `POST` | `/auth/admin/profile-links/detach` | Detach user from operational profile | Yes |
-| `POST` | `/auth/admin/profile-links/reassign` | Reassign user to another profile | Yes |
-| `GET` | `/auth/admin/registration-overrides/audits` | Query legal override audits (date/user/reference filters) | Yes |
-| `GET` | `/auth/profile` | Get user profile | Yes |
-| `PUT` | `/auth/profile` | Update user profile | Yes |
-| `GET` | `/auth/field-permissions` | Get field permissions | Yes |
+| Method | Endpoint                                       | Description                                               | Auth Required |
+| ------ | ---------------------------------------------- | --------------------------------------------------------- | ------------- |
+| `POST` | `/auth/register`                               | Register new user                                         | No            |
+| `POST` | `/auth/login`                                  | Login user                                                | No            |
+| `POST` | `/auth/passkeys/generate`                      | Generate delegated-role onboarding passkey                | Yes           |
+| `POST` | `/auth/passkeys/request-renewal`               | Request passkey renewal token                             | No            |
+| `POST` | `/auth/passkeys/fulfill-renewal/:requestToken` | Approve renewal and issue new passkey                     | Yes           |
+| `POST` | `/auth/admin/profile-links/attach`             | Attach user to operational profile                        | Yes           |
+| `POST` | `/auth/admin/profile-links/detach`             | Detach user from operational profile                      | Yes           |
+| `POST` | `/auth/admin/profile-links/reassign`           | Reassign user to another profile                          | Yes           |
+| `GET`  | `/auth/admin/registration-overrides/audits`    | Query legal override audits (date/user/reference filters) | Yes           |
+| `GET`  | `/auth/profile`                                | Get user profile                                          | Yes           |
+| `PUT`  | `/auth/profile`                                | Update user profile                                       | Yes           |
+| `GET`  | `/auth/field-permissions`                      | Get field permissions                                     | Yes           |
 
 ### Agent Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `GET` | `/agents` | Get all agents | Yes |
-| `POST` | `/agents` | Create new agent | Yes |
-| `GET` | `/agents/:id` | Get agent by ID | Yes |
-| `PUT` | `/agents/:id` | Update agent | Yes |
-| `DELETE` | `/agents/:id` | Delete agent | Yes |
+| Method   | Endpoint      | Description      | Auth Required |
+| -------- | ------------- | ---------------- | ------------- |
+| `GET`    | `/agents`     | Get all agents   | Yes           |
+| `POST`   | `/agents`     | Create new agent | Yes           |
+| `GET`    | `/agents/:id` | Get agent by ID  | Yes           |
+| `PUT`    | `/agents/:id` | Update agent     | Yes           |
+| `DELETE` | `/agents/:id` | Delete agent     | Yes           |
 
 ### Customer Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `GET` | `/customers` | Get all customers | Yes |
-| `POST` | `/customers` | Create new customer | Yes |
-| `GET` | `/customers/:id` | Get customer by ID | Yes |
-| `PUT` | `/customers/:id` | Update customer | Yes |
-| `DELETE` | `/customers/:id` | Delete customer | Yes |
+| Method   | Endpoint         | Description         | Auth Required |
+| -------- | ---------------- | ------------------- | ------------- |
+| `GET`    | `/customers`     | Get all customers   | Yes           |
+| `POST`   | `/customers`     | Create new customer | Yes           |
+| `GET`    | `/customers/:id` | Get customer by ID  | Yes           |
+| `PUT`    | `/customers/:id` | Update customer     | Yes           |
+| `DELETE` | `/customers/:id` | Delete customer     | Yes           |
 
 ### Service Call Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `GET` | `/service-calls` | Get all service calls | Yes |
-| `POST` | `/service-calls` | Create new service call | Yes |
-| `GET` | `/service-calls/:id` | Get service call by ID | Yes |
-| `PUT` | `/service-calls/:id` | Update service call | Yes |
-| `DELETE` | `/service-calls/:id` | Delete service call | Yes |
+| Method   | Endpoint             | Description             | Auth Required |
+| -------- | -------------------- | ----------------------- | ------------- |
+| `GET`    | `/service-calls`     | Get all service calls   | Yes           |
+| `POST`   | `/service-calls`     | Create new service call | Yes           |
+| `GET`    | `/service-calls/:id` | Get service call by ID  | Yes           |
+| `PUT`    | `/service-calls/:id` | Update service call     | Yes           |
+| `DELETE` | `/service-calls/:id` | Delete service call     | Yes           |
 
 Service call creation supports structured booking history fields in `bookingRequest`:
+
 - `serviceHistoryType`: `first-service-call` or `existing-customer`
 - `dateOfLastService`: required for existing-customer flow
 - `servicesInProgress`: active service work context for existing-customer flow
@@ -440,6 +550,7 @@ Service call creation supports structured booking history fields in `bookingRequ
 - `preferredDate`: preferred service call date
 
 Service call assignment workflow supports these fields:
+
 - `assignedAgent`: selected field service agent
 - `assignedDate`: timestamp when assignment occurred
 - `agentAccepted`: whether the assigned agent has accepted the job
@@ -447,16 +558,17 @@ Service call assignment workflow supports these fields:
 
 ### System Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| `GET` | `/` | Welcome message | No |
-| `GET` | `/health` | Health check | No |
+| Method | Endpoint  | Description     | Auth Required |
+| ------ | --------- | --------------- | ------------- |
+| `GET`  | `/`       | Welcome message | No            |
+| `GET`  | `/health` | Health check    | No            |
 
 ### Example API Requests
 
 **Register User:**
+
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -k -X POST https://localhost:5000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "userName": "johndoe",
@@ -472,8 +584,9 @@ curl -X POST http://localhost:5000/api/auth/register \
 ```
 
 **Login:**
+
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -k -X POST https://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john@example.com",
@@ -482,12 +595,54 @@ curl -X POST http://localhost:5000/api/auth/login \
 ```
 
 **Get Profile (with token):**
+
 ```bash
-curl -X GET http://localhost:5000/api/auth/profile \
+curl -k -X GET https://localhost:5000/api/auth/profile \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-## 🔐 Authentication & Authorization
+## API Schema Registry & Flow Maps
+
+The project now uses a formal JSON Schema registry plus flow diagrams as the default API plumbing model.
+
+This is the standard pattern to onboard every new API in this environment:
+
+1. Define/update the endpoint contract in domain schema files.
+2. Reference shared types/responses/auth policy from shared schemas.
+3. Register the domain in the root project schema.
+4. Document the data flow with Mermaid diagrams (technical + executive where needed).
+5. Keep API collection and implementation aligned.
+
+### Schema Registry Layout
+
+- `schemas/project.schema.json` — root registry and domain wiring
+- `schemas/shared/common.types.json` — shared primitives, enums, endpoint descriptor
+- `schemas/shared/responses.json` — standardized success/error envelopes
+- `schemas/shared/auth.policy.json` — access policies (`public`, `private`, `role-restricted`, `public-tokenized`)
+- `schemas/domains/auth.domain.json`
+- `schemas/domains/customers.domain.json`
+- `schemas/domains/agents.domain.json`
+- `schemas/domains/service-calls.domain.json`
+- `schemas/domains/equipment.domain.json`
+- `schemas/domains/quotations.domain.json`
+- `schemas/domains/invoices.domain.json`
+
+### Registration Flow Diagrams
+
+- `docs/flowchart%20TD` — detailed technical registration process flow
+- `docs/flowchart%20LR` — registration swimlane flow
+- `docs/flowchart%20LR%20non%20technical` — executive/non-technical registration flow
+- `docs/sequenceDiagram` — API sequence diagram for registration
+- `docs/user-registration-swimlane-pannable.html` — interactive pannable + zoomable swimlane viewer
+
+### Why This Matters
+
+- Maintains one consistent contract model from route to controller to model.
+- Makes endpoint exposing and binding predictable as the system scales.
+- Improves change safety by forcing contract + flow updates with implementation.
+- Gives technical and non-technical stakeholders a shared view of logic and data movement.
+
+## Authentication & Authorization
 
 ### How Authentication Works
 
@@ -498,6 +653,7 @@ curl -X GET http://localhost:5000/api/auth/profile \
 ### JWT Token Structure
 
 The JWT token contains:
+
 ```json
 {
   "userId": "user_id_here",
@@ -509,23 +665,25 @@ The JWT token contains:
 ### Using Authentication in Client
 
 The `AuthContext` provides:
+
 - `user` - Current user object
 - `login(email, password)` - Login function
 - `logout()` - Logout function
 - `updateProfile(data)` - Update user profile
 
 Example:
+
 ```javascript
-import { useAuth } from './context/AuthContext';
+import { useAuth } from "./context/AuthContext";
 
 function MyComponent() {
   const { user, login, logout } = useAuth();
-  
+
   // Check if user is logged in
   if (!user) {
     return <div>Please login</div>;
   }
-  
+
   return <div>Welcome, {user.userName}!</div>;
 }
 ```
@@ -533,15 +691,18 @@ function MyComponent() {
 ### Field-Level Permissions
 
 User profile updates now follow two policy layers:
+
 - **Immutable fields**: identity and system fields (for example `userName`, `_id`, `createdAt`, role/link control fields)
 - **Write-once registration identifiers**: `businessRegistrationNumber`, `taxNumber`, `vatNumber`
 
 Write-once behavior:
+
 - Non-superAdmin users can set registration identifiers when empty.
 - After first save, those identifiers are locked for non-superAdmin users.
 - SuperAdmin overrides of existing values require legal evidence payload (`registrationChangeEvidence`).
 
 Legal override evidence fields:
+
 - `legalDocumentType`
 - `legalDocumentReference`
 - `legalDocumentUri` (http/https)
@@ -549,30 +710,51 @@ Legal override evidence fields:
 
 See [AUTH_GUIDE.md](AUTH_GUIDE.md) for detailed authentication documentation.
 
-## 💻 Development Workflow
+## Development Workflow
+
+### Development Rule: Secret And Local TLS Handling
+
+This repository follows a strict development rule for secrets and local HTTPS assets:
+
+1. Secret values must live in local environment files or an external secret manager, never in tracked source files.
+2. Local TLS certificate and key files are treated as secret material and must remain on the developer machine.
+3. The repository may track only variable names, placeholder/example values, file-path references, documentation, and certificate inventory metadata.
+4. When local TLS is required, configure file locations through `SSL_CERT_FILE`, `SSL_KEY_FILE`, `VITE_SSL_CERT_FILE`, and `VITE_SSL_KEY_FILE` instead of committing certificate contents.
+5. If a secret or private key is ever staged by mistake, remove it from the commit immediately, rotate it if applicable, and document the incident in `SECURITY.md` when material exposure occurred.
+
+Why this rule exists:
+
+- It prevents accidental publication of reusable trust material such as private keys.
+- It keeps the repository portable across developer machines and environments.
+- It separates project documentation from machine-specific secrets.
 
 ### Recommended Development Process
 
 1. **Start MongoDB** (if not already running)
+
    ```bash
    sudo systemctl start mongod
    ```
 
 2. **Start Backend Server** (Terminal 1)
+
    ```bash
    cd server
    npm run dev
    ```
-   - Server runs on http://localhost:5000
+
+   - Server runs on `https://localhost:5000`
    - Auto-reloads on file changes (nodemon)
    - Watch console for API requests and errors
 
 3. **Start Frontend Client** (Terminal 2)
+
    ```bash
    cd client
    npm run dev
    ```
-   - Client runs on http://localhost:3000
+
+   - Client runs on `https://localhost:3000`
    - Hot module replacement (HMR) enabled
    - API requests proxied to backend
 
@@ -581,27 +763,31 @@ See [AUTH_GUIDE.md](AUTH_GUIDE.md) for detailed authentication documentation.
    - Check server terminal for API errors and logs
    - MongoDB logs to `server/logs/server.log`
    - Use ESLint for code quality: `npm run lint`
+   - Treat `.env` values and local TLS files as environment-specific secrets; commit docs and templates, not secret material
 
 ### Making Changes
 
 **Frontend Changes:**
+
 - Edit files in `client/src/`
 - Changes auto-reload in browser
 - Component structure follows React best practices
 - Use Tailwind classes for styling
 
 **Backend Changes:**
+
 - Edit files in `server/`
 - Server auto-restarts with nodemon
 - Follow MVC pattern: Routes → Controllers → Models
 - Add logging using logger middleware
 
 **Database Changes:**
+
 - Modify schemas in `server/models/`
 - Mongoose handles schema validation
 - Use MongoDB Compass for GUI database management
 
-## 📜 Available Scripts
+## Available Scripts
 
 ### Root Scripts
 
@@ -610,7 +796,10 @@ npm run install:all   # Install all dependencies (server + client)
 npm run dev:server    # Start backend development server
 npm run dev:client    # Start frontend development server
 npm run build:client  # Build client for production
+npm run test:postman:invoice-contract # Run tagged invoice contract validation via Newman
 ```
+
+For required env vars and staging examples for this command, see [NPM_SCRIPTS.md quick run](NPM_SCRIPTS.md#quick-run-tagged-invoice-contract-validation).
 
 ### Server Scripts
 
@@ -628,11 +817,11 @@ npm run preview      # Preview production build
 npm run lint         # Run ESLint
 ```
 
-## 🏗️ Project Architecture
+## Project Architecture
 
 ### Data Flow
 
-```
+```text
 User Browser (React)
       ↓
   API Request (Axios)
@@ -653,12 +842,14 @@ MongoDB Database
 ### Component Architecture
 
 **Frontend (React):**
+
 - **Context API** - Global state management (AuthContext)
 - **React Router** - Client-side routing
 - **Axios Instance** - Centralized API configuration
 - **Components** - Reusable UI components
 
 **Backend (Express):**
+
 - **Middleware Stack** - CORS, Body Parser, Logger, Auth
 - **Routes** - Endpoint definitions
 - **Controllers** - Business logic and validation
@@ -673,13 +864,14 @@ MongoDB Database
 5. **Environment Variables** - Sensitive data in .env files
 6. **Input Validation** - Mongoose schema validation
 
-## 🔑 Key Concepts
+## Key Concepts
 
-### Field-Level Permissions
+### Protected Field Rules
 
 The system implements field-level permissions to protect critical business data:
 
 **Protected Fields (Read-Only after creation):**
+
 - User registration number
 - Tax number
 - VAT number
@@ -691,11 +883,13 @@ These fields cannot be modified through the API after initial registration. This
 ### Logging System
 
 Comprehensive logging middleware tracks:
+
 - **Request Logging** - All incoming requests with timestamp, method, URL
 - **Error Logging** - Errors with stack traces
 - **Info Logging** - General application events
 
 Logs are written to:
+
 - Console (development)
 - `server/logs/server.log` (file system)
 
@@ -704,19 +898,21 @@ See [LOGGING_GUIDE.md](LOGGING_GUIDE.md) for detailed logging documentation.
 ### Google Maps Integration
 
 The customer intake form includes:
+
 - **Address Autocomplete** - Google Places API integration
 - **Geocoding** - Convert addresses to coordinates
 - **Map Display** - Visual location confirmation
 
 Requires `VITE_GOOGLE_MAPS_API_KEY` in `client/.env`.
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### MongoDB Connection Issues
 
 **Problem:** `MongoServerError: connect ECONNREFUSED`
 
 **Solutions:**
+
 ```bash
 # Check if MongoDB is running
 ps aux | grep mongod
@@ -736,6 +932,7 @@ sudo journalctl -u mongod
 **Problem:** `Error: listen EADDRINUSE: address already in use :::5000`
 
 **Solutions:**
+
 ```bash
 # Find process using port 5000
 lsof -i :5000
@@ -752,6 +949,7 @@ PORT=5001
 **Problem:** Network errors or CORS issues
 
 **Solutions:**
+
 1. Verify backend is running on port 5000
 2. Check `VITE_API_URL` in `client/.env`
 3. Verify proxy configuration in `vite.config.js`
@@ -762,6 +960,7 @@ PORT=5001
 **Problem:** "Invalid token" or "Token expired"
 
 **Solutions:**
+
 1. Clear localStorage in browser DevTools
 2. Re-login to get new token
 3. Verify `JWT_SECRET` matches in server/.env
@@ -772,6 +971,7 @@ PORT=5001
 **Problem:** Maps or autocomplete not working
 
 **Solutions:**
+
 1. Verify API key in `client/.env`
 2. Enable required APIs in Google Cloud Console:
    - Maps JavaScript API
@@ -785,6 +985,7 @@ PORT=5001
 **Problem:** Build fails or dependencies missing
 
 **Solutions:**
+
 ```bash
 # Clear node_modules and reinstall
 rm -rf node_modules package-lock.json
@@ -797,7 +998,7 @@ npm cache clean --force
 npm update
 ```
 
-## 🤝 Contributing
+## Contributing
 
 ### Development Guidelines
 
@@ -811,7 +1012,7 @@ npm update
    This project follows a **parent → child → consolidation → production** branching model.
    Each branch represents a standalone, portable module that can be carried into other projects.
 
-   ```
+   ```text
    main                 ← Production (stable, never touched directly)
      └── consolidation  ← QA/merge point (all branches merged here before main)
            └── foundation    ← Base framework (parent of all features)
@@ -821,14 +1022,15 @@ npm update
                  └── feature/<module-name>
    ```
 
-   | Branch | Purpose |
-   |--------|---------|
-   | `main` | Stable production code only. Never commit here directly. |
+   | Branch          | Purpose                                                                        |
+   | --------------- | ------------------------------------------------------------------------------ |
+   | `main`          | Stable production code only. Never commit here directly.                       |
    | `consolidation` | Integration branch. All features merge here for QA before promoting to `main`. |
-   | `foundation` | Living base framework. All feature branches are created from here. |
-   | `feature/*` | Standalone module branches. Named after the functionality they deliver. |
+   | `foundation`    | Living base framework. All feature branches are created from here.             |
+   | `feature/*`     | Standalone module branches. Named after the functionality they deliver.        |
 
    **Workflow:**
+
    ```bash
    # Start a new module from foundation
    git checkout foundation
@@ -872,7 +1074,7 @@ npm update
 3. Update version numbers following semver
 4. Submit PR with clear description of changes
 
-## 📚 Additional Documentation
+## Additional Documentation
 
 - **[AUTH_GUIDE.md](AUTH_GUIDE.md)** - Complete authentication system documentation
 - **[LOGGING_GUIDE.md](LOGGING_GUIDE.md)** - Logging system and best practices
@@ -880,19 +1082,60 @@ npm update
 - **[FIELD_PERMISSIONS.md](FIELD_PERMISSIONS.md)** - Field-level permission rules
 - **[PROFILE_EDITING_GUIDE.md](PROFILE_EDITING_GUIDE.md)** - User profile editing guide
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
+- **[API_COLLECTION.md](API_COLLECTION.md)** - API inventory, integration structure, and API management plan
+- **[schemas/project.schema.json](schemas/project.schema.json)** - Root JSON Schema registry that wires all shared and domain API contracts
+- **[schemas/shared/common.types.json](schemas/shared/common.types.json)** - Shared reusable primitives, enums, and endpoint descriptor schema
+- **[docs/flowchart%20LR](docs/flowchart%20LR)** - Technical registration swimlane flow
+- **[docs/flowchart%20LR%20non%20technical](docs/flowchart%20LR%20non%20technical)** - Executive registration flow
+- **[docs/sequenceDiagram](docs/sequenceDiagram)** - Registration sequence diagram for API docs
+- **[docs/user-registration-swimlane-pannable.html](docs/user-registration-swimlane-pannable.html)** - Interactive pannable registration flow diagram
 - **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
+- **[DEV_CHEATSHEET.md](DEV_CHEATSHEET.md)** - Practical developer command cheatsheet with descriptions
+- **[certs/README.md](certs/README.md)** - Local HTTPS certificate placement and generation guidance
+- **[certs/CERTIFICATE_INVENTORY.md](certs/CERTIFICATE_INVENTORY.md)** - Tracked local certificate metadata and verification history
+- **[server/tests/postman/POSTMAN_INSTRUCTIONS.md](server/tests/postman/POSTMAN_INSTRUCTIONS.md)** - HTTPS-aware Postman execution guide for the registration suite
+- **[server/tests/postman/test-scripts/README.txt](server/tests/postman/test-scripts/README.txt)** - Reusable Postman snippet library, environment imports, and tagged Newman runner usage
 
-## 📋 Recent Updates
+## Recent Updates
+
+### March 26, 2026 — Postman Reusable Script Library + Tagged Invoice Contract Runner
+
+- ✅ Added reusable Postman script library at `server/tests/postman/test-scripts/` with copy/paste-ready request snippets and templates
+- ✅ Added import-ready Postman environments:
+   - `server/tests/postman/test-scripts/templates/postman-environment.local-https.json`
+   - `server/tests/postman/test-scripts/templates/postman-environment.local-http.json`
+   - `server/tests/postman/test-scripts/templates/postman-environment.staging.json`
+- ✅ Added tagged invoice contract-validation runner:
+   - `npm run test:postman:invoice-contract`
+   - Uses `server/tests/postman/test-scripts/snippets/tags.invoice-contract-validation.json` to decide which snippets execute
+   - Requires `AUTH_TOKEN` and `SERVICE_CALL_ID` (optional `BASE_URL` override)
+
+### March 26, 2026 — API Contract Plumbing via JSON Schemas + Registration Flow Models
+
+- ✅ Added a full JSON Schema registry under `schemas/` for shared and per-domain API contracts
+- ✅ Added root schema wiring in `schemas/project.schema.json` for cross-domain visibility
+- ✅ Added registration process flow diagrams in `docs/` (technical, executive, swimlane, and sequence)
+- ✅ Added interactive pannable registration swimlane viewer: `docs/user-registration-swimlane-pannable.html`
+- ✅ Standardized API plumbing policy: every new API must be represented in schema registry + flow documentation
+
+### March 25, 2026 — Local HTTPS and QA Documentation Alignment
+
+- ✅ Standardized local development on shared root HTTPS certificates in `certs/`
+- ✅ Added certificate inventory and expiry verification workflow (`npm run certs:check`)
+- ✅ Updated setup docs, env examples, startup scripts, and Postman instructions for `https://localhost:3000` and `https://localhost:5000`
+- ✅ Updated Postman collection defaults so imports now point at the HTTPS backend immediately
 
 ### March 23, 2026 — Role-Aware UI System & Pro-forma Workflow Hardening
 
 **Backend Enhancements:**
+
 - ✅ **Strict Invoice Workflow Validation:** Implemented state machine for invoice lifecycle with required email validation before customer approval
 - ✅ **Extended Invoice Schema:** Added lifecycle timestamps (`sentAt`, `approvedAt`, `rejectedAt`, `finalizedAt`) and payment tracking fields
 - ✅ **Improved Customer Resolution:** Enhanced service call auto-linking with fallback chain (booking email → cached customer → manual selection)
 - ✅ **Expanded Test Coverage:** Added comprehensive unit tests for workflow transitions and customer resolution logic
 
 **Frontend UX Enhancements:**
+
 - ✅ **Global Entity Legend:** Added persistent color-coded entity legend to sidebar for consistent visual language across all pages
 - ✅ **Role Context Chips:** Every operational page now displays user role (Super Admin ↔ Field Agent/Operational) and access mode
 - ✅ **Color-Coded Entity Headers:** Applied colored entity chips to all operational pages matching sidebar legend:
@@ -906,16 +1149,17 @@ npm update
 
 **Impact:** Users can now instantly distinguish operational context through consistent visual design, and invoice workflows are hardened with strict validation rules preventing incomplete customer approvals.
 
-## 📞 Support
+## Support
 
 For issues, questions, or contributions:
-- **GitHub Issues:** [https://github.com/Derikcoder/test-app/issues](https://github.com/Derikcoder/test-app/issues)
-- **Email:** drckvanzyl@gmail.com
 
-## 📄 License
+- **GitHub Issues:** [https://github.com/Derikcoder/test-app/issues](https://github.com/Derikcoder/test-app/issues)
+- **Email:** [drckvanzyl@gmail.com](mailto:drckvanzyl@gmail.com)
+
+## License
 
 ISC
 
 ---
 
-**Built with ❤️ using the MERN Stack**
+Built with the MERN Stack.

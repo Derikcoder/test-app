@@ -1,0 +1,81 @@
+{
+  "id": "c4f8d4b0-7f3a-4b6c-b9f6-3a72d548ce11",
+  "name": "test-app local https",
+  "values": [
+    {
+      "key": "BASE_URL",
+      "value": "https://localhost:5000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "AUTH_TOKEN",
+      "value": "",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "AUTH_EMAIL",
+      "value": "john@example.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "AUTH_PASSWORD",
+      "value": "password123",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "TS",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "RUN_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "CUSTOMER_ID_QA",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "CUSTOMER_OBJECT_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "SERVICE_CALL_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "INVOICE_NUMBER_QA",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "INVOICE_SCHEMA_V1",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "INVOICE_SCHEMA_V1_1",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2026-03-26T16:30:00.000Z",
+  "_postman_exported_using": "GitHub Copilot GPT-5.3-Codex"
+}

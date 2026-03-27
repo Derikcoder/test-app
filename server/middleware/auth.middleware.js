@@ -48,23 +48,37 @@ export const protect = async (req, res, next) => {
       // Extract token from "Bearer <token>" format
       token = req.headers.authorization.split(' ')[1];
 
+      if (!token) {
+        return res.status(401).json({ message: 'Not authorized, token failed' });
+      }
+
       // Verify token signature and decode payload
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', {
+        algorithms: ['HS256'],
+      });
+
+      if (!decoded?.id) {
+        return res.status(401).json({ message: 'Not authorized, token failed' });
+      }
 
       // Fetch user from database using decoded ID, exclude password field
       req.user = await User.findById(decoded.id).select('-password');
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized, token failed' });
+      }
+
       // Continue to next middleware or route handler
-      next();
+      return next();
     } catch (error) {
       // Token verification failed (invalid, expired, or malformed)
-      res.status(401).json({ message: 'Not authorized, token failed' });
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
 
   // No token provided in request
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
+    return res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
 

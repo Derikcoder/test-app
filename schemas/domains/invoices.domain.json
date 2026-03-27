@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/domains/invoices.domain.json",
+  "title": "Invoices Domain",
+  "description": "API contracts for /api/invoices — the most complex domain. Invoices are the financial documents produced after a ServiceCall is completed. They carry a full workflow lifecycle (draft → awaitingApproval → approved → rejected → finalized), support both proForma and final document types, track payment records, embed a customer approval flow with a public share token, and maintain an immutable workflowTransition audit trail.",
+
+  "type": "object",
+  "properties": {
+    "domain":   { "const": "invoices" },
+    "basePath": { "const": "/api/invoices" },
+    "version":  { "const": "1.0.0" },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "../shared/common.types.json#/$defs/EndpointDescriptor" },
+      "default": [
+        {
+          "operationId":    "getInvoices",
+          "method":         "GET",
+          "path":           "/api/invoices",
+          "access":         "private",
+          "summary":        "List all invoices — supports workflowStatus, documentType, customer, and date filters",
+          "queryParamsRef": "InvoiceListQuery",
+          "responses":      { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "createInvoice",
+          "method":         "POST",
+          "path":           "/api/invoices",
+          "access":         "private",
+          "summary":        "Create a new invoice (starts as draft)",
+          "requestBodyRef": "CreateInvoiceRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError" },
+          "notes":          "invoiceNumber is auto-generated and immutable. Totals are computed server-side. Can be created directly or via Quotation conversion."
+        },
+        {
+          "operationId":  "getInvoiceById",
+          "method":       "GET",
+          "path":         "/api/invoices/:id",
+          "access":       "private",
+          "summary":      "Get a single invoice by ObjectId",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateInvoice",
+          "method":         "PUT",
+          "path":           "/api/invoices/:id",
+          "access":         "private",
+          "summary":        "Update a draft invoice — rejected once status advances beyond draft",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateInvoiceRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ImmutableFieldError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "invoiceNumber is immutable. Only draft invoices can be fully edited."
+        },
+        {
+          "operationId":  "deleteInvoice",
+          "method":       "DELETE",
+          "path":         "/api/invoices/:id",
+          "access":       "private",
+          "summary":      "Delete an invoice — only allowed while in draft status",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "NoContentResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "submitInvoiceForApproval",
+          "method":         "POST",
+          "path":           "/api/invoices/:id/submit",
+          "access":         "private",
+          "summary":        "Transition invoice from draft → awaitingApproval. Generates share token for customer.",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "SubmitInvoiceRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "approveInvoice",
+          "method":         "POST",
+          "path":           "/api/invoices/:id/approve",
+          "access":         "private",
+          "summary":        "Internal approval: transition awaitingApproval → approved",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "WorkflowTransitionRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "rejectInvoice",
+          "method":         "POST",
+          "path":           "/api/invoices/:id/reject",
+          "access":         "private",
+          "summary":        "Internal rejection: transition awaitingApproval → rejected. reason required.",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "WorkflowTransitionRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "finalizeInvoice",
+          "method":         "POST",
+          "path":           "/api/invoices/:id/finalize",
+          "access":         "private",
+          "summary":        "Finalize an approved invoice — transitions approved → finalized. No further edits.",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "WorkflowTransitionRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "getInvoiceByShareToken",
+          "method":       "GET",
+          "path":         "/api/invoices/shared/:token",
+          "access":       "public-tokenized",
+          "summary":      "Public endpoint — customer views invoice via share token (no JWT required)",
+          "pathParams":   [{ "name": "token", "description": "Invoice share token from email/SMS link" }],
+          "responses":    { "200": "SuccessResponse", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "customerApproveInvoice",
+          "method":         "POST",
+          "path":           "/api/invoices/shared/:token/approve",
+          "access":         "public-tokenized",
+          "summary":        "Customer approves invoice via share token link — records customerDecision",
+          "pathParams":     [{ "name": "token", "description": "Invoice share token" }],
+          "requestBodyRef": "CustomerDecisionRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "customerRejectInvoice",
+          "method":         "POST",
+          "path":           "/api/invoices/shared/:token/reject",
+          "access":         "public-tokenized",
+          "summary":        "Customer rejects invoice via share token link — records customerDecision with reason",
+          "pathParams":     [{ "name": "token", "description": "Invoice share token" }],
+          "requestBodyRef": "CustomerDecisionRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "addPaymentRecord",
+          "method":         "POST",
+          "path":           "/api/invoices/:id/payments",
+          "access":         "private",
+          "summary":        "Record a payment against an invoice — partial or full payments supported",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "PaymentRecordRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "Server tracks outstandingBalance = total - sumOf(payments). Invoice status may auto-transition when fully paid."
+        },
+        {
+          "operationId":  "getInvoicePayments",
+          "method":       "GET",
+          "path":         "/api/invoices/:id/payments",
+          "access":       "private",
+          "summary":      "List all payment records for an invoice",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "getInvoiceWorkflowHistory",
+          "method":       "GET",
+          "path":         "/api/invoices/:id/history",
+          "access":       "private",
+          "summary":      "Retrieve the full immutable workflowTransition audit trail for an invoice",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        }
+      ]
+    }
+  },
+
+  "$defs": {
+
+    "InvoiceListQuery": {
+      "type": "object",
+      "description": "Query parameters for GET /api/invoices",
+      "properties": {
+        "workflowStatus": { "$ref": "../shared/common.types.json#/$defs/InvoiceWorkflowStatus" },
+        "documentType":   { "$ref": "../shared/common.types.json#/$defs/InvoiceDocumentType" },
+        "customerId":     { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceCallId":  { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "quotationId":    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "from":           { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "to":             { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "page":           { "type": "integer", "minimum": 1, "default": 1 },
+        "limit":          { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "sort":           { "type": "string", "default": "-createdAt" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateInvoiceRequest": {
+      "type": "object",
+      "description": "Body for POST /api/invoices",
+      "required": ["customer", "lineItems"],
+      "properties": {
+        "customer":          { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceCall":       { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "quotation":         { "$ref": "../shared/common.types.json#/$defs/ObjectId", "description": "Source quotation if converted" },
+        "documentType":      { "$ref": "../shared/common.types.json#/$defs/InvoiceDocumentType", "default": "final" },
+        "lineItems":         {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" }
+        },
+        "labourHours":       { "type": "number", "minimum": 0, "default": 0 },
+        "labourRate":        { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "travelCost":        { "$ref": "../shared/common.types.json#/$defs/Money", "default": 0 },
+        "consumables":       { "$ref": "../shared/common.types.json#/$defs/Money", "default": 0 },
+        "vatRate":           { "$ref": "../shared/common.types.json#/$defs/VatRate" },
+        "partsFulfilmentMode": { "$ref": "../shared/common.types.json#/$defs/PartsFulfilmentMode" },
+        "dueDate":           { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "notes":             { "type": "string" },
+        "termsConditions":   { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateInvoiceRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/invoices/:id — draft invoices only. invoiceNumber is immutable.",
+      "properties": {
+        "documentType":      { "$ref": "../shared/common.types.json#/$defs/InvoiceDocumentType" },
+        "lineItems":         {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" }
+        },
+        "labourHours":       { "type": "number", "minimum": 0 },
+        "labourRate":        { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "travelCost":        { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "consumables":       { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "vatRate":           { "$ref": "../shared/common.types.json#/$defs/VatRate" },
+        "partsFulfilmentMode": { "$ref": "../shared/common.types.json#/$defs/PartsFulfilmentMode" },
+        "dueDate":           { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "notes":             { "type": "string" },
+        "termsConditions":   { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "SubmitInvoiceRequest": {
+      "type": "object",
+      "description": "Body for POST /api/invoices/:id/submit",
+      "properties": {
+        "recipientEmail": { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "message":        { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "WorkflowTransitionRequest": {
+      "type": "object",
+      "description": "Body for approve/reject/finalize workflow transitions",
+      "properties": {
+        "reason":      { "type": "string" },
+        "performedBy": { "type": "string" },
+        "notes":       { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "CustomerDecisionRequest": {
+      "type": "object",
+      "description": "Body for customer approve/reject via share token",
+      "required": ["decision"],
+      "properties": {
+        "decision":    { "type": "string", "enum": ["approved", "rejected"] },
+        "reason":      { "type": "string", "description": "Required when decision is 'rejected'" },
+        "signedBy":    { "type": "string" },
+        "signedAt":    { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      },
+      "additionalProperties": false
+    },
+
+    "PaymentRecordRequest": {
+      "type": "object",
+      "description": "Body for POST /api/invoices/:id/payments",
+      "required": ["amount", "method", "paymentDate"],
+      "properties": {
+        "amount":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "method":      { "$ref": "../shared/common.types.json#/$defs/PaymentMethod" },
+        "paymentDate": { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "reference":   { "type": "string", "description": "EFT proof of payment, cheque number, etc." },
+        "notes":       { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "InvoiceTotals": {
+      "type": "object",
+      "description": "Computed invoice totals — always server-side calculated, never accepted from client",
+      "properties": {
+        "partsSubtotal":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "labourTotal":        { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "travelCost":         { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "consumables":        { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "subtotal":           { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "vatRate":            { "$ref": "../shared/common.types.json#/$defs/VatRate" },
+        "vatAmount":          { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "total":              { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "totalPaid":          { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "outstandingBalance": { "$ref": "../shared/common.types.json#/$defs/Money" }
+      }
+    },
+
+    "WorkflowTransitionRecord": {
+      "type": "object",
+      "description": "Single entry in the immutable workflowTransition audit trail",
+      "properties": {
+        "from":        { "$ref": "../shared/common.types.json#/$defs/InvoiceWorkflowStatus" },
+        "to":          { "$ref": "../shared/common.types.json#/$defs/InvoiceWorkflowStatus" },
+        "performedBy": { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "reason":      { "type": "string" },
+        "timestamp":   { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      }
+    },
+
+    "CustomerDecisionRecord": {
+      "type": "object",
+      "description": "Captured customer approval decision, recorded when customer acts on share token link",
+      "properties": {
+        "decision":  { "type": "string", "enum": ["approved", "rejected"] },
+        "reason":    { "type": "string" },
+        "signedBy":  { "type": "string" },
+        "signedAt":  { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "ipAddress": { "type": "string" }
+      }
+    },
+
+    "InvoiceResponse": {
+      "type": "object",
+      "description": "Shape of an invoice document returned in API responses",
+      "properties": {
+        "_id":                 { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "invoiceNumber":       { "type": "string", "description": "Auto-generated invoice reference — immutable" },
+        "customer":            { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceCall":         { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "quotation":           { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "documentType":        { "$ref": "../shared/common.types.json#/$defs/InvoiceDocumentType" },
+        "workflowStatus":      { "$ref": "../shared/common.types.json#/$defs/InvoiceWorkflowStatus" },
+        "partsFulfilmentMode": { "$ref": "../shared/common.types.json#/$defs/PartsFulfilmentMode" },
+        "lineItems":           { "type": "array", "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" } },
+        "labourHours":         { "type": "number", "minimum": 0 },
+        "labourRate":          { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "totals":              { "$ref": "#/$defs/InvoiceTotals" },
+        "paymentRecords":      { "type": "array", "items": { "$ref": "#/$defs/PaymentRecordRequest" } },
+        "workflowHistory":     { "type": "array", "items": { "$ref": "#/$defs/WorkflowTransitionRecord" } },
+        "customerDecision":    { "$ref": "#/$defs/CustomerDecisionRecord" },
+        "shareToken":          { "type": "string" },
+        "shareTokenExpiry":    { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "dueDate":             { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "notes":               { "type": "string" },
+        "termsConditions":     { "type": "string" },
+        "createdBy":           { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "createdAt":           { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "updatedAt":           { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      }
+    }
+
+  }
+}

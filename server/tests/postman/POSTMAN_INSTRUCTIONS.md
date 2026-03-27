@@ -10,15 +10,17 @@
 
 1. [Prerequisites](#1-prerequisites)
 2. [Import the Collection](#2-import-the-collection)
-3. [Get Your JWT Token](#3-get-your-jwt-token)
-4. [Set Collection Variables](#4-set-collection-variables)
-5. [Run Order — Critical](#5-run-order--critical)
-6. [Folder-by-Folder Guide](#6-folder-by-folder-guide)
-7. [Reading Test Results in Postman](#7-reading-test-results-in-postman)
-8. [Logging a Failure](#8-logging-a-failure)
-9. [Database Verification Queries](#9-database-verification-queries)
-10. [Collection Variable Reference](#10-collection-variable-reference)
-11. [Troubleshooting](#11-troubleshooting)
+3. [Import an Environment (Recommended)](#3-import-an-environment-recommended)
+4. [Get Your JWT Token](#4-get-your-jwt-token)
+5. [Set Collection Variables](#5-set-collection-variables)
+6. [Run Order — Critical](#6-run-order--critical)
+7. [Folder-by-Folder Guide](#7-folder-by-folder-guide)
+8. [Reading Test Results in Postman](#8-reading-test-results-in-postman)
+9. [Tagged Invoice Contract Validation via Newman](#9-tagged-invoice-contract-validation-via-newman)
+10. [Logging a Failure](#10-logging-a-failure)
+11. [Database Verification Queries](#11-database-verification-queries)
+12. [Collection Variable Reference](#12-collection-variable-reference)
+13. [Troubleshooting](#13-troubleshooting)
 
 ---
 
@@ -26,14 +28,26 @@
 
 Before running the collection, ensure the following are ready:
 
-| Requirement | How to Verify |
-|---|---|
-| MongoDB is running | `sudo systemctl status mongod` |
-| Backend server is running on port 5000 | `cd server && npm run dev` |
-| Postman is installed (v10+) | `postman --version` or open the Postman app |
-| A registered user account exists | Use `POST /api/auth/register` or the frontend signup |
+| Requirement                                  | How to Verify                                        |
+| -------------------------------------------- | ---------------------------------------------------- |
+| MongoDB is running                           | `sudo systemctl status mongod`                       |
+| Backend server is running on HTTPS port 5000 | `cd server && npm run dev`                           |
+| Postman is installed (v10+)                  | `postman --version` or open the Postman app          |
+| A registered user account exists             | Use `POST /api/auth/register` or the frontend signup |
+
+### Local HTTPS note
+
+The local backend now runs at `https://localhost:5000` with a self-signed localhost certificate.
+
+If Postman rejects requests with an SSL validation error, use one of these options:
+
+1. Trust the local certificate in your OS/browser keychain.
+2. In Postman, disable **Settings → General → SSL certificate verification** for local development only.
+
+If you are testing with `curl`, add `-k` to allow the self-signed cert.
 
 **Start everything at once:**
+
 ```bash
 bash ./setup-and-run.sh
 ```
@@ -45,17 +59,31 @@ bash ./setup-and-run.sh
 1. Open **Postman**
 2. Click **Import** (top-left, or `Ctrl+O` / `Cmd+O`)
 3. Select **File** tab
-4. Navigate to:
-   ```
-   server/tests/postman/register_customers_collection.json
-   ```
+4. Navigate to `server/tests/postman/register_customers_collection.json`
 5. Click **Import**
 
 The collection **"Register Customers — E2E Test Suite"** will appear in your left sidebar under **Collections**.
 
 ---
 
-## 3. Get Your JWT Token
+## 3. Import an Environment (Recommended)
+
+Use one of the prebuilt environment files:
+
+- `server/tests/postman/test-scripts/templates/postman-environment.local-https.json`
+- `server/tests/postman/test-scripts/templates/postman-environment.local-http.json`
+- `server/tests/postman/test-scripts/templates/postman-environment.staging.json`
+
+Steps:
+
+1. In Postman, click **Import**
+2. Select one environment JSON file
+3. Choose the imported environment from the top-right environment selector
+4. Confirm `BASE_URL`, `AUTH_EMAIL`, and `AUTH_PASSWORD` values
+
+---
+
+## 4. Get Your JWT Token
 
 The collection requires a valid JWT. You must obtain one before setting the collection variable.
 
@@ -63,8 +91,8 @@ The collection requires a valid JWT. You must obtain one before setting the coll
 
 Create a new request (outside this collection):
 
-```
-POST http://localhost:5000/api/auth/login
+```http
+POST https://localhost:5000/api/auth/login
 Content-Type: application/json
 
 {
@@ -74,6 +102,7 @@ Content-Type: application/json
 ```
 
 The response will contain a `token` field:
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -85,7 +114,7 @@ Copy the token value (everything after `"token":`, without the quotes).
 ### Option B — curl
 
 ```bash
-curl -s -X POST http://localhost:5000/api/auth/login \
+curl -sk -X POST https://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"your@email.com","password":"yourpassword"}' \
   | grep -o '"token":"[^"]*"'
@@ -95,7 +124,7 @@ curl -s -X POST http://localhost:5000/api/auth/login \
 
 ---
 
-## 4. Set Collection Variables
+## 5. Set Collection Variables
 
 The collection uses 6 variables. You only need to set `BASE_URL` and `AUTH_TOKEN` manually — the rest are auto-populated by test scripts.
 
@@ -107,27 +136,27 @@ The collection uses 6 variables. You only need to set `BASE_URL` and `AUTH_TOKEN
 4. Click the **Variables** tab
 5. Set the following:
 
-| Variable | Value | Set By |
-|---|---|---|
-| `BASE_URL` | `http://localhost:5000` | You (manual) |
-| `AUTH_TOKEN` | Paste your JWT token here | You (manual) |
-| `TS` | *(leave blank)* | Auto — pre-request script |
-| `CUSTOMER_ID_QA` | *(leave blank)* | Auto — pre-request script |
-| `CUSTOMER_OBJECT_ID` | *(leave blank)* | Auto — happy path test script |
-| `SERVICE_CALL_ID` | *(leave blank)* | Auto — happy path test script |
+| Variable             | Value                     | Set By                        |
+| -------------------- | ------------------------- | ----------------------------- |
+| `BASE_URL`           | `https://localhost:5000`  | You (manual)                  |
+| `AUTH_TOKEN`         | Paste your JWT token here | You (manual)                  |
+| `TS`                 | _(leave blank)_           | Auto — pre-request script     |
+| `CUSTOMER_ID_QA`     | _(leave blank)_           | Auto — pre-request script     |
+| `CUSTOMER_OBJECT_ID` | _(leave blank)_           | Auto — happy path test script |
+| `SERVICE_CALL_ID`    | _(leave blank)_           | Auto — happy path test script |
 
-6. Click **Save**
+1. Click **Save**
 
 ---
 
-## 5. Run Order — Critical
+## 6. Run Order — Critical
 
 > ⚠️ **You must run the "Setup & Happy Path" folder FIRST.**  
 > Downstream folders depend on `CUSTOMER_OBJECT_ID` and `SERVICE_CALL_ID` which are only populated by the happy path requests.
 
 **Correct run order:**
 
-```
+```text
 1. Setup & Happy Path          ← ALWAYS first — seeds CUSTOMER_OBJECT_ID + SERVICE_CALL_ID
 2. RC-API | Server Validation  ← Requires AUTH_TOKEN only
 3. RC-NEG | Negative Cases     ← Requires AUTH_TOKEN only
@@ -135,7 +164,8 @@ The collection uses 6 variables. You only need to set `BASE_URL` and `AUTH_TOKEN
 ```
 
 **Dependency diagram:**
-```
+
+```text
 AUTH_TOKEN ─────────────────────────────┐
                                         ▼
          ┌── 01 Happy Path Create Customer ──► CUSTOMER_OBJECT_ID
@@ -152,7 +182,7 @@ Path     │
 
 ---
 
-## 6. Folder-by-Folder Guide
+## 7. Folder-by-Folder Guide
 
 ### Folder 1 — Setup & Happy Path
 
@@ -160,11 +190,11 @@ Path     │
 
 **Tests covered:** RC-UI-001, RC-API (happy path), RC-DB-003
 
-| Request | What It Tests | Expected Result |
-|---|---|---|
-| 01 Happy Path — Create Customer | Full valid customer creation | `201 Created` + `_id` in response, `CUSTOMER_OBJECT_ID` set |
-| 02 Happy Path — Create Service Call | Service call linked to created customer | `201 Created` + `_id` in response, `SERVICE_CALL_ID` set |
-| 03 GET Customer List (RC-DB-001) | Customer exists in the database | `200 OK` + array contains created customer |
+| Request                             | What It Tests                           | Expected Result                                             |
+| ----------------------------------- | --------------------------------------- | ----------------------------------------------------------- |
+| 01 Happy Path — Create Customer     | Full valid customer creation            | `201 Created` + `_id` in response, `CUSTOMER_OBJECT_ID` set |
+| 02 Happy Path — Create Service Call | Service call linked to created customer | `201 Created` + `_id` in response, `SERVICE_CALL_ID` set    |
+| 03 GET Customer List (RC-DB-001)    | Customer exists in the database         | `200 OK` + array contains created customer                  |
 
 **⚠️ If Request 01 fails:** Stop. Fix the failure before continuing. All downstream tests will break without `CUSTOMER_OBJECT_ID`.
 
@@ -174,17 +204,17 @@ Path     │
 
 **Purpose:** Verifies that the backend rejects malformed or incomplete requests correctly.
 
-| Request | Test ID | What It Tests | Expected Result |
-|---|---|---|---|
-| RC-API-001 Missing Required Field — no email | RC-API-001 | POST without `email` | `400` with validation error |
-| RC-API-002 Missing Required Field — no contactFirstName | RC-API-002 | POST without `contactFirstName` | `400` with validation error |
-| RC-API-003 Missing Required Field — no customerType | RC-API-003 | POST without `customerType` | `400` with validation error |
-| RC-API-004 Duplicate customerId | RC-API-004 | POST with same `customerId` twice (re-uses `CUSTOMER_ID_QA`) | `400` or `409` — duplicate rejected |
-| RC-API-005a No Auth Token | RC-API-005a | POST without `Authorization` header | `401 Unauthorized` |
-| RC-API-005b Malformed Token | RC-API-005b | POST with `Authorization: Bearer INVALID` | `401 Unauthorized` |
-| RC-API-005c Partial Write Simulation | RC-API-005c | POST valid customer, then intentionally broken service call payload | Customer `201`, service call `400/500` — partial write risk exposed |
-| RC-API-005d customerType 'business' (contract test) | RC-API-005d | POST with `customerType: "business"` (not in backend enum) | Confirms contract defect: `400` expected, `201` is a confirmed bug |
-| RC-API-005e customerType 'private' (contract test) | RC-API-005e | POST with `customerType: "private"` (UI-emitted value) | Confirms contract defect: `400` expected, `201` is a confirmed bug |
+| Request                                                 | Test ID     | What It Tests                                                       | Expected Result                                                     |
+| ------------------------------------------------------- | ----------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| RC-API-001 Missing Required Field — no email            | RC-API-001  | POST without `email`                                                | `400` with validation error                                         |
+| RC-API-002 Missing Required Field — no contactFirstName | RC-API-002  | POST without `contactFirstName`                                     | `400` with validation error                                         |
+| RC-API-003 Missing Required Field — no customerType     | RC-API-003  | POST without `customerType`                                         | `400` with validation error                                         |
+| RC-API-004 Duplicate customerId                         | RC-API-004  | POST with same `customerId` twice (re-uses `CUSTOMER_ID_QA`)        | `400` or `409` — duplicate rejected                                 |
+| RC-API-005a No Auth Token                               | RC-API-005a | POST without `Authorization` header                                 | `401 Unauthorized`                                                  |
+| RC-API-005b Malformed Token                             | RC-API-005b | POST with `Authorization: Bearer INVALID`                           | `401 Unauthorized`                                                  |
+| RC-API-005c Partial Write Simulation                    | RC-API-005c | POST valid customer, then intentionally broken service call payload | Customer `201`, service call `400/500` — partial write risk exposed |
+| RC-API-005d customerType 'business' (contract test)     | RC-API-005d | POST with `customerType: "business"` (not in backend enum)          | Confirms contract defect: `400` expected, `201` is a confirmed bug  |
+| RC-API-005e customerType 'private' (contract test)      | RC-API-005e | POST with `customerType: "private"` (UI-emitted value)              | Confirms contract defect: `400` expected, `201` is a confirmed bug  |
 
 > **Known Issue — RC-API-005d/e:** The frontend emits `'business'` and `'private'`, but the backend model enum is `headOffice | branch | franchise | singleBusiness | residential`. If these return `201`, it is a confirmed integration defect. Log it with `--severity high`.
 
@@ -194,10 +224,10 @@ Path     │
 
 **Purpose:** Verifies rejection of logically-invalid but structurally-valid data.
 
-| Request | Test ID | What It Tests | Expected Result |
-|---|---|---|---|
-| RC-NEG-001 Invalid email format | RC-NEG-001 | POST with `email: "not-an-email"` | `400` — invalid email format rejected |
-| RC-NEG-003 Invalid email domain | RC-NEG-003 | POST with `email: "user@"` | `400` — malformed domain rejected |
+| Request                                | Test ID    | What It Tests                                                | Expected Result                          |
+| -------------------------------------- | ---------- | ------------------------------------------------------------ | ---------------------------------------- |
+| RC-NEG-001 Invalid email format        | RC-NEG-001 | POST with `email: "not-an-email"`                            | `400` — invalid email format rejected    |
+| RC-NEG-003 Invalid email domain        | RC-NEG-003 | POST with `email: "user@"`                                   | `400` — malformed domain rejected        |
 | RC-NEG-002 Missing residential address | RC-NEG-002 | POST `residential` customer without `physicalAddressDetails` | `400` — address required for residential |
 
 ---
@@ -208,23 +238,24 @@ Path     │
 
 > ❗ **Non-negotiable:** Security test failures require immediate remediation. They cannot be deferred as "low priority."
 
-| Request | Test ID | What It Tests | Expected Result |
-|---|---|---|---|
-| RC-SEC-003a NoSQL Injection — email field | RC-SEC-003a | POST with `{"email": {"$gt": ""}}` | `400` — not processed by MongoDB |
-| RC-SEC-003b NoSQL Injection — customerId field | RC-SEC-003b | POST with `{"customerId": {"$where": "1==1"}}` | `400` — operator not evaluated |
-| RC-SEC-004 Oversized input | RC-SEC-004 | POST with 50,000-character `notes` field | `400` or `413` — rejected before DB write |
-| RC-SEC-006a No token | RC-SEC-006a | POST with no `Authorization` header | `401` — must not create any resource |
-| RC-SEC-006b Empty Bearer | RC-SEC-006b | POST with `Authorization: Bearer ` (empty) | `401` — must not create any resource |
-| RC-SEC-006c alg:none JWT attack | RC-SEC-006c | POST with a crafted unsigned JWT: `eyJhbGciOiJub25lIn0.eyJpZCI6ImF0dGFja2VyIn0.` | `401` — `protect` middleware must reject `alg:none` tokens |
-| RC-SEC-007 Pro-forma recollection auth | RC-SEC-007 | GET `/api/invoices/share/:token` with spoofed token | `400` or `404` — must not expose other tenant's invoice |
+| Request                                        | Test ID     | What It Tests                                                                    | Expected Result                                            |
+| ---------------------------------------------- | ----------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| RC-SEC-003a NoSQL Injection — email field      | RC-SEC-003a | POST with `{"email": {"$gt": ""}}`                                               | `400` — not processed by MongoDB                           |
+| RC-SEC-003b NoSQL Injection — customerId field | RC-SEC-003b | POST with `{"customerId": {"$where": "1==1"}}`                                   | `400` — operator not evaluated                             |
+| RC-SEC-004 Oversized input                     | RC-SEC-004  | POST with 50,000-character `notes` field                                         | `400` or `413` — rejected before DB write                  |
+| RC-SEC-006a No token                           | RC-SEC-006a | POST with no `Authorization` header                                              | `401` — must not create any resource                       |
+| RC-SEC-006b Empty Bearer                       | RC-SEC-006b | POST with an empty bearer token in the `Authorization` header                    | `401` — must not create any resource                       |
+| RC-SEC-006c alg:none JWT attack                | RC-SEC-006c | POST with a crafted unsigned JWT: `eyJhbGciOiJub25lIn0.eyJpZCI6ImF0dGFja2VyIn0.` | `401` — `protect` middleware must reject `alg:none` tokens |
+| RC-SEC-007 Pro-forma recollection auth         | RC-SEC-007  | GET `/api/invoices/share/:token` with spoofed token                              | `400` or `404` — must not expose other tenant's invoice    |
 
 > **RC-SEC-006c is critical.** If the `alg:none` attack returns `200` or `201`, it means the JWT library accepts unsigned tokens. This is a critical vulnerability — log with `--severity critical`.
 
 ---
 
-## 7. Reading Test Results in Postman
+## 8. Reading Test Results in Postman
 
 ### Running a Single Request
+
 1. Click the request name
 2. Click **Send**
 3. In the bottom panel, click the **Test Results** tab
@@ -233,7 +264,7 @@ Path     │
 ### Running a Folder (Recommended)
 
 1. Right-click the folder name → **Run folder**  
-   *or*  
+   _or_  
    Click the **Run** button (triangle) next to the folder name
 2. In the Collection Runner panel, click **Run Register Customers — E2E Test Suite**
 3. Review the per-request pass/fail summary
@@ -242,7 +273,7 @@ Path     │
 
 Each request includes `pm.test()` assertions. Examples:
 
-```
+```text
 ✅  [RC-API-001] Status is 400       → Backend correctly rejected missing email
 ✅  [RC-SEC-006c] alg:none rejected   → JWT library correctly rejects unsigned tokens
 ❌  [RC-API-005d] Status is 400       → Got 201 — customerType contract defect confirmed
@@ -252,7 +283,31 @@ A red assertion means the API behaved unexpectedly — that is a **test failure 
 
 ---
 
-## 8. Logging a Failure
+## 9. Tagged Invoice Contract Validation via Newman
+
+For invoice schema contract checks only, run the tagged Newman command from repo root:
+
+```bash
+AUTH_TOKEN="<jwt>" SERVICE_CALL_ID="<service-call-id>" npm run test:postman:invoice-contract
+```
+
+Optional `BASE_URL` override for staging:
+
+```bash
+BASE_URL="https://staging.your-domain.com" AUTH_TOKEN="<jwt>" SERVICE_CALL_ID="<service-call-id>" npm run test:postman:invoice-contract
+```
+
+This command executes only snippet files listed in:
+
+- `server/tests/postman/test-scripts/snippets/tags.invoice-contract-validation.json`
+
+Runner implementation:
+
+- `server/tests/postman/scripts/run-invoice-contract-validation-newman.cjs`
+
+---
+
+## 10. Logging a Failure
 
 When a test fails, you **must** log it using the error logger script. Do not skip this step.
 
@@ -333,7 +388,7 @@ Logs are written to: `server/logs/register_customers_test_errors.log`
 
 ---
 
-## 9. Database Verification Queries
+## 11. Database Verification Queries
 
 Use these mongosh queries to verify test results at the database level (RC-DB-001, RC-DB-002, RC-DB-003).
 
@@ -346,7 +401,7 @@ mongosh mongodb://localhost:27017/field-service-db
 ### RC-DB-001 — Verify Customer Persisted
 
 ```javascript
-db.customers.findOne({ customerId: "CUST-QA-<TS>" })
+db.customers.findOne({ customerId: "CUST-QA-<TS>" });
 ```
 
 Expected: Document returned with all submitted fields.
@@ -354,7 +409,7 @@ Expected: Document returned with all submitted fields.
 ### RC-DB-002 — Verify Service Call Persisted and Linked
 
 ```javascript
-db.servicecalls.findOne({ _id: ObjectId("<SERVICE_CALL_ID>") })
+db.servicecalls.findOne({ _id: ObjectId("<SERVICE_CALL_ID>") });
 ```
 
 Expected: Document with `customer: ObjectId("<CUSTOMER_OBJECT_ID>")` field.
@@ -362,7 +417,10 @@ Expected: Document with `customer: ObjectId("<CUSTOMER_OBJECT_ID>")` field.
 ### RC-DB-003 — Verify Auth Scope (createdBy = logged-in user)
 
 ```javascript
-db.customers.findOne({ _id: ObjectId("<CUSTOMER_OBJECT_ID>") }, { createdBy: 1 })
+db.customers.findOne(
+  { _id: ObjectId("<CUSTOMER_OBJECT_ID>") },
+  { createdBy: 1 },
+);
 ```
 
 Expected: `createdBy` matches the `_id` of the user whose JWT was used.
@@ -371,29 +429,30 @@ Expected: `createdBy` matches the `_id` of the user whose JWT was used.
 
 ```javascript
 // Remove test customers created during the QA run
-db.customers.deleteMany({ customerId: /^CUST-QA-/ })
+db.customers.deleteMany({ customerId: /^CUST-QA-/ });
 
 // Remove associated test service calls
-db.servicecalls.deleteMany({ "bookingRequest.description": /QA runner/ })
+db.servicecalls.deleteMany({ "bookingRequest.description": /QA runner/ });
 ```
 
 > ⚠️ **Run cleanup only in development.** Never run cleanup against production data.
 
 ---
 
-## 10. Collection Variable Reference
+## 12. Collection Variable Reference
 
-| Variable | Set By | Purpose | Example Value |
-|---|---|---|---|
-| `BASE_URL` | Manual | Backend API base URL | `http://localhost:5000` |
-| `AUTH_TOKEN` | Manual | Valid JWT for auth | `eyJhbGciOiJIUzI1...` |
-| `TS` | Pre-request script (Request 01) | Unique timestamp for this test run | `1711289400000` |
-| `CUSTOMER_ID_QA` | Pre-request script (Request 01) | Unique customer ID for this run | `CUST-QA-1711289400000` |
-| `CUSTOMER_OBJECT_ID` | Test script (Request 01) | MongoDB `_id` of created customer | `65f8a3b...` |
-| `SERVICE_CALL_ID` | Test script (Request 02) | MongoDB `_id` of created service call | `65f8a4c...` |
+| Variable             | Set By                          | Purpose                               | Example Value            |
+| -------------------- | ------------------------------- | ------------------------------------- | ------------------------ |
+| `BASE_URL`           | Manual                          | Backend API base URL                  | `https://localhost:5000` |
+| `AUTH_TOKEN`         | Manual                          | Valid JWT for auth                    | `eyJhbGciOiJIUzI1...`    |
+| `TS`                 | Pre-request script (Request 01) | Unique timestamp for this test run    | `1711289400000`          |
+| `CUSTOMER_ID_QA`     | Pre-request script (Request 01) | Unique customer ID for this run       | `CUST-QA-1711289400000`  |
+| `CUSTOMER_OBJECT_ID` | Test script (Request 01)        | MongoDB `_id` of created customer     | `65f8a3b...`             |
+| `SERVICE_CALL_ID`    | Test script (Request 02)        | MongoDB `_id` of created service call | `65f8a4c...`             |
 
 **Variable dependency chain:**
-```
+
+```text
 Request 01 runs  →  TS set (pre-request)
                  →  CUSTOMER_ID_QA set (pre-request)
                  →  CUSTOMER_OBJECT_ID set (test script, from response)
@@ -406,7 +465,7 @@ Requests 03–20   →  use CUSTOMER_OBJECT_ID and SERVICE_CALL_ID
 
 ---
 
-## 11. Troubleshooting
+## 13. Troubleshooting
 
 ### `401 Unauthorized` on every request
 
@@ -415,6 +474,18 @@ Your `AUTH_TOKEN` is missing, expired, or incorrect.
 1. Log in again: `POST /api/auth/login`
 2. Copy the new token
 3. Update the `AUTH_TOKEN` collection variable
+
+---
+
+### `SSL Error` / `self signed certificate` in Postman
+
+Postman is rejecting the local localhost certificate.
+
+1. Confirm your `BASE_URL` is `https://localhost:5000`
+2. Either trust the local certificate or disable **SSL certificate verification** in Postman for local development
+3. Retry the request
+
+If you are using `curl`, use `-k` with `https://localhost:5000`
 
 ---
 
@@ -427,9 +498,23 @@ cd server && npm run dev
 ```
 
 Verify it started on port 5000:
+
 ```bash
 ss -tlpn | grep 5000
 ```
+
+If the backend is running but requests still fail, make sure you are using `https://localhost:5000`, not `http://localhost:5000`.
+
+---
+
+### Browser shows `ERR_EMPTY_RESPONSE` on `/api/auth/login`
+
+This usually happens when one of these is true:
+
+1. You opened `http://localhost:5000/api/auth/login` instead of `https://localhost:5000/api/auth/login`
+2. You opened the login API route in a browser tab even though it expects a `POST` request with JSON
+
+Use Postman or `curl` to send a `POST` request to the HTTPS endpoint instead.
 
 ---
 
@@ -461,7 +546,7 @@ Check `MONGODB_URI` in `server/.env` matches the database you are querying.
 `CUSTOMER_ID_QA` is timestamp-based so it changes each run. If you see duplicates, you may have re-run Request 01 without resetting. Clean up:
 
 ```javascript
-db.customers.deleteMany({ customerId: /^CUST-QA-/ })
+db.customers.deleteMany({ customerId: /^CUST-QA-/ });
 ```
 
 ---
@@ -471,6 +556,7 @@ db.customers.deleteMany({ customerId: /^CUST-QA-/ })
 This is a **critical security defect**, not a test configuration issue.
 
 1. Log the failure immediately:
+
    ```bash
    bash ./scripts/log-register-customers-test-result.sh \
      --test-id "RC-SEC-006c" --status fail --phase Security \
@@ -481,21 +567,22 @@ This is a **critical security defect**, not a test configuration issue.
      --severity critical \
      --security-impact "auth-bypass"
    ```
+
 2. Fix `server/middleware/auth.middleware.js` before any further testing.
 
 ---
 
 ## Related Files
 
-| File | Purpose |
-|---|---|
-| `register_customers_testcases.md` | Full test specification — 29 test cases across 6 phases |
-| `scripts/run-register-customers-tests.sh` | Interactive terminal test runner (alternative to Postman) |
-| `scripts/log-register-customers-test-result.sh` | Structured failure logger |
-| `server/logs/register_customers_test_errors.log` | Append-only failure log |
-| `server/logs/test_run_<timestamp>.log` | Per-run summary from the terminal runner |
-| `server/tests/postman/register_customers_collection.json` | This Postman collection |
+| File                                                      | Purpose                                                   |
+| --------------------------------------------------------- | --------------------------------------------------------- |
+| `register_customers_testcases.md`                         | Full test specification — 29 test cases across 6 phases   |
+| `scripts/run-register-customers-tests.sh`                 | Interactive terminal test runner (alternative to Postman) |
+| `scripts/log-register-customers-test-result.sh`           | Structured failure logger                                 |
+| `server/logs/register_customers_test_errors.log`          | Append-only failure log                                   |
+| `server/logs/test_run_<timestamp>.log`                    | Per-run summary from the terminal runner                  |
+| `server/tests/postman/register_customers_collection.json` | This Postman collection                                   |
 
 ---
 
-*Last Updated: 2026-03-24*
+Last Updated: 2026-03-25

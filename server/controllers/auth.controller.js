@@ -79,6 +79,43 @@ const validateRegistrationChangeEvidence = (evidence) => {
   return null;
 };
 
+const buildAuthResponseData = (user) => ({
+  _id: user._id,
+  userName: user.userName,
+  email: user.email,
+  businessName: user.businessName,
+  businessRegistrationNumber: user.businessRegistrationNumber,
+  taxNumber: user.taxNumber,
+  vatNumber: user.vatNumber,
+  phoneNumber: user.phoneNumber,
+  physicalAddress: user.physicalAddress,
+  websiteAddress: user.websiteAddress,
+  isSuperUser: user.isSuperUser,
+  role: user.role,
+  fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
+  customerProfile: user.customerProfile || null,
+  token: generateToken(user._id),
+});
+
+const classifyAuthPersistenceError = (error) => {
+  if (error?.code === 11000) {
+    const duplicateField = Object.keys(error.keyPattern || {})[0] || 'field';
+    return {
+      status: 409,
+      message: `Duplicate value for ${duplicateField}`,
+    };
+  }
+
+  if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+    return {
+      status: 400,
+      message: error.message,
+    };
+  }
+
+  return null;
+};
+
 /**
  * Generate JWT Token
  * 
@@ -349,31 +386,19 @@ export const registerUser = async (req, res) => {
 
     if (user) {
       logInfo(`✅ User registered successfully: ${user.email}`);
-      
-      // Return user data with JWT token (exclude password)
-      res.status(201).json({
-        _id: user._id,
-        userName: user.userName,
-        email: user.email,
-        businessName: user.businessName,
-        businessRegistrationNumber: user.businessRegistrationNumber,
-        taxNumber: user.taxNumber,
-        vatNumber: user.vatNumber,
-        phoneNumber: user.phoneNumber,
-        physicalAddress: user.physicalAddress,
-        websiteAddress: user.websiteAddress,
-        isSuperUser: user.isSuperUser,
-        role: user.role,
-        fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
-        customerProfile: user.customerProfile || null,
-        token: generateToken(user._id),
-      });
+
+      res.status(201).json({ data: buildAuthResponseData(user) });
     } else {
       logError('Registration failed - Invalid user data');
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
     logError('Registration error:', error);
+    const classifiedError = classifyAuthPersistenceError(error);
+    if (classifiedError) {
+      return res.status(classifiedError.status).json({ message: classifiedError.message });
+    }
+
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -432,25 +457,8 @@ export const loginUser = async (req, res) => {
     // Verify user exists and password matches
     if (user && (await user.comparePassword(password))) {
       logInfo(`✅ User logged in successfully: ${user.email}`);
-      
-      // Return user data with JWT token
-      res.json({
-        _id: user._id,
-        userName: user.userName,
-        email: user.email,
-        businessName: user.businessName,
-        businessRegistrationNumber: user.businessRegistrationNumber,
-        taxNumber: user.taxNumber,
-        vatNumber: user.vatNumber,
-        phoneNumber: user.phoneNumber,
-        physicalAddress: user.physicalAddress,
-        websiteAddress: user.websiteAddress,
-        isSuperUser: user.isSuperUser,
-        role: user.role,
-        fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
-        customerProfile: user.customerProfile || null,
-        token: generateToken(user._id),
-      });
+
+      res.json({ data: buildAuthResponseData(user) });
     } else {
       // Generic error message to prevent user enumeration
       logError('Login failed - Invalid credentials', { email });
@@ -1490,13 +1498,15 @@ export const resetPassword = async (req, res) => {
     // Return success with login token
     res.status(200).json({
       message: 'Password reset successful! You are now logged in.',
-      token: generateToken(user._id),
-      user: {
-        _id: user._id,
-        userName: user.userName,
-        email: user.email,
-        businessName: user.businessName,
-      }
+      data: {
+        token: generateToken(user._id),
+        user: {
+          _id: user._id,
+          userName: user.userName,
+          email: user.email,
+          businessName: user.businessName,
+        },
+      },
     });
   } catch (error) {
     logError('Reset password error:', error);

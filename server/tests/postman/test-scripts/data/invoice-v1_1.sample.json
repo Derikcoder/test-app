@@ -1,0 +1,96 @@
+[
+  {
+    "service_provider_details": [
+      {
+        "business_trade_name": "WKD",
+        "business_registered_name": "WKD Pty Ltd",
+        "tax_identification_number": "1234567890",
+        "vat_registration_number": "1234567890",
+        "business_address": "Plot 55, Pyramid, Gauteng",
+        "business_contact_number": "0111234567",
+        "business_email_address": "info@wkd.co.za",
+        "business_website": "www.wkd.co.za"
+      }
+    ],
+    "client_details": [
+      {
+        "client_type": "Business",
+        "business_name": "Hertex Fabrics",
+        "business_registration_number": "2018-123456-07",
+        "tax_identification_number": "9876543210",
+        "vat_registration_number": "9876543210",
+        "client_address": "16 Kramer Weg, Sandton",
+        "contact_person": "Ryan",
+        "client_contact_number": "0117654321",
+        "client_email_address": "ryan@hertex.co.za"
+      }
+    ],
+    "invoice_details": [
+      {
+        "invoice_number": "INV-QA-001",
+        "invoice_date": "2026-03-26",
+        "due_date": "2026-04-25",
+        "payment_terms": "Net 30",
+        "currency": "ZAR"
+      }
+    ],
+    "service_details": [
+      {
+        "service_summary": "Generator service and repair",
+        "machine_details": {
+          "machine_type": "Generator",
+          "machine_brand": "Ricardo",
+          "machine_model": "4105ZD",
+          "machine_serial_number": "C123456789",
+          "kva_rating": "63 KVA",
+          "current_machine_hours": "856",
+          "machine_hours_at_last_service": "790",
+          "fuel_type": "Diesel",
+          "build_type": "Silent",
+          "machine_fault_code": "E-1234",
+          "fault_code_description": "Engine overheating",
+          "last_service_date_reference": "2026-01-31"
+        }
+      }
+    ],
+    "billing_and_costing": [
+      {
+        "line_items": [
+          {
+            "category": "Service Parts",
+            "part_type": "Air Filter",
+            "manufacturer": "Donaldson",
+            "part_number": "P772578",
+            "unit_cost": 600,
+            "quantity": 1,
+            "total_cost": 600,
+            "part_description": "High quality air filter"
+          }
+        ],
+        "fixed_expenses": [
+          {
+            "callout_fee_per_km": 8.5,
+            "distance_km": 120,
+            "minimum_callout_fee": 650,
+            "callout_fee_total": 1020
+          }
+        ],
+        "invoice_totals": [
+          {
+            "subtotal": 1620,
+            "vat_rate": 0.15,
+            "vat_amount": 243,
+            "total": 1863,
+            "deposit_amount": 0,
+            "balance_due": 1863
+          }
+        ]
+      }
+    ],
+    "service_description": [
+      {
+        "summary": "Basic service and filter replacement"
+      }
+    ]
+  }
+]

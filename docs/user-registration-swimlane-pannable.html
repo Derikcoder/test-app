@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Registration Swimlane Flow (Pannable)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --accent: #22d3ee;
+      --muted: #9ca3af;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans", sans-serif;
+      background: radial-gradient(circle at 10% 10%, #1f2937 0%, var(--bg) 45%, #020617 100%);
+      color: var(--text);
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #1f2937;
+      background: color-mix(in oklab, var(--panel) 80%, black 20%);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .toolbar h1 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0.3px;
+      color: var(--text);
+      font-weight: 600;
+      margin-right: auto;
+    }
+
+    .btn {
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: var(--text);
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+
+    .viewport {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+    }
+
+    .viewport.dragging {
+      cursor: grabbing;
+    }
+
+    #diagram {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: transparent;
+    }
+
+    .error {
+      padding: 16px;
+      color: #fecaca;
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 10px;
+      margin: 16px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>User Registration Swimlane Flow</h1>
+    <button class="btn" id="fitBtn">Fit</button>
+    <button class="btn" id="actualBtn">100%</button>
+    <button class="btn" id="centerBtn">Center</button>
+    <button class="btn" id="resetBtn">Reset</button>
+    <span class="hint">Wheel = zoom, drag = pan, double click = reset</span>
+  </div>
+
+  <div class="viewport" id="viewport">
+    <div id="diagram"></div>
+  </div>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    import svgPanZoom from "https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/+esm";
+
+    const diagramDefinition = String.raw`
+flowchart LR
+    subgraph L1[Client App]
+      C1[User fills registration form]
+      C2[Submit POST /api/auth/register]
+      C3[Receive response]
+    end
+
+    subgraph L2[API Gateway / Route Layer]
+      R1[auth.routes.js maps to registerUser]
+    end
+
+    subgraph L3[Auth Controller]
+      A1[Validate base fields: userName email password]
+      A2[Resolve requested role default superAdmin]
+      A3[Validate role-specific rules]
+      A4[Normalize email lowercase]
+      A5[Check duplicate user by email or userName]
+      A6{Role requires passkey?\nbusinessAdministrator/fieldServiceAgent}
+      A7[Load active onboarding passkey]
+      A8[Validate expiry attempts and passkey hash]
+      A9{Role-linked profile required?}
+      A10[Load and validate FieldServiceAgent profile]
+      A11[Load and validate Customer profile]
+      A12[Create user account]
+      A13[Link profile.userAccount to new user]
+      A14[Mark passkey consumed]
+      A15[Generate JWT token]
+      A16[Return 201 with user payload and token]
+    end
+
+    subgraph L4[MongoDB]
+      D1[(User)]
+      D2[(OnboardingPasskey)]
+      D3[(FieldServiceAgent)]
+      D4[(Customer)]
+    end
+
+    subgraph L5[Failure Outcomes]
+      F1[400 Missing/invalid required fields]
+      F2[400 Invalid role]
+      F3[400/409 Duplicate email or username]
+      F4[403 No active or expired passkey]
+      F5[401 Invalid passkey]
+      F6[400/404/409 Profile link validation failed]
+      F7[500 Server error]
+    end
+
+    C1 --> C2 --> R1 --> A1
+    A1 -- fail --> F1 --> C3
+    A1 -- ok --> A2
+    A2 -- invalid --> F2 --> C3
+    A2 -- valid --> A3
+    A3 -- fail --> F1 --> C3
+    A3 -- ok --> A4 --> A5
+
+    A5 --> D1
+    A5 -- duplicate --> F3 --> C3
+    A5 -- clear --> A6
+
+    A6 -- yes --> A7
+    A7 --> D2
+    A7 -- missing --> F4 --> C3
+    A7 -- found --> A8
+    A8 -- expired --> F4 --> C3
+    A8 -- invalid --> F5 --> C3
+    A8 -- valid --> A9
+
+    A6 -- no --> A9
+
+    A9 -- fieldServiceAgent --> A10
+    A10 --> D3
+    A10 -- fail --> F6 --> C3
+    A10 -- ok --> A12
+
+    A9 -- customer --> A11
+    A11 --> D4
+    A11 -- fail --> F6 --> C3
+    A11 -- ok --> A12
+
+    A9 -- admin roles --> A12
+
+    A12 --> D1
+    A12 -- error --> F7 --> C3
+    A12 -- success --> A13
+
+    A13 --> D3
+    A13 --> D4
+
+    A13 --> A14
+    A14 --> D2
+    A14 --> A15 --> A16 --> C3
+`;
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: "dark",
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: "basis"
+      }
+    });
+
+    const host = document.getElementById("diagram");
+    const viewport = document.getElementById("viewport");
+    let panZoom = null;
+
+    function mountPanZoom() {
+      const svg = host.querySelector("svg");
+      if (!svg) return;
+
+      svg.setAttribute("width", "100%");
+      svg.setAttribute("height", "100%");
+      svg.style.maxWidth = "none";
+
+      panZoom = svgPanZoom(svg, {
+        zoomEnabled: true,
+        controlIconsEnabled: true,
+        fit: true,
+        center: true,
+        minZoom: 0.2,
+        maxZoom: 20,
+        zoomScaleSensitivity: 0.25,
+        dblClickZoomEnabled: false,
+        preventMouseEventsDefault: true
+      });
+
+      viewport.addEventListener("mousedown", () => viewport.classList.add("dragging"));
+      window.addEventListener("mouseup", () => viewport.classList.remove("dragging"));
+      viewport.addEventListener("dblclick", () => panZoom && panZoom.resetZoom());
+
+      document.getElementById("fitBtn").addEventListener("click", () => panZoom && panZoom.fit());
+      document.getElementById("actualBtn").addEventListener("click", () => panZoom && panZoom.zoom(1));
+      document.getElementById("centerBtn").addEventListener("click", () => panZoom && panZoom.center());
+      document.getElementById("resetBtn").addEventListener("click", () => panZoom && panZoom.reset());
+
+      window.addEventListener("resize", () => panZoom && panZoom.resize());
+    }
+
+    try {
+      const { svg } = await mermaid.render("registrationSwimlane", diagramDefinition);
+      host.innerHTML = svg;
+      mountPanZoom();
+    } catch (err) {
+      console.error(err);
+      host.innerHTML = `<div class="error">Failed to render diagram. ${String(err?.message || err)}</div>`;
+    }
+  </script>
+</body>
+</html>

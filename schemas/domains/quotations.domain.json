@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/domains/quotations.domain.json",
+  "title": "Quotations Domain",
+  "description": "API contracts for /api/quotations — cost estimates raised before invoicing. Quotations reference ServiceCalls and Customers, carry a full line-item breakdown with labour/travel/consumables, apply 15% VAT, and can be shared publicly via a share token before a Customer approves and they are converted to Invoices.",
+
+  "type": "object",
+  "properties": {
+    "domain":   { "const": "quotations" },
+    "basePath": { "const": "/api/quotations" },
+    "version":  { "const": "1.0.0" },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "../shared/common.types.json#/$defs/EndpointDescriptor" },
+      "default": [
+        {
+          "operationId":    "getQuotations",
+          "method":         "GET",
+          "path":           "/api/quotations",
+          "access":         "private",
+          "summary":        "List all quotations — supports status, customer, and date filters",
+          "queryParamsRef": "QuotationListQuery",
+          "responses":      { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "createQuotation",
+          "method":         "POST",
+          "path":           "/api/quotations",
+          "access":         "private",
+          "summary":        "Create a new quotation (starts as draft)",
+          "requestBodyRef": "CreateQuotationRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError" },
+          "notes":          "quotationNumber is auto-generated. Totals (subtotal, vatAmount, total) are computed server-side from line items + labour + travel + consumables."
+        },
+        {
+          "operationId":  "getQuotationById",
+          "method":       "GET",
+          "path":         "/api/quotations/:id",
+          "access":       "private",
+          "summary":      "Get a single quotation by ObjectId",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateQuotation",
+          "method":         "PUT",
+          "path":           "/api/quotations/:id",
+          "access":         "private",
+          "summary":        "Update a quotation — only allowed while in draft status",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateQuotationRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "Server rejects updates once status is 'sent' or later. quotationNumber is immutable."
+        },
+        {
+          "operationId":  "deleteQuotation",
+          "method":       "DELETE",
+          "path":         "/api/quotations/:id",
+          "access":       "private",
+          "summary":      "Delete a quotation",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "NoContentResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "sendQuotation",
+          "method":         "POST",
+          "path":           "/api/quotations/:id/send",
+          "access":         "private",
+          "summary":        "Transition quotation from draft → sent and generate a share token for customer-facing link",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "SendQuotationRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "getQuotationByShareToken",
+          "method":       "GET",
+          "path":         "/api/quotations/shared/:token",
+          "access":       "public-tokenized",
+          "summary":      "Public endpoint — customer views quotation via share token (no JWT required)",
+          "pathParams":   [{ "name": "token", "description": "Quotation share token from email/SMS link" }],
+          "responses":    { "200": "SuccessResponse", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "approveQuotation",
+          "method":         "POST",
+          "path":           "/api/quotations/:id/approve",
+          "access":         "private",
+          "summary":        "Approve a sent quotation — transitions status to 'approved'",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "QuotationDecisionRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "rejectQuotation",
+          "method":         "POST",
+          "path":           "/api/quotations/:id/reject",
+          "access":         "private",
+          "summary":        "Reject a sent quotation — transitions status to 'rejected'",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "QuotationDecisionRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "convertQuotationToInvoice",
+          "method":         "POST",
+          "path":           "/api/quotations/:id/convert",
+          "access":         "private",
+          "summary":        "Convert an approved quotation to an Invoice — transitions status to 'converted' and creates an Invoice document",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "ConvertQuotationRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "Creates an Invoice in draft status. Quotation status becomes 'converted' and cannot be edited further."
+        }
+      ]
+    }
+  },
+
+  "$defs": {
+
+    "QuotationListQuery": {
+      "type": "object",
+      "description": "Query parameters for GET /api/quotations",
+      "properties": {
+        "status":        { "$ref": "../shared/common.types.json#/$defs/QuotationStatus" },
+        "customerId":    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceCallId": { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "from":          { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "to":            { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "page":          { "type": "integer", "minimum": 1, "default": 1 },
+        "limit":         { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "sort":          { "type": "string", "default": "-createdAt" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateQuotationRequest": {
+      "type": "object",
+      "description": "Body for POST /api/quotations",
+      "required": ["customer", "lineItems"],
+      "properties": {
+        "customer":       { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceCall":    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "lineItems":      {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" }
+        },
+        "labourHours":    { "type": "number", "minimum": 0, "default": 0 },
+        "labourRate":     { "$ref": "../shared/common.types.json#/$defs/Money", "description": "Hourly rate for labour in ZAR" },
+        "travelCost":     { "$ref": "../shared/common.types.json#/$defs/Money", "default": 0 },
+        "consumables":    { "$ref": "../shared/common.types.json#/$defs/Money", "default": 0 },
+        "vatRate":        { "$ref": "../shared/common.types.json#/$defs/VatRate" },
+        "validUntil":     { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "notes":          { "type": "string" },
+        "termsConditions":{ "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateQuotationRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/quotations/:id — only valid while status is 'draft'",
+      "properties": {
+        "lineItems":       {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" }
+        },
+        "labourHours":     { "type": "number", "minimum": 0 },
+        "labourRate":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "travelCost":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "consumables":     { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "vatRate":         { "$ref": "../shared/common.types.json#/$defs/VatRate" },
+        "validUntil":      { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "notes":           { "type": "string" },
+        "termsConditions": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "SendQuotationRequest": {
+      "type": "object",
+      "description": "Body for POST /api/quotations/:id/send",
+      "properties": {
+        "recipientEmail": { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "message":        { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "QuotationDecisionRequest": {
+      "type": "object",
+      "description": "Body for approve/reject endpoints",
+      "properties": {
+        "reason":    { "type": "string" },
+        "approvedBy":{ "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "ConvertQuotationRequest": {
+      "type": "object",
+      "description": "Body for POST /api/quotations/:id/convert — optional overrides when creating the invoice",
+      "properties": {
+        "documentType": { "$ref": "../shared/common.types.json#/$defs/InvoiceDocumentType" },
+        "notes":        { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "QuotationTotals": {
+      "type": "object",
+      "description": "Computed cost totals — always server-side calculated",
+      "properties": {
+        "partsSubtotal": { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "labourTotal":   { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "travelCost":    { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "consumables":   { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "subtotal":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "vatRate":       { "$ref": "../shared/common.types.json#/$defs/VatRate" },
+        "vatAmount":     { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "total":         { "$ref": "../shared/common.types.json#/$defs/Money" }
+      }
+    },
+
+    "QuotationResponse": {
+      "type": "object",
+      "description": "Shape of a quotation document returned in API responses",
+      "properties": {
+        "_id":             { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "quotationNumber": { "type": "string", "description": "Auto-generated reference — immutable" },
+        "customer":        { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceCall":     { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "status":          { "$ref": "../shared/common.types.json#/$defs/QuotationStatus" },
+        "lineItems":       { "type": "array", "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" } },
+        "labourHours":     { "type": "number", "minimum": 0 },
+        "labourRate":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "totals":          { "$ref": "#/$defs/QuotationTotals" },
+        "shareToken":      { "type": "string", "description": "Generated when quotation is sent — used for public-tokenized view link" },
+        "shareTokenExpiry":{ "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "validUntil":      { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "sentAt":          { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "approvedAt":      { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "notes":           { "type": "string" },
+        "termsConditions": { "type": "string" },
+        "createdBy":       { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "createdAt":       { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "updatedAt":       { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      }
+    }
+
+  }
+}

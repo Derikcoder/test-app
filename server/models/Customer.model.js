@@ -263,12 +263,19 @@ const customerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
-      unique: true,
-      sparse: true,
     },
   },
   {
     timestamps: true, // Auto-add createdAt and updatedAt
+  }
+);
+
+// Enforce one-to-one linkage only when a customer is actually linked to a user account.
+customerSchema.index(
+  { userAccount: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { userAccount: { $type: 'objectId' } },
   }
 );
 

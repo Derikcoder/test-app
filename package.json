@@ -7,16 +7,29 @@
     "dev": "bash ./start-dev.sh",
     "refresh": "bash ./refresh.sh",
     "eod:new": "bash ./scripts/new-eod-entry.sh",
+    "api:review:new": "bash ./scripts/new-weekly-api-review-entry.sh",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "build:client": "npm run build --prefix client",
     "test:server": "npm test --prefix server",
-    "test:client": "npm test --prefix client",
+    "test:client": "cd ./client && npm test -- --run",
+    "test:client:watch": "cd ./client && npm test",
     "test": "npm run test:server && npm run test:client",
     "test:coverage": "npm run test:coverage --prefix server && npm run test:coverage --prefix client",
+    "test:postman:invoice-contract": "node ./server/tests/postman/scripts/run-invoice-contract-validation-newman.cjs",
+    "certs:check": "bash ./scripts/check-cert-expiry.sh",
     "shutdown": "bash ./shutdown.sh"
   },
-  "keywords": ["react", "express", "mongodb", "tailwind", "mern"],
+  "keywords": [
+    "react",
+    "express",
+    "mongodb",
+    "tailwind",
+    "mern"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "newman": "^6.2.2"
+  }
 }

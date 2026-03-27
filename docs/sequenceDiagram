@@ -1,0 +1,68 @@
+sequenceDiagram
+    autonumber
+    participant U as Client App
+    participant R as Auth Route
+    participant C as registerUser Controller
+    participant UD as User Collection
+    participant PD as OnboardingPasskey Collection
+    participant FD as FieldServiceAgent Collection
+    participant CD as Customer Collection
+    participant J as JWT Service
+
+    U->>R: POST /api/auth/register
+    R->>C: Forward request
+
+    C->>C: Validate required fields + role rules
+    alt Invalid payload or role
+        C-->>U: 400 Bad Request
+    else Valid payload
+        C->>UD: Find by email/username
+        alt Duplicate user
+            C-->>U: 400/409 Duplicate account
+        else Unique user
+            alt Role requires passkey (businessAdministrator/fieldServiceAgent)
+                C->>PD: Find active passkey(email, role)
+                alt No passkey or expired
+                    C-->>U: 403 Forbidden (renewal required)
+                else Passkey found
+                    C->>PD: Compare hash / increment attempts
+                    alt Invalid passkey
+                        C-->>U: 401 Unauthorized
+                    else Passkey valid
+                        Note over C: Continue registration
+                    end
+                end
+            end
+
+            alt Role = fieldServiceAgent
+                C->>FD: Load profile by fieldServiceAgentProfileId
+                alt Missing/already-linked/email mismatch
+                    C-->>U: 400/404/409 Profile validation error
+                else Profile valid
+                    Note over C: Continue
+                end
+            else Role = customer
+                C->>CD: Load profile by customerProfileId
+                alt Missing/already-linked/email mismatch
+                    C-->>U: 400/404/409 Profile validation error
+                else Profile valid
+                    Note over C: Continue
+                end
+            end
+
+            C->>UD: Create user document
+            alt Create failed
+                C-->>U: 500 Server error
+            else Created
+                opt Link profile to userAccount
+                    C->>FD: Update userAccount (agent path)
+                    C->>CD: Update userAccount (customer path)
+                end
+                opt Passkey used
+                    C->>PD: Mark passkey consumed
+                end
+                C->>J: Generate JWT
+                C-->>U: 201 Created + user payload + token
+            end
+        end
+    end

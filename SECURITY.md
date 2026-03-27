@@ -58,6 +58,7 @@ The compromised API key must be revoked:
 - ✅ `.env.local` files are in `.gitignore`
 - ✅ No `.env` files are tracked in git
 - ✅ Only `.env.example` is tracked (as reference)
+- ✅ Local TLS certificate/key artifacts are ignored; only docs and metadata under `certs/` are tracked
 
 ### Hardcoded Secrets
 - ✅ No hardcoded passwords in source code
@@ -75,6 +76,11 @@ The compromised API key must be revoked:
 - ✅ Secret is generated fresh during setup
 - ✅ Secret should be changed for each environment
 
+### Local TLS Certificate Handling
+- ✅ Certificate file paths are configured through environment variables
+- ✅ Raw `.pem`, `.key`, `.p12`, and `.pfx` files are not committed
+- ✅ Repository tracks only certificate documentation and inventory metadata
+
 ### Authentication & Authorization
 - ✅ Passwords are hashed with bcrypt (minimum 10 rounds)
 - ✅ JWT tokens expire (check `auth.controller.js` for duration)
@@ -85,13 +91,40 @@ The compromised API key must be revoked:
 
 ## 🛡️ Security Best Practices for This Project
 
+## Development Rule: Secret Material And Local TLS Assets
+
+The following rule applies to all contributors and all branches in this repository.
+
+### Rule
+
+1. Secrets must be supplied through environment files, CI/CD secret injection, or a dedicated secret manager.
+2. Raw local TLS assets, including `.pem`, `.key`, `.crt`, `.p12`, and `.pfx` files, are treated as secret material.
+3. Raw secret material must never be committed to git, even when used only for local development.
+4. Only the following may be tracked in git:
+   - Environment variable names
+   - Placeholder/example values
+   - File-path references to local secret material
+   - Documentation and handling instructions
+   - Certificate inventory metadata that does not expose private contents
+5. For local HTTPS development, the repository stores only references such as `SSL_CERT_FILE`, `SSL_KEY_FILE`, `VITE_SSL_CERT_FILE`, and `VITE_SSL_KEY_FILE`; the referenced files stay local.
+
+### Rationale
+
+- Private keys and certificate bundles are reusable trust artifacts. Once committed, they can be copied and reused outside the intended machine or environment.
+- Keeping only env-configured references in git reduces exposure risk while preserving a repeatable setup process.
+- The same rule keeps local development aligned with production secret-handling discipline.
+
 ### 1. Environment Variables
 **✅ CORRECT:**
 ```bash
 # In .env (never commit this!)
 JWT_SECRET=your-secret-key-here
 MONGODB_URI=mongodb://localhost:27017/test-app
+SSL_CERT_FILE=../certs/localhost+1.pem
+SSL_KEY_FILE=../certs/localhost+1-key.pem
 VITE_GOOGLE_MAPS_API_KEY=your-api-key-here
+VITE_SSL_CERT_FILE=../certs/localhost+1.pem
+VITE_SSL_KEY_FILE=../certs/localhost+1-key.pem
 ```
 
 **❌ WRONG:**
@@ -100,6 +133,11 @@ VITE_GOOGLE_MAPS_API_KEY=your-api-key-here
 const secret = 'my-hardcoded-secret';
 const apiKey = 'AIzaSy...';
 ```
+
+Development rule implementation:
+- Environment variables may store secret values directly or file paths to local secret material.
+- For local HTTPS, the env files store only the certificate paths; the certificate contents remain local and untracked.
+- `.env.example` may document expected variable names and placeholder paths, but it must never contain live secrets or private key contents.
 
 ### 2. Git Workflow
 ```bash
@@ -110,6 +148,10 @@ cat .gitignore  # Verify secrets are ignored
 # After committing:
 git log -p <file>  # Verify no secrets in history
 ```
+
+Why this matters:
+- Private keys and local certificates are reusable trust material. If committed, they can be copied, misused, or mistaken for production-safe assets.
+- Keeping only env-configured paths in git separates reusable documentation from machine-specific secrets.
 
 ### 3. API Keys Management
 - [ ] Use `.env` files for local development
@@ -152,6 +194,8 @@ Before committing code, verify:
 - [ ] No sensitive data in comments
 - [ ] All secrets are in `.env`
 - [ ] `.env` is in `.gitignore`
+- [ ] Local certificate/key files are not staged
+- [ ] Only certificate docs, metadata, and example paths are tracked
 
 ### 7. Deployment Security
 ```bash
@@ -198,6 +242,9 @@ grep -E "\.env|\.key|secret" .gitignore
 
 # 5. Before force push, ensure no history contains secrets
 git log -S "AIzaSy" --all  # Search for API key pattern
+
+# 6. Verify local TLS files are not tracked
+git ls-files certs
 ```
 
 ---

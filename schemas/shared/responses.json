@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/shared/responses.json",
+  "title": "WKD Standard API Response Shapes",
+  "description": "Reusable HTTP response envelope shapes. All controllers follow these shapes. Frontend components and tests should validate against these $defs.",
+
+  "$defs": {
+
+    "SuccessResponse": {
+      "type": "object",
+      "description": "HTTP 200 — single-resource fetch or action that returns a payload",
+      "required": ["success", "data"],
+      "properties": {
+        "success": { "const": true },
+        "data":    {},
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreatedResponse": {
+      "type": "object",
+      "description": "HTTP 201 — resource created successfully",
+      "required": ["success", "data"],
+      "properties": {
+        "success": { "const": true },
+        "data":    {},
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "PaginatedResponse": {
+      "type": "object",
+      "description": "HTTP 200 — paginated collection result",
+      "required": ["success", "data", "count"],
+      "properties": {
+        "success": { "const": true },
+        "data":    { "type": "array" },
+        "count":   { "type": "integer", "minimum": 0, "description": "Items returned on this page" },
+        "total":   { "type": "integer", "minimum": 0, "description": "Total matching items across all pages" },
+        "page":    { "type": "integer", "minimum": 1 },
+        "pages":   { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+
+    "NoContentResponse": {
+      "type": "object",
+      "description": "HTTP 200 — action completed with no return payload (e.g. delete, send)",
+      "required": ["success", "message"],
+      "properties": {
+        "success": { "const": true },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "TokenResponse": {
+      "type": "object",
+      "description": "HTTP 200 — authentication response carrying a JWT token",
+      "required": ["success", "token", "user"],
+      "properties": {
+        "success": { "const": true },
+        "token":   { "type": "string", "description": "Signed JWT — include as 'Bearer <token>' in Authorization header" },
+        "user": {
+          "type": "object",
+          "description": "Minimal user identity payload included alongside the JWT",
+          "required": ["_id", "userName", "email", "role"],
+          "properties": {
+            "_id":          { "type": "string" },
+            "userName":     { "type": "string" },
+            "email":        { "type": "string" },
+            "role":         { "type": "string" },
+            "businessName": { "type": "string" }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValidationError": {
+      "type": "object",
+      "description": "HTTP 400 — one or more request fields failed validation",
+      "required": ["success", "message"],
+      "properties": {
+        "success": { "const": false },
+        "message": { "type": "string" },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field":   { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "UnauthorizedError": {
+      "type": "object",
+      "description": "HTTP 401 — missing or invalid JWT — protect middleware response",
+      "required": ["success", "message"],
+      "properties": {
+        "success": { "const": false },
+        "message": { "type": "string", "examples": ["Not authorized, no token", "Not authorized, token failed"] }
+      },
+      "additionalProperties": false
+    },
+
+    "ForbiddenError": {
+      "type": "object",
+      "description": "HTTP 403 — authenticated but role is insufficient for this endpoint",
+      "required": ["success", "message"],
+      "properties": {
+        "success": { "const": false },
+        "message": { "type": "string", "examples": ["Access denied. Insufficient role."] }
+      },
+      "additionalProperties": false
+    },
+
+    "NotFoundError": {
+      "type": "object",
+      "description": "HTTP 404 — requested resource does not exist",
+      "required": ["success", "message"],
+      "properties": {
+        "success": { "const": false },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "ConflictError": {
+      "type": "object",
+      "description": "HTTP 409 — resource already exists, or an immutable field change was attempted",
+      "required": ["success", "message"],
+      "properties": {
+        "success": { "const": false },
+        "message": { "type": "string", "examples": ["Email already in use", "businessName cannot be changed after creation"] }
+      },
+      "additionalProperties": false
+    },
+
+    "ImmutableFieldError": {
+      "type": "object",
+      "description": "HTTP 400 — attempt to update a write-once protected field (enforced in controllers via IMMUTABLE_FIELDS)",
+      "required": ["success", "message"],
+      "properties": {
+        "success":          { "const": false },
+        "message":          { "type": "string" },
+        "immutableFields":  { "type": "array", "items": { "type": "string" }, "description": "List of field names that triggered the protection" }
+      },
+      "additionalProperties": false
+    },
+
+    "ServerError": {
+      "type": "object",
+      "description": "HTTP 500 — unexpected server-side error",
+      "required": ["success", "message"],
+      "properties": {
+        "success": { "const": false },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+
+  }
+}

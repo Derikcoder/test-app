@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/domains/service-calls.domain.json",
+  "title": "Service Calls Domain",
+  "description": "API contracts for /api/service-calls — work order lifecycle management. ServiceCalls are the operational core: they reference Customers and Agents, and are the source of truth for Quotations, Equipment records, and Invoices.",
+
+  "type": "object",
+  "properties": {
+    "domain":   { "const": "serviceCalls" },
+    "basePath": { "const": "/api/service-calls" },
+    "version":  { "const": "1.0.0" },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "../shared/common.types.json#/$defs/EndpointDescriptor" },
+      "default": [
+        {
+          "operationId":    "getServiceCalls",
+          "method":         "GET",
+          "path":           "/api/service-calls",
+          "access":         "private",
+          "summary":        "List all service calls — supports status, agent, and date filters",
+          "queryParamsRef": "ServiceCallListQuery",
+          "responses":      { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "createServiceCall",
+          "method":         "POST",
+          "path":           "/api/service-calls",
+          "access":         "private",
+          "summary":        "Create a new service call / work order",
+          "requestBodyRef": "CreateServiceCallRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError" },
+          "notes":          "callNumber is auto-generated and immutable. Customer reference is required."
+        },
+        {
+          "operationId":  "getServiceCallById",
+          "method":       "GET",
+          "path":         "/api/service-calls/:id",
+          "access":       "private",
+          "summary":      "Get a single service call by ObjectId",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateServiceCall",
+          "method":         "PUT",
+          "path":           "/api/service-calls/:id",
+          "access":         "private",
+          "summary":        "Update mutable service call fields",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateServiceCallRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ImmutableFieldError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "callNumber is immutable."
+        },
+        {
+          "operationId":  "deleteServiceCall",
+          "method":       "DELETE",
+          "path":         "/api/service-calls/:id",
+          "access":       "private",
+          "summary":      "Delete a service call record",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "NoContentResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "getServiceCallsByStatus",
+          "method":       "GET",
+          "path":         "/api/service-calls/status/:status",
+          "access":       "private",
+          "summary":      "Filter service calls by lifecycle status",
+          "pathParams":   [{ "name": "status", "schema": "ServiceCallStatus" }],
+          "responses":    { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":  "getServiceCallsByAgent",
+          "method":       "GET",
+          "path":         "/api/service-calls/agent/:agentId",
+          "access":       "private",
+          "summary":      "List all service calls assigned to a specific agent",
+          "pathParams":   [{ "name": "agentId", "schema": "ObjectId" }],
+          "responses":    { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":  "getEligibleUnassignedCalls",
+          "method":       "GET",
+          "path":         "/api/service-calls/eligible-unassigned/:agentId",
+          "access":       "private",
+          "summary":      "Find unassigned calls this agent is eligible to self-accept (matching specialization and area)",
+          "pathParams":   [{ "name": "agentId", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "selfAcceptServiceCall",
+          "method":         "POST",
+          "path":           "/api/service-calls/:id/self-accept",
+          "access":         "private",
+          "summary":        "Agent self-accepts an eligible unassigned service call",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "SelfAcceptRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "403": "ForbiddenError", "404": "NotFoundError" },
+          "notes":          "Requires selfDispatchEnabled on the agent. Records audit trail in selfDispatchAudit."
+        },
+        {
+          "operationId":    "addPartsUsed",
+          "method":         "POST",
+          "path":           "/api/service-calls/:id/parts",
+          "access":         "private",
+          "summary":        "Add parts/materials consumed during the service call",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "AddPartsRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "uploadJobPhotos",
+          "method":         "POST",
+          "path":           "/api/service-calls/:id/photos",
+          "access":         "private",
+          "summary":        "Upload job site photos for a service call",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UploadPhotosRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "submitServiceRating",
+          "method":         "POST",
+          "path":           "/api/service-calls/:id/rating",
+          "access":         "private",
+          "summary":        "Submit a customer satisfaction rating for a completed service call",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "ServiceRatingRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "Updates the assigned agent's averageRating and ratingsCount."
+        }
+      ]
+    }
+  },
+
+  "$defs": {
+
+    "ServiceCallListQuery": {
+      "type": "object",
+      "description": "Query parameters for GET /api/service-calls",
+      "properties": {
+        "status":     { "$ref": "../shared/common.types.json#/$defs/ServiceCallStatus" },
+        "customerId": { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "agentId":    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "from":       { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "to":         { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "page":       { "type": "integer", "minimum": 1, "default": 1 },
+        "limit":      { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "sort":       { "type": "string", "default": "-createdAt" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateServiceCallRequest": {
+      "type": "object",
+      "description": "Body for POST /api/service-calls",
+      "required": ["customer", "serviceType"],
+      "properties": {
+        "customer":          { "$ref": "../shared/common.types.json#/$defs/ObjectId", "description": "Customer ObjectId" },
+        "siteId":            { "$ref": "../shared/common.types.json#/$defs/ObjectId", "description": "Customer site ObjectId (for multi-site business customers)" },
+        "agent":             { "$ref": "../shared/common.types.json#/$defs/ObjectId", "description": "Assigned agent ObjectId — optional at creation" },
+        "equipment":         { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceType":       { "type": "string" },
+        "description":       { "type": "string" },
+        "priority":          { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "scheduledDate":     { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "bookingRequest":    { "$ref": "#/$defs/BookingRequestShape" },
+        "status":            { "$ref": "../shared/common.types.json#/$defs/ServiceCallStatus" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateServiceCallRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/service-calls/:id — mutable fields only. callNumber is rejected.",
+      "properties": {
+        "agent":             { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "equipment":         { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceType":       { "type": "string" },
+        "description":       { "type": "string" },
+        "priority":          { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "scheduledDate":     { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "completedDate":     { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "status":            { "$ref": "../shared/common.types.json#/$defs/ServiceCallStatus" },
+        "bookingRequest":    { "$ref": "#/$defs/BookingRequestShape" },
+        "siteInstructions":  { "$ref": "#/$defs/SiteInstructionShape" },
+        "resolution":        { "type": "string" },
+        "laborHours":        { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+
+    "SelfAcceptRequest": {
+      "type": "object",
+      "description": "Body for POST /api/service-calls/:id/self-accept",
+      "required": ["agentId"],
+      "properties": {
+        "agentId": { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "reason":  { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "AddPartsRequest": {
+      "type": "object",
+      "description": "Body for POST /api/service-calls/:id/parts — adds one or more parts to the job record",
+      "required": ["parts"],
+      "properties": {
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "UploadPhotosRequest": {
+      "type": "object",
+      "description": "Body for POST /api/service-calls/:id/photos",
+      "required": ["photos"],
+      "properties": {
+        "photos": {
+          "type": "array",
+          "items": { "type": "string", "description": "URL or base64-encoded photo" },
+          "minItems": 1
+        },
+        "caption": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "ServiceRatingRequest": {
+      "type": "object",
+      "description": "Body for POST /api/service-calls/:id/rating",
+      "required": ["rating"],
+      "properties": {
+        "rating":  { "type": "number", "minimum": 1, "maximum": 5 },
+        "comment": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "BookingRequestShape": {
+      "type": "object",
+      "description": "Initial booking details captured at service call creation",
+      "properties": {
+        "contact": {
+          "type": "object",
+          "properties": {
+            "customerType":  { "type": "string", "enum": ["business", "private"] },
+            "companyName":   { "type": "string" },
+            "contactPerson": { "type": "string" },
+            "contactEmail":  { "$ref": "../shared/common.types.json#/$defs/Email" },
+            "contactPhone":  { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" }
+          }
+        },
+        "administrativeAddress": { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "machineAddress":        { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "generatorDetails": {
+          "type": "object",
+          "properties": {
+            "siteName":                  { "type": "string" },
+            "generatorMakeModel":        { "type": "string" },
+            "machineModelNumber":        { "type": "string" },
+            "generatorCapacityKva":      { "type": "number", "minimum": 0 },
+            "machineLocationSameAsAdmin":{ "type": "boolean" },
+            "machineLocationNotes":      { "type": "string" }
+          }
+        },
+        "outageWindow": {
+          "type": "object",
+          "properties": {
+            "start": { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+            "end":   { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+          }
+        },
+        "serviceHistoryType":  { "type": "string", "enum": ["first-service-call", "existing-customer"] },
+        "preferredDate":       { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "preferredTimeWindow": { "type": "string" },
+        "additionalNotes":     { "type": "string" }
+      }
+    },
+
+    "SiteInstructionShape": {
+      "type": "object",
+      "description": "Field technician findings and approval tracking",
+      "properties": {
+        "problemsFound":             { "type": "string" },
+        "recommendedSolution":       { "type": "string" },
+        "requiredPartsAndMaterials": { "type": "string" },
+        "thirdPartyServiceNotes":    { "type": "string" },
+        "approvalReference":         { "type": "string" },
+        "approvalNotes":             { "type": "string" }
+      }
+    },
+
+    "ServiceCallResponse": {
+      "type": "object",
+      "description": "Shape of a service call document returned in API responses",
+      "properties": {
+        "_id":             { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "callNumber":      { "type": "string", "description": "Auto-generated call reference — immutable" },
+        "customer":        { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "siteId":          { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "agent":           { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "equipment":       { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceType":     { "type": "string" },
+        "description":     { "type": "string" },
+        "priority":        { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "status":          { "$ref": "../shared/common.types.json#/$defs/ServiceCallStatus" },
+        "scheduledDate":   { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "completedDate":   { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "laborHours":      { "type": "number", "minimum": 0 },
+        "partsUsed":       { "type": "array", "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" } },
+        "rating":          { "type": "number", "minimum": 1, "maximum": 5 },
+        "ratingComment":   { "type": "string" },
+        "createdBy":       { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "createdAt":       { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "updatedAt":       { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      }
+    }
+
+  }
+}

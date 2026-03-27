@@ -5,6 +5,7 @@
 The app now supports a complete multi-principal authentication system with MongoDB integration.
 
 ## 📍 Entry Point
+
 - **Default Route:** `/` → Redirects to `/login`
 - **Registration:** `/register`
 - **Login:** `/login`
@@ -12,7 +13,8 @@ The app now supports a complete multi-principal authentication system with Mongo
 
 ## 🔐 User Data Captured
 
-### Registration Form Fields:
+### Registration Form Fields
+
 - **userName** - Unique username
 - **email** - Email address (unique)
 - **password** - Minimum 6 characters
@@ -27,12 +29,15 @@ The app now supports a complete multi-principal authentication system with Mongo
 ## 🚀 How to Use
 
 ### 1. Start the Servers
+
 Both servers are currently running:
-- **Backend:** http://localhost:5000
-- **Frontend:** http://localhost:3000
+
+- **Backend:** `https://localhost:5000`
+- **Frontend:** `https://localhost:3000`
 
 ### 2. Register a Principal User
-1. Open http://localhost:3000
+
+1. Open `https://localhost:3000`
 2. You'll be redirected to the login page
 3. Click "Don't have an account? Register"
 4. Fill in all required fields
@@ -40,7 +45,8 @@ Both servers are currently running:
 6. You'll be automatically logged in and redirected to your profile
 
 ### 3. Login
-1. Go to http://localhost:3000/login
+
+1. Go to `https://localhost:3000/login`
 2. Enter email and password
 3. Click "Login"
 4. You'll be redirected to your profile page
@@ -48,6 +54,7 @@ Both servers are currently running:
 ## 📡 API Endpoints
 
 ### Authentication Routes
+
 - `POST /api/auth/register` - Register new principal user
 - `POST /api/auth/login` - Login user
 - `POST /api/auth/passkeys/generate` - Generate onboarding passkey (admin roles)
@@ -61,21 +68,24 @@ Both servers are currently running:
 - `GET /api/auth/admin/registration-overrides/audits` - Query legal override audits
 
 ### Role Model
+
 - `superAdmin`
 - `businessAdministrator`
 - `fieldServiceAgent`
 - `customer`
 
 ### Registration Identifier Policy
+
 - `businessRegistrationNumber`, `taxNumber`, `vatNumber` are write-once for non-superAdmin users.
 - SuperAdmin changes to existing values require `registrationChangeEvidence`.
 - Approved superAdmin overrides create immutable legal audit records.
 
 ### Example API Usage
 
-#### Register:
+#### Register
+
 ```javascript
-POST http://localhost:5000/api/auth/register
+POST https://localhost:5000/api/auth/register
 Content-Type: application/json
 
 {
@@ -92,9 +102,10 @@ Content-Type: application/json
 }
 ```
 
-#### Login:
+#### Login
+
 ```javascript
-POST http://localhost:5000/api/auth/login
+POST https://localhost:5000/api/auth/login
 Content-Type: application/json
 
 {
@@ -105,9 +116,10 @@ Content-Type: application/json
 
 ## 🗄️ MongoDB Setup
 
-### If MongoDB is NOT running:
+### If MongoDB is NOT running
 
-**Option 1: Install MongoDB locally**
+#### Option 1: Install MongoDB locally
+
 ```bash
 # Ubuntu/Debian
 sudo apt update
@@ -116,24 +128,28 @@ sudo systemctl start mongodb
 sudo systemctl enable mongodb
 ```
 
-**Option 2: Use MongoDB Atlas (Free Cloud)**
-1. Go to https://www.mongodb.com/cloud/atlas
+#### Option 2: Use MongoDB Atlas (Free Cloud)
+
+1. Go to [https://www.mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
 2. Create a free account
 3. Create a cluster
 4. Get your connection string
 5. Update `server/.env`:
-```
+
+```env
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/test-app?retryWrites=true&w=majority
 ```
 
-### Current Status:
+### Current Status
+
 ✅ Server runs without MongoDB (with warning)
 ✅ Registration/Login will work once MongoDB is connected
 
 ## 📁 File Structure
 
-### Backend:
-```
+### Backend
+
+```text
 server/
 ├── controllers/auth.controller.js  # Authentication logic
 ├── middleware/auth.middleware.js   # JWT verification
@@ -142,8 +158,9 @@ server/
 └── server.js                      # Main server (updated)
 ```
 
-### Frontend:
-```
+### Frontend
+
+```text
 client/src/
 ├── components/
 │   ├── Register.jsx       # Registration form
@@ -155,6 +172,7 @@ client/src/
 ```
 
 ## 🔒 Security Features
+
 - Passwords hashed with bcrypt
 - JWT tokens for authentication
 - Protected routes
@@ -162,12 +180,14 @@ client/src/
 - Automatic redirect for unauthorized access
 
 ## 🎨 Design
+
 - Fully responsive Tailwind CSS styling
 - Professional forms with validation
 - Clean user profile display
 - Loading states and error handling
 
 ## 🛠️ Tech Stack Used
+
 - **Frontend:** React + Vite + React Router + Tailwind CSS
 - **Backend:** Node.js + Express
 - **Database:** MongoDB + Mongoose
@@ -175,6 +195,7 @@ client/src/
 - **HTTP Client:** Axios
 
 ## 📝 Next Steps
+
 1. Connect MongoDB (see MongoDB Setup above)
 2. Register a test super user
 3. Test login functionality

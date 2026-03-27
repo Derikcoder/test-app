@@ -1,0 +1,71 @@
+flowchart TD
+    A[Client submits registration form\nPOST /api/auth/register] --> B[Auth Controller: registerUser]
+
+    B --> C{Required base fields\nuserName, email, password present?}
+    C -- No --> E1[400 Bad Request\nPlease fill in all required fields]
+    C -- Yes --> D{Role valid?\nsuperAdmin | businessAdministrator | fieldServiceAgent | customer}
+
+    D -- No --> E2[400 Bad Request\nInvalid role specified]
+    D -- Yes --> F[Normalize email to lowercase]
+
+    F --> G{Role-specific required fields valid?}
+    G -- No --> E3[400 Bad Request\nMissing role-required fields]
+    G -- Yes --> H[Check duplicate user\nUser.findOne by email or userName]
+
+    H --> I{User already exists?}
+    I -- Yes --> E4[400 Bad Request\nEmail already registered / Username already taken]
+    I -- No --> J{Role requires onboarding passkey?\n(businessAdministrator or fieldServiceAgent)}
+
+    J -- Yes --> K[Find active passkey by\ntargetEmail + targetRole]
+    K --> L{Passkey record exists?}
+    L -- No --> E5[403 Forbidden\nNo active onboarding passkey\nrenewalRequired=true]
+    L -- Yes --> M{Passkey expired?}
+    M -- Yes --> E6[403 Forbidden\nPasskey expired\nstatus->expired]
+    M -- No --> N{Passkey hash matches?}
+    N -- No --> E7[401 Unauthorized\nInvalid passkey\nattempts++ / maybe revoke]
+    N -- Yes --> O[Passkey validated]
+
+    J -- No --> O
+
+    O --> P{Role = fieldServiceAgent?}
+    P -- Yes --> Q[Load FieldServiceAgent profile by ID]
+    Q --> R{Profile exists, unlinked,\nemail matches?}
+    R -- No --> E8[400/404/409 Error\nProfile validation failed]
+    R -- Yes --> S[Profile link allowed]
+    P -- No --> T{Role = customer?}
+
+    T -- Yes --> U[Load Customer profile by ID]
+    U --> V{Profile exists, unlinked,\nemail matches?}
+    V -- No --> E9[400/404/409 Error\nProfile validation failed]
+    V -- Yes --> S
+    T -- No --> S
+
+    S --> W[Create User document\nUser.create(...)]
+    W --> X{User creation success?}
+    X -- No --> E10[400 Bad Request\nInvalid user data]
+    X -- Yes --> Y[If linked profile exists:\nset profile.userAccount = user._id\nsave profile]
+
+    Y --> Z{Passkey was used?}
+    Z -- Yes --> AA[Update passkey status->consumed\nset consumedAt]
+    Z -- No --> AB[Skip passkey update]
+
+    AA --> AC[Generate JWT token]
+    AB --> AC
+
+    AC --> AD[201 Created response\nReturn user payload + token]
+
+    subgraph DB[MongoDB Collections]
+      DB1[(User)]
+      DB2[(OnboardingPasskey)]
+      DB3[(FieldServiceAgent)]
+      DB4[(Customer)]
+    end
+
+    H --> DB1
+    K --> DB2
+    Q --> DB3
+    U --> DB4
+    W --> DB1
+    Y --> DB3
+    Y --> DB4
+    AA --> DB2

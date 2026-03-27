@@ -54,6 +54,25 @@ const buildTelegramShareUrl = ({ documentNumber, shareUrl, documentLabel, approv
   return `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`;
 };
 
+const classifyInvoicePersistenceError = (error) => {
+  if (error?.code === 11000) {
+    const duplicateField = Object.keys(error.keyPattern || {})[0] || 'field';
+    return {
+      status: 409,
+      message: `Duplicate value for ${duplicateField}`,
+    };
+  }
+
+  if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+    return {
+      status: 400,
+      message: error.message,
+    };
+  }
+
+  return null;
+};
+
 const calculateInvoiceCosts = ({
   lineItems = [],
   partsFulfilmentMode,
@@ -401,7 +420,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     );
 
     if (existing) {
-      return res.json({ invoice: existing, created: false });
+      return res.json({ data: existing, invoice: existing, created: false });
     }
 
     const linkedQuotation = serviceCall.quotation?._id
@@ -459,9 +478,14 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id, createdBy: req.user._id }));
 
     logInfo(`✅ Pro-forma invoice draft created: ${invoice.invoiceNumber} for service call ${serviceCall.callNumber}`);
-    res.status(201).json({ invoice: populated, created: true });
+    res.status(201).json({ data: populated, invoice: populated, created: true });
   } catch (error) {
     logError('Create pro-forma invoice error:', error);
+    const classifiedError = classifyInvoicePersistenceError(error);
+    if (classifiedError) {
+      return res.status(classifiedError.status).json({ message: classifiedError.message });
+    }
+
     res.status(500).json({ message: error.message });
   }
 };

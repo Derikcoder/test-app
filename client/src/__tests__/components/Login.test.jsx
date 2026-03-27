@@ -31,7 +31,7 @@ vi.mock('react-router-dom', async () => {
 // Helper to render component with providers
 const renderLogin = () => {
   return render(
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Login />
       </AuthProvider>

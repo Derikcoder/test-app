@@ -140,6 +140,25 @@ const getAgentSelfDispatchEligibility = async ({ createdBy, agentId }) => {
   };
 };
 
+const classifyServiceCallPersistenceError = (error) => {
+  if (error?.code === 11000) {
+    const duplicateField = Object.keys(error.keyPattern || {})[0] || 'field';
+    return {
+      status: 409,
+      message: `Duplicate value for ${duplicateField}`,
+    };
+  }
+
+  if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+    return {
+      status: 400,
+      message: error.message,
+    };
+  }
+
+  return null;
+};
+
 // @desc    Get all service calls
 // @route   GET /api/service-calls
 // @access  Private
@@ -310,9 +329,14 @@ export const createServiceCall = async (req, res) => {
     await serviceCall.populate('assignedAgent', 'firstName lastName employeeId');
 
     logInfo(`✅ Service call created: ${serviceCall.callNumber}`);
-    res.status(201).json(serviceCall);
+    res.status(201).json({ data: serviceCall });
   } catch (error) {
     logError('Create service call error:', error);
+    const classifiedError = classifyServiceCallPersistenceError(error);
+    if (classifiedError) {
+      return res.status(classifiedError.status).json({ message: classifiedError.message });
+    }
+
     res.status(500).json({ message: error.message });
   }
 };

@@ -107,10 +107,12 @@ describe('Auth Controller', () => {
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          _id: '123',
-          userName: validUserData.userName,
-          email: validUserData.email,
-          token: expect.any(String),
+          data: expect.objectContaining({
+            _id: '123',
+            userName: validUserData.userName,
+            email: validUserData.email,
+            token: expect.any(String),
+          }),
         })
       );
     });
@@ -199,9 +201,11 @@ describe('Auth Controller', () => {
       expect(mockUser.comparePassword).toHaveBeenCalledWith('password123');
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          _id: '123',
-          email: 'test@example.com',
-          token: expect.any(String),
+          data: expect.objectContaining({
+            _id: '123',
+            email: 'test@example.com',
+            token: expect.any(String),
+          }),
         })
       );
     });
