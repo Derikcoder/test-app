@@ -5,6 +5,43 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
 
+const RESIDENTIAL_SERVICE_CATEGORIES = [
+ { value: 'mechanical', label: 'Mechanical' },
+ { value: 'electrical', label: 'Electrical' },
+ { value: 'plumbing', label: 'Plumbing' },
+ { value: 'propertyMaintenance', label: 'Property Maintenance' },
+];
+
+const RESIDENTIAL_SERVICE_TYPE_OPTIONS = {
+ mechanical: [
+  'Genset Repair',
+  'Generator Preventive Maintenance',
+  'New Generator Supply and Installation',
+  'Fuel System Service',
+ ],
+ electrical: [
+  'Wiring and Rewiring',
+  'Power Point Installation',
+  'Lighting Installation and Repair',
+  'Appliance Electrical Repair',
+  'Electrical Fault Finding',
+ ],
+ plumbing: [
+  'Water Reticulation Repair',
+  'Pump Repair and Service',
+  'Geyser Installation and Repair',
+  'Tank Maintenance',
+  'Drainage and Blockage Repair',
+ ],
+ propertyMaintenance: [
+  'Shelving Installation',
+  'Painting',
+  'Curtain Rail Installation',
+  'Carpentry and Repairs',
+  'General Handyman Work',
+ ],
+};
+
 /**
  * Renders the service booking form for generator service calls.
  *
@@ -65,6 +102,18 @@ const ServiceCalls = () => {
   generatorMakeModel: '',
   generatorCapacityKva: '',
    machineModelNumber: '',
+  residentialServiceCategory: 'mechanical',
+  mechanicalAssetType: 'generator',
+  mechanicalFuelType: '',
+  mechanicalRunHours: '',
+  electricalWorkType: '',
+  electricalLoadNotes: '',
+  electricalCoCRequired: 'unknown',
+  plumbingSystemType: '',
+  plumbingIssueType: '',
+  plumbingPressureNotes: '',
+  maintenanceTaskType: '',
+  maintenanceMaterialsNeeded: '',
   serviceType: 'Preventive Maintenance',
   urgency: 'high',
   serviceHistoryType: 'first-service-call',
@@ -240,6 +289,24 @@ const ServiceCalls = () => {
   }));
  }, [formData.serviceHistoryType, formData.contactEmail, serviceCalls]);
 
+ const selectedResidentialServiceTypes = useMemo(() => {
+  const category = formData.residentialServiceCategory;
+  return RESIDENTIAL_SERVICE_TYPE_OPTIONS[category] || [];
+ }, [formData.residentialServiceCategory]);
+
+ useEffect(() => {
+  if (formData.customerType !== 'private') {
+   return;
+  }
+
+  if (!selectedResidentialServiceTypes.includes(formData.serviceType)) {
+   setFormData((prev) => ({
+    ...prev,
+    serviceType: selectedResidentialServiceTypes[0] || 'General Service',
+   }));
+  }
+ }, [formData.customerType, formData.serviceType, selectedResidentialServiceTypes]);
+
  /**
   * Updates form state on input changes.
   *
@@ -357,11 +424,34 @@ const ServiceCalls = () => {
   if (!formData.adminCityDistrict.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} city/district is required.`;
   if (!formData.adminProvince.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} province is required.`;
   if (!formData.adminPostalCode.trim()) return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} postal code is required.`;
-  if (!formData.generatorMakeModel.trim()) return 'Generator make/model is required.';
-   if (!formData.machineModelNumber.trim()) return 'Machine model number is required.';
-  if (!formData.generatorCapacityKva || Number(formData.generatorCapacityKva) <= 0) {
-   return 'Generator capacity must be greater than 0.';
-  }
+    if (formData.customerType === 'business') {
+     if (!formData.generatorMakeModel.trim()) return 'Generator make/model is required.';
+     if (!formData.machineModelNumber.trim()) return 'Machine model number is required.';
+     if (!formData.generatorCapacityKva || Number(formData.generatorCapacityKva) <= 0) {
+      return 'Generator capacity must be greater than 0.';
+     }
+    }
+    if (formData.customerType === 'private') {
+     if (!formData.residentialServiceCategory) return 'Service category is required.';
+     if (!formData.serviceType) return 'Service type is required.';
+
+     if (formData.residentialServiceCategory === 'mechanical') {
+      if (!formData.generatorMakeModel.trim()) return 'Mechanical work requires asset make/model.';
+      if (!formData.machineModelNumber.trim()) return 'Mechanical work requires model number.';
+     }
+
+     if (formData.residentialServiceCategory === 'electrical' && !formData.electricalWorkType.trim()) {
+      return 'Electrical work type is required.';
+     }
+
+     if (formData.residentialServiceCategory === 'plumbing' && !formData.plumbingIssueType.trim()) {
+      return 'Plumbing issue type is required.';
+     }
+
+     if (formData.residentialServiceCategory === 'propertyMaintenance' && !formData.maintenanceTaskType.trim()) {
+      return 'Property maintenance task type is required.';
+     }
+    }
   if (formData.serviceHistoryType === 'first-service-call' && !formData.dateOfPreferredServiceCall) {
    return 'Preferred site visit date is required.';
   }
@@ -412,6 +502,7 @@ const ServiceCalls = () => {
   */
  const buildPayload = () => {
    const isBusiness = formData.customerType === 'business';
+   const categoryLabel = RESIDENTIAL_SERVICE_CATEGORIES.find((item) => item.value === formData.residentialServiceCategory)?.label || 'General';
     const administrativeAddress = {
      streetAddress: formData.adminStreetAddress,
      complexName: formData.adminComplexName,
@@ -437,7 +528,22 @@ const ServiceCalls = () => {
      : formatAddress('machine');
    const title = isBusiness
     ? `${formData.serviceType} - ${formData.companyName} (${formData.siteName})`
-    : `${formData.serviceType} - Private Customer (${formData.contactPerson})`;
+    : `${formData.serviceType} - Residential (${formData.contactPerson})`;
+
+     const residentialTemplateLines = [
+    `Residential Service Category: ${categoryLabel}`,
+    formData.residentialServiceCategory === 'mechanical' ? `Mechanical Asset Type: ${formData.mechanicalAssetType || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'mechanical' ? `Fuel Type: ${formData.mechanicalFuelType || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'mechanical' ? `Run Hours: ${formData.mechanicalRunHours || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'electrical' ? `Electrical Work Type: ${formData.electricalWorkType || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'electrical' ? `Load Balancing / Wiring Notes: ${formData.electricalLoadNotes || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'electrical' ? `CoC Requirement: ${formData.electricalCoCRequired}` : null,
+    formData.residentialServiceCategory === 'plumbing' ? `Plumbing System Type: ${formData.plumbingSystemType || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'plumbing' ? `Plumbing Issue Type: ${formData.plumbingIssueType || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'plumbing' ? `Pressure / Flow Notes: ${formData.plumbingPressureNotes || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'propertyMaintenance' ? `Maintenance Task Type: ${formData.maintenanceTaskType || 'N/A'}` : null,
+    formData.residentialServiceCategory === 'propertyMaintenance' ? `Materials / Access Notes: ${formData.maintenanceMaterialsNeeded || 'N/A'}` : null,
+     ].filter(Boolean);
 
    const description = isBusiness
     ? [
@@ -482,6 +588,7 @@ const ServiceCalls = () => {
        `Machine Model Number: ${formData.machineModelNumber}`,
       `Machine Label ID: ${formData.linkedEquipmentLabelId || 'Not linked'}`,
        `Capacity (kVA): ${formData.generatorCapacityKva}`,
+      ...residentialTemplateLines,
       `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
       `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
       `Services in Progress: ${formData.servicesInProgress || 'N/A'}`,
@@ -754,6 +861,68 @@ const ServiceCalls = () => {
       {formData.customerType === 'business' ? (
         <input name="siteName" value={formData.siteName} onChange={handleInputChange} placeholder="Site Name (Machine Location Name)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
       ) : null}
+
+        {formData.customerType === 'private' ? (
+         <div className="space-y-4 rounded-xl border border-white/15 bg-white/5 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-white/70">Residential Service Category</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <select
+            name="residentialServiceCategory"
+            value={formData.residentialServiceCategory}
+            onChange={handleInputChange}
+            className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+           >
+            {RESIDENTIAL_SERVICE_CATEGORIES.map((option) => (
+             <option key={option.value} value={option.value} className="text-black">{option.label}</option>
+            ))}
+           </select>
+           <select name="serviceType" value={formData.serviceType} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
+            {selectedResidentialServiceTypes.map((option) => (
+             <option key={option} value={option} className="text-black">{option}</option>
+            ))}
+           </select>
+          </div>
+
+          {formData.residentialServiceCategory === 'mechanical' ? (
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <select name="mechanicalAssetType" value={formData.mechanicalAssetType} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
+             <option value="generator" className="text-black">Generator</option>
+             <option value="appliance" className="text-black">Appliance</option>
+             <option value="other" className="text-black">Other Mechanical Asset</option>
+            </select>
+            <input name="mechanicalFuelType" value={formData.mechanicalFuelType} onChange={handleInputChange} placeholder="Fuel Type (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+            <input type="number" min="0" name="mechanicalRunHours" value={formData.mechanicalRunHours} onChange={handleInputChange} placeholder="Run Hours (Optional)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+           </div>
+          ) : null}
+
+          {formData.residentialServiceCategory === 'electrical' ? (
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="electricalWorkType" value={formData.electricalWorkType} onChange={handleInputChange} placeholder="Electrical Work Type *" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+            <select name="electricalCoCRequired" value={formData.electricalCoCRequired} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
+             <option value="unknown" className="text-black">CoC Requirement Unknown</option>
+             <option value="required" className="text-black">CoC Required</option>
+             <option value="not-required" className="text-black">CoC Not Required</option>
+            </select>
+            <textarea name="electricalLoadNotes" value={formData.electricalLoadNotes} onChange={handleInputChange} rows="3" placeholder="Load balancing / existing wiring notes" className="md:col-span-2 w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+           </div>
+          ) : null}
+
+          {formData.residentialServiceCategory === 'plumbing' ? (
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="plumbingSystemType" value={formData.plumbingSystemType} onChange={handleInputChange} placeholder="System Type (Pump, Geyser, Tank, Drainage)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+            <input name="plumbingIssueType" value={formData.plumbingIssueType} onChange={handleInputChange} placeholder="Issue Type *" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+            <textarea name="plumbingPressureNotes" value={formData.plumbingPressureNotes} onChange={handleInputChange} rows="3" placeholder="Pressure / flow / leakage notes" className="md:col-span-2 w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+           </div>
+          ) : null}
+
+          {formData.residentialServiceCategory === 'propertyMaintenance' ? (
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="maintenanceTaskType" value={formData.maintenanceTaskType} onChange={handleInputChange} placeholder="Task Type *" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+            <textarea name="maintenanceMaterialsNeeded" value={formData.maintenanceMaterialsNeeded} onChange={handleInputChange} rows="3" placeholder="Materials / access notes" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+           </div>
+          ) : null}
+         </div>
+        ) : null}
              </section>
 
            <section className="space-y-4">
@@ -802,9 +971,32 @@ const ServiceCalls = () => {
             ) : null}
            </div>
 
-         <input name="generatorMakeModel" value={formData.generatorMakeModel} onChange={handleInputChange} placeholder="Generator Make / Model" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
-         <input name="machineModelNumber" value={formData.machineModelNumber} onChange={handleInputChange} placeholder="Machine Model Number" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
-         <input type="number" min="1" name="generatorCapacityKva" value={formData.generatorCapacityKva} onChange={handleInputChange} placeholder="Capacity (kVA)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
+         <input
+          name="generatorMakeModel"
+          value={formData.generatorMakeModel}
+          onChange={handleInputChange}
+          placeholder="Generator / Asset Make and Model"
+          className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+          required={formData.customerType === 'business' || formData.residentialServiceCategory === 'mechanical'}
+         />
+         <input
+          name="machineModelNumber"
+          value={formData.machineModelNumber}
+          onChange={handleInputChange}
+          placeholder="Machine Model Number"
+          className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+          required={formData.customerType === 'business' || formData.residentialServiceCategory === 'mechanical'}
+         />
+         <input
+          type="number"
+          min="0"
+          name="generatorCapacityKva"
+          value={formData.generatorCapacityKva}
+          onChange={handleInputChange}
+          placeholder="Capacity (kVA)"
+          className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+          required={formData.customerType === 'business'}
+         />
         </div>
        </section>
 
@@ -892,12 +1084,18 @@ const ServiceCalls = () => {
        <section className="space-y-4">
         <h2 className="glass-heading-secondary">Service & Outage Window</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <select name="serviceType" value={formData.serviceType} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
-          <option value="Preventive Maintenance" className="text-black">Preventive Maintenance</option>
-          <option value="Emergency Repair" className="text-black">Emergency Repair</option>
-          <option value="Load Bank Testing" className="text-black">Load Bank Testing</option>
-          <option value="Fuel System Service" className="text-black">Fuel System Service</option>
-         </select>
+           {formData.customerType === 'business' ? (
+            <select name="serviceType" value={formData.serviceType} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
+             <option value="Preventive Maintenance" className="text-black">Preventive Maintenance</option>
+             <option value="Emergency Repair" className="text-black">Emergency Repair</option>
+             <option value="Load Bank Testing" className="text-black">Load Bank Testing</option>
+             <option value="Fuel System Service" className="text-black">Fuel System Service</option>
+            </select>
+           ) : (
+            <div className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white/80">
+             Service Type: {formData.serviceType}
+            </div>
+           )}
 
          <select name="urgency" value={formData.urgency} onChange={handleInputChange} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
           <option value="low" className="text-black">Low</option>
