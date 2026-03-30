@@ -141,6 +141,7 @@ businessCustomer?branches=true;headOffice=true;billing=serviceAddress
 - Service history query joins `ServiceCall`, `AssetDeployment`, `Site`, and `Invoice` tables
 - Timeline view shows deployment periods alongside service events
 - Grouped by year or date range with filters
+- Machine identity is anchored to `equipmentId` labels physically attached to machines, so identical make/model units from different branches remain distinguishable at a single service location.
 
 ---
 
@@ -163,6 +164,12 @@ businessCustomer?branches=true;headOffice=true;billing=serviceAddress
 - `AssetDeployment` records created for each checkout/checkin
 - Asset's `currentLocation` updated to reflect last checkout
 - Deployment history queryable for analytics and audit trails
+
+### Scope Note (Current Project)
+
+- Customer-internal checkout/checkin logistics are out of scope for this platform.
+- This platform focuses on machine-level service tracking using Appatunid machine IDs (`equipmentId`) and serial numbers.
+- Dispatchers/technicians record where service occurred, and the service history remains tied to the exact machine serviced.
 
 ---
 

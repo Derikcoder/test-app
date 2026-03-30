@@ -1,9 +1,28 @@
 import ServiceCall from '../models/ServiceCall.model.js';
 import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
 import Customer from '../models/Customer.model.js';
+import Equipment from '../models/Equipment.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
 const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
+
+const SERVICE_HISTORY_STATUSES = ['completed', 'invoiced'];
+
+const syncEquipmentServiceHistory = async ({ serviceCall, createdBy }) => {
+  if (!serviceCall?.equipment || !SERVICE_HISTORY_STATUSES.includes(serviceCall.status)) {
+    return;
+  }
+
+  const completedDate = serviceCall.completedDate || new Date();
+
+  await Equipment.updateOne(
+    { _id: serviceCall.equipment, createdBy },
+    {
+      $addToSet: { serviceHistory: serviceCall._id },
+      $set: { lastServiceDate: completedDate },
+    }
+  );
+};
 
 const getStartOfDay = (date = new Date()) => {
   const value = new Date(date);
@@ -212,6 +231,8 @@ export const createServiceCall = async (req, res) => {
     const {
       callNumber,
       customer,
+      siteId,
+      equipment,
       assignedAgent,
       title,
       description,
@@ -309,6 +330,8 @@ export const createServiceCall = async (req, res) => {
     const serviceCall = await ServiceCall.create({
       callNumber: resolvedCallNumber,
       customer: resolvedCustomer,
+      siteId,
+      equipment,
       assignedAgent,
       title,
       description,
@@ -322,6 +345,11 @@ export const createServiceCall = async (req, res) => {
       internalNotes,
       bookingRequest,
       createdBy: req.user._id
+    });
+
+    await syncEquipmentServiceHistory({
+      serviceCall,
+      createdBy: req.user._id,
     });
 
     // Populate customer and agent details
@@ -403,6 +431,12 @@ export const updateServiceCall = async (req, res) => {
     }
 
     const updatedServiceCall = await serviceCall.save();
+
+    await syncEquipmentServiceHistory({
+      serviceCall: updatedServiceCall,
+      createdBy: req.user._id,
+    });
+
     await updatedServiceCall.populate('customer', 'businessName contactFirstName contactLastName');
     await updatedServiceCall.populate('assignedAgent', 'firstName lastName employeeId');
 
