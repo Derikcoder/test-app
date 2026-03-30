@@ -298,6 +298,7 @@ const RegisterNewCustomer = () => {
               contactPhone: formData.phoneNumber.trim(),
               contactEmail: formData.email.trim(),
               status: 'active',
+              isDepot: resolvedCustomerType === 'headOffice',
             },
           ]
         : [],

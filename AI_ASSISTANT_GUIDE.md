@@ -83,6 +83,15 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 - ✅ Corrected frontend payload mapping so customer registration sends valid backend `customerType` values (`singleBusiness`, `headOffice`, `residential`)
 - ✅ Added direct success handoff to the created customer profile for follow-on branch/machine/preference management
 
+#### Session: March 30, 2026 — Business Customer Profile Onboarding
+
+**Focus:** Move multi-site and machine onboarding into the business customer profile views so registration stays lean and operational setup happens in-context.
+
+- ✅ Added `BusinessCustomerProfile.jsx` as the shared onboarding shell for `HeadOfficeCustomer`, `BranchCustomer`, `FranchiseCustomer`, and `SingleBusinessCustomer`
+- ✅ Replaced the business customer profile placeholders with live site onboarding, machine onboarding, and machine listing UI
+- ✅ Aligned backend business-customer checks so site APIs and quotation site validation accept `headOffice`, `branch`, `franchise`, and `singleBusiness`
+- ✅ Added focused Vitest coverage for profile-based site and equipment onboarding
+
 #### Session: March 27, 2026 — Postman + Local HTTPS Setup Runbook Consolidation
 
 **Focus:** Consolidate local HTTPS setup and Postman authentication/testing into one practical day-to-day runbook.

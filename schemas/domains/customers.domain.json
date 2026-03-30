@@ -182,6 +182,7 @@
         "contactEmail":   { "$ref": "../shared/common.types.json#/$defs/Email" },
         "serviceTypes":   { "type": "array", "items": { "type": "string" } },
         "status":         { "type": "string", "enum": ["active", "inactive"], "default": "active" },
+        "isDepot":        { "type": "boolean", "description": "Mark as hub/depot for loan assets. Only one site per headOffice can be a depot.", "default": false },
         "notes":          { "type": "string" }
       },
       "additionalProperties": false
@@ -199,6 +200,7 @@
         "contactEmail":   { "$ref": "../shared/common.types.json#/$defs/Email" },
         "serviceTypes":   { "type": "array", "items": { "type": "string" } },
         "status":         { "type": "string", "enum": ["active", "inactive"] },
+        "isDepot":        { "type": "boolean", "description": "Mark as hub/depot for loan assets" },
         "notes":          { "type": "string" }
       },
       "additionalProperties": false
@@ -245,6 +247,7 @@
         "contactEmail":  { "$ref": "../shared/common.types.json#/$defs/Email" },
         "serviceTypes":  { "type": "array", "items": { "type": "string" } },
         "status":        { "type": "string", "enum": ["active", "inactive"] },
+        "isDepot":       { "type": "boolean", "description": "Mark this site as a depot (hub) for loan asset storage. Only headOffice customers should have one depot site.", "default": false },
         "notes":         { "type": "string" }
       }
     }

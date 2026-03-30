@@ -19,7 +19,9 @@ import {
   getCustomerSites,
   addCustomerSite,
   updateCustomerSite,
-  deleteCustomerSite
+  deleteCustomerSite,
+  getCustomerBranches,
+  createBranchForCustomer
 } from '../controllers/customer.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -87,5 +89,19 @@ router.put('/:id/sites/:siteId', protect, updateCustomerSite);
  * @access  Private (JWT required)
  */
 router.delete('/:id/sites/:siteId', protect, deleteCustomerSite);
+
+/**
+ * @route   GET /api/customers/:id/branches
+ * @desc    Get all branches for a headOffice customer
+ * @access  Private (JWT required)
+ */
+router.get('/:id/branches', protect, getCustomerBranches);
+
+/**
+ * @route   POST /api/customers/:id/branches
+ * @desc    Create new branch for headOffice customer
+ * @access  Private (JWT required)
+ */
+router.post('/:id/branches', protect, createBranchForCustomer);
 
 export default router;

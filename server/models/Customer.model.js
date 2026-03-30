@@ -97,6 +97,11 @@ const siteSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  /** Mark this site as a depot (hub for loan asset storage). Only headOffice customers should have one depot. */
+  isDepot: {
+    type: Boolean,
+    default: false,
+  },
 }, { _id: true }); // Enable _id for sites
 
 /**
@@ -224,16 +229,38 @@ const customerSchema = new mongoose.Schema(
     sites: {
       type: [siteSchema],
       default: [],
-      validate: {
-        validator: function(sites) {
-          // Business customers must have at least one site
-          if (['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(this.customerType) && sites.length === 0) {
-            return false;
-          }
-          return true;
+      validate: [
+        {
+          validator: function(sites) {
+            // Business customers must have at least one site
+            if (['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(this.customerType) && sites.length === 0) {
+              return false;
+            }
+            return true;
+          },
+          message: 'Business customers must have at least one site',
         },
-        message: 'Business customers must have at least one site',
-      },
+        {
+          validator: function(sites) {
+            // headOffice customers must have exactly one depot site
+            if (this.customerType === 'headOffice') {
+              const depotSites = sites.filter(s => s.isDepot === true);
+              if (depotSites.length !== 1) {
+                return false;
+              }
+            }
+            // Other business customer types should not have depot sites
+            if (['branch', 'franchise', 'singleBusiness'].includes(this.customerType)) {
+              const depotSites = sites.filter(s => s.isDepot === true);
+              if (depotSites.length > 0) {
+                return false;
+              }
+            }
+            return true;
+          },
+          message: 'headOffice must have exactly one depot site; other business customers cannot have depot sites',
+        },
+      ],
     },
     /** Maintenance manager (central contact for business customers) */
     maintenanceManager: {

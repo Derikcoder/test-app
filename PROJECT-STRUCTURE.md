@@ -31,6 +31,7 @@ This codebase is being built as a **digital transformation framework for service
 
 ```text
 Customers.jsx                    ← parent: lists all customers from DB, filtered by type
+  ├── BusinessCustomerProfile.jsx ← shared onboarding shell for business customer site/machine setup
   ├── HeadOfficeCustomer.jsx     ← profile: head office account (multiple branches/franchises)
   ├── BranchCustomer.jsx         ← profile: branch of a head office
   ├── FranchiseCustomer.jsx      ← profile: franchise operation
@@ -48,7 +49,7 @@ RegisterNewCustomer.jsx          ← standalone modal/form: register any custome
 - **SingleBusinessCustomer** — standalone SME; no parent/child account relationships
 - **ResidentialCustomer** — individual homeowner or tenant; simpler profile, no business fields
 
-Each customer type will have its own profile view tailored to the relevant fields and service history structure.
+Business customer profile routes now share a live onboarding shell for site management and machine registration, while residential customers keep their simpler dedicated flow.
 
 ---
 
@@ -197,10 +198,11 @@ See also: [Local HTTPS Setup](README.md#local-https-setup) in `README.md` for co
 - `InvoiceApprovalPage.jsx`: Public customer review page for shared pro-forma documents with approve/reject actions.
 - `Customers.jsx`: Customer list page — all customers filtered by type, with navigation to type-specific profiles.
 - `RegisterNewCustomer.jsx`: Reusable modal/form for registering any customer type. Callable from any screen.
-- `HeadOfficeCustomer.jsx`: Profile view for Head Office accounts (parent of branches/franchises).
-- `BranchCustomer.jsx`: Profile view for Branch accounts (child of Head Office).
-- `FranchiseCustomer.jsx`: Profile view for Franchise accounts (child of Head Office, independent billing).
-- `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
+- `BusinessCustomerProfile.jsx`: Shared business-customer onboarding shell with site registration, machine registration, and machine listing.
+- `HeadOfficeCustomer.jsx`: Head Office route wrapper over the shared business customer onboarding shell.
+- `BranchCustomer.jsx`: Branch route wrapper over the shared business customer onboarding shell.
+- `FranchiseCustomer.jsx`: Franchise route wrapper over the shared business customer onboarding shell.
+- `SingleBusinessCustomer.jsx`: Single-business route wrapper over the shared business customer onboarding shell.
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
 - `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.

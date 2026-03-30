@@ -1,6 +1,47 @@
 import Customer from '../models/Customer.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
+const BUSINESS_CUSTOMER_TYPES = ['headOffice', 'branch', 'franchise', 'singleBusiness'];
+
+const isBusinessCustomerType = (customerType) => BUSINESS_CUSTOMER_TYPES.includes(customerType);
+
+/**
+ * Validates hub-branch relationship rules
+ * - headOffice must have exactly one site with isDepot: true
+ * - branch/franchise/singleBusiness must NOT have sites with isDepot: true
+ * - branch/franchise must have a valid parentAccount pointing to a headOffice
+ */
+const validateHubBranchStructure = async (customerType, sites, parentAccountId) => {
+  // Validate depot sites
+  if (customerType === 'headOffice') {
+    const depotSites = sites.filter(s => s.isDepot === true);
+    if (depotSites.length !== 1) {
+      throw new Error('Head Office must have exactly one depot (hub) site');
+    }
+  } else if (['branch', 'franchise', 'singleBusiness'].includes(customerType)) {
+    const depotSites = sites.filter(s => s.isDepot === true);
+    if (depotSites.length > 0) {
+      throw new Error(`${customerType} customers cannot have depot sites`);
+    }
+  }
+
+  // Validate parent account for branches/franchises
+  if (['branch', 'franchise'].includes(customerType)) {
+    if (!parentAccountId) {
+      throw new Error(`${customerType} must have a parent account (headOffice)`);
+    }
+
+    const parentAccount = await Customer.findById(parentAccountId);
+    if (!parentAccount) {
+      throw new Error('Parent account not found');
+    }
+
+    if (parentAccount.customerType !== 'headOffice') {
+      throw new Error('Parent account must be a Head Office');
+    }
+  }
+};
+
 const formatAddress = (address = {}) => {
   if (!address || typeof address !== 'object') return '';
 
@@ -92,9 +133,6 @@ export const getCustomerById = async (req, res) => {
   }
 };
 
-// @desc    Create new customer
-// @route   POST /api/customers
-// @access  Private
 export const createCustomer = async (req, res) => {
   try {
     const {
@@ -114,6 +152,7 @@ export const createCustomer = async (req, res) => {
       registrationNumber,
       vatNumber,
       sites,
+      parentAccount,
       maintenanceManager,
       accountStatus,
       notes
@@ -129,7 +168,7 @@ export const createCustomer = async (req, res) => {
     }
 
     // Validate customer type specific requirements
-    if (customerType === 'business') {
+    if (isBusinessCustomerType(customerType)) {
       if (!businessName) {
         return res.status(400).json({ message: 'Business name is required for business customers' });
       }
@@ -140,6 +179,13 @@ export const createCustomer = async (req, res) => {
       if (!normalizedPhysicalAddress.formatted) {
         return res.status(400).json({ message: 'Physical address is required for residential customers' });
       }
+    }
+
+    // Validate hub-branch structure
+    try {
+      await validateHubBranchStructure(customerType, normalizedSites, parentAccount);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
     }
 
     // Check if customerId already exists
@@ -166,13 +212,14 @@ export const createCustomer = async (req, res) => {
       registrationNumber,
       vatNumber,
       sites: normalizedSites,
+      parentAccount,
       maintenanceManager,
       accountStatus,
       notes,
       createdBy: req.user._id
     });
 
-    logInfo(`✅ Customer created: ${customer.customerType === 'business' ? customer.businessName : `${customer.contactFirstName} ${customer.contactLastName}`} (${customer.customerId})`);
+    logInfo(`✅ Customer created: ${isBusinessCustomerType(customer.customerType) ? customer.businessName : `${customer.contactFirstName} ${customer.contactLastName}`} (${customer.customerId})`);
     res.status(201).json({ data: customer });
   } catch (error) {
     logError('Create customer error:', error);
@@ -264,7 +311,7 @@ export const getCustomerSites = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!isBusinessCustomerType(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers have multiple sites' });
     }
 
@@ -301,7 +348,7 @@ export const addCustomerSite = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!isBusinessCustomerType(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers can have multiple sites' });
     }
 
@@ -350,7 +397,7 @@ export const updateCustomerSite = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!isBusinessCustomerType(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers have multiple sites' });
     }
 
@@ -397,7 +444,7 @@ export const deleteCustomerSite = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!isBusinessCustomerType(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers have multiple sites' });
     }
 
@@ -422,6 +469,142 @@ export const deleteCustomerSite = async (req, res) => {
     res.json({ message: 'Site removed successfully' });
   } catch (error) {
     logError('Delete customer site error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get all branches for a headOffice customer
+// @route   GET /api/customers/:id/branches
+// @access  Private
+export const getCustomerBranches = async (req, res) => {
+  try {
+    const customer = await Customer.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    if (customer.customerType !== 'headOffice') {
+      return res.status(400).json({ message: 'Only headOffice customers can have branches' });
+    }
+
+    const branches = await Customer.find({
+      parentAccount: customer._id,
+      createdBy: req.user._id
+    }).sort({ createdAt: -1 });
+
+    res.json(branches);
+  } catch (error) {
+    logError('Get customer branches error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Create a new branch for a headOffice customer
+// @route   POST /api/customers/:id/branches
+// @access  Private
+export const createBranchForCustomer = async (req, res) => {
+  try {
+    const {
+      customerType,
+      businessName,
+      contactFirstName,
+      contactLastName,
+      email,
+      phoneNumber,
+      alternatePhone,
+      customerId,
+      physicalAddress,
+      physicalAddressDetails,
+      billingAddress,
+      billingAddressDetails,
+      taxNumber,
+      registrationNumber,
+      vatNumber,
+      sites,
+      maintenanceManager,
+      accountStatus,
+      notes
+    } = req.body;
+
+    // Validate parent exists and is headOffice
+    const parentCustomer = await Customer.findOne({
+      _id: req.params.id,
+      customerType: 'headOffice',
+      createdBy: req.user._id
+    });
+
+    if (!parentCustomer) {
+      return res.status(404).json({ message: 'Parent headOffice customer not found' });
+    }
+
+    // Validate branch type and requirements
+    if (!['branch', 'franchise'].includes(customerType)) {
+      return res.status(400).json({ message: 'Only branch and franchise types can be created for a headOffice' });
+    }
+
+    if (!contactFirstName || !contactLastName || !email || !phoneNumber || !customerId || !businessName) {
+      return res.status(400).json({ message: 'Please fill in all required fields' });
+    }
+
+    if (!sites || sites.length === 0) {
+      return res.status(400).json({ message: 'At least one site is required for branches' });
+    }
+
+    // Check if customerId already exists
+    const customerExists = await Customer.findOne({ customerId });
+    if (customerExists) {
+      return res.status(400).json({ message: 'Customer ID already exists' });
+    }
+
+    const normalizedPhysicalAddress = normalizeAddress(physicalAddressDetails, physicalAddress);
+    const normalizedBillingAddress = normalizeAddress(billingAddressDetails, billingAddress);
+    const normalizedSites = normalizeSites(sites);
+
+    // Validate hub-branch structure (branches should not have depot sites)
+    try {
+      await validateHubBranchStructure(customerType, normalizedSites, req.params.id);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
+    // Create branch
+    const branch = await Customer.create({
+      customerType,
+      businessName,
+      contactFirstName,
+      contactLastName,
+      email,
+      phoneNumber,
+      alternatePhone,
+      customerId,
+      physicalAddress: normalizedPhysicalAddress.formatted,
+      physicalAddressDetails: normalizedPhysicalAddress.details,
+      billingAddress: normalizedBillingAddress.formatted,
+      billingAddressDetails: normalizedBillingAddress.details,
+      taxNumber,
+      registrationNumber,
+      vatNumber,
+      sites: normalizedSites,
+      parentAccount: req.params.id,
+      maintenanceManager,
+      accountStatus,
+      notes,
+      createdBy: req.user._id
+    });
+
+    logInfo(`✅ Branch created: ${businessName} (${customerId}) for headOffice ${parentCustomer.customerId}`);
+    res.status(201).json({ data: branch });
+  } catch (error) {
+    logError('Create branch error:', error);
+    const classifiedError = classifyCustomerPersistenceError(error);
+    if (classifiedError) {
+      return res.status(classifiedError.status).json({ message: classifiedError.message });
+    }
+
     res.status(500).json({ message: error.message });
   }
 };

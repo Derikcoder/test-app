@@ -44,7 +44,8 @@ This is an enterprise-grade field service management application built with the 
 - 🗺️ Google Maps integration for location services
 - 📍 Address autocomplete and geolocation
 - 🧭 Business structure captured up front for business customers (single business vs. head office)
-- 🧱 Branches, machines, and service preferences are intended to be added later from the customer profile
+- 🧱 Multi-site onboarding now happens from business customer profiles after registration
+- 🛠️ Machine onboarding now happens from business customer profiles and is tied to specific sites
 - 📊 Service request tracking per customer
 
 ### Field Agent Management
@@ -179,6 +180,7 @@ test-app/
 │   │   │   ├── InvoiceApprovalPage.jsx # Public customer pro-forma approval screen
 │   │   │   ├── Customers.jsx       # Customer list page
 │   │   │   ├── RegisterNewCustomer.jsx # Customer profile registration screen
+│   │   │   ├── BusinessCustomerProfile.jsx # Shared site/machine onboarding shell for business customers
 │   │   │   └── ServiceCalls.jsx    # Service call management
 │   │   └── context/
 │   │       └── AuthContext.jsx     # Authentication state management
@@ -906,6 +908,7 @@ The customer registration form includes:
 - **Geocoding** - Convert addresses to coordinates
 - **Map Display** - Visual location confirmation
 - **Customer-Only Intake** - Registers the customer profile without embedding a service-call booking flow
+- **Profile-Based Business Onboarding** - Adds sites and machines from the business customer profile after registration
 
 Requires `VITE_GOOGLE_MAPS_API_KEY` in `client/.env`.
 
