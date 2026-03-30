@@ -28,6 +28,8 @@ const buildPopulateQuery = (result) => {
   return query;
 };
 
+const buildFutureDate = (days = 1) => new Date(Date.now() + (days * 24 * 60 * 60 * 1000));
+
 describe('Invoice Routes - Public Share Endpoints', () => {
   let app;
 
@@ -74,7 +76,7 @@ describe('Invoice Routes - Public Share Endpoints', () => {
         problemsFound: 'Leak found',
         recommendedSolution: 'Replace damaged part',
       },
-      shareTokenExpiresAt: new Date('2026-03-30T09:00:00.000Z'),
+      shareTokenExpiresAt: buildFutureDate(7),
     };
 
     Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
@@ -112,7 +114,7 @@ describe('Invoice Routes - Public Share Endpoints', () => {
       siteInstruction: {
         problemsFound: 'Bearing failure',
       },
-      shareTokenExpiresAt: new Date('2026-03-30T09:00:00.000Z'),
+      shareTokenExpiresAt: buildFutureDate(7),
       save: jest.fn().mockResolvedValue(true),
     };
 
@@ -172,7 +174,7 @@ describe('Invoice Routes - Public Share Endpoints', () => {
       documentType: 'proForma',
       workflowStatus: 'awaitingApproval',
       siteInstruction: {},
-      shareTokenExpiresAt: new Date('2026-03-30T09:00:00.000Z'),
+      shareTokenExpiresAt: buildFutureDate(7),
     };
 
     Invoice.findOne = jest.fn().mockResolvedValue(invoice);

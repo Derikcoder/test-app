@@ -30,6 +30,9 @@ const buildPopulateQuery = (result) => {
   return query;
 };
 
+const buildFutureDate = (days = 1) => new Date(Date.now() + (days * 24 * 60 * 60 * 1000));
+const buildPastDate = (days = 1) => new Date(Date.now() - (days * 24 * 60 * 60 * 1000));
+
 describe('Invoice Controller - Public Share Endpoints', () => {
   let req;
   let res;
@@ -86,7 +89,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
           problemsFound: 'Radiator leak detected',
           recommendedSolution: 'Replace damaged hose and refill coolant',
         },
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: buildFutureDate(7),
       };
 
       Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
@@ -122,7 +125,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
     test('returns 410 when the shared invoice token has expired', async () => {
       const expiredInvoice = {
         shareToken: 'share-token-123',
-        shareTokenExpiresAt: new Date('2026-03-01T08:00:00.000Z'),
+        shareTokenExpiresAt: buildPastDate(7),
       };
 
       Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(expiredInvoice));
@@ -145,7 +148,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         siteInstruction: {
           problemsFound: 'Radiator leak detected',
         },
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: buildFutureDate(7),
         save: jest.fn().mockResolvedValue(true),
       };
 
@@ -203,7 +206,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         shareToken: 'share-token-123',
         documentType: 'proForma',
         workflowStatus: 'awaitingApproval',
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: buildFutureDate(7),
       };
 
       req.body = { decision: 'pending' };
@@ -220,7 +223,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         shareToken: 'share-token-123',
         documentType: 'final',
         workflowStatus: 'finalized',
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: buildFutureDate(7),
       };
 
       req.body = { decision: 'approved' };
@@ -239,7 +242,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         shareToken: 'share-token-123',
         documentType: 'proForma',
         workflowStatus: 'approved',
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: buildFutureDate(7),
       };
 
       req.body = { decision: 'rejected' };

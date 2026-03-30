@@ -83,6 +83,14 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 - ✅ Added cross-audience documentation updates so product, engineering, QA, and operations can track security posture in plain language
 - ✅ Framed MVP release readiness around both feature completeness and dependency/security hygiene
 
+#### Session: March 30, 2026 — Foundation Validation Follow-Up For Invoice Share Tests
+
+**Focus:** Remove a known false-negative test caveat on `foundation` after security remediation merged.
+
+- ✅ Identified the failing invoice public-share tests as date-brittle, not dependency-remediation regressions
+- ✅ Replaced hard-coded share-token expiry timestamps in invoice controller/route tests with relative future/past dates
+- ✅ Preserved actual expiry behavior coverage while preventing calendar drift from breaking branch validation
+
 #### Session: March 30, 2026 — Customer Registration Flow Simplification
 
 **Focus:** Align the Register Customer screen with customer-profile creation instead of combining profile creation with service-call booking.
