@@ -42,6 +42,22 @@ const RESIDENTIAL_SERVICE_TYPE_OPTIONS = {
  ],
 };
 
+const extractResidentialCategory = (call) => {
+ const explicitCategory = call?.bookingRequest?.residentialTemplate?.serviceCategory;
+ if (explicitCategory) return explicitCategory;
+
+ const description = String(call?.description || '');
+ const match = description.match(/Residential Service Category:\s*(.+)/i);
+ if (!match?.[1]) return 'uncategorized';
+
+ const normalized = match[1].trim().toLowerCase();
+ if (normalized.includes('mechanical')) return 'mechanical';
+ if (normalized.includes('electrical')) return 'electrical';
+ if (normalized.includes('plumbing')) return 'plumbing';
+ if (normalized.includes('property')) return 'propertyMaintenance';
+ return 'uncategorized';
+};
+
 /**
  * Renders the service booking form for generator service calls.
  *
@@ -75,6 +91,8 @@ const ServiceCalls = () => {
  const [machineLookupId, setMachineLookupId] = useState('');
  const [machineLookupLoading, setMachineLookupLoading] = useState(false);
  const [machineLookupMessage, setMachineLookupMessage] = useState('');
+ const [residentialTimelineCategoryFilter, setResidentialTimelineCategoryFilter] = useState('all');
+ const [residentialTimelineStatusFilter, setResidentialTimelineStatusFilter] = useState('all');
 
  const [formData, setFormData] = useState({
    customerType: 'business',
@@ -229,6 +247,39 @@ const ServiceCalls = () => {
   () => serviceCalls.filter((call) => call.assignedAgent && call.agentAccepted === false),
   [serviceCalls]
  );
+
+ const residentialTimelineCalls = useMemo(() => {
+  const normalizedContactEmail = String(formData.contactEmail || '').toLowerCase().trim();
+
+  return serviceCalls
+   .filter((call) => call?.bookingRequest?.contact?.customerType === 'private')
+   .filter((call) => {
+    if (!normalizedContactEmail) return true;
+    return getServiceCallContactEmail(call) === normalizedContactEmail;
+   })
+   .map((call) => ({
+    ...call,
+    derivedResidentialCategory: extractResidentialCategory(call),
+   }))
+   .filter((call) => {
+    if (residentialTimelineCategoryFilter === 'all') return true;
+    return call.derivedResidentialCategory === residentialTimelineCategoryFilter;
+   })
+   .filter((call) => {
+    if (residentialTimelineStatusFilter === 'all') return true;
+    return String(call.status || '').toLowerCase() === residentialTimelineStatusFilter;
+   })
+   .sort((a, b) => {
+    const dateA = new Date(a.completedDate || a.scheduledDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.completedDate || b.scheduledDate || b.createdAt || 0).getTime();
+    return dateB - dateA;
+   });
+ }, [
+  formData.contactEmail,
+  residentialTimelineCategoryFilter,
+  residentialTimelineStatusFilter,
+  serviceCalls,
+ ]);
 
  const handleAssignmentSelect = (callId, agentId) => {
   setSelectedAssignments((prev) => ({
@@ -832,6 +883,80 @@ const ServiceCalls = () => {
          {successMessage}
         </div>
        )}
+
+      {formData.customerType === 'private' ? (
+       <section className="space-y-4 rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+         <div>
+          <h2 className="glass-heading-secondary">Residential Service Timeline</h2>
+          <p className="text-sm text-white/75">Chronological history across all service categories at your property.</p>
+         </div>
+         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <select
+           value={residentialTimelineCategoryFilter}
+           onChange={(event) => setResidentialTimelineCategoryFilter(event.target.value)}
+           className="rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+          >
+           <option value="all" className="text-black">All Categories</option>
+           <option value="mechanical" className="text-black">Mechanical</option>
+           <option value="electrical" className="text-black">Electrical</option>
+           <option value="plumbing" className="text-black">Plumbing</option>
+           <option value="propertyMaintenance" className="text-black">Property Maintenance</option>
+           <option value="uncategorized" className="text-black">Uncategorized</option>
+          </select>
+          <select
+           value={residentialTimelineStatusFilter}
+           onChange={(event) => setResidentialTimelineStatusFilter(event.target.value)}
+           className="rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+          >
+           <option value="all" className="text-black">All Statuses</option>
+           <option value="pending" className="text-black">Pending</option>
+           <option value="scheduled" className="text-black">Scheduled</option>
+           <option value="assigned" className="text-black">Assigned</option>
+           <option value="in-progress" className="text-black">In Progress</option>
+           <option value="completed" className="text-black">Completed</option>
+           <option value="invoiced" className="text-black">Invoiced</option>
+           <option value="cancelled" className="text-black">Cancelled</option>
+          </select>
+         </div>
+        </div>
+
+        {residentialTimelineCalls.length === 0 ? (
+         <div className="rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white/75">
+          No residential service history matches the current filters yet.
+         </div>
+        ) : (
+         <div className="space-y-3">
+          {residentialTimelineCalls.slice(0, 12).map((call) => {
+           const effectiveDate = call.completedDate || call.scheduledDate || call.createdAt;
+           return (
+            <div key={call._id} className="rounded-lg border border-white/20 bg-white/5 p-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+         <div>
+          <p className="text-white font-semibold">{call.title || 'Service Call'}</p>
+          <p className="text-xs text-white/65 mt-1">{call.callNumber || call._id}</p>
+         </div>
+         <div className="text-xs text-white/75 md:text-right">
+          <p>Category: {call.derivedResidentialCategory}</p>
+          <p>Status: {call.status || 'pending'}</p>
+         </div>
+        </div>
+        <p className="text-xs text-white/60 mt-2">
+         {effectiveDate ? new Date(effectiveDate).toLocaleString() : 'Date unavailable'}
+        </p>
+        {call.serviceType ? (
+         <p className="text-sm text-white/80 mt-2">Service Type: {call.serviceType}</p>
+        ) : null}
+        {call.serviceLocation ? (
+         <p className="text-sm text-white/70 mt-1">Location: {call.serviceLocation}</p>
+        ) : null}
+            </div>
+           );
+          })}
+         </div>
+        )}
+       </section>
+      ) : null}
 
       <section className="space-y-4">
        <h2 className="glass-heading-secondary">Customer Type</h2>
