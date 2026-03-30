@@ -35,6 +35,9 @@ const ServiceCalls = () => {
  const [queueActionSuccess, setQueueActionSuccess] = useState('');
  const [assigningCallId, setAssigningCallId] = useState('');
  const [lastServiceAutofillMeta, setLastServiceAutofillMeta] = useState(null);
+ const [machineLookupId, setMachineLookupId] = useState('');
+ const [machineLookupLoading, setMachineLookupLoading] = useState(false);
+ const [machineLookupMessage, setMachineLookupMessage] = useState('');
 
  const [formData, setFormData] = useState({
    customerType: 'business',
@@ -76,6 +79,10 @@ const ServiceCalls = () => {
   preferredTimeWindow: '08:00 - 12:00',
   notes: '',
   confirmAccuracy: false,
+  linkedCustomerId: '',
+  linkedSiteId: '',
+  linkedEquipmentId: '',
+  linkedEquipmentLabelId: '',
  });
 
  const getServiceCallContactEmail = (call) => {
@@ -247,6 +254,84 @@ const ServiceCalls = () => {
   }));
  };
 
+ const handleMachineLookup = async () => {
+  const normalizedLabel = machineLookupId.trim().toUpperCase();
+
+  if (!normalizedLabel) {
+   setMachineLookupMessage('Enter a machine label ID (example: EQ-000123).');
+   return;
+  }
+
+  try {
+   setMachineLookupLoading(true);
+   setMachineLookupMessage('');
+
+   const equipmentResponse = await api.get(`/equipment/lookup/${encodeURIComponent(normalizedLabel)}`, {
+    headers: {
+     Authorization: `Bearer ${user?.token}`,
+    },
+   });
+
+   const equipment = equipmentResponse.data;
+   let customerDetails = null;
+   let resolvedSiteName = '';
+   let resolvedSiteAddress = null;
+
+   if (equipment?.customer?._id) {
+    const customerResponse = await api.get(`/customers/${equipment.customer._id}`, {
+     headers: {
+      Authorization: `Bearer ${user?.token}`,
+     },
+    });
+    customerDetails = customerResponse.data;
+
+    if (equipment?.siteId && Array.isArray(customerDetails?.sites)) {
+     const siteMatch = customerDetails.sites.find((site) => String(site._id) === String(equipment.siteId));
+     resolvedSiteName = siteMatch?.siteName || '';
+     resolvedSiteAddress = siteMatch?.addressDetails || null;
+    }
+   }
+
+   const machineContact = [
+    customerDetails?.contactFirstName || equipment?.customer?.contactFirstName,
+    customerDetails?.contactLastName || equipment?.customer?.contactLastName,
+   ].filter(Boolean).join(' ');
+
+   setFormData((prev) => ({
+    ...prev,
+    customerType: 'business',
+    companyName: customerDetails?.businessName || equipment?.customer?.businessName || prev.companyName,
+    contactPerson: machineContact || prev.contactPerson,
+    contactEmail: customerDetails?.email || prev.contactEmail,
+    contactPhone: customerDetails?.phoneNumber || prev.contactPhone,
+    siteName: resolvedSiteName || prev.siteName,
+    adminStreetAddress: resolvedSiteAddress?.streetAddress || prev.adminStreetAddress,
+    adminComplexName: resolvedSiteAddress?.complexName || prev.adminComplexName,
+    adminSiteAddressDetail: resolvedSiteAddress?.siteAddressDetail || prev.adminSiteAddressDetail,
+    adminSuburb: resolvedSiteAddress?.suburb || prev.adminSuburb,
+    adminCityDistrict: resolvedSiteAddress?.cityDistrict || prev.adminCityDistrict,
+    adminProvince: resolvedSiteAddress?.province || prev.adminProvince,
+    adminPostalCode: resolvedSiteAddress?.postalCode || prev.adminPostalCode,
+    generatorMakeModel: [equipment?.brand, equipment?.model].filter(Boolean).join(' ') || prev.generatorMakeModel,
+    machineModelNumber: equipment?.model || prev.machineModelNumber,
+    serviceHistoryType: 'existing-customer',
+    dateOfLastService: equipment?.lastServiceDate ? new Date(equipment.lastServiceDate).toISOString().slice(0, 10) : prev.dateOfLastService,
+    linkedCustomerId: equipment?.customer?._id || prev.linkedCustomerId,
+    linkedSiteId: equipment?.siteId || prev.linkedSiteId,
+    linkedEquipmentId: equipment?._id || prev.linkedEquipmentId,
+    linkedEquipmentLabelId: equipment?.equipmentId || prev.linkedEquipmentLabelId,
+   }));
+
+   setMachineLookupMessage(
+    `Machine ${equipment?.equipmentId} linked. ${equipment?.serviceHistory?.length || 0} previous service call(s) recorded.`
+   );
+  } catch (error) {
+   setMachineLookupMessage(error?.response?.data?.message || 'Machine label lookup failed.');
+  } finally {
+   setMachineLookupLoading(false);
+  }
+ };
+
  /**
   * Performs client-side form validation.
   *
@@ -368,6 +453,7 @@ const ServiceCalls = () => {
        `Machine Location Notes: ${formData.machineLocationNotes || 'None'}`,
        `Generator: ${formData.generatorMakeModel}`,
        `Machine Model Number: ${formData.machineModelNumber}`,
+      `Machine Label ID: ${formData.linkedEquipmentLabelId || 'Not linked'}`,
        `Capacity (kVA): ${formData.generatorCapacityKva}`,
       `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
       `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
@@ -394,6 +480,7 @@ const ServiceCalls = () => {
        `Machine Location Notes: ${formData.machineLocationNotes || 'None'}`,
        `Generator: ${formData.generatorMakeModel}`,
        `Machine Model Number: ${formData.machineModelNumber}`,
+      `Machine Label ID: ${formData.linkedEquipmentLabelId || 'Not linked'}`,
        `Capacity (kVA): ${formData.generatorCapacityKva}`,
       `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
       `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
@@ -411,6 +498,9 @@ const ServiceCalls = () => {
       ].join('\n');
 
   return {
+    customer: formData.linkedCustomerId || undefined,
+    siteId: formData.linkedSiteId || undefined,
+    equipment: formData.linkedEquipmentId || undefined,
    title,
    description,
    priority: formData.urgency,
@@ -684,6 +774,34 @@ const ServiceCalls = () => {
        <section className="space-y-4">
         <h2 className="glass-heading-secondary">Generator Details</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="md:col-span-2 rounded-lg border border-cyan-300/30 bg-cyan-500/10 p-4">
+            <p className="text-xs uppercase tracking-wide text-cyan-200 mb-2">Machine Label Lookup</p>
+            <div className="flex flex-col gap-2 md:flex-row">
+             <input
+              value={machineLookupId}
+              onChange={(event) => setMachineLookupId(event.target.value)}
+              placeholder="Scan or enter label ID (e.g., EQ-000123)"
+              className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50"
+             />
+             <button
+              type="button"
+              onClick={handleMachineLookup}
+              disabled={machineLookupLoading}
+              className="glass-btn-primary px-4 py-3 whitespace-nowrap disabled:opacity-50"
+             >
+              {machineLookupLoading ? 'Looking up...' : 'Lookup Machine'}
+             </button>
+            </div>
+            {machineLookupMessage ? (
+             <p className="mt-2 text-sm text-cyan-100">{machineLookupMessage}</p>
+            ) : null}
+            {formData.linkedEquipmentLabelId ? (
+             <p className="mt-2 text-xs text-white/70">
+              Linked Machine ID: {formData.linkedEquipmentLabelId}
+             </p>
+            ) : null}
+           </div>
+
          <input name="generatorMakeModel" value={formData.generatorMakeModel} onChange={handleInputChange} placeholder="Generator Make / Model" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
          <input name="machineModelNumber" value={formData.machineModelNumber} onChange={handleInputChange} placeholder="Machine Model Number" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
          <input type="number" min="1" name="generatorCapacityKva" value={formData.generatorCapacityKva} onChange={handleInputChange} placeholder="Capacity (kVA)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" required />
