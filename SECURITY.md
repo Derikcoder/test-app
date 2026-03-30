@@ -6,6 +6,35 @@ This document outlines the security analysis and remediation steps taken on this
 
 ---
 
+## Security Transparency Program - March 30, 2026
+
+This project now runs a formal security-transparency workflow while preparing for MVP remote-server field testing.
+
+### Program Objectives
+
+1. Resolve Dependabot-reported vulnerabilities with clear prioritization and evidence
+2. Keep remediation traceable through dedicated branch workflows and test artifacts
+3. Communicate security posture in language usable by technical and non-technical readers
+
+### Working Model
+
+1. Remediation branch: `addressing-dependabot-identified-vulnerabilities`
+2. Triage order: `critical` → `high` → `moderate` → `low`
+3. Validation: targeted tests + full suite runs after upgrade batches
+4. Promotion: reconcile to `foundation` only after validation gates pass
+
+### Stakeholder Views
+
+Engineering: Dependency upgrades are isolated, reviewed, and tested before merge, and security fixes are documented together with code changes.
+
+QA: Regression checks are required after remediation batches, including explicit re-testing of security-sensitive paths.
+
+Product and Business: Security posture is treated as an MVP trust signal, and field-testing readiness depends on both feature delivery and risk reduction.
+
+Operations and Deployment: Release decisions include dependency-health status, and remote server deployment readiness includes vulnerability remediation evidence.
+
+---
+
 ## ⚠️ Critical Issue - RESOLVED
 
 ### Exposed Google Maps API Key

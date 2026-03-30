@@ -73,6 +73,16 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 
 ### Recent Changes
 
+#### Session: March 30, 2026 — Dependabot Remediation & Security Transparency Stream
+
+**Focus:** Establish a transparent, auditable path to resolve dependency vulnerabilities ahead of remote field-testing deployment.
+
+- ✅ Created dedicated remediation branch: `addressing-dependabot-identified-vulnerabilities` (from `foundation`)
+- ✅ Confirmed merge discipline: validate on remediation branch, reconcile with `foundation`, then promote through existing branch pipeline
+- ✅ Confirmed vulnerability triage workflow: prioritize `critical` and `high`, then address `moderate` and `low`
+- ✅ Added cross-audience documentation updates so product, engineering, QA, and operations can track security posture in plain language
+- ✅ Framed MVP release readiness around both feature completeness and dependency/security hygiene
+
 #### Session: March 30, 2026 — Customer Registration Flow Simplification
 
 **Focus:** Align the Register Customer screen with customer-profile creation instead of combining profile creation with service-call booking.

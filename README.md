@@ -15,6 +15,7 @@ A comprehensive full-stack MERN application for managing field service operation
 - [API Documentation](#api-documentation)
 - [API Schema Registry & Flow Maps](#api-schema-registry--flow-maps)
 - [Authentication & Authorization](#authentication--authorization)
+- [Security Transparency & Deployment Readiness](#security-transparency--deployment-readiness)
 - [Development Workflow](#development-workflow)
 - [Available Scripts](#available-scripts)
 - [Project Architecture](#project-architecture)
@@ -28,6 +29,28 @@ A comprehensive full-stack MERN application for managing field service operation
 This is an enterprise-grade field service management application built with the MERN stack (MongoDB, Express.js, React, Node.js). It provides a complete solution for managing field service operations, from customer intake and agent assignment to service call tracking and business analytics.
 
 **Target Use Case:** Service-based businesses that need to manage field agents, customer service requests, job scheduling, and maintain detailed operational records.
+
+## Security Transparency & Deployment Readiness
+
+This project is now in a security-hardening phase focused on Dependabot-identified vulnerabilities while feature delivery continues on stable branches.
+
+Why this matters:
+
+- Product and business stakeholders need confidence that MVP field testing is built on an actively maintained security baseline.
+- Engineering and QA need a clear, testable remediation workflow with auditable branch history.
+- Operations needs predictable release gates before remote-server deployment.
+
+Current approach:
+
+- Vulnerability remediation is executed on a dedicated branch: `addressing-dependabot-identified-vulnerabilities`.
+- Critical and high vulnerabilities are prioritized first, then moderate and low.
+- Changes are validated through repeatable test runs before reconciliation with `foundation`.
+- Documentation is updated in the same change sets so non-engineering readers can track risk posture and mitigation status.
+
+Deployment intent:
+
+- The team is preparing for controlled remote field-testing deployments.
+- Security posture, dependency hygiene, and test evidence are treated as release criteria for MVP credibility.
 
 ## Key Features
 

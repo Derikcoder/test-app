@@ -31,5 +31,18 @@
   "license": "ISC",
   "devDependencies": {
     "newman": "^6.2.2"
+  },
+  "overrides": {
+    "newman": {
+      "postman-runtime": "^7.53.0"
+    },
+    "postman-runtime": {
+      "handlebars": "^4.7.9"
+    },
+    "uvm": {
+      "flatted": "^3.4.2"
+    },
+    "lodash": "^4.17.23",
+    "underscore": "^1.13.8"
   }
 }
