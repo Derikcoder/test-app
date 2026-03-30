@@ -74,6 +74,33 @@ describe('AuthContext', () => {
       });
     });
 
+    it('should normalize wrapped auth payloads from localStorage on mount', async () => {
+      localStorage.setItem('userInfo', JSON.stringify({
+        data: {
+          _id: 'abc123',
+          email: 'wrapped@example.com',
+          token: 'wrapped-token',
+        },
+      }));
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('wrapped@example.com');
+      });
+
+      const storedData = JSON.parse(localStorage.getItem('userInfo'));
+      expect(storedData).toEqual({
+        _id: 'abc123',
+        email: 'wrapped@example.com',
+        token: 'wrapped-token',
+      });
+    });
+
     it('should handle invalid JSON in localStorage gracefully', async () => {
       localStorage.setItem('userInfo', 'invalid json');
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -153,6 +180,50 @@ describe('AuthContext', () => {
         expect(screen.getByTestId('user')).toHaveTextContent('test@example.com');
       });
     });
+
+    it('should normalize wrapped login payloads before storing', async () => {
+      const WrappedLoginButton = () => {
+        const { login } = useAuth();
+
+        return (
+          <button
+            onClick={() => login({
+              data: {
+                _id: 'user-1',
+                email: 'wrapped-login@example.com',
+                token: 'wrapped-login-token',
+              },
+            })}
+          >
+            Wrapped Login
+          </button>
+        );
+      };
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+          <WrappedLoginButton />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('Loaded');
+      });
+
+      fireEvent.click(screen.getByText('Wrapped Login'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('wrapped-login@example.com');
+      });
+
+      const storedData = JSON.parse(localStorage.getItem('userInfo'));
+      expect(storedData).toEqual({
+        _id: 'user-1',
+        email: 'wrapped-login@example.com',
+        token: 'wrapped-login-token',
+      });
+    });
   });
 
   describe('logout', () => {
@@ -229,6 +300,29 @@ describe('AuthContext', () => {
       // Check localStorage
       const storedData = JSON.parse(localStorage.getItem('userInfo'));
       expect(storedData.email).toBe('updated@example.com');
+    });
+
+    it('should preserve the existing token when update payload omits it', async () => {
+      localStorage.setItem('userInfo', JSON.stringify({ email: 'old@example.com', token: 'token123' }));
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('old@example.com');
+      });
+
+      fireEvent.click(screen.getByText('Update'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user')).toHaveTextContent('updated@example.com');
+      });
+
+      const storedData = JSON.parse(localStorage.getItem('userInfo'));
+      expect(storedData).toEqual({ email: 'updated@example.com', token: 'token123' });
     });
   });
 

@@ -12,6 +12,33 @@
 
 import axios from 'axios';
 
+const getPersistedToken = () => {
+  const directToken = localStorage.getItem('token');
+
+  if (directToken) {
+    return directToken;
+  }
+
+  try {
+    const storedUser = localStorage.getItem('userInfo');
+
+    if (!storedUser) {
+      return null;
+    }
+
+    const parsedUser = JSON.parse(storedUser);
+
+    return (
+      parsedUser?.token ||
+      parsedUser?.data?.token ||
+      parsedUser?.data?.user?.token ||
+      null
+    );
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Axios Instance Configuration
  * 
@@ -46,18 +73,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Inject JWT token if available in localStorage
-    let token = localStorage.getItem('token');
-
-    if (!token) {
-      try {
-        const storedUser = localStorage.getItem('userInfo');
-        if (storedUser) {
-          token = JSON.parse(storedUser)?.token;
-        }
-      } catch {
-        // Ignore parse errors and proceed without auth header.
-      }
-    }
+    const token = getPersistedToken();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

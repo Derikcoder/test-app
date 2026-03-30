@@ -73,6 +73,16 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 
 ### Recent Changes
 
+#### Session: March 30, 2026 — Customer Registration Flow Simplification
+
+**Focus:** Align the Register Customer screen with customer-profile creation instead of combining profile creation with service-call booking.
+
+- ✅ Removed the confusing existing-customer branch from `RegisterNewCustomer.jsx`
+- ✅ Reordered the screen so business structure is defined before customer details
+- ✅ Simplified the form to create customer records only; service requests are no longer created from this screen
+- ✅ Corrected frontend payload mapping so customer registration sends valid backend `customerType` values (`singleBusiness`, `headOffice`, `residential`)
+- ✅ Added direct success handoff to the created customer profile for follow-on branch/machine/preference management
+
 #### Session: March 27, 2026 — Postman + Local HTTPS Setup Runbook Consolidation
 
 **Focus:** Consolidate local HTTPS setup and Postman authentication/testing into one practical day-to-day runbook.

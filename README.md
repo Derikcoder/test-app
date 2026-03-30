@@ -40,9 +40,11 @@ This is an enterprise-grade field service management application built with the 
 
 ### Customer Management
 
-- 📝 Customer intake with detailed information capture
+- 📝 Customer profile registration focused on core customer identity and location capture
 - 🗺️ Google Maps integration for location services
 - 📍 Address autocomplete and geolocation
+- 🧭 Business structure captured up front for business customers (single business vs. head office)
+- 🧱 Branches, machines, and service preferences are intended to be added later from the customer profile
 - 📊 Service request tracking per customer
 
 ### Field Agent Management
@@ -175,7 +177,8 @@ test-app/
 │   │   │   ├── FieldServiceAgents.jsx  # Agent CRUD operations
 │   │   │   ├── AgentProfile.jsx    # Agent details & statistics
 │   │   │   ├── InvoiceApprovalPage.jsx # Public customer pro-forma approval screen
-│   │   │   ├── Customers.jsx       # Customer intake form
+│   │   │   ├── Customers.jsx       # Customer list page
+│   │   │   ├── RegisterNewCustomer.jsx # Customer profile registration screen
 │   │   │   └── ServiceCalls.jsx    # Service call management
 │   │   └── context/
 │   │       └── AuthContext.jsx     # Authentication state management
@@ -897,11 +900,12 @@ See [LOGGING_GUIDE.md](LOGGING_GUIDE.md) for detailed logging documentation.
 
 ### Google Maps Integration
 
-The customer intake form includes:
+The customer registration form includes:
 
 - **Address Autocomplete** - Google Places API integration
 - **Geocoding** - Convert addresses to coordinates
 - **Map Display** - Visual location confirmation
+- **Customer-Only Intake** - Registers the customer profile without embedding a service-call booking flow
 
 Requires `VITE_GOOGLE_MAPS_API_KEY` in `client/.env`.
 

@@ -9,6 +9,31 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 
+const normalizeAuthUser = (userData, existingUser = null) => {
+  if (!userData || typeof userData !== 'object') {
+    return existingUser;
+  }
+
+  const payload = userData.data && typeof userData.data === 'object'
+    ? userData.data
+    : userData;
+
+  const nestedUser = payload.user && typeof payload.user === 'object'
+    ? payload.user
+    : payload;
+
+  if (!nestedUser || typeof nestedUser !== 'object') {
+    return existingUser;
+  }
+
+  const token = payload.token || nestedUser.token || existingUser?.token || null;
+
+  return {
+    ...nestedUser,
+    ...(token ? { token } : {}),
+  };
+};
+
 /**
  * Authentication Context
  * 
@@ -67,7 +92,15 @@ export const AuthProvider = ({ children }) => {
       
       if (userInfo) {
         // Parse and restore user session
-        setUser(JSON.parse(userInfo));
+        const parsedUser = JSON.parse(userInfo);
+        const normalizedUser = normalizeAuthUser(parsedUser);
+
+        if (normalizedUser) {
+          setUser(normalizedUser);
+          localStorage.setItem('userInfo', JSON.stringify(normalizedUser));
+        } else {
+          localStorage.removeItem('userInfo');
+        }
       }
     } catch (error) {
       // Handle invalid JSON in localStorage gracefully
@@ -98,8 +131,15 @@ export const AuthProvider = ({ children }) => {
    * login({ token: 'jwt123...', email: 'user@example.com', ... });
    */
   const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem('userInfo', JSON.stringify(userData));
+    const normalizedUser = normalizeAuthUser(userData, user);
+
+    setUser(normalizedUser);
+
+    if (normalizedUser) {
+      localStorage.setItem('userInfo', JSON.stringify(normalizedUser));
+    } else {
+      localStorage.removeItem('userInfo');
+    }
   };
 
   /**
@@ -136,8 +176,15 @@ export const AuthProvider = ({ children }) => {
    * updateUser({ ...user, phoneNumber: '+27123456789' });
    */
   const updateUser = (userData) => {
-    setUser(userData);
-    localStorage.setItem('userInfo', JSON.stringify(userData));
+    const normalizedUser = normalizeAuthUser(userData, user);
+
+    setUser(normalizedUser);
+
+    if (normalizedUser) {
+      localStorage.setItem('userInfo', JSON.stringify(normalizedUser));
+    } else {
+      localStorage.removeItem('userInfo');
+    }
   };
 
   /**
