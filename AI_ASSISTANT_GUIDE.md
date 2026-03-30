@@ -92,6 +92,25 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 - ✅ Aligned backend business-customer checks so site APIs and quotation site validation accept `headOffice`, `branch`, `franchise`, and `singleBusiness`
 - ✅ Added focused Vitest coverage for profile-based site and equipment onboarding
 
+#### Session: March 30, 2026 — Billing Policy + Machine-ID Service Tracking
+
+**Focus:** Make billing behavior operationally correct for multi-site customers and anchor repeat service history to exact machine IDs.
+
+- ✅ Added customer-level `billingAddressPolicy` with defaults aligned to service-site billing (`serviceSite`) and optional override (`customerBillingAddress`)
+- ✅ Added billing policy selector to registration and Head Office profile edit flow
+- ✅ Updated invoice creation flows to snapshot `serviceSiteAddressSnapshot`, `billingAddressSnapshot`, and `billingAddressSource`
+- ✅ Added machine label lookup endpoint: `GET /api/equipment/lookup/:equipmentId`
+- ✅ Updated service call creation/update flow to persist `equipment` + `siteId` linkage and auto-sync `Equipment.serviceHistory` when calls complete/invoice
+
+#### Session: March 30, 2026 — Residential Turnkey Service Templates + Timeline
+
+**Focus:** Expand private/residential booking into a unified multi-category property maintenance flow.
+
+- ✅ Added residential category templates in `ServiceCalls.jsx`: Mechanical, Electrical, Plumbing, Property Maintenance
+- ✅ Added category-specific validation and payload enrichment for dispatch/quotation context
+- ✅ Added private-customer service history timeline with category/status filters for unified cross-category visibility
+- ✅ Added residential user-type epic docs under `user-stories/RESIDENTIAL_TURNKEY_SERVICES.md`
+
 #### Session: March 27, 2026 — Postman + Local HTTPS Setup Runbook Consolidation
 
 **Focus:** Consolidate local HTTPS setup and Postman authentication/testing into one practical day-to-day runbook.
@@ -1168,6 +1187,25 @@ git merge consolidation
 ---
 
 ## 🔄 Recent Changes
+
+### 2026-03-30 (Session: Billing Policy + Machine-ID Tracking + Residential Templates)
+
+- ✅ Added customer billing policy model + flow support
+  - New `billingAddressPolicy` on customer records (`serviceSite` default, optional `customerBillingAddress` override)
+  - Registration and head-office profile edit now support changing billing policy
+  - Invoice creation snapshots both service-site and effective billing addresses for auditability
+- ✅ Strengthened machine-level service tracking
+  - `createServiceCall` now persists linked `equipment` and `siteId`
+  - Completed/invoiced calls auto-sync into `Equipment.serviceHistory`
+  - `Equipment.lastServiceDate` auto-updates from service lifecycle
+  - Added machine label lookup endpoint: `GET /api/equipment/lookup/:equipmentId`
+- ✅ Implemented residential turnkey booking templates
+  - Category templates in service booking: Mechanical, Electrical, Plumbing, Property Maintenance
+  - Category-specific fields and validation for richer diagnostics and quoting handoff
+  - Unified residential timeline with category/status filters for cross-category history
+- ✅ Added residential user-story epic and index updates
+  - `user-stories/RESIDENTIAL_TURNKEY_SERVICES.md`
+  - `user-stories/README.md` includes residential configuration and status
 
 ### 2026-03-30 (Session: Story 1 Implementation)
 

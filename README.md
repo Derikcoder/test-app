@@ -46,6 +46,8 @@ This is an enterprise-grade field service management application built with the 
 - 🧭 Business structure captured up front for business customers (single business vs. head office)
 - 🧱 Multi-site onboarding now happens from business customer profiles after registration
 - 🛠️ Machine onboarding now happens from business customer profiles and is tied to specific sites
+- 🧾 Billing policy support: default billing to service-site address with optional customer-specific billing override
+- 🏢 Head Office profile includes editable billing policy and branch management panel
 - 📊 Service request tracking per customer
 
 ### Field Agent Management
@@ -68,6 +70,10 @@ This is an enterprise-grade field service management application built with the 
 - 🧾 Quotation and invoicing history capture in structured booking request
 - 🚨 SuperUser operations queue for unassigned call alerts and assignment to field agents
 - 🧩 Reusable quote creation component available from agent profile and service calls views
+- 🏷️ Machine label lookup in booking flow (`EQ-xxxxxx`) to auto-link exact equipment/customer/site context
+- 🔗 Service calls now persist linked `customer`, `siteId`, and `equipment` when available for precise machine-level history
+- 🧠 Residential category templates in booking flow: Mechanical, Electrical, Plumbing, Property Maintenance
+- 🏠 Residential unified timeline view with category/status filters for cross-category property service history
 
 ### Quotation Management
 

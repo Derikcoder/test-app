@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-03-27
+Last updated: 2026-03-30
 
 ---
 
@@ -12,20 +12,16 @@ This codebase is being built as a **digital transformation framework for service
 
 ---
 
-## 🎯 Active Branch Goal — `feature/customer-management`
+## 🎯 Active Branch Goal — `feature/register-customer-process`
 
-**Objective:** Refactor the customer module into a proper parent → child component hierarchy.
+**Objective:** Deliver production-grade onboarding and service tracking for business and residential customer types.
 
-### Problem
+### Current Focus Areas
 
-`Customers.jsx` currently contains a customer registration/service request form — it is **not** a customer list. This mixes concerns and makes the component unsuitable as the customers landing page.
-
-### Plan
-
-1. **Extract** the existing form from `Customers.jsx` into a new reusable component: `RegisterNewCustomer.jsx`
-2. **Recreate** `Customers.jsx` as a true customer list page — dynamically renders all customers from the database
-3. **Create** `SingleCustomer.jsx` as the customer detail/profile view — child of `Customers.jsx`, navigated to per row
-4. **Wire** routing so `Customers` → list, clicking a customer → `SingleCustomer` profile
+1. **Business hierarchy onboarding** — head office + branches + hub/depot structure
+2. **Billing policy controls** — default service-site billing with optional customer billing override
+3. **Machine-level history integrity** — service calls linked to exact equipment IDs
+4. **Residential turnkey flow** — category templates + unified cross-category timeline
 
 ### Component Hierarchy
 
@@ -39,6 +35,7 @@ Customers.jsx                    ← parent: lists all customers from DB, filter
   └── ResidentialCustomer.jsx    ← profile: individual/residential client
 
 RegisterNewCustomer.jsx          ← standalone modal/form: register any customer type (callable from anywhere)
+ServiceCalls.jsx                 ← booking + superUser queue + machine label lookup + residential templates/timeline
 ```
 
 ### Customer Type Notes
@@ -48,6 +45,8 @@ RegisterNewCustomer.jsx          ← standalone modal/form: register any custome
 - **FranchiseCustomer** — linked to a HeadOffice parent; independent billing but shared branding
 - **SingleBusinessCustomer** — standalone SME; no parent/child account relationships
 - **ResidentialCustomer** — individual homeowner or tenant; simpler profile, no business fields
+
+Residential bookings now support multi-category templates (mechanical, electrical, plumbing, property maintenance) and a unified private-customer timeline with category/status filtering.
 
 Business customer profile routes now share a live onboarding shell for site management and machine registration, while residential customers keep their simpler dedicated flow.
 
