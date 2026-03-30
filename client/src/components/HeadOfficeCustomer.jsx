@@ -27,6 +27,11 @@ const HeadOfficeCustomer = () => {
   const [success, setSuccess] = useState('');
   const [showBranchForm, setShowBranchForm] = useState(false);
   const [submittingBranch, setSubmittingBranch] = useState(false);
+  const [savingBillingPolicy, setSavingBillingPolicy] = useState(false);
+  const [billingPolicyForm, setBillingPolicyForm] = useState({
+    billingAddressPolicy: 'serviceSite',
+    billingAddress: '',
+  });
   const [branchFormData, setBranchFormData] = useState({
     customerType: 'branch',
     businessName: '',
@@ -56,6 +61,10 @@ const HeadOfficeCustomer = () => {
           headers: { Authorization: `Bearer ${authToken}` }
         });
         setCustomer(customerRes.data);
+        setBillingPolicyForm({
+          billingAddressPolicy: customerRes.data?.billingAddressPolicy || 'serviceSite',
+          billingAddress: customerRes.data?.billingAddress || '',
+        });
 
         // Fetch branches
         const branchesRes = await api.get(`/customers/${id}/branches`, {
@@ -160,6 +169,44 @@ const HeadOfficeCustomer = () => {
       setError(err.response?.data?.message || 'Failed to delete branch');
     }
   }, [authToken]);
+
+  const handleBillingPolicyChange = (event) => {
+    setBillingPolicyForm((prev) => ({
+      ...prev,
+      [event.target.name]: event.target.value,
+    }));
+  };
+
+  const handleSaveBillingPolicy = useCallback(async (event) => {
+    event.preventDefault();
+    if (savingBillingPolicy) return;
+
+    try {
+      setSavingBillingPolicy(true);
+      setError('');
+
+      const payload = {
+        billingAddressPolicy: billingPolicyForm.billingAddressPolicy,
+        billingAddress: billingPolicyForm.billingAddress.trim(),
+      };
+
+      const response = await api.put(`/customers/${id}`, payload, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+
+      setCustomer(response.data);
+      setBillingPolicyForm({
+        billingAddressPolicy: response.data?.billingAddressPolicy || 'serviceSite',
+        billingAddress: response.data?.billingAddress || '',
+      });
+      setSuccess('Billing policy updated successfully.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update billing policy');
+    } finally {
+      setSavingBillingPolicy(false);
+    }
+  }, [authToken, billingPolicyForm, id, savingBillingPolicy]);
 
   if (loading) {
     return (
@@ -387,6 +434,64 @@ const HeadOfficeCustomer = () => {
                     ))
                   )}
                 </div>
+              </div>
+
+              {/* Billing Policy Section */}
+              <div className="glass-card rounded-2xl shadow-xl p-6">
+                <h3 className="glass-heading text-lg mb-4">Billing Address Policy</h3>
+                <p className="text-sm text-white/65 mb-4">
+                  Default billing follows the service site address. Switch to custom billing only when this customer requires it.
+                </p>
+
+                <form onSubmit={handleSaveBillingPolicy} className="space-y-4">
+                  <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-4">
+                    <label className="inline-flex items-center gap-2 text-sm text-white/90">
+                      <input
+                        type="radio"
+                        name="billingAddressPolicy"
+                        value="serviceSite"
+                        checked={billingPolicyForm.billingAddressPolicy === 'serviceSite'}
+                        onChange={handleBillingPolicyChange}
+                      />
+                      Use service site address for billing (default)
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm text-white/90">
+                      <input
+                        type="radio"
+                        name="billingAddressPolicy"
+                        value="customerBillingAddress"
+                        checked={billingPolicyForm.billingAddressPolicy === 'customerBillingAddress'}
+                        onChange={handleBillingPolicyChange}
+                      />
+                      Use custom customer billing address
+                    </label>
+                  </div>
+
+                  <div>
+                    <label htmlFor="billingAddressOverride" className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                      Custom Billing Address (Optional)
+                    </label>
+                    <textarea
+                      id="billingAddressOverride"
+                      name="billingAddress"
+                      value={billingPolicyForm.billingAddress}
+                      onChange={handleBillingPolicyChange}
+                      rows="3"
+                      placeholder={billingPolicyForm.billingAddressPolicy === 'serviceSite'
+                        ? 'Optional override. Leave blank to bill service-site address.'
+                        : 'Enter customer-specific billing address'}
+                      className="mt-2 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder-white/50 focus:outline-none focus:border-yellow-400/50"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={savingBillingPolicy}
+                    className="w-full glass-button text-white hover:bg-white/20 transition-all px-4 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    {savingBillingPolicy ? 'Saving...' : 'Save Billing Policy'}
+                  </button>
+                </form>
               </div>
             </div>
           </div>
