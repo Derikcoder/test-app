@@ -1169,6 +1169,34 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-03-30 (Session: Story 1 Implementation)
+
+- ✅ **Story 1: Master + Branches Registration with Hub Depot Support**
+  - Added `isDepot` flag to Site schema in Customer model to mark hub/depot locations for loan asset storage
+  - Implemented hub-branch validation rules:
+    - headOffice customers must have exactly ONE site with `isDepot: true`
+    - branch/franchise/singleBusiness customers cannot have depot sites
+    - branches must link to a headOffice via `parentAccount` field
+  - Created branch management backend endpoints:
+    - `GET /api/customers/:id/branches` — fetch all branches for a headOffice
+    - `POST /api/customers/:id/branches` — create new branch linked to headOffice
+  - Added `validateHubBranchStructure()` helper in customer controller for consistent validation
+  - Updated RegisterNewCustomer to automatically set `isDepot: true` when registering a headOffice
+  - Enhanced HeadOfficeCustomer component (~400 lines) with:
+    - Hub site display with depot badge
+    - Branch listing with inline branch creation form
+    - Branch management (create/delete) with validation
+    - Two-column layout: left for profile/sites/equipment, right for hub/branches summary
+  - Updated JSON schema (`schemas/domains/customers.domain.json`):
+    - Added `isDepot` to SiteResponse, CreateSiteRequest, UpdateSiteRequest
+    - Updated documentation for hub-branch relationship
+  - Created user-stories folder with:
+    - `LOAN_ASSET_TRACKING.md` — complete epic with 8 stories (Stories 1–8)
+    - `README.md` — organization and user type configuration templates
+  - Created `STORY1_IMPLEMENTATION.md` — implementation tracking document
+  - **Acceptance criteria**: ✅ Master has central billing/contact; ✅ Branches have own address/contact; ✅ Hub marked as depot; ✅ Branches managed from master profile; ✅ Branch creation from profile UI
+  - **Test Status**: All 45 frontend tests passing after implementation
+
 ### 2026-03-26 (Session 26)
 
 - ✅ Added reusable Postman script library and importable environments for onboarding
