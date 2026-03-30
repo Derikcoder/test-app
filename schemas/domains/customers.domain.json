@@ -142,6 +142,7 @@
         "physicalAddressDetails":{ "$ref": "../shared/common.types.json#/$defs/Address" },
         "billingAddress":        { "type": "string" },
         "billingAddressDetails": { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "billingAddressPolicy":  { "type": "string", "enum": ["serviceSite", "customerBillingAddress"], "default": "serviceSite", "description": "Billing rule: service-site address by default, or explicit customer billing address override" },
         "vatNumber":             { "type": "string" },
         "status":                { "type": "string", "enum": ["active", "inactive", "suspended"], "default": "active" },
         "notes":                 { "type": "string" }
@@ -162,6 +163,7 @@
         "physicalAddressDetails": { "$ref": "../shared/common.types.json#/$defs/Address" },
         "billingAddress":         { "type": "string" },
         "billingAddressDetails":  { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "billingAddressPolicy":   { "type": "string", "enum": ["serviceSite", "customerBillingAddress"] },
         "vatNumber":              { "type": "string" },
         "status":                 { "type": "string", "enum": ["active", "inactive", "suspended"] },
         "notes":                  { "type": "string" }

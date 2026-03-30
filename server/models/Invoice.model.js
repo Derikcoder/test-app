@@ -244,6 +244,24 @@ const invoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       trim: true,
     },
+    /** Service site address captured at invoice creation time */
+    serviceSiteAddressSnapshot: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Effective billing address captured at invoice creation time */
+    billingAddressSnapshot: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Source used to derive billing address */
+    billingAddressSource: {
+      type: String,
+      enum: ['serviceSite', 'customerBillingAddress', 'manual'],
+      default: 'serviceSite',
+    },
     /** Human-readable title/summary for the billing document */
     title: {
       type: String,

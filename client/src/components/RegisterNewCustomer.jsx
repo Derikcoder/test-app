@@ -69,6 +69,7 @@ const RegisterNewCustomer = () => {
     cityDistrict: '',
     province: '',
     postalCode: '',
+    billingAddressPolicy: 'serviceSite',
     billingAddress: '',
     vatNumber: '',
     taxNumber: '',
@@ -248,6 +249,7 @@ const RegisterNewCustomer = () => {
       cityDistrict: '',
       province: '',
       postalCode: '',
+      billingAddressPolicy: 'serviceSite',
       billingAddress: '',
       vatNumber: '',
       taxNumber: '',
@@ -283,6 +285,7 @@ const RegisterNewCustomer = () => {
       physicalAddress: formattedPhysicalAddress,
       physicalAddressDetails,
       billingAddress: formData.billingAddress.trim(),
+      billingAddressPolicy: formData.billingAddressPolicy,
       vatNumber: formData.vatNumber.trim(),
       taxNumber: formData.taxNumber.trim(),
       registrationNumber: formData.registrationNumber.trim(),
@@ -676,6 +679,35 @@ const RegisterNewCustomer = () => {
                 </div>
 
                 <div className="md:col-span-2">
+                  <label className="glass-form-label">Billing Address Rule</label>
+                  <div className="mt-2 flex flex-col gap-2 rounded-xl border border-white/15 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <label className="inline-flex items-center gap-2 text-sm text-white/90">
+                      <input
+                        type="radio"
+                        name="billingAddressPolicy"
+                        value="serviceSite"
+                        checked={formData.billingAddressPolicy === 'serviceSite'}
+                        onChange={handleInputChange}
+                      />
+                      Use service site address for billing (default)
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm text-white/90">
+                      <input
+                        type="radio"
+                        name="billingAddressPolicy"
+                        value="customerBillingAddress"
+                        checked={formData.billingAddressPolicy === 'customerBillingAddress'}
+                        onChange={handleInputChange}
+                      />
+                      Use custom customer billing address
+                    </label>
+                  </div>
+                  <p className="mt-2 text-xs text-white/60">
+                    This lets billing and service-site addresses stay linked by default, but optional when customer policy requires a different billing address.
+                  </p>
+                </div>
+
+                <div className="md:col-span-2">
                   <label htmlFor="billingAddress" className="glass-form-label">Billing Address</label>
                   <textarea
                     id="billingAddress"
@@ -683,7 +715,9 @@ const RegisterNewCustomer = () => {
                     value={formData.billingAddress}
                     onChange={handleInputChange}
                     rows="3"
-                    placeholder="Optional if billing address differs from the physical address"
+                    placeholder={formData.billingAddressPolicy === 'serviceSite'
+                      ? 'Optional override. Leave blank to bill the service-site address.'
+                      : 'Enter custom billing address for this customer'}
                     className="glass-form-textarea"
                   />
                 </div>

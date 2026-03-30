@@ -274,6 +274,50 @@ const mapQuotationToInvoiceSeed = ({ quotation, serviceCall }) => {
   };
 };
 
+const resolveInvoiceAddressing = ({ customerDoc, siteId }) => {
+  const normalizedPolicy = customerDoc?.billingAddressPolicy === 'customerBillingAddress'
+    ? 'customerBillingAddress'
+    : 'serviceSite';
+
+  const normalizedSiteId = siteId ? String(siteId) : '';
+  const serviceSite = Array.isArray(customerDoc?.sites)
+    ? customerDoc.sites.find((site) => String(site._id) === normalizedSiteId)
+    : null;
+
+  const serviceSiteAddressSnapshot = serviceSite?.address || '';
+  const customerBillingAddress = String(customerDoc?.billingAddress || '').trim();
+
+  if (normalizedPolicy === 'customerBillingAddress' && customerBillingAddress) {
+    return {
+      serviceSiteAddressSnapshot,
+      billingAddressSnapshot: customerBillingAddress,
+      billingAddressSource: 'customerBillingAddress',
+    };
+  }
+
+  if (serviceSiteAddressSnapshot) {
+    return {
+      serviceSiteAddressSnapshot,
+      billingAddressSnapshot: serviceSiteAddressSnapshot,
+      billingAddressSource: 'serviceSite',
+    };
+  }
+
+  if (customerBillingAddress) {
+    return {
+      serviceSiteAddressSnapshot,
+      billingAddressSnapshot: customerBillingAddress,
+      billingAddressSource: 'customerBillingAddress',
+    };
+  }
+
+  return {
+    serviceSiteAddressSnapshot,
+    billingAddressSnapshot: '',
+    billingAddressSource: 'manual',
+  };
+};
+
 const syncServiceCallInvoicePointers = async ({ invoice, serviceCall, mode }) => {
   if (!serviceCall) return;
 
@@ -435,11 +479,23 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     const seed = mapQuotationToInvoiceSeed({ quotation: linkedQuotation, serviceCall });
     const costing = calculateInvoiceCosts(seed);
 
+    const resolvedSiteId = serviceCall.siteId || linkedQuotation?.siteId;
+    const resolvedCustomerDoc = serviceCall.customer?._id
+      ? serviceCall.customer
+      : await Customer.findOne({ _id: resolvedCustomer, createdBy: req.user._id });
+    const invoiceAddressing = resolveInvoiceAddressing({
+      customerDoc: resolvedCustomerDoc,
+      siteId: resolvedSiteId,
+    });
+
     const invoice = await Invoice.create({
       serviceCall: serviceCall._id,
       quotation: linkedQuotation?._id,
       customer: resolvedCustomer,
-      siteId: serviceCall.siteId || linkedQuotation?.siteId,
+      siteId: resolvedSiteId,
+      serviceSiteAddressSnapshot: invoiceAddressing.serviceSiteAddressSnapshot,
+      billingAddressSnapshot: invoiceAddressing.billingAddressSnapshot,
+      billingAddressSource: invoiceAddressing.billingAddressSource,
       equipment: serviceCall.equipment?._id || linkedQuotation?.equipment,
       title: seed.title,
       description: seed.description,
@@ -557,11 +613,20 @@ export const createInvoice = async (req, res) => {
       vatRate,
     });
 
+    const resolvedSiteId = siteId || serviceCall.siteId;
+    const invoiceAddressing = resolveInvoiceAddressing({
+      customerDoc: customerExists,
+      siteId: resolvedSiteId,
+    });
+
     const invoice = await Invoice.create({
       serviceCall: serviceCallId,
       quotation,
       customer,
-      siteId,
+      siteId: resolvedSiteId,
+      serviceSiteAddressSnapshot: invoiceAddressing.serviceSiteAddressSnapshot,
+      billingAddressSnapshot: invoiceAddressing.billingAddressSnapshot,
+      billingAddressSource: invoiceAddressing.billingAddressSource,
       equipment,
       title: title || serviceCall.title,
       description: description || serviceCall.description,

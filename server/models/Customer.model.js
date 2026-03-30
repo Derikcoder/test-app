@@ -210,6 +210,12 @@ const customerSchema = new mongoose.Schema(
       type: addressSchema,
       default: () => ({}),
     },
+    /** Billing policy: use service site by default, optional customer-level override */
+    billingAddressPolicy: {
+      type: String,
+      enum: ['serviceSite', 'customerBillingAddress'],
+      default: 'serviceSite',
+    },
     /** VAT registration number for invoicing */
     vatNumber: {
       type: String,
@@ -333,6 +339,7 @@ customerSchema.statics.EDITABLE_FIELDS = [
   'physicalAddressDetails',
   'billingAddress',
   'billingAddressDetails',
+  'billingAddressPolicy',
   'vatNumber',
   'taxNumber',
   'registrationNumber',
