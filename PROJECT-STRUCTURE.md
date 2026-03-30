@@ -55,6 +55,25 @@ Business customer profile routes now share a live onboarding shell for site mana
 
 ---
 
+## 🔐 Active Security Hardening Stream
+
+**Current hardening branch:** `addressing-dependabot-identified-vulnerabilities`
+
+Purpose:
+
+1. Isolate dependency-security remediation from ongoing feature work
+2. Preserve a clear audit trail for security decisions and version upgrades
+3. Validate fix impact with repeatable tests before reintegration
+
+Audience alignment:
+
+1. Engineering: deterministic upgrade-and-test workflow
+2. QA: explicit validation checkpoints before branch reconciliation
+3. Product/Stakeholders: transparent risk-reduction narrative for MVP market readiness
+4. Ops/Deployment: security posture tracked as a release gate for remote field testing
+
+---
+
 ## 🌿 Branch Architecture
 
 ```text

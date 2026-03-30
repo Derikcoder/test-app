@@ -4,6 +4,17 @@ This folder is the human-facing documentation layer for the project.
 
 It is intended to give readers a predictable navigation path through setup, API usage, workflows, security rules, and user journeys without requiring them to scan the full repository root.
 
+## Security Transparency Status
+
+The project is currently running a dedicated security-remediation stream to address Dependabot-reported vulnerabilities ahead of broader remote field testing.
+
+What readers should know:
+
+1. Remediation is executed on `addressing-dependabot-identified-vulnerabilities`
+2. Vulnerabilities are resolved by severity priority
+3. Validation and documentation updates are part of the same workflow
+4. Reconciliation into `foundation` is done only after tests and review gates pass
+
 Current approach:
 
 - Root `README.md` remains the repository foreword and master entry point.
