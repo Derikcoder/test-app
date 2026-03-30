@@ -7,6 +7,8 @@ import PDFDocument from 'pdfkit';
 import crypto from 'crypto';
 import { sendQuotationEmail } from '../utils/emailService.js';
 
+const BUSINESS_CUSTOMER_TYPES = ['headOffice', 'branch', 'franchise', 'singleBusiness'];
+
 const buildTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) => {
   const model = String(machineModelNumber).toLowerCase();
   const type = String(serviceType).toLowerCase();
@@ -342,7 +344,7 @@ export const createQuotation = async (req, res) => {
     }
 
     // Validate site if provided (for business customers)
-    if (siteId && customerExists.customerType === 'business') {
+    if (siteId && BUSINESS_CUSTOMER_TYPES.includes(customerExists.customerType)) {
       const siteExists = customerExists.sites.some(site => site._id.toString() === siteId);
       if (!siteExists) {
         return res.status(404).json({ message: 'Site not found for this customer' });

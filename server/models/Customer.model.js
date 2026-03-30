@@ -97,6 +97,11 @@ const siteSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  /** Mark this site as a depot (hub for loan asset storage). Only headOffice customers should have one depot. */
+  isDepot: {
+    type: Boolean,
+    default: false,
+  },
 }, { _id: true }); // Enable _id for sites
 
 /**
@@ -205,6 +210,12 @@ const customerSchema = new mongoose.Schema(
       type: addressSchema,
       default: () => ({}),
     },
+    /** Billing policy: use service site by default, optional customer-level override */
+    billingAddressPolicy: {
+      type: String,
+      enum: ['serviceSite', 'customerBillingAddress'],
+      default: 'serviceSite',
+    },
     /** VAT registration number for invoicing */
     vatNumber: {
       type: String,
@@ -224,16 +235,38 @@ const customerSchema = new mongoose.Schema(
     sites: {
       type: [siteSchema],
       default: [],
-      validate: {
-        validator: function(sites) {
-          // Business customers must have at least one site
-          if (['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(this.customerType) && sites.length === 0) {
-            return false;
-          }
-          return true;
+      validate: [
+        {
+          validator: function(sites) {
+            // Business customers must have at least one site
+            if (['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(this.customerType) && sites.length === 0) {
+              return false;
+            }
+            return true;
+          },
+          message: 'Business customers must have at least one site',
         },
-        message: 'Business customers must have at least one site',
-      },
+        {
+          validator: function(sites) {
+            // headOffice customers must have exactly one depot site
+            if (this.customerType === 'headOffice') {
+              const depotSites = sites.filter(s => s.isDepot === true);
+              if (depotSites.length !== 1) {
+                return false;
+              }
+            }
+            // Other business customer types should not have depot sites
+            if (['branch', 'franchise', 'singleBusiness'].includes(this.customerType)) {
+              const depotSites = sites.filter(s => s.isDepot === true);
+              if (depotSites.length > 0) {
+                return false;
+              }
+            }
+            return true;
+          },
+          message: 'headOffice must have exactly one depot site; other business customers cannot have depot sites',
+        },
+      ],
     },
     /** Maintenance manager (central contact for business customers) */
     maintenanceManager: {
@@ -263,12 +296,19 @@ const customerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
-      unique: true,
-      sparse: true,
     },
   },
   {
     timestamps: true, // Auto-add createdAt and updatedAt
+  }
+);
+
+// Enforce one-to-one linkage only when a customer is actually linked to a user account.
+customerSchema.index(
+  { userAccount: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { userAccount: { $type: 'objectId' } },
   }
 );
 
@@ -299,6 +339,7 @@ customerSchema.statics.EDITABLE_FIELDS = [
   'physicalAddressDetails',
   'billingAddress',
   'billingAddressDetails',
+  'billingAddressPolicy',
   'vatNumber',
   'taxNumber',
   'registrationNumber',

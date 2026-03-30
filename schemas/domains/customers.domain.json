@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/domains/customers.domain.json",
+  "title": "Customers Domain",
+  "description": "API contracts for /api/customers — customer registration, retrieval, updates, and multi-site management. Customers are the central reference entity: they are linked to from ServiceCalls, Equipment, Quotations, and Invoices.",
+
+  "type": "object",
+  "properties": {
+    "domain":   { "const": "customers" },
+    "basePath": { "const": "/api/customers" },
+    "version":  { "const": "1.0.0" },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "../shared/common.types.json#/$defs/EndpointDescriptor" },
+      "default": [
+        {
+          "operationId":    "getCustomers",
+          "method":         "GET",
+          "path":           "/api/customers",
+          "access":         "private",
+          "summary":        "List all customers — supports ?type= filter",
+          "queryParamsRef": "CustomerListQuery",
+          "responses":      { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "createCustomer",
+          "method":         "POST",
+          "path":           "/api/customers",
+          "access":         "private",
+          "summary":        "Register a new customer record",
+          "requestBodyRef": "CreateCustomerRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError", "409": "ConflictError" },
+          "notes":          "businessName and customerId are immutable after creation. customerId must be unique."
+        },
+        {
+          "operationId":    "getCustomerById",
+          "method":         "GET",
+          "path":           "/api/customers/:id",
+          "access":         "private",
+          "summary":        "Get a single customer by MongoDB ObjectId",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "responses":      { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateCustomer",
+          "method":         "PUT",
+          "path":           "/api/customers/:id",
+          "access":         "private",
+          "summary":        "Update mutable customer fields",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateCustomerRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ImmutableFieldError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "Immutable fields: businessName, customerId. Controller checks against Customer.IMMUTABLE_FIELDS."
+        },
+        {
+          "operationId":  "deleteCustomer",
+          "method":       "DELETE",
+          "path":         "/api/customers/:id",
+          "access":       "private",
+          "summary":      "Delete a customer record",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "NoContentResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "getCustomerSites",
+          "method":       "GET",
+          "path":         "/api/customers/:id/sites",
+          "access":       "private",
+          "summary":      "List all service sites for a business customer",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId", "description": "Customer ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "addCustomerSite",
+          "method":         "POST",
+          "path":           "/api/customers/:id/sites",
+          "access":         "private",
+          "summary":        "Add a new service site to a business customer",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "CreateSiteRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateCustomerSite",
+          "method":         "PUT",
+          "path":           "/api/customers/:id/sites/:siteId",
+          "access":         "private",
+          "summary":        "Update an existing site on a customer record",
+          "pathParams":     [
+            { "name": "id",     "schema": "ObjectId", "description": "Customer ObjectId" },
+            { "name": "siteId", "schema": "ObjectId", "description": "Site sub-document ObjectId" }
+          ],
+          "requestBodyRef": "UpdateSiteRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "deleteCustomerSite",
+          "method":       "DELETE",
+          "path":         "/api/customers/:id/sites/:siteId",
+          "access":       "private",
+          "summary":      "Remove a site from a customer record",
+          "pathParams":   [
+            { "name": "id",     "schema": "ObjectId" },
+            { "name": "siteId", "schema": "ObjectId" }
+          ],
+          "responses":    { "200": "NoContentResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        }
+      ]
+    }
+  },
+
+  "$defs": {
+
+    "CustomerListQuery": {
+      "type": "object",
+      "description": "Query parameters for GET /api/customers",
+      "properties": {
+        "type":   { "$ref": "../shared/common.types.json#/$defs/CustomerType", "description": "Filter by customer type" },
+        "status": { "type": "string", "enum": ["active", "inactive", "suspended"] },
+        "page":   { "type": "integer", "minimum": 1, "default": 1 },
+        "limit":  { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "sort":   { "type": "string", "default": "-createdAt" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateCustomerRequest": {
+      "type": "object",
+      "description": "Body for POST /api/customers",
+      "required": ["customerType", "contactFirstName", "contactLastName", "email", "phoneNumber", "customerId"],
+      "properties": {
+        "customerType":          { "$ref": "../shared/common.types.json#/$defs/CustomerType" },
+        "parentAccount":         { "$ref": "../shared/common.types.json#/$defs/ObjectId", "description": "Required for branch and franchise types — ObjectId of the headOffice parent customer" },
+        "businessName":          { "type": "string", "description": "Required for headOffice, branch, franchise, singleBusiness — immutable after creation" },
+        "contactFirstName":      { "type": "string" },
+        "contactLastName":       { "type": "string" },
+        "email":                 { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "phoneNumber":           { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "alternatePhone":        { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "customerId":            { "type": "string", "description": "Unique customer identifier — immutable after creation" },
+        "physicalAddress":       { "type": "string", "description": "Required for residential type — free-text address string" },
+        "physicalAddressDetails":{ "$ref": "../shared/common.types.json#/$defs/Address" },
+        "billingAddress":        { "type": "string" },
+        "billingAddressDetails": { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "billingAddressPolicy":  { "type": "string", "enum": ["serviceSite", "customerBillingAddress"], "default": "serviceSite", "description": "Billing rule: service-site address by default, or explicit customer billing address override" },
+        "vatNumber":             { "type": "string" },
+        "status":                { "type": "string", "enum": ["active", "inactive", "suspended"], "default": "active" },
+        "notes":                 { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateCustomerRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/customers/:id — mutable fields only. businessName and customerId are rejected.",
+      "properties": {
+        "contactFirstName":       { "type": "string" },
+        "contactLastName":        { "type": "string" },
+        "email":                  { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "phoneNumber":            { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "alternatePhone":         { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "physicalAddress":        { "type": "string" },
+        "physicalAddressDetails": { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "billingAddress":         { "type": "string" },
+        "billingAddressDetails":  { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "billingAddressPolicy":   { "type": "string", "enum": ["serviceSite", "customerBillingAddress"] },
+        "vatNumber":              { "type": "string" },
+        "status":                 { "type": "string", "enum": ["active", "inactive", "suspended"] },
+        "notes":                  { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateSiteRequest": {
+      "type": "object",
+      "description": "Body for POST /api/customers/:id/sites",
+      "required": ["siteName", "address"],
+      "properties": {
+        "siteName":       { "type": "string" },
+        "address":        { "type": "string", "description": "Free-text primary address string" },
+        "addressDetails": { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "contactPerson":  { "type": "string" },
+        "contactPhone":   { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "contactEmail":   { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "serviceTypes":   { "type": "array", "items": { "type": "string" } },
+        "status":         { "type": "string", "enum": ["active", "inactive"], "default": "active" },
+        "isDepot":        { "type": "boolean", "description": "Mark as hub/depot for loan assets. Only one site per headOffice can be a depot.", "default": false },
+        "notes":          { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateSiteRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/customers/:id/sites/:siteId — all site fields are mutable",
+      "properties": {
+        "siteName":       { "type": "string" },
+        "address":        { "type": "string" },
+        "addressDetails": { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "contactPerson":  { "type": "string" },
+        "contactPhone":   { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "contactEmail":   { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "serviceTypes":   { "type": "array", "items": { "type": "string" } },
+        "status":         { "type": "string", "enum": ["active", "inactive"] },
+        "isDepot":        { "type": "boolean", "description": "Mark as hub/depot for loan assets" },
+        "notes":          { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "CustomerResponse": {
+      "type": "object",
+      "description": "Shape of a customer document returned in API responses",
+      "properties": {
+        "_id":                    { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "customerType":           { "$ref": "../shared/common.types.json#/$defs/CustomerType" },
+        "parentAccount":          { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "businessName":           { "type": "string" },
+        "contactFirstName":       { "type": "string" },
+        "contactLastName":        { "type": "string" },
+        "email":                  { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "phoneNumber":            { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "alternatePhone":         { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "customerId":             { "type": "string" },
+        "physicalAddress":        { "type": "string" },
+        "physicalAddressDetails": { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "billingAddress":         { "type": "string" },
+        "billingAddressDetails":  { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "vatNumber":              { "type": "string" },
+        "sites":                  { "type": "array", "items": { "$ref": "#/$defs/SiteResponse" } },
+        "status":                 { "type": "string", "enum": ["active", "inactive", "suspended"] },
+        "notes":                  { "type": "string" },
+        "createdBy":              { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "createdAt":              { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "updatedAt":              { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      }
+    },
+
+    "SiteResponse": {
+      "type": "object",
+      "description": "A single site sub-document within a customer record",
+      "properties": {
+        "_id":           { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "siteName":      { "type": "string" },
+        "address":       { "type": "string" },
+        "addressDetails":{ "$ref": "../shared/common.types.json#/$defs/Address" },
+        "contactPerson": { "type": "string" },
+        "contactPhone":  { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "contactEmail":  { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "serviceTypes":  { "type": "array", "items": { "type": "string" } },
+        "status":        { "type": "string", "enum": ["active", "inactive"] },
+        "isDepot":       { "type": "boolean", "description": "Mark this site as a depot (hub) for loan asset storage. Only headOffice customers should have one depot site.", "default": false },
+        "notes":         { "type": "string" }
+      }
+    }
+
+  }
+}

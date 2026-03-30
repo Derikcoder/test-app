@@ -43,3 +43,13 @@ coverage/
 *.pid
 *.seed
 *.pid.lock
+
+# Local TLS certificate artifacts
+# Development rule: track only docs/metadata and env-configured paths, never raw key/cert material
+certs/*.pem
+certs/*.key
+certs/*.crt
+certs/*.p12
+certs/*.pfx
+!certs/README.md
+!certs/CERTIFICATE_INVENTORY.md

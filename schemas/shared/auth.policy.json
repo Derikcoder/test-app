@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/shared/auth.policy.json",
+  "title": "WKD Auth Access Policies",
+  "description": "Typed descriptors for endpoint access policies. Consumed by EndpointDescriptor.access in every domain schema. Mirrors the Express middleware chain defined in auth.middleware.js.",
+
+  "$defs": {
+
+    "AccessPolicy": {
+      "description": "Union of all valid access policy types. Use oneOf discriminated by the 'type' property.",
+      "oneOf": [
+        { "$ref": "#/$defs/Public" },
+        { "$ref": "#/$defs/Private" },
+        { "$ref": "#/$defs/RoleRestricted" },
+        { "$ref": "#/$defs/PublicTokenized" }
+      ]
+    },
+
+    "Public": {
+      "type": "object",
+      "description": "No authentication required — endpoint is openly accessible without a JWT. Examples: login, register, health check.",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "public" }
+      },
+      "additionalProperties": false
+    },
+
+    "Private": {
+      "type": "object",
+      "description": "JWT Bearer token required. The 'protect' Express middleware validates the token and attaches req.user. Any authenticated role may access.",
+      "required": ["type"],
+      "properties": {
+        "type":       { "const": "private" },
+        "middleware": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["protect"],
+          "description": "Express middleware chain applied in route definition order"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "RoleRestricted": {
+      "type": "object",
+      "description": "JWT required (protect) plus an explicit role check (authorizeRoles). Endpoint is only accessible to users whose role is in the 'roles' list.",
+      "required": ["type", "roles"],
+      "properties": {
+        "type": { "const": "role-restricted" },
+        "middleware": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["protect", "authorizeRoles"],
+          "description": "protect must precede authorizeRoles"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["superAdmin", "businessAdministrator", "fieldServiceAgent", "customer"]
+          },
+          "minItems": 1,
+          "description": "One or more roles permitted — controllers may further restrict based on resource ownership"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PublicTokenized": {
+      "type": "object",
+      "description": "No JWT required, but access is scoped by a short-lived opaque share token embedded in the URL path. Used for customer-facing share links (quotation PDF, invoice approval). Token is validated inside the controller, not in middleware.",
+      "required": ["type", "tokenParam"],
+      "properties": {
+        "type":       { "const": "public-tokenized" },
+        "tokenParam": {
+          "type": "string",
+          "default": "token",
+          "description": "Name of the Express path parameter holding the share token"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Security notes — token scope, expiry policy, permitted actions"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "PolicyMatrix": {
+      "type": "object",
+      "description": "Role × Resource access summary. Informational — not used for runtime enforcement. Truth is in middleware chains.",
+      "properties": {
+        "superAdmin":             { "type": "string", "description": "Full access to all domains and admin endpoints" },
+        "businessAdministrator":  { "type": "string", "description": "Full CRUD on all resources; no platform admin functions" },
+        "fieldServiceAgent":      { "type": "string", "description": "Read own profile; update assigned service calls; self-dispatch where enabled" },
+        "customer":               { "type": "string", "description": "Respond to public share token links only; no authenticated API access in current version" }
+      }
+    }
+
+  }
+}

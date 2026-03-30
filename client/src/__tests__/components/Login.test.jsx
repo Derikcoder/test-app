@@ -31,7 +31,7 @@ vi.mock('react-router-dom', async () => {
 // Helper to render component with providers
 const renderLogin = () => {
   return render(
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Login />
       </AuthProvider>
@@ -144,6 +144,34 @@ describe('Login Component', () => {
       // Should store user in localStorage
       const storedUser = JSON.parse(localStorage.getItem('userInfo'));
       expect(storedUser).toEqual(mockResponse.data);
+    });
+
+    it('should normalize wrapped login responses from the API', async () => {
+      const mockResponse = {
+        data: {
+          data: {
+            _id: '123',
+            email: 'test@example.com',
+            userName: 'testuser',
+            token: 'jwt-token-123',
+          },
+        },
+      };
+
+      vi.mocked(api.post).mockResolvedValueOnce(mockResponse);
+
+      renderLogin();
+
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@example.com' } });
+      fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByRole('button', { name: /sign in securely/i }));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/profile');
+      });
+
+      const storedUser = JSON.parse(localStorage.getItem('userInfo'));
+      expect(storedUser).toEqual(mockResponse.data.data);
     });
 
     it('should display error message for invalid credentials', async () => {

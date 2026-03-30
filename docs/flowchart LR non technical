@@ -1,0 +1,20 @@
+flowchart LR
+    A[User starts registration] --> B[System validates basic details]
+    B --> C{Role type}
+    
+    C -->|Admin| D[Business details check]
+    C -->|Field Agent| E[Passkey + Profile verification]
+    C -->|Customer| F[Customer profile verification]
+
+    D --> G[Duplicate account check]
+    E --> G
+    F --> G
+
+    G --> H{Already exists?}
+    H -->|Yes| X[Registration rejected with clear reason]
+    H -->|No| I[Create user account]
+
+    I --> J[Link operational profile if required]
+    J --> K[Consume passkey if used]
+    K --> L[Issue login token]
+    L --> M[Registration successful]

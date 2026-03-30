@@ -162,6 +162,15 @@ function InvoiceApprovalPage() {
                 </span>
               </div>
 
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-emerald-300/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                  Entity: Invoices / Pro-Forma
+                </span>
+                <span className="rounded-full border border-cyan-300/40 bg-cyan-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">
+                  Access: Public Customer Approval
+                </span>
+              </div>
+
               <h1 className="max-w-2xl text-3xl font-extrabold leading-tight sm:text-4xl">
                 {documentData.title || 'Pro-forma Site Instruction'}
               </h1>

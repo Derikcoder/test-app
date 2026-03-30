@@ -1,0 +1,93 @@
+[
+  {
+    "diensverskaffer_besonderhede": [
+      {
+        "besigheid_handeslnaam": "WKD",
+        "besigheid_registrasie_naam": "WKD Pty Ltd",
+        "belasting_identifikasie_nommer": "1234567890",
+        "btw_registrasie_nommer": "1234567890",
+        "besigheid_adres": "Plot 55, Pyramid, Gauteng",
+        "besigheid_kontak_nommer": "0111234567",
+        "besigheid_e-pos_adres": "info@wkd.co.za",
+        "besigheid_registrasie_webwerf": "www.wkd.co.za"
+      }
+    ],
+    "klient_besonderhede": [
+      {
+        "klient_tipe": "Besigheid",
+        "besigheid_naam": "Hertex Fabrics",
+        "besigheid_registrasie_nommer": "2018-123456-07",
+        "belasting_identifikasie_nommer": "9876543210",
+        "btw_registrasie_nommer": "9876543210",
+        "klient_adres": "16 Kramer Weg, Sandton",
+        "kontak_persoon": "Ryan",
+        "klient_kontak_nommer": "0117654321",
+        "klient_e-pos_adres": "ryan@hertex.co.za"
+      }
+    ],
+    "faktuur_besonderhede": [
+      {
+        "faktuur_nommer": "INV-QA-001",
+        "faktuur_datum": "2026-03-26",
+        "vervaldatum": "2026-04-25",
+        "betalingsvoorwaardes": "Net 30 Dae",
+        "valuta": "ZAR"
+      }
+    ],
+    "diens_besonderhede": [
+      {
+        "diens_besonderhede": "Kragopwekker enjin herstelwerk",
+        "masjien_besonderhede": {
+          "masjien_tipe": "Kragopwekker",
+          "masjien_merk": "Ricardo",
+          "masjien_model": "4105ZD",
+          "masjien_serienommer": "C123456789",
+          "kva_gradering": "63 KVA",
+          "huidige_masjien_ure": "856",
+          "masjine_ure_ten_laaste_diens": "790",
+          "brandstof_tipe": "Diesel",
+          "bou_tipe": "Stil",
+          "masjien_foutkode": "E-1234",
+          "foutkode_beskrywing": "Oorverhitting van die enjin",
+          "datum_van_laaste_diens": "2026-01-31"
+        }
+      }
+    ],
+    "faktureerde_besonderhede || koste_berekening": [
+      {
+        "lyn_items": [
+          {
+            "kategorie": "Diens Onderdele",
+            "part_tipe": "Lug Filter",
+            "fabrikaat": "Donaldson",
+            "part_nommer": "P772578",
+            "eenheid_koste": 600,
+            "aantal_eenhede": 1,
+            "totaal_koste": 600,
+            "part_beskrywing": "Lug filter vir diesel kragopwekker"
+          }
+        ],
+        "vaste_uitgawes": [
+          {
+            "uitroepfooi_r/km": "8.50",
+            "aantal_kilometers": "120",
+            "minimum_uitroepfooi": "650.00",
+            "uitroepfooi_totaal": "1020.00"
+          }
+        ],
+        "faktuur_totale_berekening": [
+          {
+            "subtotaal": 1620,
+            "btw": 243,
+            "totaal": 1863
+          }
+        ]
+      }
+    ],
+    "diens_beskrywing": [
+      {
+        "opsomming": "Basiese diens en filter vervanging"
+      }
+    ]
+  }
+]

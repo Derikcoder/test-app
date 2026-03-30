@@ -99,7 +99,7 @@ const ResetPassword = () => {
    });
    
    // Log user in with returned token
-   login(response.data.user);
+    login(response.data);
    
    // Redirect to profile
    navigate('/profile');

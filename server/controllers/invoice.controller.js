@@ -43,11 +43,34 @@ const normalizePhoneForWhatsApp = (phone) => {
   return cleaned;
 };
 
+const isValidEmailAddress = (email) => /^\S+@\S+\.\S+$/.test(String(email || '').trim());
+
+const isPlausibleWhatsAppNumber = (phone) => /^\d{10,15}$/.test(String(phone || '').trim());
+
 const buildTelegramShareUrl = ({ documentNumber, shareUrl, documentLabel, approvalUrl }) => {
   const message = approvalUrl
     ? `${documentLabel} ${documentNumber}\nReview and approve: ${approvalUrl}\nView PDF: ${shareUrl}`
     : `${documentLabel} ${documentNumber}\nView PDF: ${shareUrl}`;
   return `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`;
+};
+
+const classifyInvoicePersistenceError = (error) => {
+  if (error?.code === 11000) {
+    const duplicateField = Object.keys(error.keyPattern || {})[0] || 'field';
+    return {
+      status: 409,
+      message: `Duplicate value for ${duplicateField}`,
+    };
+  }
+
+  if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+    return {
+      status: 400,
+      message: error.message,
+    };
+  }
+
+  return null;
 };
 
 const calculateInvoiceCosts = ({
@@ -251,6 +274,50 @@ const mapQuotationToInvoiceSeed = ({ quotation, serviceCall }) => {
   };
 };
 
+const resolveInvoiceAddressing = ({ customerDoc, siteId }) => {
+  const normalizedPolicy = customerDoc?.billingAddressPolicy === 'customerBillingAddress'
+    ? 'customerBillingAddress'
+    : 'serviceSite';
+
+  const normalizedSiteId = siteId ? String(siteId) : '';
+  const serviceSite = Array.isArray(customerDoc?.sites)
+    ? customerDoc.sites.find((site) => String(site._id) === normalizedSiteId)
+    : null;
+
+  const serviceSiteAddressSnapshot = serviceSite?.address || '';
+  const customerBillingAddress = String(customerDoc?.billingAddress || '').trim();
+
+  if (normalizedPolicy === 'customerBillingAddress' && customerBillingAddress) {
+    return {
+      serviceSiteAddressSnapshot,
+      billingAddressSnapshot: customerBillingAddress,
+      billingAddressSource: 'customerBillingAddress',
+    };
+  }
+
+  if (serviceSiteAddressSnapshot) {
+    return {
+      serviceSiteAddressSnapshot,
+      billingAddressSnapshot: serviceSiteAddressSnapshot,
+      billingAddressSource: 'serviceSite',
+    };
+  }
+
+  if (customerBillingAddress) {
+    return {
+      serviceSiteAddressSnapshot,
+      billingAddressSnapshot: customerBillingAddress,
+      billingAddressSource: 'customerBillingAddress',
+    };
+  }
+
+  return {
+    serviceSiteAddressSnapshot,
+    billingAddressSnapshot: '',
+    billingAddressSource: 'manual',
+  };
+};
+
 const syncServiceCallInvoicePointers = async ({ invoice, serviceCall, mode }) => {
   if (!serviceCall) return;
 
@@ -268,6 +335,25 @@ const syncServiceCallInvoicePointers = async ({ invoice, serviceCall, mode }) =>
   serviceCall.invoicedDate = new Date();
   serviceCall.proFormaInvoice = invoice._id;
   await serviceCall.save();
+};
+
+const appendWorkflowTransition = ({ invoice, toStatus, changedBy, changedByRole = 'user', channel = 'internal', note = '' }) => {
+  const fromStatus = invoice.workflowStatus || 'draft';
+  if (!toStatus || fromStatus === toStatus) return;
+
+  const existingTransitions = Array.isArray(invoice.workflowTransitions) ? invoice.workflowTransitions : [];
+  invoice.workflowTransitions = [
+    ...existingTransitions,
+    {
+      fromStatus,
+      toStatus,
+      changedAt: new Date(),
+      changedBy: changedBy || undefined,
+      changedByRole,
+      channel,
+      note,
+    },
+  ];
 };
 
 export const getInvoices = async (req, res) => {
@@ -378,7 +464,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     );
 
     if (existing) {
-      return res.json({ invoice: existing, created: false });
+      return res.json({ data: existing, invoice: existing, created: false });
     }
 
     const linkedQuotation = serviceCall.quotation?._id
@@ -393,11 +479,23 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     const seed = mapQuotationToInvoiceSeed({ quotation: linkedQuotation, serviceCall });
     const costing = calculateInvoiceCosts(seed);
 
+    const resolvedSiteId = serviceCall.siteId || linkedQuotation?.siteId;
+    const resolvedCustomerDoc = serviceCall.customer?._id
+      ? serviceCall.customer
+      : await Customer.findOne({ _id: resolvedCustomer, createdBy: req.user._id });
+    const invoiceAddressing = resolveInvoiceAddressing({
+      customerDoc: resolvedCustomerDoc,
+      siteId: resolvedSiteId,
+    });
+
     const invoice = await Invoice.create({
       serviceCall: serviceCall._id,
       quotation: linkedQuotation?._id,
       customer: resolvedCustomer,
-      siteId: serviceCall.siteId || linkedQuotation?.siteId,
+      siteId: resolvedSiteId,
+      serviceSiteAddressSnapshot: invoiceAddressing.serviceSiteAddressSnapshot,
+      billingAddressSnapshot: invoiceAddressing.billingAddressSnapshot,
+      billingAddressSource: invoiceAddressing.billingAddressSource,
       equipment: serviceCall.equipment?._id || linkedQuotation?.equipment,
       title: seed.title,
       description: seed.description,
@@ -436,9 +534,14 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id, createdBy: req.user._id }));
 
     logInfo(`✅ Pro-forma invoice draft created: ${invoice.invoiceNumber} for service call ${serviceCall.callNumber}`);
-    res.status(201).json({ invoice: populated, created: true });
+    res.status(201).json({ data: populated, invoice: populated, created: true });
   } catch (error) {
     logError('Create pro-forma invoice error:', error);
+    const classifiedError = classifyInvoicePersistenceError(error);
+    if (classifiedError) {
+      return res.status(classifiedError.status).json({ message: classifiedError.message });
+    }
+
     res.status(500).json({ message: error.message });
   }
 };
@@ -510,11 +613,20 @@ export const createInvoice = async (req, res) => {
       vatRate,
     });
 
+    const resolvedSiteId = siteId || serviceCall.siteId;
+    const invoiceAddressing = resolveInvoiceAddressing({
+      customerDoc: customerExists,
+      siteId: resolvedSiteId,
+    });
+
     const invoice = await Invoice.create({
       serviceCall: serviceCallId,
       quotation,
       customer,
-      siteId,
+      siteId: resolvedSiteId,
+      serviceSiteAddressSnapshot: invoiceAddressing.serviceSiteAddressSnapshot,
+      billingAddressSnapshot: invoiceAddressing.billingAddressSnapshot,
+      billingAddressSource: invoiceAddressing.billingAddressSource,
       equipment,
       title: title || serviceCall.title,
       description: description || serviceCall.description,
@@ -693,6 +805,15 @@ export const updateInvoiceWorkflowStatus = async (req, res) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
+    appendWorkflowTransition({
+      invoice,
+      toStatus: workflowStatus,
+      changedBy: req.user?._id,
+      changedByRole: 'user',
+      channel: 'internal',
+      note: 'Manual workflow status update',
+    });
+
     invoice.workflowStatus = workflowStatus;
     invoice.siteInstruction = {
       ...(invoice.siteInstruction?.toObject?.() || invoice.siteInstruction || {}),
@@ -726,8 +847,18 @@ export const finalizeInvoice = async (req, res) => {
       return res.status(404).json({ message: 'Linked service call not found' });
     }
 
+    appendWorkflowTransition({
+      invoice,
+      toStatus: 'finalized',
+      changedBy: req.user?._id,
+      changedByRole: 'user',
+      channel: 'internal',
+      note: 'Pro-forma finalized to final invoice',
+    });
+
     invoice.documentType = 'final';
     invoice.workflowStatus = 'finalized';
+    invoice.finalizedAt = new Date();
     invoice.serviceDate = serviceCall.completedDate || new Date();
     await invoice.save();
     await syncServiceCallInvoicePointers({ invoice, serviceCall, mode: 'final' });
@@ -751,12 +882,40 @@ export const sendInvoice = async (req, res) => {
     }
 
     const allowedChannels = ['email', 'whatsapp', 'telegram'];
-    const selectedChannels = Array.isArray(channels)
-      ? [...new Set(channels.map((channel) => String(channel).trim().toLowerCase()))].filter((channel) => allowedChannels.includes(channel))
+    const normalizedChannels = Array.isArray(channels)
+      ? [...new Set(channels.map((channel) => String(channel).trim().toLowerCase()).filter(Boolean))]
       : ['email', 'whatsapp'];
 
-    if (Array.isArray(channels) && selectedChannels.length === 0) {
-      return res.status(400).json({ message: 'Please select at least one valid channel: email, whatsapp, or telegram.' });
+    const invalidChannels = normalizedChannels.filter((channel) => !allowedChannels.includes(channel));
+    if (invalidChannels.length > 0) {
+      return res.status(400).json({
+        message: `Invalid channels requested: ${invalidChannels.join(', ')}. Allowed channels: ${allowedChannels.join(', ')}`,
+      });
+    }
+
+    if (normalizedChannels.length === 0) {
+      return res.status(400).json({ message: 'Please select at least one channel: email, whatsapp, or telegram.' });
+    }
+
+    const selectedChannels = normalizedChannels;
+
+    const customerEmail = String(invoice.customer?.email || '').trim().toLowerCase();
+
+    if (selectedChannels.includes('email') && !customerEmail) {
+      return res.status(400).json({ message: 'Customer email is required to send via email channel.' });
+    }
+
+    if (selectedChannels.includes('email') && !isValidEmailAddress(customerEmail)) {
+      return res.status(400).json({ message: 'Customer email format is invalid for email delivery.' });
+    }
+
+    const whatsappPhone = normalizePhoneForWhatsApp(invoice.customer?.phoneNumber || invoice.customer?.alternatePhone || '');
+    if (selectedChannels.includes('whatsapp') && !whatsappPhone) {
+      return res.status(400).json({ message: 'Customer phone number is required to send via WhatsApp channel.' });
+    }
+
+    if (selectedChannels.includes('whatsapp') && !isPlausibleWhatsAppNumber(whatsappPhone)) {
+      return res.status(400).json({ message: 'Customer phone number format is invalid for WhatsApp delivery.' });
     }
 
     const baseUrl = getBaseUrl(req);
@@ -781,7 +940,7 @@ export const sendInvoice = async (req, res) => {
 
     if (selectedChannels.includes('email')) {
       await sendInvoiceDocumentEmail({
-        to: invoice.customer?.email,
+        to: customerEmail,
         customerName: invoice.customer?.businessName || `${invoice.customer?.contactFirstName || ''} ${invoice.customer?.contactLastName || ''}`.trim(),
         documentNumber: invoice.invoiceNumber,
         documentLabel,
@@ -794,14 +953,11 @@ export const sendInvoice = async (req, res) => {
     }
 
     if (selectedChannels.includes('whatsapp')) {
-      const phone = normalizePhoneForWhatsApp(invoice.customer?.phoneNumber || invoice.customer?.alternatePhone || '');
-      if (phone) {
-        const message = invoice.documentType === 'proForma'
-          ? `${documentLabel} ${invoice.invoiceNumber}\nReview and approve: ${approvalUrl}\nView PDF: ${shareUrl}`
-          : `${documentLabel} ${invoice.invoiceNumber}\nView PDF: ${shareUrl}`;
-        whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        invoice.lastWhatsAppLink = whatsappUrl;
-      }
+      const message = invoice.documentType === 'proForma'
+        ? `${documentLabel} ${invoice.invoiceNumber}\nReview and approve: ${approvalUrl}\nView PDF: ${shareUrl}`
+        : `${documentLabel} ${invoice.invoiceNumber}\nView PDF: ${shareUrl}`;
+      whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+      invoice.lastWhatsAppLink = whatsappUrl;
     }
 
     if (selectedChannels.includes('telegram')) {
@@ -815,6 +971,15 @@ export const sendInvoice = async (req, res) => {
     }
 
     if (invoice.documentType === 'proForma' && invoice.workflowStatus === 'draft') {
+      appendWorkflowTransition({
+        invoice,
+        toStatus: 'awaitingApproval',
+        changedBy: req.user?._id,
+        changedByRole: 'user',
+        channel: 'internal',
+        note: 'Document sent to customer for approval',
+      });
+
       invoice.workflowStatus = 'awaitingApproval';
       invoice.siteInstruction = {
         ...(invoice.siteInstruction?.toObject?.() || invoice.siteInstruction || {}),
@@ -823,6 +988,8 @@ export const sendInvoice = async (req, res) => {
     }
 
     invoice.lastSentChannels = selectedChannels;
+    invoice.lastSentAt = new Date();
+    invoice.lastSentBy = req.user?._id;
     await invoice.save();
 
     logInfo(`✅ ${documentLabel} sent: ${invoice.invoiceNumber} via ${selectedChannels.join(', ')}`);
@@ -980,6 +1147,14 @@ export const submitSharedInvoiceDecision = async (req, res) => {
       return res.status(409).json({ message: 'This document has already been finalized.' });
     }
 
+    appendWorkflowTransition({
+      invoice,
+      toStatus: decision,
+      changedByRole: 'customer',
+      channel: 'publicLink',
+      note: 'Customer decision submitted via public approval link',
+    });
+
     invoice.workflowStatus = decision;
     invoice.siteInstruction = {
       ...(invoice.siteInstruction?.toObject?.() || invoice.siteInstruction || {}),
@@ -987,6 +1162,15 @@ export const submitSharedInvoiceDecision = async (req, res) => {
       approvalNotes: approvalNotes !== undefined ? approvalNotes : (invoice.siteInstruction?.approvalNotes || ''),
       approvedAt: decision === 'approved' ? new Date() : invoice.siteInstruction?.approvedAt,
       rejectedAt: decision === 'rejected' ? new Date() : null,
+    };
+
+    invoice.customerDecision = {
+      ...(invoice.customerDecision?.toObject?.() || invoice.customerDecision || {}),
+      decision,
+      reference: approvalReference !== undefined ? approvalReference : (invoice.customerDecision?.reference || ''),
+      notes: approvalNotes !== undefined ? approvalNotes : (invoice.customerDecision?.notes || ''),
+      decidedAt: new Date(),
+      channel: 'publicLink',
     };
 
     if (decision === 'approved') {

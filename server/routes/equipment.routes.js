@@ -15,6 +15,7 @@ import {
   getEquipment,
   getEquipmentByCustomer,
   getEquipmentBySite,
+  getEquipmentByLabelId,
   getEquipmentById,
   createEquipment,
   updateEquipment,
@@ -60,6 +61,13 @@ router.get('/customer/:customerId', protect, getEquipmentByCustomer);
  * @access  Private (JWT required)
  */
 router.get('/site/:customerId/:siteId', protect, getEquipmentBySite);
+
+/**
+ * @route   GET /api/equipment/lookup/:equipmentId
+ * @desc    Get equipment by printed label ID (equipmentId)
+ * @access  Private (JWT required)
+ */
+router.get('/lookup/:equipmentId', protect, getEquipmentByLabelId);
 
 /**
  * @route   GET /api/equipment/:id

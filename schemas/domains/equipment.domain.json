@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/domains/equipment.domain.json",
+  "title": "Equipment Domain",
+  "description": "API contracts for /api/equipment — physical assets owned by customers. Equipment records are linked to Customers and referenced by ServiceCalls.",
+
+  "type": "object",
+  "properties": {
+    "domain":   { "const": "equipment" },
+    "basePath": { "const": "/api/equipment" },
+    "version":  { "const": "1.0.0" },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "../shared/common.types.json#/$defs/EndpointDescriptor" },
+      "default": [
+        {
+          "operationId":    "getEquipment",
+          "method":         "GET",
+          "path":           "/api/equipment",
+          "access":         "private",
+          "summary":        "List all equipment records — supports type, customer, and status filters",
+          "queryParamsRef": "EquipmentListQuery",
+          "responses":      { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "createEquipment",
+          "method":         "POST",
+          "path":           "/api/equipment",
+          "access":         "private",
+          "summary":        "Register a new equipment asset for a customer",
+          "requestBodyRef": "CreateEquipmentRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":  "getEquipmentById",
+          "method":       "GET",
+          "path":         "/api/equipment/:id",
+          "access":       "private",
+          "summary":      "Get a single equipment record by ObjectId",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateEquipment",
+          "method":         "PUT",
+          "path":           "/api/equipment/:id",
+          "access":         "private",
+          "summary":        "Update mutable equipment fields",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateEquipmentRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "deleteEquipment",
+          "method":       "DELETE",
+          "path":         "/api/equipment/:id",
+          "access":       "private",
+          "summary":      "Delete an equipment record",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "NoContentResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "getEquipmentByCustomer",
+          "method":       "GET",
+          "path":         "/api/equipment/customer/:customerId",
+          "access":       "private",
+          "summary":      "List all equipment registered to a specific customer",
+          "pathParams":   [{ "name": "customerId", "schema": "ObjectId" }],
+          "responses":    { "200": "PaginatedResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":  "getEquipmentByType",
+          "method":       "GET",
+          "path":         "/api/equipment/type/:type",
+          "access":       "private",
+          "summary":      "Filter equipment records by EquipmentType",
+          "pathParams":   [{ "name": "type", "schema": "EquipmentType" }],
+          "responses":    { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "updateEquipmentServiceHistory",
+          "method":         "PATCH",
+          "path":           "/api/equipment/:id/service-history",
+          "access":         "private",
+          "summary":        "Append a service history entry to an equipment record",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "ServiceHistoryEntryRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        }
+      ]
+    }
+  },
+
+  "$defs": {
+
+    "EquipmentListQuery": {
+      "type": "object",
+      "description": "Query parameters for GET /api/equipment",
+      "properties": {
+        "type":       { "$ref": "../shared/common.types.json#/$defs/EquipmentType" },
+        "customerId": { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "status":     { "type": "string", "enum": ["active", "inactive", "decommissioned"] },
+        "make":       { "type": "string" },
+        "page":       { "type": "integer", "minimum": 1, "default": 1 },
+        "limit":      { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "sort":       { "type": "string", "default": "-createdAt" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateEquipmentRequest": {
+      "type": "object",
+      "description": "Body for POST /api/equipment",
+      "required": ["customer", "equipmentType", "make", "model", "serialNumber"],
+      "properties": {
+        "customer":              { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "siteId":                { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "equipmentType":         { "$ref": "../shared/common.types.json#/$defs/EquipmentType" },
+        "make":                  { "type": "string" },
+        "model":                 { "type": "string" },
+        "modelNumber":           { "type": "string" },
+        "serialNumber":          { "type": "string" },
+        "capacityKva":           { "type": "number", "minimum": 0, "description": "Generator capacity in kVA — relevant for GENERATOR type" },
+        "installationDate":      { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "warrantyExpiryDate":    { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "status":                { "type": "string", "enum": ["active", "inactive", "decommissioned"], "default": "active" },
+        "notes":                 { "type": "string" },
+        "location":              { "$ref": "../shared/common.types.json#/$defs/Address" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateEquipmentRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/equipment/:id — all mutable fields",
+      "properties": {
+        "siteId":             { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "equipmentType":      { "$ref": "../shared/common.types.json#/$defs/EquipmentType" },
+        "make":               { "type": "string" },
+        "model":              { "type": "string" },
+        "modelNumber":        { "type": "string" },
+        "capacityKva":        { "type": "number", "minimum": 0 },
+        "installationDate":   { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "warrantyExpiryDate": { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "status":             { "type": "string", "enum": ["active", "inactive", "decommissioned"] },
+        "notes":              { "type": "string" },
+        "location":           { "$ref": "../shared/common.types.json#/$defs/Address" }
+      },
+      "additionalProperties": false
+    },
+
+    "ServiceHistoryEntryRequest": {
+      "type": "object",
+      "description": "Body for PATCH /api/equipment/:id/service-history",
+      "required": ["serviceCallId", "serviceDate", "technicianName"],
+      "properties": {
+        "serviceCallId":  { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "serviceDate":    { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "technicianName": { "type": "string" },
+        "workPerformed":  { "type": "string" },
+        "partsReplaced":  {
+          "type": "array",
+          "items": { "$ref": "../shared/common.types.json#/$defs/LineItem" }
+        },
+        "nextServiceDue": { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      },
+      "additionalProperties": false
+    },
+
+    "EquipmentResponse": {
+      "type": "object",
+      "description": "Shape of an equipment document returned in API responses",
+      "properties": {
+        "_id":                { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "customer":           { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "siteId":             { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "equipmentType":      { "$ref": "../shared/common.types.json#/$defs/EquipmentType" },
+        "make":               { "type": "string" },
+        "model":              { "type": "string" },
+        "modelNumber":        { "type": "string" },
+        "serialNumber":       { "type": "string" },
+        "capacityKva":        { "type": "number", "minimum": 0 },
+        "installationDate":   { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "warrantyExpiryDate": { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "status":             { "type": "string", "enum": ["active", "inactive", "decommissioned"] },
+        "notes":              { "type": "string" },
+        "location":           { "$ref": "../shared/common.types.json#/$defs/Address" },
+        "serviceHistory":     {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ServiceHistoryEntryRequest" }
+        },
+        "createdBy":  { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "createdAt":  { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "updatedAt":  { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      }
+    }
+
+  }
+}

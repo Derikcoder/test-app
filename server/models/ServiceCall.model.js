@@ -78,6 +78,12 @@ const generatorBookingSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  equipmentLabelId: {
+    type: String,
+    trim: true,
+    uppercase: true,
+    match: [/^EQ-\d{1,12}$/, 'Equipment label must match EQ-<digits> format'],
+  },
   generatorCapacityKva: {
     type: Number,
     min: [0, 'Generator capacity cannot be negative'],
@@ -92,11 +98,51 @@ const generatorBookingSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
+const bookingServiceTaskSchema = new mongoose.Schema({
+  category: {
+    type: String,
+    enum: ['mechanical', 'electrical', 'plumbing', 'maintenance', 'other'],
+    default: 'other',
+  },
+  taskTitle: {
+    type: String,
+    trim: true,
+  },
+  estimatedLabourHours: {
+    type: Number,
+    min: [0, 'Estimated labour hours cannot be negative'],
+  },
+  taskNotes: {
+    type: String,
+    trim: true,
+  },
+}, { _id: false });
+
 const bookingRequestSchema = new mongoose.Schema({
   contact: bookingContactSchema,
   administrativeAddress: addressSchema,
   machineAddress: addressSchema,
   generatorDetails: generatorBookingSchema,
+  bookingMode: {
+    type: String,
+    enum: ['standard', 'multi-task', 'project'],
+    default: 'standard',
+  },
+  projectScopeSummary: {
+    type: String,
+    trim: true,
+  },
+  serviceTasks: [bookingServiceTaskSchema],
+  estimatedMultiTaskLabourHours: {
+    type: Number,
+    min: [0, 'Estimated multi-task labour hours cannot be negative'],
+    default: 0,
+  },
+  travelChargePolicy: {
+    type: String,
+    enum: ['standard', 'single-trip'],
+    default: 'standard',
+  },
   outageWindow: {
     start: {
       type: Date,

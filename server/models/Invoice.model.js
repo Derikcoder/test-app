@@ -129,6 +129,72 @@ const siteInstructionSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
+const workflowTransitionSchema = new mongoose.Schema({
+  fromStatus: {
+    type: String,
+    enum: ['draft', 'awaitingApproval', 'approved', 'rejected', 'finalized'],
+    default: 'draft',
+  },
+  toStatus: {
+    type: String,
+    enum: ['draft', 'awaitingApproval', 'approved', 'rejected', 'finalized'],
+    required: true,
+  },
+  changedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  changedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  changedByRole: {
+    type: String,
+    enum: ['system', 'user', 'customer'],
+    default: 'system',
+  },
+  channel: {
+    type: String,
+    enum: ['internal', 'email', 'whatsapp', 'telegram', 'publicLink', 'other'],
+    default: 'internal',
+  },
+  note: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+}, { _id: true });
+
+const customerDecisionSchema = new mongoose.Schema({
+  decision: {
+    type: String,
+    enum: ['approved', 'rejected'],
+  },
+  reference: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  notes: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  decidedAt: {
+    type: Date,
+  },
+  channel: {
+    type: String,
+    enum: ['publicLink', 'email', 'whatsapp', 'telegram', 'internal', 'other'],
+    default: 'publicLink',
+  },
+  responderName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+}, { _id: false });
+
 /**
  * Invoice Schema Definition
  * 
@@ -178,6 +244,24 @@ const invoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       trim: true,
     },
+    /** Service site address captured at invoice creation time */
+    serviceSiteAddressSnapshot: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Effective billing address captured at invoice creation time */
+    billingAddressSnapshot: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Source used to derive billing address */
+    billingAddressSource: {
+      type: String,
+      enum: ['serviceSite', 'customerBillingAddress', 'manual'],
+      default: 'serviceSite',
+    },
     /** Human-readable title/summary for the billing document */
     title: {
       type: String,
@@ -206,6 +290,11 @@ const invoiceSchema = new mongoose.Schema(
       type: String,
       enum: ['draft', 'awaitingApproval', 'approved', 'rejected', 'finalized'],
       default: 'draft',
+    },
+    /** Workflow transition audit trail for approval lifecycle */
+    workflowTransitions: {
+      type: [workflowTransitionSchema],
+      default: [],
     },
     /** Service type/category */
     serviceType: {
@@ -415,6 +504,15 @@ const invoiceSchema = new mongoose.Schema(
       type: siteInstructionSchema,
       default: () => ({}),
     },
+    /** Customer approval/rejection capture for pro-forma public links */
+    customerDecision: {
+      type: customerDecisionSchema,
+      default: () => ({}),
+    },
+    /** Timestamp when the pro-forma was finalized into final invoice */
+    finalizedAt: {
+      type: Date,
+    },
     /** Invoice notes/description */
     notes: {
       type: String,
@@ -447,6 +545,15 @@ const invoiceSchema = new mongoose.Schema(
     lastSentChannels: {
       type: [String],
       default: [],
+    },
+    /** Timestamp for the latest send action */
+    lastSentAt: {
+      type: Date,
+    },
+    /** User who triggered the latest send action */
+    lastSentBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
     /** Last generated WhatsApp link */
     lastWhatsAppLink: {
@@ -571,6 +678,7 @@ invoiceSchema.statics.EDITABLE_FIELDS = [
   'equipment',
   'documentType',
   'workflowStatus',
+  'workflowTransitions',
   'serviceType',
   'serviceDate',
   'issueDate',
@@ -606,12 +714,16 @@ invoiceSchema.statics.EDITABLE_FIELDS = [
   'depositAmount',
   'depositReason',
   'siteInstruction',
+  'customerDecision',
+  'finalizedAt',
   'notes',
   'terms',
   'bankDetails',
   'shareToken',
   'shareTokenExpiresAt',
   'lastSentChannels',
+  'lastSentAt',
+  'lastSentBy',
   'lastWhatsAppLink',
   'lastTelegramLink',
   'pdfFile'

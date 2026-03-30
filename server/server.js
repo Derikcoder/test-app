@@ -17,6 +17,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import https from 'https';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import agentRoutes from './routes/agent.routes.js';
@@ -33,6 +37,18 @@ dotenv.config();
 // Initialize Express application
 const app = express();
 const PORT = process.env.PORT || 5000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const SSL_ENABLED = process.env.SSL_ENABLED !== 'false';
+const SSL_CERT_FILE = process.env.SSL_CERT_FILE || '../certs/localhost+1.pem';
+const SSL_KEY_FILE = process.env.SSL_KEY_FILE || '../certs/localhost+1-key.pem';
+const resolvedSSLCertFile = path.isAbsolute(SSL_CERT_FILE)
+  ? SSL_CERT_FILE
+  : path.resolve(__dirname, SSL_CERT_FILE);
+const resolvedSSLKeyFile = path.isAbsolute(SSL_KEY_FILE)
+  ? SSL_KEY_FILE
+  : path.resolve(__dirname, SSL_KEY_FILE);
 
 /**
  * Middleware Configuration
@@ -65,6 +81,103 @@ connectDB().catch(err => {
  * API Routes
  * All routes are prefixed with /api for clear API versioning
  */
+
+/**
+ * @route   GET /
+ * @desc    Root endpoint for direct backend URL checks
+ * @access  Public
+ */
+app.get('/', (req, res) => {
+  const payload = {
+    message: 'Field Service API is running',
+    endpoints: {
+      api: '/api',
+      health: '/api/health',
+    },
+  };
+
+  const acceptsHeader = req.get('accept') || '';
+
+  // Render a simple browser-friendly splash page while preserving JSON for API clients.
+  if (acceptsHeader.includes('text/html')) {
+    return res.status(200).type('html').send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Field Service API</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: radial-gradient(circle at 10% 10%, #dbeafe, #eef2ff 40%, #f8fafc 70%);
+        color: #0f172a;
+      }
+      .wrap {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(640px, 100%);
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        box-shadow: 0 16px 50px rgba(15, 23, 42, 0.12);
+        padding: 28px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.6rem;
+      }
+      p {
+        margin: 0 0 18px;
+        color: #334155;
+      }
+      .links {
+        display: grid;
+        gap: 10px;
+      }
+      a {
+        display: inline-block;
+        text-decoration: none;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      a:hover {
+        background: #dbeafe;
+      }
+      code {
+        background: #f1f5f9;
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h1>Field Service API is running</h1>
+        <p>Backend is up on HTTPS. Use the links below to verify endpoints.</p>
+        <div class="links">
+          <a href="/api">API Root: <code>/api</code></a>
+          <a href="/api/health">Health Check: <code>/api/health</code></a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>`);
+  }
+
+  return res.json(payload);
+});
 
 /**
  * @route   GET /api
@@ -131,7 +244,30 @@ app.use(errorLogger);
  * Server Initialization
  * Start the Express server on the configured port
  */
-app.listen(PORT, () => {
-  logInfo(`✅ Server is running on port ${PORT}`);
-  logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+if (SSL_ENABLED) {
+  if (fs.existsSync(resolvedSSLCertFile) && fs.existsSync(resolvedSSLKeyFile)) {
+    const sslOptions = {
+      key: fs.readFileSync(resolvedSSLKeyFile),
+      cert: fs.readFileSync(resolvedSSLCertFile),
+    };
+
+    https.createServer(sslOptions, app).listen(PORT, () => {
+      logInfo(`✅ HTTPS server is running on https://localhost:${PORT}`);
+      logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } else {
+    logError('SSL is enabled but cert/key file was not found. Falling back to HTTP.');
+    logError(`Expected cert: ${resolvedSSLCertFile}`);
+    logError(`Expected key: ${resolvedSSLKeyFile}`);
+
+    app.listen(PORT, () => {
+      logInfo(`✅ HTTP server is running on http://localhost:${PORT}`);
+      logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  }
+} else {
+  app.listen(PORT, () => {
+    logInfo(`✅ HTTP server is running on http://localhost:${PORT}`);
+    logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}

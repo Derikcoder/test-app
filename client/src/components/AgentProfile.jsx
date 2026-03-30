@@ -6,10 +6,27 @@ import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
 import SiteInstructionModal from './SiteInstructionModal';
 
+const pageShellClass = 'min-h-screen bg-slate-950 py-8 px-3 sm:px-6 lg:px-8';
+const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
+const statCardClass = 'rounded-xl border border-slate-700 bg-slate-900/85 p-6';
+const tabActiveClass = 'text-cyan-300 border-b-2 border-cyan-300';
+const tabInactiveClass = 'text-slate-300 hover:text-slate-100';
+const roleLabelMap = {
+ superAdmin: 'Super Admin',
+ businessAdministrator: 'Business Administrator',
+ fieldServiceAgent: 'Field Service Agent',
+ customer: 'Customer',
+};
+
 const AgentProfile = () => {
  const { id } = useParams();
  const navigate = useNavigate();
  const { user } = useAuth();
+ const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
+ const roleLabel = roleLabelMap[user?.role] || (isSuperAdmin ? 'Super Admin' : 'Platform User');
+ const roleToneClass = isSuperAdmin
+  ? 'border-fuchsia-700 bg-fuchsia-950 text-fuchsia-200'
+  : 'border-cyan-700 bg-cyan-950 text-cyan-200';
  const [agent, setAgent] = useState(null);
  const [serviceCalls, setServiceCalls] = useState([]);
  const [eligibleUnassignedCalls, setEligibleUnassignedCalls] = useState([]);
@@ -231,10 +248,10 @@ const AgentProfile = () => {
   return (
    <>
     <Sidebar />
-    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+    <div className={`${pageShellClass} flex items-center justify-center`}>
      <div className="text-center">
-      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-300 mx-auto"></div>
-      <p className="mt-4 text-white/70">Loading agent profile...</p>
+      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-cyan-400 mx-auto"></div>
+      <p className="mt-4 text-slate-300">Loading agent profile...</p>
      </div>
     </div>
    </>
@@ -245,14 +262,14 @@ const AgentProfile = () => {
   return (
    <>
     <Sidebar />
-    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 py-12 px-4">
+    <div className={`${pageShellClass} py-12 px-4`}>
      <div className="max-w-[1200px] mx-auto ">
-      <div className="glass-alert-error px-4 py-3 rounded-lg">
+      <div className="px-4 py-3 rounded-lg border border-red-700 bg-red-950 text-red-200">
        {error || 'Agent not found'}
       </div>
       <button
        onClick={() => navigate('/agents')}
-       className="mt-4 text-white hover:text-yellow-300"
+       className="mt-4 text-slate-200 hover:text-cyan-300"
       >
        ← Back to Agents
       </button>
@@ -265,12 +282,12 @@ const AgentProfile = () => {
  return (
   <>
    <Sidebar />
-   <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 py-12 px-4 sm:px-6 lg:px-8">
+  <div className={pageShellClass}>
     <div className="max-w-[1200px] mx-auto ">
      {/* Back button */}
      <button
       onClick={() => navigate('/agents')}
-      className="mb-6 flex items-center text-white hover:text-yellow-300 transition"
+    className="mb-4 flex items-center text-slate-200 hover:text-cyan-300 transition"
      >
       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -278,31 +295,44 @@ const AgentProfile = () => {
       Back to Agents
      </button>
 
+    <div className="mb-4 flex flex-wrap gap-2">
+     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${roleToneClass}`}>
+      Role: {roleLabel}
+     </span>
+     <span className="inline-flex items-center rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200">
+      Access Mode: {isSuperAdmin ? 'Governance + Override' : 'Operational'}
+     </span>
+    </div>
+
+    <div className="mb-6 rounded-xl border border-cyan-800 bg-cyan-950/50 px-4 py-3 text-sm text-cyan-100">
+     Entity Focus: Field Agent Workspace | Record Type: Agent Profile + Assigned Service Calls
+    </div>
+
      {/* Agent Profile Header */}
-     <div className="glass-card rounded-2xl shadow-xl overflow-hidden mb-8">
-      <div className="bg-gradient-to-r from-blue-900/50 to-blue-800/50 backdrop-blur-md border-b border-white/20 px-8 py-6">
+    <div className={`${panelClass} overflow-hidden mb-8`}>
+     <div className="bg-slate-900 border-b border-slate-700 px-5 sm:px-8 py-6">
        <div className="flex items-center gap-6">
-        <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-blue-900 rounded-full flex items-center justify-center text-yellow-300 text-3xl font-bold shadow-lg border border-white/30">
+       <div className="w-24 h-24 bg-gradient-to-br from-cyan-800 to-slate-900 rounded-full flex items-center justify-center text-cyan-200 text-3xl font-bold shadow-lg border border-slate-600">
          {agent.firstName?.[0]}{agent.lastName?.[0]}
         </div>
         <div className="flex-1">
-         <h1 className="glass-heading text-3xl">
+        <h1 className="text-3xl font-bold text-slate-100">
           {agent.firstName} {agent.lastName}
          </h1>
-         <p className="text-white/90 mt-1 font-medium">Employee ID: {agent.employeeId}</p>
-         <div className="mt-2 flex flex-wrap gap-3 text-white/90 text-sm">
+        <p className="text-slate-300 mt-1 font-medium">Employee ID: {agent.employeeId}</p>
+        <div className="mt-2 flex flex-wrap gap-3 text-slate-300 text-sm">
           <span>📧 {agent.email}</span>
           <span>📱 {agent.phoneNumber}</span>
          </div>
          {agent.assignedArea && (
-          <p className="text-white/90 mt-1 text-sm">📍 Area: {agent.assignedArea}</p>
+      <p className="text-slate-300 mt-1 text-sm">📍 Area: {agent.assignedArea}</p>
          )}
         </div>
         <div>
          <span className={`px-4 py-2 text-sm font-semibold rounded-full ${
-          agent.status === 'active' ? 'bg-green-500/40 text-green-100 border border-green-400/50 backdrop-blur-sm' :
-          agent.status === 'on-leave' ? 'bg-yellow-500/40 text-yellow-100 border border-yellow-400/50 backdrop-blur-sm' :
-          'bg-gray-500/40 text-gray-100 border border-gray-400/50 backdrop-blur-sm'
+      agent.status === 'active' ? 'bg-emerald-950 text-emerald-200 border border-emerald-700' :
+      agent.status === 'on-leave' ? 'bg-amber-950 text-amber-200 border border-amber-700' :
+      'bg-slate-800 text-slate-200 border border-slate-600'
          }`}>
           {agent.status?.toUpperCase()}
          </span>
@@ -310,12 +340,12 @@ const AgentProfile = () => {
        </div>
        {agent.skills?.length > 0 && (
         <div className="mt-4">
-         <p className="text-white/90 text-sm font-medium mb-2">Skills:</p>
+           <p className="text-slate-300 text-sm font-medium mb-2">Skills:</p>
          <div className="flex flex-wrap gap-2">
           {agent.skills.map((skill, index) => (
            <span
             key={index}
-            className="bg-blue-600/40 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm border border-blue-400/30"
+              className="bg-cyan-950 text-cyan-200 px-3 py-1 rounded-full text-sm border border-cyan-800"
            >
             {skill}
            </span>
@@ -328,56 +358,56 @@ const AgentProfile = () => {
 
      {/* Statistics Cards */}
     <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-      <div className="glass-card rounded-xl shadow-md p-6">
+      <div className={statCardClass}>
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-white/70 text-sm font-medium">Total Jobs</p>
-         <p className="text-3xl font-bold text-white mt-2">{stats.total}</p>
+         <p className="text-slate-400 text-sm font-medium">Total Jobs</p>
+         <p className="text-3xl font-bold text-slate-100 mt-2">{stats.total}</p>
         </div>
-        <div className="w-12 h-12 bg-blue-500/40 rounded-lg flex items-center justify-center border border-blue-400/50">
-         <svg className="w-6 h-6 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 bg-cyan-950 rounded-lg flex items-center justify-center border border-cyan-800">
+         <svg className="w-6 h-6 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
          </svg>
         </div>
        </div>
       </div>
 
-      <div className="glass-card rounded-xl shadow-md p-6">
+      <div className={statCardClass}>
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-white/70 text-sm font-medium">In Progress</p>
+         <p className="text-slate-400 text-sm font-medium">In Progress</p>
          <p className="text-3xl font-bold text-blue-300 mt-2">{stats.inProgress}</p>
         </div>
-        <div className="w-12 h-12 bg-blue-500/40 rounded-lg flex items-center justify-center border border-blue-400/50">
-         <svg className="w-6 h-6 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 bg-blue-950 rounded-lg flex items-center justify-center border border-blue-800">
+         <svg className="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
          </svg>
         </div>
        </div>
       </div>
 
-      <div className="glass-card rounded-xl shadow-md p-6">
+      <div className={statCardClass}>
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-white/70 text-sm font-medium">To Be Attended</p>
+         <p className="text-slate-400 text-sm font-medium">To Be Attended</p>
          <p className="text-3xl font-bold text-yellow-300 mt-2">{stats.toBeAttended}</p>
         </div>
-        <div className="w-12 h-12 bg-yellow-500/40 rounded-lg flex items-center justify-center border border-yellow-400/50">
-         <svg className="w-6 h-6 text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 bg-amber-950 rounded-lg flex items-center justify-center border border-amber-800">
+         <svg className="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
          </svg>
         </div>
        </div>
       </div>
 
-      <div className="glass-card rounded-xl shadow-md p-6">
+      <div className={statCardClass}>
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-white/70 text-sm font-medium">Completed</p>
+         <p className="text-slate-400 text-sm font-medium">Completed</p>
          <p className="text-3xl font-bold text-green-300 mt-2">{stats.completed}</p>
         </div>
-        <div className="w-12 h-12 bg-green-500/40 rounded-lg flex items-center justify-center border border-green-400/50">
-         <svg className="w-6 h-6 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 bg-emerald-950 rounded-lg flex items-center justify-center border border-emerald-800">
+         <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
          </svg>
         </div>
@@ -387,17 +417,17 @@ const AgentProfile = () => {
       <button
        type="button"
        onClick={() => setActiveTab('unassigned')}
-       className={`glass-card rounded-xl shadow-md p-6 text-left transition hover:bg-white/10 ${
-        activeTab === 'unassigned' ? 'ring-2 ring-yellow-300/60' : ''
+      className={`${statCardClass} text-left transition hover:border-amber-700 ${
+       activeTab === 'unassigned' ? 'ring-2 ring-amber-500/70' : ''
        }`}
       >
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-white/70 text-sm font-medium">Unassigned Jobs</p>
+         <p className="text-slate-400 text-sm font-medium">Unassigned Jobs</p>
          <p className="text-3xl font-bold text-orange-300 mt-2">{stats.unassigned}</p>
         </div>
-        <div className="w-12 h-12 bg-orange-500/40 rounded-lg flex items-center justify-center border border-orange-400/50">
-         <svg className="w-6 h-6 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 bg-orange-950 rounded-lg flex items-center justify-center border border-orange-800">
+         <svg className="w-6 h-6 text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
          </svg>
         </div>
@@ -406,30 +436,31 @@ const AgentProfile = () => {
      </div>
 
      {actionError && (
-      <div className="glass-alert-error mb-4 p-4 rounded-lg">{actionError}</div>
+      <div className="mb-4 p-4 rounded-lg border border-red-700 bg-red-950 text-red-200">{actionError}</div>
      )}
      {actionSuccess && (
-      <div className="glass-alert-success mb-4 p-4 rounded-lg">{actionSuccess}</div>
+      <div className="mb-4 p-4 rounded-lg border border-emerald-700 bg-emerald-950 text-emerald-200">{actionSuccess}</div>
      )}
     {selfDispatchMeta && (
-     <div className="glass-card mb-4 p-4 rounded-lg text-sm text-white/80">
+         <div className="mb-4 p-4 rounded-lg border border-slate-700 bg-slate-900 text-sm text-slate-200">
       Self-dispatch remaining today: {selfDispatchMeta.remainingDailySelfAccepts} | Participation days used this week: {selfDispatchMeta.weeklyParticipationDaysUsed}/5
      </div>
     )}
 
      {/* Service Calls Section */}
-     <div className="glass-card rounded-2xl shadow-xl overflow-hidden">
-      <div className="px-8 py-6 border-b border-white/20 backdrop-blur-sm bg-white/5">
-       <h2 className="glass-heading text-2xl">Service Calls</h2>
+         <div className={`${panelClass} overflow-hidden`}>
+      <div className="px-5 sm:px-8 py-6 border-b border-slate-700 bg-slate-900/95">
+       <h2 className="text-2xl font-bold text-slate-100">Service Calls</h2>
+       <p className="mt-1 text-sm text-slate-400">Entity Focus: Service Call records linked to this field agent</p>
 
        {/* Tabs */}
-       <div className="mt-4 flex gap-2 border-b border-white/20">
+       <div className="mt-4 flex gap-2 border-b border-slate-700 overflow-x-auto">
         <button
          onClick={() => setActiveTab('all')}
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'all'
-           ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/80 hover:text-white'
+           ? tabActiveClass
+           : tabInactiveClass
          }`}
         >
          All ({stats.total})
@@ -438,8 +469,8 @@ const AgentProfile = () => {
          onClick={() => setActiveTab('to-attend')}
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'to-attend'
-           ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/80 hover:text-white'
+           ? tabActiveClass
+           : tabInactiveClass
          }`}
         >
          To Attend ({stats.toBeAttended})
@@ -448,8 +479,8 @@ const AgentProfile = () => {
          onClick={() => setActiveTab('in-progress')}
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'in-progress'
-           ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/80 hover:text-white'
+           ? tabActiveClass
+           : tabInactiveClass
          }`}
         >
          In Progress ({stats.inProgress})
@@ -458,8 +489,8 @@ const AgentProfile = () => {
          onClick={() => setActiveTab('completed')}
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'completed'
-           ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/80 hover:text-white'
+           ? tabActiveClass
+           : tabInactiveClass
          }`}
         >
          Completed ({stats.completed})
@@ -468,8 +499,8 @@ const AgentProfile = () => {
          onClick={() => setActiveTab('unassigned')}
          className={`px-4 py-2 font-medium transition -mb-px ${
           activeTab === 'unassigned'
-           ? 'text-yellow-300 border-b-2 border-yellow-300'
-           : 'text-white/80 hover:text-white'
+           ? tabActiveClass
+           : tabInactiveClass
          }`}
         >
          Unassigned ({stats.unassigned})
@@ -480,18 +511,18 @@ const AgentProfile = () => {
       {/* Calls List */}
       <div className="p-8">
        {getFilteredCalls().length === 0 ? (
-        <div className="text-center py-12 text-white/70">
-         <svg className="w-16 h-16 mx-auto text-white/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="text-center py-12 text-slate-400">
+         <svg className="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
          </svg>
-         <p className="text-white">No service calls in this category</p>
+         <p className="text-slate-200">No service calls in this category</p>
         </div>
        ) : (
         <div className="space-y-4">
          {getFilteredCalls().map((call) => (
           <div
            key={call._id}
-           className="glass-card border border-white/20 rounded-lg p-6 hover:shadow-md transition"
+           className="rounded-lg border border-slate-700 bg-slate-900/85 p-6 hover:border-cyan-700 transition"
           >
              {(() => {
               const customerPhone = getCustomerPhone(call);
@@ -506,6 +537,9 @@ const AgentProfile = () => {
               <h3 className="text-lg font-semibold text-white">
                {call.callNumber}
               </h3>
+                <span className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide rounded-full border border-cyan-700 bg-cyan-950 text-cyan-200">
+                 Service Call
+                </span>
               <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(call.status)}`}>
                {call.status}
               </span>
@@ -515,38 +549,38 @@ const AgentProfile = () => {
              </div>
 
              {call.title && (
-              <p className="text-white text-base font-semibold mb-2">{call.title}</p>
+                <p className="text-slate-100 text-base font-semibold mb-2">{call.title}</p>
              )}
 
-             <p className="text-white/85 text-sm leading-relaxed mb-3 rounded-lg border border-white/15 bg-black/20 px-3 py-2">
+               <p className="text-slate-200 text-sm leading-relaxed mb-3 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
               {getDescriptionPreview(call.description)}
              </p>
 
              {call.bookingRequest && (
-              <div className="mb-4 rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/85">
+                <div className="mb-4 rounded-lg border border-slate-700 bg-slate-950/70 p-4 text-sm text-slate-200">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 <div>
-                 <span className="text-white/60">Customer Type:</span>
+                  <span className="text-slate-400">Customer Type:</span>
                  <span className="ml-2 capitalize">{call.bookingRequest.contact?.customerType || 'N/A'}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Contact:</span>
+                 <span className="text-slate-400">Contact:</span>
                  <span className="ml-2">{call.bookingRequest.contact?.contactPerson || 'N/A'}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Machine Model Number:</span>
+                 <span className="text-slate-400">Machine Model Number:</span>
                  <span className="ml-2">{call.bookingRequest.generatorDetails?.machineModelNumber || 'N/A'}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Generator:</span>
+                 <span className="text-slate-400">Generator:</span>
                  <span className="ml-2">{call.bookingRequest.generatorDetails?.generatorMakeModel || 'N/A'}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Service History:</span>
+                 <span className="text-slate-400">Service History:</span>
                  <span className="ml-2 capitalize">{(call.bookingRequest.serviceHistoryType || 'N/A').replace('-', ' ')}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Date of Last Service:</span>
+                 <span className="text-slate-400">Date of Last Service:</span>
                  <span className="ml-2">
                   {call.bookingRequest.dateOfLastService
                    ? new Date(call.bookingRequest.dateOfLastService).toLocaleDateString()
@@ -554,7 +588,7 @@ const AgentProfile = () => {
                  </span>
                 </div>
                 <div>
-                 <span className="text-white/60">Preferred Service Date:</span>
+                 <span className="text-slate-400">Preferred Service Date:</span>
                  <span className="ml-2">
                   {call.bookingRequest.preferredDate
                    ? new Date(call.bookingRequest.preferredDate).toLocaleDateString()
@@ -562,33 +596,33 @@ const AgentProfile = () => {
                  </span>
                 </div>
                 <div>
-                 <span className="text-white/60">Progress Status:</span>
+                 <span className="text-slate-400">Progress Status:</span>
                  <span className="ml-2">{call.bookingRequest.progressStatus || 'N/A'}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Services In Progress:</span>
+                 <span className="text-slate-400">Services In Progress:</span>
                  <span className="ml-2">{call.bookingRequest.servicesInProgress || 'N/A'}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Quotation History:</span>
+                 <span className="text-slate-400">Quotation History:</span>
                  <span className="ml-2">{call.bookingRequest.quotationHistory || 'N/A'}</span>
                 </div>
                 <div>
-                 <span className="text-white/60">Invoicing History:</span>
+                 <span className="text-slate-400">Invoicing History:</span>
                  <span className="ml-2">{call.bookingRequest.invoicingHistory || 'N/A'}</span>
                 </div>
                 {call.bookingRequest.generatorDetails?.siteName && (
                  <div className="md:col-span-2">
-                  <span className="text-white/60">Site Name:</span>
+                  <span className="text-slate-400">Site Name:</span>
                   <span className="ml-2">{call.bookingRequest.generatorDetails.siteName}</span>
                  </div>
                 )}
                 <div className="md:col-span-2">
-                 <span className="text-white/60">Administrative Address:</span>
+                 <span className="text-slate-400">Administrative Address:</span>
                  <span className="ml-2">{formatStructuredAddress(call.bookingRequest.administrativeAddress)}</span>
                 </div>
                 <div className="md:col-span-2">
-                 <span className="text-white/60">Machine Address:</span>
+                 <span className="text-slate-400">Machine Address:</span>
                  <span className="ml-2">{formatStructuredAddress(call.bookingRequest.machineAddress)}</span>
                 </div>
                </div>
@@ -597,18 +631,18 @@ const AgentProfile = () => {
 
              <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-               <span className="text-white/60">Customer:</span>
-               <span className="ml-2 font-medium text-white">
+               <span className="text-slate-400">Customer:</span>
+               <span className="ml-2 font-medium text-slate-100">
                 {getCustomerLabel(call)}
                </span>
               </div>
               <div>
-               <span className="text-white/60">Contact Phone:</span>
-               <span className="ml-2 text-white">{customerPhone || 'N/A'}</span>
+               <span className="text-slate-400">Contact Phone:</span>
+               <span className="ml-2 text-slate-100">{customerPhone || 'N/A'}</span>
               </div>
               <div>
-               <span className="text-white/60">Scheduled:</span>
-               <span className="ml-2 text-white">
+               <span className="text-slate-400">Scheduled:</span>
+               <span className="ml-2 text-slate-100">
                 {call.scheduledDate
                  ? new Date(call.scheduledDate).toLocaleDateString()
                  : 'Not scheduled'}
@@ -633,7 +667,7 @@ const AgentProfile = () => {
               {(call.serviceLocation || call.location) && (
                <div className="col-span-2">
                 <span className="text-white/60">Location:</span>
-                <span className="ml-2 text-white">{call.serviceLocation || call.location}</span>
+                <span className="ml-2 text-slate-100">{call.serviceLocation || call.location}</span>
                </div>
               )}
               <div className="col-span-2 pt-1">
@@ -643,7 +677,7 @@ const AgentProfile = () => {
                   href={`https://wa.me/${whatsappPhone}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/35 hover:bg-emerald-500/45 border border-emerald-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-100 transition"
                   title="Start WhatsApp call/chat with customer"
                  >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -653,7 +687,7 @@ const AgentProfile = () => {
                  </a>
                  <a
                   href={`tel:${telPhone}`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-500/35 hover:bg-blue-500/45 border border-blue-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-950 hover:bg-blue-900 border border-blue-700 px-3 py-2 text-sm font-semibold text-blue-100 transition"
                   title="Place a regular phone call"
                  >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -666,13 +700,15 @@ const AgentProfile = () => {
                   isSuperUser={Boolean(user?.isSuperUser)}
                   sourceData={buildQuoteSourceFromCall(call)}
                   triggerLabel="Create Quote"
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-950 hover:bg-amber-900 border border-amber-700 px-3 py-2 text-sm font-semibold text-amber-100 transition"
                   onCreated={fetchAgentData}
                  />
                  <SiteInstructionModal
                   token={user?.token}
                   serviceCall={call}
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-500/35 hover:bg-cyan-500/45 border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  roleLabel={roleLabel}
+                  isSuperAdmin={isSuperAdmin}
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 px-3 py-2 text-sm font-semibold text-cyan-100 transition"
                   onUpdated={fetchAgentData}
                  />
                   {activeTab === 'unassigned' && (
@@ -682,8 +718,8 @@ const AgentProfile = () => {
                     disabled={acceptingCallId === call._id}
                     className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-white transition ${
                      acceptingCallId === call._id
-                      ? 'cursor-not-allowed border-white/20 bg-white/10 opacity-70'
-                      : 'border-orange-300/40 bg-orange-500/35 hover:bg-orange-500/45'
+                      ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                      : 'border-orange-700 bg-orange-950 hover:bg-orange-900'
                     }`}
                    >
                     {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
@@ -692,19 +728,21 @@ const AgentProfile = () => {
                 </div>
                ) : (
                 <div className="flex flex-wrap gap-2 items-center">
-                 <p className="text-xs text-white/70">No valid customer phone number available for call actions.</p>
+                 <p className="text-xs text-slate-400">No valid customer phone number available for call actions.</p>
                  <CreateQuoteModal
                   token={user?.token}
                   isSuperUser={Boolean(user?.isSuperUser)}
                   sourceData={buildQuoteSourceFromCall(call)}
                   triggerLabel="Create Quote"
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-500/35 hover:bg-amber-500/45 border border-amber-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-950 hover:bg-amber-900 border border-amber-700 px-3 py-2 text-sm font-semibold text-amber-100 transition"
                   onCreated={fetchAgentData}
                  />
                  <SiteInstructionModal
                   token={user?.token}
                   serviceCall={call}
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-500/35 hover:bg-cyan-500/45 border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-white transition"
+                  roleLabel={roleLabel}
+                  isSuperAdmin={isSuperAdmin}
+                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 px-3 py-2 text-sm font-semibold text-cyan-100 transition"
                   onUpdated={fetchAgentData}
                  />
                  {activeTab === 'unassigned' && (
@@ -714,8 +752,8 @@ const AgentProfile = () => {
                    disabled={acceptingCallId === call._id}
                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-white transition ${
                     acceptingCallId === call._id
-                     ? 'cursor-not-allowed border-white/20 bg-white/10 opacity-70'
-                     : 'border-orange-300/40 bg-orange-500/35 hover:bg-orange-500/45'
+                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                     : 'border-orange-700 bg-orange-950 hover:bg-orange-900'
                    }`}
                   >
                    {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
@@ -724,6 +762,9 @@ const AgentProfile = () => {
                 </div>
                )}
               </div>
+                  <span className={`inline-flex items-center rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide ${roleToneClass}`}>
+                   {isSuperAdmin ? 'Super Admin Controls Visible' : 'Operational Controls'}
+                  </span>
              </div>
             </div>
            </div>
@@ -731,6 +772,9 @@ const AgentProfile = () => {
            })()}
           </div>
          ))}
+                 <span className={`inline-flex items-center rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide ${roleToneClass}`}>
+                  {isSuperAdmin ? 'Super Admin Controls Visible' : 'Operational Controls'}
+                 </span>
         </div>
        )}
       </div>

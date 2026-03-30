@@ -1,8 +1,28 @@
 import ServiceCall from '../models/ServiceCall.model.js';
 import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
+import Customer from '../models/Customer.model.js';
+import Equipment from '../models/Equipment.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
 const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
+
+const SERVICE_HISTORY_STATUSES = ['completed', 'invoiced'];
+
+const syncEquipmentServiceHistory = async ({ serviceCall, createdBy }) => {
+  if (!serviceCall?.equipment || !SERVICE_HISTORY_STATUSES.includes(serviceCall.status)) {
+    return;
+  }
+
+  const completedDate = serviceCall.completedDate || new Date();
+
+  await Equipment.updateOne(
+    { _id: serviceCall.equipment, createdBy },
+    {
+      $addToSet: { serviceHistory: serviceCall._id },
+      $set: { lastServiceDate: completedDate },
+    }
+  );
+};
 
 const getStartOfDay = (date = new Date()) => {
   const value = new Date(date);
@@ -139,6 +159,25 @@ const getAgentSelfDispatchEligibility = async ({ createdBy, agentId }) => {
   };
 };
 
+const classifyServiceCallPersistenceError = (error) => {
+  if (error?.code === 11000) {
+    const duplicateField = Object.keys(error.keyPattern || {})[0] || 'field';
+    return {
+      status: 409,
+      message: `Duplicate value for ${duplicateField}`,
+    };
+  }
+
+  if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+    return {
+      status: 400,
+      message: error.message,
+    };
+  }
+
+  return null;
+};
+
 // @desc    Get all service calls
 // @route   GET /api/service-calls
 // @access  Private
@@ -192,6 +231,8 @@ export const createServiceCall = async (req, res) => {
     const {
       callNumber,
       customer,
+      siteId,
+      equipment,
       assignedAgent,
       title,
       description,
@@ -225,9 +266,72 @@ export const createServiceCall = async (req, res) => {
       return res.status(400).json({ message: 'A linked customer or booking request details are required' });
     }
 
+    // Auto-link or auto-create customer from booking request
+    let resolvedCustomer = customer;
+    if (!resolvedCustomer && bookingRequest?.contact) {
+      const rawEmail = String(bookingRequest.contact.contactEmail || '').trim().toLowerCase();
+      const rawContactPerson = String(bookingRequest.contact.contactPerson || '').trim();
+      const rawPhone = String(bookingRequest.contact.contactPhone || '').trim();
+
+      // Build a required-email fallback for private booking flows where email is optional.
+      const generatedEmail = `autogen-${Date.now()}@customer.local`;
+      const normalizedEmail = rawEmail || generatedEmail;
+
+      // Try to find existing customer by email in same tenant.
+      const existingCustomer = await Customer.findOne({
+        email: normalizedEmail,
+        createdBy: req.user._id,
+      });
+
+      if (existingCustomer) {
+        resolvedCustomer = existingCustomer._id;
+        logInfo(`✅ Linked service call to existing customer: ${existingCustomer.businessName || existingCustomer.contactFirstName}`);
+      } else {
+        try {
+          // Split contact name safely so required last name is always present.
+          const nameParts = rawContactPerson.split(' ').filter(Boolean);
+          const firstName = nameParts[0] || 'Private';
+          const lastName = nameParts.slice(1).join(' ') || 'Customer';
+
+          const addressParts = [
+            bookingRequest?.administrativeAddress?.streetAddress,
+            bookingRequest?.administrativeAddress?.suburb,
+            bookingRequest?.administrativeAddress?.cityDistrict,
+            bookingRequest?.administrativeAddress?.province,
+          ].filter(Boolean);
+
+          const physicalAddress = addressParts.join(', ') || 'Address pending';
+          const safePhone = rawPhone || 'Phone pending';
+
+          const customerIdSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-8);
+          const newCustomerRecord = await Customer.create({
+            customerType: 'residential',
+            contactFirstName: firstName,
+            contactLastName: lastName,
+            email: normalizedEmail,
+            phoneNumber: safePhone,
+            customerId: `RES-${customerIdSuffix}`,
+            physicalAddress,
+            accountStatus: 'active',
+            createdBy: req.user._id,
+          });
+
+          resolvedCustomer = newCustomerRecord._id;
+          logInfo(`✅ Auto-created residential customer from booking request: ${newCustomerRecord.contactFirstName} ${newCustomerRecord.contactLastName}`);
+        } catch (err) {
+          logError('⚠️ Failed to auto-create customer from booking request', {
+            message: err?.message,
+            bookingContact: bookingRequest?.contact,
+          });
+        }
+      }
+    }
+
     const serviceCall = await ServiceCall.create({
       callNumber: resolvedCallNumber,
-      customer,
+      customer: resolvedCustomer,
+      siteId,
+      equipment,
       assignedAgent,
       title,
       description,
@@ -243,14 +347,24 @@ export const createServiceCall = async (req, res) => {
       createdBy: req.user._id
     });
 
+    await syncEquipmentServiceHistory({
+      serviceCall,
+      createdBy: req.user._id,
+    });
+
     // Populate customer and agent details
     await serviceCall.populate('customer', 'businessName contactFirstName contactLastName');
     await serviceCall.populate('assignedAgent', 'firstName lastName employeeId');
 
     logInfo(`✅ Service call created: ${serviceCall.callNumber}`);
-    res.status(201).json(serviceCall);
+    res.status(201).json({ data: serviceCall });
   } catch (error) {
     logError('Create service call error:', error);
+    const classifiedError = classifyServiceCallPersistenceError(error);
+    if (classifiedError) {
+      return res.status(classifiedError.status).json({ message: classifiedError.message });
+    }
+
     res.status(500).json({ message: error.message });
   }
 };
@@ -317,6 +431,12 @@ export const updateServiceCall = async (req, res) => {
     }
 
     const updatedServiceCall = await serviceCall.save();
+
+    await syncEquipmentServiceHistory({
+      serviceCall: updatedServiceCall,
+      createdBy: req.user._id,
+    });
+
     await updatedServiceCall.populate('customer', 'businessName contactFirstName contactLastName');
     await updatedServiceCall.populate('assignedAgent', 'firstName lastName employeeId');
 

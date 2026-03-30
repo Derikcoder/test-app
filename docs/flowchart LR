@@ -1,0 +1,91 @@
+flowchart LR
+    subgraph L1[Client App]
+      C1[User fills registration form]
+      C2[Submit POST /api/auth/register]
+      C3[Receive response]
+    end
+
+    subgraph L2[API Gateway / Route Layer]
+      R1[auth.routes.js maps to registerUser]
+    end
+
+    subgraph L3[Auth Controller]
+      A1[Validate base fields: userName email password]
+      A2[Resolve requested role default superAdmin]
+      A3[Validate role-specific rules]
+      A4[Normalize email lowercase]
+      A5[Check duplicate user by email or userName]
+      A6{Role requires passkey?\nbusinessAdministrator/fieldServiceAgent}
+      A7[Load active onboarding passkey]
+      A8[Validate expiry attempts and passkey hash]
+      A9{Role-linked profile required?}
+      A10[Load and validate FieldServiceAgent profile]
+      A11[Load and validate Customer profile]
+      A12[Create user account]
+      A13[Link profile.userAccount to new user]
+      A14[Mark passkey consumed]
+      A15[Generate JWT token]
+      A16[Return 201 with user payload and token]
+    end
+
+    subgraph L4[MongoDB]
+      D1[(User)]
+      D2[(OnboardingPasskey)]
+      D3[(FieldServiceAgent)]
+      D4[(Customer)]
+    end
+
+    subgraph L5[Failure Outcomes]
+      F1[400 Missing/invalid required fields]
+      F2[400 Invalid role]
+      F3[400/409 Duplicate email or username]
+      F4[403 No active or expired passkey]
+      F5[401 Invalid passkey]
+      F6[400/404/409 Profile link validation failed]
+      F7[500 Server error]
+    end
+
+    C1 --> C2 --> R1 --> A1
+    A1 -- fail --> F1 --> C3
+    A1 -- ok --> A2
+    A2 -- invalid --> F2 --> C3
+    A2 -- valid --> A3
+    A3 -- fail --> F1 --> C3
+    A3 -- ok --> A4 --> A5
+
+    A5 --> D1
+    A5 -- duplicate --> F3 --> C3
+    A5 -- clear --> A6
+
+    A6 -- yes --> A7
+    A7 --> D2
+    A7 -- missing --> F4 --> C3
+    A7 -- found --> A8
+    A8 -- expired --> F4 --> C3
+    A8 -- invalid --> F5 --> C3
+    A8 -- valid --> A9
+
+    A6 -- no --> A9
+
+    A9 -- fieldServiceAgent --> A10
+    A10 --> D3
+    A10 -- fail --> F6 --> C3
+    A10 -- ok --> A12
+
+    A9 -- customer --> A11
+    A11 --> D4
+    A11 -- fail --> F6 --> C3
+    A11 -- ok --> A12
+
+    A9 -- admin roles --> A12
+
+    A12 --> D1
+    A12 -- error --> F7 --> C3
+    A12 -- success --> A13
+
+    A13 --> D3
+    A13 --> D4
+
+    A13 --> A14
+    A14 --> D2
+    A14 --> A15 --> A16 --> C3

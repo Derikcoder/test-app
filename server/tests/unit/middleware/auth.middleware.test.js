@@ -108,7 +108,9 @@ describe('Auth Middleware', () => {
       await protect(req, res, next);
 
       expect(req.user).toBeNull();
-      expect(next).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Not authorized, token failed' });
+      expect(next).not.toHaveBeenCalled();
     });
 
     test('should exclude password field from user object', async () => {

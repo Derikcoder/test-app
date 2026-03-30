@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/domains/agents.domain.json",
+  "title": "Agents Domain",
+  "description": "API contracts for /api/agents — field service agent management, availability, location, specialization filtering, and self-dispatch access control. Agents are assigned to ServiceCalls; their ObjectId is referenced in service call records.",
+
+  "type": "object",
+  "properties": {
+    "domain":   { "const": "agents" },
+    "basePath": { "const": "/api/agents" },
+    "version":  { "const": "1.0.0" },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "../shared/common.types.json#/$defs/EndpointDescriptor" },
+      "default": [
+        {
+          "operationId":    "getAgents",
+          "method":         "GET",
+          "path":           "/api/agents",
+          "access":         "private",
+          "summary":        "List all field service agents",
+          "queryParamsRef": "AgentListQuery",
+          "responses":      { "200": "PaginatedResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":    "createAgent",
+          "method":         "POST",
+          "path":           "/api/agents",
+          "access":         "private",
+          "summary":        "Register a new field service agent",
+          "requestBodyRef": "CreateAgentRequest",
+          "responses":      { "201": "CreatedResponse", "400": "ValidationError", "401": "UnauthorizedError", "409": "ConflictError" },
+          "notes":          "firstName, lastName, and employeeId are immutable after creation."
+        },
+        {
+          "operationId":  "getAgentById",
+          "method":       "GET",
+          "path":         "/api/agents/:id",
+          "access":       "private",
+          "summary":      "Get a single agent by ObjectId",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateAgent",
+          "method":         "PUT",
+          "path":           "/api/agents/:id",
+          "access":         "private",
+          "summary":        "Update mutable agent fields",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateAgentRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ImmutableFieldError", "401": "UnauthorizedError", "404": "NotFoundError" },
+          "notes":          "Immutable fields: firstName, lastName, employeeId."
+        },
+        {
+          "operationId":  "deleteAgent",
+          "method":       "DELETE",
+          "path":         "/api/agents/:id",
+          "access":       "private",
+          "summary":      "Delete a field service agent record",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "NoContentResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "getAvailableAgents",
+          "method":         "GET",
+          "path":           "/api/agents/available/list",
+          "access":         "private",
+          "summary":        "List agents currently available for dispatch",
+          "queryParamsRef": "AgentAvailabilityQuery",
+          "responses":      { "200": "SuccessResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":  "getTopRatedAgents",
+          "method":       "GET",
+          "path":         "/api/agents/top-rated",
+          "access":       "private",
+          "summary":      "List highest-rated agents by averageRating descending",
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":  "getAgentsBySpecialization",
+          "method":       "GET",
+          "path":         "/api/agents/specialization/:specialization",
+          "access":       "private",
+          "summary":      "List agents with a specific service specialization",
+          "pathParams":   [{ "name": "specialization", "schema": "ServiceSpecialization" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError" }
+        },
+        {
+          "operationId":  "getAgentPerformance",
+          "method":       "GET",
+          "path":         "/api/agents/:id/performance",
+          "access":       "private",
+          "summary":      "Get performance metrics for a specific agent",
+          "pathParams":   [{ "name": "id", "schema": "ObjectId" }],
+          "responses":    { "200": "SuccessResponse", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateAgentAvailability",
+          "method":         "PATCH",
+          "path":           "/api/agents/:id/availability",
+          "access":         "private",
+          "summary":        "Update an agent's current availability status",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateAvailabilityRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateAgentLocation",
+          "method":         "PATCH",
+          "path":           "/api/agents/:id/location",
+          "access":         "private",
+          "summary":        "Update an agent's live GPS location",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateLocationRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        },
+        {
+          "operationId":    "updateSelfDispatchAccess",
+          "method":         "PATCH",
+          "path":           "/api/agents/:id/self-dispatch-access",
+          "access":         "private",
+          "summary":        "Grant or revoke self-dispatch access for an agent",
+          "pathParams":     [{ "name": "id", "schema": "ObjectId" }],
+          "requestBodyRef": "UpdateSelfDispatchRequest",
+          "responses":      { "200": "SuccessResponse", "400": "ValidationError", "401": "UnauthorizedError", "404": "NotFoundError" }
+        }
+      ]
+    }
+  },
+
+  "$defs": {
+
+    "AgentListQuery": {
+      "type": "object",
+      "description": "Query parameters for GET /api/agents",
+      "properties": {
+        "status":         { "$ref": "../shared/common.types.json#/$defs/AgentStatus" },
+        "availability":   { "$ref": "../shared/common.types.json#/$defs/AgentAvailability" },
+        "specialization": { "$ref": "../shared/common.types.json#/$defs/ServiceSpecialization" },
+        "page":           { "type": "integer", "minimum": 1, "default": 1 },
+        "limit":          { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "sort":           { "type": "string", "default": "-createdAt" }
+      },
+      "additionalProperties": false
+    },
+
+    "AgentAvailabilityQuery": {
+      "type": "object",
+      "description": "Query parameters for GET /api/agents/available/list",
+      "properties": {
+        "specialization": { "$ref": "../shared/common.types.json#/$defs/ServiceSpecialization" }
+      },
+      "additionalProperties": false
+    },
+
+    "CreateAgentRequest": {
+      "type": "object",
+      "description": "Body for POST /api/agents",
+      "required": ["firstName", "lastName", "email", "phoneNumber", "employeeId"],
+      "properties": {
+        "firstName":       { "type": "string", "description": "Immutable after creation — legal/HR requirement" },
+        "lastName":        { "type": "string", "description": "Immutable after creation — legal/HR requirement" },
+        "email":           { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "phoneNumber":     { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "employeeId":      { "type": "string", "description": "Unique HR identifier — immutable after creation" },
+        "skills":          { "type": "array", "items": { "type": "string" }, "description": "Free-text certifications or skills" },
+        "specializations": { "type": "array", "items": { "$ref": "../shared/common.types.json#/$defs/ServiceSpecialization" } },
+        "hourlyRate":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "assignedArea":    { "type": "string" },
+        "vehicleInfo":     { "type": "string" },
+        "status":          { "$ref": "../shared/common.types.json#/$defs/AgentStatus" },
+        "availability":    { "$ref": "../shared/common.types.json#/$defs/AgentAvailability" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateAgentRequest": {
+      "type": "object",
+      "description": "Body for PUT /api/agents/:id — mutable fields only. firstName, lastName, and employeeId are rejected.",
+      "properties": {
+        "email":           { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "phoneNumber":     { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "skills":          { "type": "array", "items": { "type": "string" } },
+        "specializations": { "type": "array", "items": { "$ref": "../shared/common.types.json#/$defs/ServiceSpecialization" } },
+        "hourlyRate":      { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "assignedArea":    { "type": "string" },
+        "vehicleInfo":     { "type": "string" },
+        "status":          { "$ref": "../shared/common.types.json#/$defs/AgentStatus" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateAvailabilityRequest": {
+      "type": "object",
+      "description": "Body for PATCH /api/agents/:id/availability",
+      "required": ["availability"],
+      "properties": {
+        "availability": { "$ref": "../shared/common.types.json#/$defs/AgentAvailability" }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateLocationRequest": {
+      "type": "object",
+      "description": "Body for PATCH /api/agents/:id/location",
+      "required": ["lat", "lng"],
+      "properties": {
+        "lat": { "type": "number", "minimum": -90,  "maximum": 90  },
+        "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+      },
+      "additionalProperties": false
+    },
+
+    "UpdateSelfDispatchRequest": {
+      "type": "object",
+      "description": "Body for PATCH /api/agents/:id/self-dispatch-access",
+      "required": ["selfDispatchEnabled"],
+      "properties": {
+        "selfDispatchEnabled": { "type": "boolean" },
+        "reason":              { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "AgentResponse": {
+      "type": "object",
+      "description": "Shape of a field service agent document returned in API responses",
+      "properties": {
+        "_id":                 { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "firstName":           { "type": "string" },
+        "lastName":            { "type": "string" },
+        "email":               { "$ref": "../shared/common.types.json#/$defs/Email" },
+        "phoneNumber":         { "$ref": "../shared/common.types.json#/$defs/PhoneNumber" },
+        "employeeId":          { "type": "string" },
+        "skills":              { "type": "array", "items": { "type": "string" } },
+        "specializations":     { "type": "array", "items": { "$ref": "../shared/common.types.json#/$defs/ServiceSpecialization" } },
+        "totalJobsAttended":   { "type": "integer", "minimum": 0 },
+        "averageRating":       { "type": "number", "minimum": 0, "maximum": 5 },
+        "ratingsCount":        { "type": "integer", "minimum": 0 },
+        "hourlyRate":          { "$ref": "../shared/common.types.json#/$defs/Money" },
+        "status":              { "$ref": "../shared/common.types.json#/$defs/AgentStatus" },
+        "availability":        { "$ref": "../shared/common.types.json#/$defs/AgentAvailability" },
+        "currentLocation":     { "$ref": "../shared/common.types.json#/$defs/GeoLocation" },
+        "assignedArea":        { "type": "string" },
+        "selfDispatchEnabled": { "type": "boolean" },
+        "createdBy":           { "$ref": "../shared/common.types.json#/$defs/ObjectId" },
+        "createdAt":           { "$ref": "../shared/common.types.json#/$defs/ISODateTime" },
+        "updatedAt":           { "$ref": "../shared/common.types.json#/$defs/ISODateTime" }
+      }
+    }
+
+  }
+}

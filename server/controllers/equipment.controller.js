@@ -70,6 +70,35 @@ export const getEquipmentBySite = async (req, res) => {
   }
 };
 
+// @desc    Get single equipment by printed equipment ID (e.g., EQ-000123)
+// @route   GET /api/equipment/lookup/:equipmentId
+// @access  Private
+export const getEquipmentByLabelId = async (req, res) => {
+  try {
+    const equipment = await Equipment.findOne({
+      equipmentId: req.params.equipmentId,
+      createdBy: req.user._id,
+    })
+      .populate('customer', 'businessName contactFirstName contactLastName customerId')
+      .populate({
+        path: 'serviceHistory',
+        populate: [
+          { path: 'assignedAgent', select: 'firstName lastName employeeId' },
+          { path: 'customer', select: 'businessName contactFirstName contactLastName customerId' },
+        ],
+      });
+
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found for the supplied label ID' });
+    }
+
+    res.json(equipment);
+  } catch (error) {
+    logError('Get equipment by label ID error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Get single equipment by ID
 // @route   GET /api/equipment/:id
 // @access  Private

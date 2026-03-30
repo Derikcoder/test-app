@@ -1,0 +1,8 @@
+{
+  "BASE_URL": "https://localhost:5000",
+  "AUTH_TOKEN": "REPLACE_WITH_VALID_JWT",
+  "AUTH_EMAIL": "john@example.com",
+  "AUTH_PASSWORD": "password123",
+  "INVOICE_SCHEMA_V1": "PASTE_CONTENTS_OF_invoice.schema.v1.json_AS_JSON_STRING",
+  "INVOICE_SCHEMA_V1_1": "PASTE_CONTENTS_OF_invoice.schema.v1.1.json_AS_JSON_STRING"
+}

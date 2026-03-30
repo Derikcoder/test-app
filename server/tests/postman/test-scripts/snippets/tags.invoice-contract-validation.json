@@ -1,0 +1,7 @@
+{
+  "tag": "invoice-contract-validation",
+  "snippets": [
+    "schema-validate.invoice-v1.post-r-pm.js",
+    "schema-validate.invoice-v1_1.post-r-pm.js"
+  ]
+}

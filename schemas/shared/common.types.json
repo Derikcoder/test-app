@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wkd.local/schemas/shared/common.types.json",
+  "title": "WKD Common Types",
+  "description": "Foundational $defs for all primitive and composite types shared across every domain schema. No domain-specific logic lives here — only reusable building blocks.",
+
+  "$defs": {
+
+    "ObjectId": {
+      "type": "string",
+      "pattern": "^[a-f\\d]{24}$",
+      "description": "MongoDB ObjectId — 24-character lowercase hex string"
+    },
+
+    "Email": {
+      "type": "string",
+      "format": "email",
+      "description": "RFC 5321 email address — stored lowercase by all models"
+    },
+
+    "PhoneNumber": {
+      "type": "string",
+      "minLength": 7,
+      "description": "Contact phone number — local South African or international format (no normalization enforced at schema level)"
+    },
+
+    "ISODateTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 combined date-time in UTC (e.g. 2026-03-26T08:00:00.000Z)"
+    },
+
+    "Money": {
+      "type": "number",
+      "minimum": 0,
+      "description": "South African Rand (ZAR) monetary amount — must be non-negative. Stored as a plain number (cents not used)."
+    },
+
+    "VatRate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 15,
+      "description": "VAT percentage rate — default is 15% (South African standard rate)"
+    },
+
+    "Address": {
+      "type": "object",
+      "description": "Structured South African postal address — all fields optional at schema level; individual endpoints declare which are required",
+      "properties": {
+        "streetAddress":    { "type": "string", "description": "Street number and name" },
+        "complexName":      { "type": "string", "description": "Complex, building, or estate name" },
+        "siteAddressDetail":{ "type": "string", "description": "Unit, floor, or other access detail" },
+        "suburb":           { "type": "string" },
+        "cityDistrict":     { "type": "string", "description": "City or metro district (e.g. Cape Town, eThekwini)" },
+        "province":         { "type": "string", "description": "South African province name" },
+        "postalCode":       { "type": "string", "pattern": "^[0-9]{4}$", "description": "4-digit South African postal code" }
+      },
+      "additionalProperties": false
+    },
+
+    "GeoLocation": {
+      "type": "object",
+      "description": "WGS-84 geographic coordinate pair — used for agent live location tracking",
+      "required": ["lat", "lng"],
+      "properties": {
+        "lat":       { "type": "number", "minimum": -90,  "maximum": 90  },
+        "lng":       { "type": "number", "minimum": -180, "maximum": 180 },
+        "updatedAt": { "$ref": "#/$defs/ISODateTime" }
+      },
+      "additionalProperties": false
+    },
+
+    "PaginationQuery": {
+      "type": "object",
+      "description": "Standard query parameters for paginated list endpoints",
+      "properties": {
+        "page":  { "type": "integer", "minimum": 1,   "default": 1,  "description": "1-based page number" },
+        "limit": { "type": "integer", "minimum": 1,   "maximum": 100, "default": 20 },
+        "sort":  { "type": "string",  "description":  "Sort field — prefix with - for descending (e.g. -createdAt)" }
+      },
+      "additionalProperties": false
+    },
+
+    "LineItem": {
+      "type": "object",
+      "description": "Individual billable line on a quotation or invoice",
+      "required": ["description", "quantity", "unitPrice", "total"],
+      "properties": {
+        "partNumber":   { "type": "string", "description": "Optional SKU or part reference" },
+        "description":  { "type": "string" },
+        "quantity":     { "type": "number", "minimum": 0 },
+        "unitPrice":    { "$ref": "#/$defs/Money" },
+        "total":        { "$ref": "#/$defs/Money", "description": "quantity × unitPrice" }
+      },
+      "additionalProperties": false
+    },
+
+    "UserRole": {
+      "type": "string",
+      "enum": ["superAdmin", "businessAdministrator", "fieldServiceAgent", "customer"],
+      "description": "RBAC role — determines feature access and field-level permissions"
+    },
+
+    "CustomerType": {
+      "type": "string",
+      "enum": ["headOffice", "branch", "franchise", "singleBusiness", "residential"],
+      "description": "Customer classification — drives profile view, field validation, and parent/child account rules"
+    },
+
+    "AgentStatus": {
+      "type": "string",
+      "enum": ["active", "inactive", "on-leave"],
+      "description": "Field service agent employment status"
+    },
+
+    "AgentAvailability": {
+      "type": "string",
+      "enum": ["available", "busy", "off-duty"],
+      "description": "Field service agent current dispatch availability"
+    },
+
+    "ServiceSpecialization": {
+      "type": "string",
+      "enum": ["HVAC_REFRIGERATION", "ELECTRICAL", "PLUMBING", "GENERAL_MAINTENANCE"],
+      "description": "Service trade categorization — used to match agents to jobs"
+    },
+
+    "EquipmentType": {
+      "type": "string",
+      "enum": [
+        "Cold Room", "Freezer", "AC Unit", "Deep Fryer", "Ice Machine", "Display Cooler", "Walk-in Freezer",
+        "Generator", "Distribution Board", "Emergency Power System", "UPS", "Solar System",
+        "Hot Water System", "Geyser", "Boiler", "Water Heater", "Pump",
+        "Welding Equipment", "Compressor", "Other"
+      ],
+      "description": "Equipment category — drives service type routing and specialization matching"
+    },
+
+    "PaymentMethod": {
+      "type": "string",
+      "enum": ["cash", "eft", "card", "credit", "other"],
+      "description": "Payment method used for invoice settlement"
+    },
+
+    "PartsFulfilmentMode": {
+      "type": "string",
+      "enum": ["inHouseProcurement", "thirdPartyDelivery"],
+      "description": "How parts were sourced — affects profitability analysis and delivery cost fields"
+    },
+
+    "QuotationStatus": {
+      "type": "string",
+      "enum": ["draft", "sent", "approved", "rejected", "expired", "converted"],
+      "description": "Lifecycle state of a quotation. Terminal states: approved (→ converts to ServiceCall), rejected, expired."
+    },
+
+    "InvoiceWorkflowStatus": {
+      "type": "string",
+      "enum": ["draft", "awaitingApproval", "approved", "rejected", "finalized"],
+      "description": "Pro-forma and invoice approval workflow state"
+    },
+
+    "InvoiceDocumentType": {
+      "type": "string",
+      "enum": ["proForma", "final"],
+      "description": "Whether the billing document is a pro-forma draft or a finalized tax invoice"
+    },
+
+    "ServiceCallStatus": {
+      "type": "string",
+      "enum": ["pending", "assigned", "in-progress", "completed", "cancelled"],
+      "description": "Work order lifecycle state"
+    },
+
+    "EndpointDescriptor": {
+      "type": "object",
+      "description": "Machine-readable contract descriptor for a single API endpoint. Referenced in each domain's 'endpoints' array.",
+      "required": ["operationId", "method", "path", "access", "summary"],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Unique camelCase identifier — matches the controller export function name"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        },
+        "path": {
+          "type": "string",
+          "description": "Express-style path relative to the server root (e.g. /api/customers/:id)"
+        },
+        "access": {
+          "type": "string",
+          "enum": ["public", "private", "public-tokenized", "role-restricted"],
+          "description": "Access policy label — detail is in auth.policy.json"
+        },
+        "roles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/UserRole" },
+          "description": "Required when access is 'role-restricted'. Lists permitted roles."
+        },
+        "summary": {
+          "type": "string",
+          "description": "One-line human description of what this endpoint does"
+        },
+        "requestBodyRef": {
+          "type": "string",
+          "description": "$defs key within this domain schema that describes the request body shape (e.g. 'CreateCustomerRequest')"
+        },
+        "queryParamsRef": {
+          "type": "string",
+          "description": "$defs key describing allowed query parameters"
+        },
+        "pathParams": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "schema"],
+            "properties": {
+              "name":        { "type": "string" },
+              "schema":      { "type": "string", "description": "$defs key or inline type hint" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "responses": {
+          "type": "object",
+          "description": "HTTP status code (as string key) → $defs key in shared/responses.json",
+          "additionalProperties": { "type": "string" }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Implementation notes — immutable field rules, side-effects, emitted events, etc."
+        }
+      },
+      "additionalProperties": false
+    }
+
+  }
+}
