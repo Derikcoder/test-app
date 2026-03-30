@@ -74,6 +74,10 @@ This is an enterprise-grade field service management application built with the 
 - 🔗 Service calls now persist linked `customer`, `siteId`, and `equipment` when available for precise machine-level history
 - 🧠 Residential category templates in booking flow: Mechanical, Electrical, Plumbing, Property Maintenance
 - 🏠 Residential unified timeline view with category/status filters for cross-category property service history
+- 🧩 Business booking modes now support `standard`, `multi-task`, and `project` workflows for single-business multi-service operations
+- 🧮 Multi-task visits capture itemized task lines (category, task title, labour hours, notes) with a consolidated labour-hour summary
+- 🧭 Unified timeline now supports optional machine-label asset filtering for both residential and business history views
+- 🔐 Machine label IDs are normalized and validated to `EQ-<digits>` format to prevent malformed timeline filter data
 
 ### Quotation Management
 

@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** March 27, 2026  
+**Last Updated:** March 30, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -110,6 +110,19 @@ Primary source of truth: `API_COLLECTION.md` → "Definition of Done for API Cha
 - ✅ Added category-specific validation and payload enrichment for dispatch/quotation context
 - ✅ Added private-customer service history timeline with category/status filters for unified cross-category visibility
 - ✅ Added residential user-type epic docs under `user-stories/RESIDENTIAL_TURNKEY_SERVICES.md`
+
+#### Session: March 30, 2026 — Single-Business Multi-Task Visits + Asset Timeline Hardening
+
+**Focus:** Extend business booking for single-location multi-service operations and harden asset-linked timeline behavior.
+
+- ✅ Added business booking modes in `ServiceCalls.jsx`: `standard`, `multi-task`, and `project`
+- ✅ Added multi-task visit planner with per-task category/title/labour-hours capture and consolidated labour-hour summary
+- ✅ Added project scope summary capture for project-mode bookings
+- ✅ Added unified timeline asset filter (machine label) for business and residential timeline views
+- ✅ Stored machine label IDs in structured booking payload (`bookingRequest.generatorDetails.equipmentLabelId`) for reliable filtering
+- ✅ Hardened machine label handling with strict `EQ-<digits>` normalization in frontend timeline extraction and payload generation
+- ✅ Added schema-level equipment label validation in `ServiceCall.model.js` using `^EQ-\\d{1,12}$`
+- ✅ Added focused timeline tests in `ServiceCallsTimeline.test.jsx`, including malformed-label sanitization coverage
 
 #### Session: March 27, 2026 — Postman + Local HTTPS Setup Runbook Consolidation
 

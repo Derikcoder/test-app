@@ -22,6 +22,7 @@ This codebase is being built as a **digital transformation framework for service
 2. **Billing policy controls** — default service-site billing with optional customer billing override
 3. **Machine-level history integrity** — service calls linked to exact equipment IDs
 4. **Residential turnkey flow** — category templates + unified cross-category timeline
+5. **Single-business multi-service operations** — multi-task/project booking modes + machine-label asset timeline filters
 
 ### Component Hierarchy
 
@@ -35,7 +36,7 @@ Customers.jsx                    ← parent: lists all customers from DB, filter
   └── ResidentialCustomer.jsx    ← profile: individual/residential client
 
 RegisterNewCustomer.jsx          ← standalone modal/form: register any customer type (callable from anywhere)
-ServiceCalls.jsx                 ← booking + superUser queue + machine label lookup + residential templates/timeline
+ServiceCalls.jsx                 ← booking + superUser queue + machine label lookup + residential/business timeline filters + multi-task/project visit modes
 ```
 
 ### Customer Type Notes
@@ -47,6 +48,8 @@ ServiceCalls.jsx                 ← booking + superUser queue + machine label l
 - **ResidentialCustomer** — individual homeowner or tenant; simpler profile, no business fields
 
 Residential bookings now support multi-category templates (mechanical, electrical, plumbing, property maintenance) and a unified private-customer timeline with category/status filtering.
+
+Single-business booking now supports standard, multi-task, and project modes, with optional machine-label timeline filtering and strict `EQ-<digits>` label normalization.
 
 Business customer profile routes now share a live onboarding shell for site management and machine registration, while residential customers keep their simpler dedicated flow.
 
