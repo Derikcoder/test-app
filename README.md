@@ -391,6 +391,14 @@ Ensure you have the following installed:
 
 ## Environment Configuration
 
+---
+**Pre-Production Checklist:**
+
+- Before going into production, perform a full database purge to remove all test users and development data.
+- Ensure only production-ready users and data exist in the database.
+- Review and update environment variables and credentials for production security.
+---
+
 ### Server Environment Variables
 
 Create `server/.env`:
