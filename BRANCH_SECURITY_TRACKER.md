@@ -1,6 +1,6 @@
 # Branch Security Tracker
 
-Last updated: 2026-04-02 (post remediation queue + stale worktree archival pass)
+Last updated: 2026-04-02 (post stale archival + feature/customer-management worktree sync)
 Owner: Copilot + Derick
 Purpose: Keep branch security/sync status in one place so work can continue quickly without context loss.
 
@@ -27,19 +27,17 @@ Active worktrees: 3
 | Quotation | 0 behind / 3 ahead | Resolved in current cycle | Monitoring | Keep aligned with main for future merges |
 | archived/copilot-worktree-2026-03-18T15-11-07 | Archived | N/A | Archived | Archived with reversible tag snapshot |
 | archived/copilot-worktree-2026-03-18T21-23-41 | Archived | N/A | Archived | Archived with reversible tag snapshot |
-| copilot-worktree-2026-03-18T16-36-16 | Stale worktree (dirty) | Unknown | Blocked | Await user decision before stash/commit/archive |
+| copilot-worktree-2026-03-18T16-36-16 | 54 behind / 0 ahead | Stale worktree (dirty) | Blocked | Await user decision before stash/commit/archive |
 | consolidation | 50 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
-| feature/customer-management | 45 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
+| feature/customer-management | 0 behind / 0 ahead | Synced (WIP preserved) | In progress | Continue customer onboarding enhancement work |
 | feature/field-agent-dispatch-protocol | 20 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
 | invoice | 12 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
 | viteConfig-and-lazyLoading | 12 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
-| copilot-worktree-2026-03-18T16-36-16 | 51 behind / 0 ahead | None detected | Candidate for fast-forward/align | Archive or sync |
 
 ## Remediation Queue (Order of Operations)
-1. Confirm onboarding test outcome
+1. Continue onboarding fixes on `feature/customer-management`
 2. Decide handling for dirty `copilot-worktree-2026-03-18T16-36-16`
-3. Keep `feature/customer-management` deferred per user instruction
-4. Final stale branch cleanup pass (post decision)
+3. Final stale branch cleanup pass (post decision)
 
 ## Cleanup Plan
 - [CLEANUP_SEQUENCE_AGENT_PLAN.md](CLEANUP_SEQUENCE_AGENT_PLAN.md)
@@ -70,8 +68,8 @@ Scanner: Copilot
 Branches checked: all local branches + worktrees
 New flags: none for obvious live key signatures in tip scans
 Branches cleared: foundation, feature/register-customer-process, customerManagement, addressing-dependabot-identified-vulnerabilities, Quotation
-Actions completed: archived clean stale worktree branches (`copilot-worktree-2026-03-18T15-11-07`, `copilot-worktree-2026-03-18T21-23-41`), synced behind-only branches, left `feature/customer-management` untouched, identified dirty stale worktree blocker (`copilot-worktree-2026-03-18T16-36-16`)
-Next branch in queue: user decision gate after onboarding test
+Actions completed: archived clean stale worktree branches (`copilot-worktree-2026-03-18T15-11-07`, `copilot-worktree-2026-03-18T21-23-41`), synced behind-only branches, synced `feature/customer-management` to main via stash-apply workflow, resolved stash conflicts, preserved onboarding WIP files, identified dirty stale worktree blocker (`copilot-worktree-2026-03-18T16-36-16`)
+Next branch in queue: feature/customer-management onboarding fix cycle
 
 ## Update Template (Use Each Cycle)
 Date:
