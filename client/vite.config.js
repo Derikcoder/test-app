@@ -1,44 +1,34 @@
+import { defineConfig } from 'vite'
+import { loadEnv } from 'vite'
+import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
-import { defineConfig, loadEnv } from 'vite'
-import react from '@vitejs/plugin-react'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const env = loadEnv(mode, process.cwd(), '')
+  const sslEnabled = env.VITE_SSL_ENABLED === 'true'
+  const certPath = env.VITE_SSL_CERT_FILE ? path.resolve(process.cwd(), env.VITE_SSL_CERT_FILE) : ''
+  const keyPath = env.VITE_SSL_KEY_FILE ? path.resolve(process.cwd(), env.VITE_SSL_KEY_FILE) : ''
+  const hasCerts = Boolean(certPath && keyPath && fs.existsSync(certPath) && fs.existsSync(keyPath))
+  const backendTarget = env.VITE_API_PROXY_TARGET || (sslEnabled ? 'https://localhost:5000' : 'http://localhost:5000')
 
-  const SSL_ENABLED = env.VITE_SSL_ENABLED !== 'false';
-  const SSL_CERT_FILE = env.VITE_SSL_CERT_FILE || '../certs/localhost+1.pem';
-  const SSL_KEY_FILE = env.VITE_SSL_KEY_FILE || '../certs/localhost+1-key.pem';
-  const API_TARGET = env.VITE_API_PROXY_TARGET || 'https://localhost:5000';
-
-  const certPath = path.isAbsolute(SSL_CERT_FILE)
-    ? SSL_CERT_FILE
-    : path.resolve(__dirname, SSL_CERT_FILE);
-  const keyPath = path.isAbsolute(SSL_KEY_FILE)
-    ? SSL_KEY_FILE
-    : path.resolve(__dirname, SSL_KEY_FILE);
-  const hasHttpsFiles = fs.existsSync(certPath) && fs.existsSync(keyPath);
+  const httpsOptions = sslEnabled && hasCerts
+    ? {
+        cert: fs.readFileSync(certPath),
+        key: fs.readFileSync(keyPath),
+      }
+    : false
 
   return {
     plugins: [react()],
     server: {
       port: 3000,
       strictPort: true,
-      https:
-        SSL_ENABLED && hasHttpsFiles
-          ? {
-              cert: fs.readFileSync(certPath),
-              key: fs.readFileSync(keyPath),
-            }
-          : false,
+      https: httpsOptions,
       proxy: {
         '/api': {
-          target: API_TARGET,
+          target: backendTarget,
           changeOrigin: true,
           secure: false,
         },
@@ -83,8 +73,11 @@ export default defineConfig(({ mode }) => {
       coverage: {
         provider: 'v8',
         reporter: ['text', 'json', 'html'],
-        exclude: ['node_modules/', 'src/__tests__/'],
+        exclude: [
+          'node_modules/',
+          'src/__tests__/',
+        ],
       },
     },
-  };
+  }
 })
