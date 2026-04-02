@@ -17,8 +17,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import fs from 'fs';
 import https from 'https';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
@@ -34,21 +34,36 @@ import { requestLogger, errorLogger, logInfo, logError } from './middleware/logg
 // Load environment variables from .env file
 dotenv.config();
 
-// Initialize Express application
-const app = express();
-const PORT = process.env.PORT || 5000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SSL_ENABLED = process.env.SSL_ENABLED !== 'false';
-const SSL_CERT_FILE = process.env.SSL_CERT_FILE || '../certs/localhost+1.pem';
-const SSL_KEY_FILE = process.env.SSL_KEY_FILE || '../certs/localhost+1-key.pem';
-const resolvedSSLCertFile = path.isAbsolute(SSL_CERT_FILE)
-  ? SSL_CERT_FILE
-  : path.resolve(__dirname, SSL_CERT_FILE);
-const resolvedSSLKeyFile = path.isAbsolute(SSL_KEY_FILE)
-  ? SSL_KEY_FILE
-  : path.resolve(__dirname, SSL_KEY_FILE);
+// Initialize Express application
+const app = express();
+const PORT = process.env.PORT || 5000;
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser tools (Postman/cURL) and same-origin requests.
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // If no allowlist is defined, allow all origins (useful for local dev).
+    if (allowedOrigins.length === 0) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
+};
 
 /**
  * Middleware Configuration
@@ -56,7 +71,7 @@ const resolvedSSLKeyFile = path.isAbsolute(SSL_KEY_FILE)
  */
 
 // Enable CORS for all routes (allows frontend to make requests)
-app.use(cors());
+app.use(cors(corsOptions));
 
 // Parse incoming JSON payloads
 app.use(express.json());
@@ -244,30 +259,41 @@ app.use(errorLogger);
  * Server Initialization
  * Start the Express server on the configured port
  */
-if (SSL_ENABLED) {
-  if (fs.existsSync(resolvedSSLCertFile) && fs.existsSync(resolvedSSLKeyFile)) {
-    const sslOptions = {
-      key: fs.readFileSync(resolvedSSLKeyFile),
-      cert: fs.readFileSync(resolvedSSLCertFile),
-    };
+const sslEnabled = process.env.SSL_ENABLED === 'true';
+const sslCertFile = process.env.SSL_CERT_FILE;
+const sslKeyFile = process.env.SSL_KEY_FILE;
 
-    https.createServer(sslOptions, app).listen(PORT, () => {
-      logInfo(`✅ HTTPS server is running on https://localhost:${PORT}`);
+const startHttpServer = () => {
+  app.listen(PORT, () => {
+    logInfo(`✅ Server is running on http://localhost:${PORT}`);
+    logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+};
+
+if (sslEnabled && sslCertFile && sslKeyFile) {
+  const certPath = path.resolve(__dirname, sslCertFile);
+  const keyPath = path.resolve(__dirname, sslKeyFile);
+
+  if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    const httpsServer = https.createServer(
+      {
+        cert: fs.readFileSync(certPath),
+        key: fs.readFileSync(keyPath),
+      },
+      app
+    );
+
+    httpsServer.listen(PORT, () => {
+      logInfo(`✅ Server is running on https://localhost:${PORT}`);
       logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } else {
-    logError('SSL is enabled but cert/key file was not found. Falling back to HTTP.');
-    logError(`Expected cert: ${resolvedSSLCertFile}`);
-    logError(`Expected key: ${resolvedSSLKeyFile}`);
-
-    app.listen(PORT, () => {
-      logInfo(`✅ HTTP server is running on http://localhost:${PORT}`);
-      logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logError('SSL is enabled but cert/key files are missing, falling back to HTTP', {
+      certPath,
+      keyPath,
     });
+    startHttpServer();
   }
 } else {
-  app.listen(PORT, () => {
-    logInfo(`✅ HTTP server is running on http://localhost:${PORT}`);
-    logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
+  startHttpServer();
 }
