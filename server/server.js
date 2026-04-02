@@ -17,6 +17,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import agentRoutes from './routes/agent.routes.js';
@@ -29,6 +33,9 @@ import { requestLogger, errorLogger, logInfo, logError } from './middleware/logg
 
 // Load environment variables from .env file
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize Express application
 const app = express();
@@ -131,7 +138,41 @@ app.use(errorLogger);
  * Server Initialization
  * Start the Express server on the configured port
  */
-app.listen(PORT, () => {
-  logInfo(`✅ Server is running on port ${PORT}`);
-  logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+const sslEnabled = process.env.SSL_ENABLED === 'true';
+const sslCertFile = process.env.SSL_CERT_FILE;
+const sslKeyFile = process.env.SSL_KEY_FILE;
+
+const startHttpServer = () => {
+  app.listen(PORT, () => {
+    logInfo(`✅ Server is running on http://localhost:${PORT}`);
+    logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+};
+
+if (sslEnabled && sslCertFile && sslKeyFile) {
+  const certPath = path.resolve(__dirname, sslCertFile);
+  const keyPath = path.resolve(__dirname, sslKeyFile);
+
+  if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    const httpsServer = https.createServer(
+      {
+        cert: fs.readFileSync(certPath),
+        key: fs.readFileSync(keyPath),
+      },
+      app
+    );
+
+    httpsServer.listen(PORT, () => {
+      logInfo(`✅ Server is running on https://localhost:${PORT}`);
+      logInfo(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } else {
+    logError('SSL is enabled but cert/key files are missing, falling back to HTTP', {
+      certPath,
+      keyPath,
+    });
+    startHttpServer();
+  }
+} else {
+  startHttpServer();
+}

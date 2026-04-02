@@ -19,6 +19,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Resolve local protocol display based on env flags
+SERVER_PROTOCOL="http"
+CLIENT_PROTOCOL="http"
+if [[ -f "server/.env" ]] && grep -Eq '^SSL_ENABLED=true' server/.env; then
+  SERVER_PROTOCOL="https"
+fi
+if [[ -f "client/.env" ]] && grep -Eq '^VITE_SSL_ENABLED=true' client/.env; then
+  CLIENT_PROTOCOL="https"
+fi
+
 # Trap to kill all background processes on exit
 trap 'kill $(jobs -p) 2>/dev/null' EXIT
 
@@ -86,8 +96,8 @@ echo "=================================="
 echo ""
 echo "📍 Services running:"
 echo "   • MongoDB      → mongodb://localhost:27017"
-echo "   • Backend  API → http://localhost:5000"
-echo "   • Frontend App → http://localhost:3000"
+echo "   • Backend  API → ${SERVER_PROTOCOL}://localhost:5000"
+echo "   • Frontend App → ${CLIENT_PROTOCOL}://localhost:3000"
 echo ""
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
 echo ""
