@@ -255,8 +255,26 @@ userSchema.pre('validate', function validateRoleProfileLinkage(next) {
   next();
 });
 
-userSchema.index({ fieldServiceAgentProfile: 1 }, { unique: true, sparse: true });
-userSchema.index({ customerProfile: 1 }, { unique: true, sparse: true });
+
+// Partial unique index: Only enforce uniqueness for fieldServiceAgentProfile when it exists (not null/undefined)
+userSchema.index(
+  { fieldServiceAgentProfile: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { fieldServiceAgentProfile: { $type: 'objectId' } },
+    name: 'unique_fieldServiceAgentProfile_when_present'
+  }
+);
+
+// Partial unique index for customerProfile as well
+userSchema.index(
+  { customerProfile: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { customerProfile: { $type: 'objectId' } },
+    name: 'unique_customerProfile_when_present'
+  }
+);
 
 /**
  * Static Property: Immutable Fields
