@@ -871,6 +871,8 @@ npm update
 - **[PROFILE_EDITING_GUIDE.md](PROFILE_EDITING_GUIDE.md)** - User profile editing guide
 - **[DATA_CLEANUP_POLICY.md](DATA_CLEANUP_POLICY.md)** - Safe targeted data cleanup policy (no full DB wipe scripts)
 - **[BRANCH_SECURITY_TRACKER.md](BRANCH_SECURITY_TRACKER.md)** - Branch-by-branch security/sync tracker and remediation queue
+- **[PROJECT_TRACKING_SYSTEM.md](PROJECT_TRACKING_SYSTEM.md)** - Command-center workflow for delivery, risk, and branch operations
+- **[AGENT_OPERATING_MODEL.md](AGENT_OPERATING_MODEL.md)** - Specialized agent roles, handoffs, and rollout plan
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
 - **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
 
