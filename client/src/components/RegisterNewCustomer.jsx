@@ -25,7 +25,7 @@ const RegisterNewCustomer = () => {
  const [success, setSuccess] = useState('');
  const [useExistingCustomer, setUseExistingCustomer] = useState(false);
  const [selectedCustomerId, setSelectedCustomerId] = useState('');
- const [customerType, setCustomerType] = useState('business');
+ const [customerType, setCustomerType] = useState('singleBusiness');
  const [serviceCategory, setServiceCategory] = useState('generator');
  const [generatorServiceType, setGeneratorServiceType] = useState('service');
  const [electricalType, setElectricalType] = useState('appliance');
@@ -282,13 +282,13 @@ const RegisterNewCustomer = () => {
  };
 
  const buildCustomerPayload = () => {
-  const isPrivate = customerType === 'private';
+  const isResidential = customerType === 'residential';
   const customerId = formData.customerId || `CUST-${Date.now()}`;
-  const businessName = isPrivate
+  const businessName = isResidential
    ? `Private - ${formData.contactFirstName} ${formData.contactLastName}`.trim()
    : formData.businessName;
   const formattedPhysicalAddress = formatStructuredAddress(physicalAddressDetails);
-  const businessSites = isPrivate
+  const businessSites = isResidential
    ? []
    : [
      {
@@ -305,7 +305,7 @@ const RegisterNewCustomer = () => {
 
   const customerNotes = {
    customerType,
-   branchName: isPrivate ? null : formData.branchName,
+   branchName: isResidential ? null : formData.branchName,
     physicalAddressDetails,
    bookingLocation: formData.bookingLocation,
    serviceLocation: formData.serviceLocation,
@@ -577,8 +577,11 @@ const RegisterNewCustomer = () => {
           onChange={(e) => setCustomerType(e.target.value)}
           className="glass-form-select"
          >
-          <option value="business">Business</option>
-          <option value="private">Private/Residential</option>
+          <option value="headOffice">Head Office</option>
+          <option value="branch">Branch</option>
+          <option value="franchise">Franchise</option>
+          <option value="singleBusiness">Single Business</option>
+          <option value="residential">Residential</option>
          </select>
         </div>
         <div>
@@ -630,7 +633,7 @@ const RegisterNewCustomer = () => {
        <div className="glass-card rounded-2xl shadow-xl p-8">
         <h2 className="glass-heading text-xl mb-6">Customer Details</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-         {customerType === 'business' && (
+         {customerType !== 'residential' && (
           <div className="md:col-span-2">
            <label className="glass-form-label">Business Name *</label>
            <input
@@ -643,7 +646,7 @@ const RegisterNewCustomer = () => {
            />
           </div>
          )}
-         {customerType === 'business' && (
+         {customerType !== 'residential' && (
           <div className="md:col-span-2">
            <label className="glass-form-label">Branch Name *</label>
            <input
@@ -658,7 +661,7 @@ const RegisterNewCustomer = () => {
          )}
          <div>
           <label className="glass-form-label">
-           {customerType === 'business' ? 'Contact Person Name *' : 'Name *'}
+           {customerType !== 'residential' ? 'Contact Person Name *' : 'Name *'}
           </label>
           <input
            type="text"
@@ -671,7 +674,7 @@ const RegisterNewCustomer = () => {
          </div>
          <div>
           <label className="glass-form-label">
-           {customerType === 'business' ? 'Contact Person Surname *' : 'Surname *'}
+           {customerType !== 'residential' ? 'Contact Person Surname *' : 'Surname *'}
           </label>
           <input
            type="text"
@@ -728,7 +731,7 @@ const RegisterNewCustomer = () => {
 
          <div className="md:col-span-2">
           <label className="glass-form-label">
-           {customerType === 'business' ? 'Physical Address *' : 'Residential Address *'}
+           {customerType !== 'residential' ? 'Physical Address *' : 'Residential Address *'}
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
            <input
@@ -857,7 +860,7 @@ const RegisterNewCustomer = () => {
          </div>
         </div>
 
-        {customerType === 'business' && (
+        {customerType !== 'residential' && (
          <div className="mt-8">
           <h3 className="glass-heading-secondary text-lg mb-4">Business Structure</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

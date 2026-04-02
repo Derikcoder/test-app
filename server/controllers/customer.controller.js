@@ -1,6 +1,8 @@
 import Customer from '../models/Customer.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
+const BUSINESS_TYPES = ['headOffice', 'branch', 'franchise', 'singleBusiness'];
+
 const formatAddress = (address = {}) => {
   if (!address || typeof address !== 'object') return '';
 
@@ -110,7 +112,7 @@ export const createCustomer = async (req, res) => {
     }
 
     // Validate customer type specific requirements
-    if (customerType === 'business') {
+    if (BUSINESS_TYPES.includes(customerType)) {
       if (!businessName) {
         return res.status(400).json({ message: 'Business name is required for business customers' });
       }
@@ -153,7 +155,7 @@ export const createCustomer = async (req, res) => {
       createdBy: req.user._id
     });
 
-    logInfo(`✅ Customer created: ${customer.customerType === 'business' ? customer.businessName : `${customer.contactFirstName} ${customer.contactLastName}`} (${customer.customerId})`);
+    logInfo(`✅ Customer created: ${BUSINESS_TYPES.includes(customer.customerType) ? customer.businessName : `${customer.contactFirstName} ${customer.contactLastName}`} (${customer.customerId})`);
     res.status(201).json(customer);
   } catch (error) {
     logError('Create customer error:', error);
@@ -240,7 +242,7 @@ export const getCustomerSites = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!BUSINESS_TYPES.includes(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers have multiple sites' });
     }
 
@@ -277,7 +279,7 @@ export const addCustomerSite = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!BUSINESS_TYPES.includes(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers can have multiple sites' });
     }
 
@@ -326,7 +328,7 @@ export const updateCustomerSite = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!BUSINESS_TYPES.includes(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers have multiple sites' });
     }
 
@@ -373,7 +375,7 @@ export const deleteCustomerSite = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.customerType !== 'business') {
+    if (!BUSINESS_TYPES.includes(customer.customerType)) {
       return res.status(400).json({ message: 'Only business customers have multiple sites' });
     }
 
