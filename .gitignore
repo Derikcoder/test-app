@@ -7,6 +7,10 @@ node_modules/
 .env.local
 .env.*.local
 
+# Local TLS certs/keys (development only)
+certs/*.pem
+certs/*-key.pem
+
 # Build outputs
 dist/
 build/

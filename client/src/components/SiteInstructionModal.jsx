@@ -8,6 +8,11 @@ const CALL_OUT_FLOOR_AMOUNT = 650;
 
 const formatCurrency = (value) => `R ${Number(value || 0).toFixed(2)}`;
 
+const panelClass = 'rounded-lg border border-slate-700 bg-slate-900/90 p-4';
+const labelClass = 'mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300';
+const inputClass = 'w-full rounded-lg border border-slate-600 bg-slate-950 text-slate-100 px-4 py-3 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40';
+const mutedCardClass = 'rounded-lg border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-100';
+
 const buildFormState = (invoice) => ({
   invoiceId: invoice?._id || '',
   invoiceNumber: invoice?.invoiceNumber || '',
@@ -101,7 +106,7 @@ const calculatePreview = (formData) => {
   };
 };
 
-const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated }) => {
+const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated, roleLabel = 'Platform User', isSuperAdmin = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -318,203 +323,215 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated 
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="glass-card w-full max-w-5xl rounded-2xl border border-white/20 bg-slate-900/85 p-6 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-4">
+          <div className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-950 p-4 sm:p-6 max-h-[95vh] overflow-y-auto shadow-2xl shadow-black/60">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="glass-heading-secondary">Site Instruction / Pro-Forma Invoice</h2>
-                <p className="text-xs text-white/65 mt-1">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-100">Site Instruction / Pro-Forma Invoice</h2>
+                <p className="text-sm text-slate-300 mt-1">
                   Source of truth for on-site work. Field agents can adjust imported quote values, capture additional work, request deposit approval, and finalize the invoice on completion.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center rounded-full border border-emerald-700 bg-emerald-950 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-200">
+                    Entity: Invoices / Pro-Forma
+                  </span>
+                  <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                    isSuperAdmin
+                      ? 'border-fuchsia-700 bg-fuchsia-950 text-fuchsia-200'
+                      : 'border-cyan-700 bg-cyan-950 text-cyan-200'
+                  }`}>
+                    Role: {roleLabel}
+                  </span>
+                </div>
               </div>
-              <button type="button" onClick={closeModal} className="text-white/80 hover:text-white">Close</button>
+              <button type="button" onClick={closeModal} className="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">Close</button>
             </div>
 
-            {error ? <div className="mb-4 rounded-lg border border-red-300/50 bg-red-500/20 px-4 py-2 text-white">{error}</div> : null}
-            {success ? <div className="mb-4 rounded-lg border border-emerald-300/50 bg-emerald-500/20 px-4 py-2 text-white">{success}</div> : null}
+            {error ? <div className="mb-4 rounded-lg border border-red-700 bg-red-950 px-4 py-2 text-sm font-medium text-red-200">{error}</div> : null}
+            {success ? <div className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950 px-4 py-2 text-sm font-medium text-emerald-200">{success}</div> : null}
 
             {loading ? (
-              <div className="py-16 text-center text-white/70">Loading pro-forma invoice...</div>
+              <div className="py-16 text-center text-slate-300">Loading pro-forma invoice...</div>
             ) : (
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="rounded-lg border border-white/20 bg-white/5 p-3 text-white text-sm">
-                    <p className="text-white/60 text-xs">Document</p>
+                  <div className={mutedCardClass}>
+                    <p className="text-slate-400 text-xs">Document</p>
                     <p className="font-semibold">{formData.invoiceNumber || 'Pending number'}</p>
                   </div>
-                  <div className="rounded-lg border border-white/20 bg-white/5 p-3 text-white text-sm">
-                    <p className="text-white/60 text-xs">Type</p>
+                  <div className={mutedCardClass}>
+                    <p className="text-slate-400 text-xs">Type</p>
                     <p className="font-semibold">{formData.documentType === 'proForma' ? 'Pro-forma' : 'Final invoice'}</p>
                   </div>
-                  <div className="rounded-lg border border-white/20 bg-white/5 p-3 text-white text-sm">
-                    <p className="text-white/60 text-xs">Workflow</p>
+                  <div className={mutedCardClass}>
+                    <p className="text-slate-400 text-xs">Workflow</p>
                     <p className="font-semibold">{formData.workflowStatus}</p>
                   </div>
-                  <div className="rounded-lg border border-white/20 bg-white/5 p-3 text-white text-sm">
-                    <p className="text-white/60 text-xs">Linked Quote</p>
+                  <div className={mutedCardClass}>
+                    <p className="text-slate-400 text-xs">Linked Quote</p>
                     <p className="font-semibold">{serviceCall?.quotation?.quotationNumber || 'Direct service call seed'}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="glass-form-label text-white/90">Title</label>
-                    <input value={formData.title} onChange={(e) => updateField('title', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                    <label className={labelClass}>Title</label>
+                    <input value={formData.title} onChange={(e) => updateField('title', e.target.value)} className={inputClass} />
                   </div>
                   <div>
-                    <label className="glass-form-label text-white/90">Service Type</label>
-                    <input value={formData.serviceType} onChange={(e) => updateField('serviceType', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                    <label className={labelClass}>Service Type</label>
+                    <input value={formData.serviceType} onChange={(e) => updateField('serviceType', e.target.value)} className={inputClass} />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="glass-form-label text-white/90">Description / Scope</label>
-                    <textarea rows="3" value={formData.description} onChange={(e) => updateField('description', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                    <label className={labelClass}>Description / Scope</label>
+                    <textarea rows="3" value={formData.description} onChange={(e) => updateField('description', e.target.value)} className={inputClass} />
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
+                <div className={`${panelClass} space-y-3`}>
                   <div>
-                    <h3 className="text-white font-semibold">Billable Items (parts / materials)</h3>
+                    <h3 className="text-slate-100 font-semibold">Billable Items (parts / materials)</h3>
                   </div>
                   {formData.lineItems.map((item, index) => (
                     <div key={`site-line-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
                       <div className="md:col-span-6">
-                        <label className="glass-form-label text-white/80">Description</label>
-                        <input value={item.description} onChange={(e) => updateLineItem(index, 'description', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2" />
+                        <label className={labelClass}>Description</label>
+                        <input value={item.description} onChange={(e) => updateLineItem(index, 'description', e.target.value)} className={inputClass} />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="glass-form-label text-white/80">Qty</label>
-                        <input type="number" min="0" step="1" value={item.quantity} onChange={(e) => updateLineItem(index, 'quantity', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2" />
+                        <label className={labelClass}>Qty</label>
+                        <input type="number" min="0" step="1" value={item.quantity} onChange={(e) => updateLineItem(index, 'quantity', e.target.value)} className={inputClass} />
                       </div>
                       <div className="md:col-span-3">
-                        <label className="glass-form-label text-white/80">Unit Price (R)</label>
-                        <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateLineItem(index, 'unitPrice', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2" />
+                        <label className={labelClass}>Unit Price (R)</label>
+                        <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateLineItem(index, 'unitPrice', e.target.value)} className={inputClass} />
                       </div>
                       <div className="md:col-span-1">
-                        <button type="button" onClick={() => removeLineItem(index)} className="w-full rounded-lg border border-red-300/50 bg-red-500/20 px-2 py-2 text-white text-sm">X</button>
+                        <button type="button" onClick={() => removeLineItem(index)} className="w-full rounded-lg border border-red-700 bg-red-950 px-2 py-2 text-sm font-semibold text-red-200">X</button>
                       </div>
                     </div>
                   ))}
                   <div className="flex justify-end pt-2">
-                    <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
+                    <button type="button" onClick={addLineItem} className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-900">Add Item</button>
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-white/20 bg-white/5 p-4">
-                  <h3 className="text-white font-semibold mb-3">Costing Controls</h3>
+                <div className={panelClass}>
+                  <h3 className="text-slate-100 font-semibold mb-3">Costing Controls</h3>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
-                      <label className="glass-form-label text-white/90">Parts Fulfilment</label>
-                      <select value={formData.partsFulfilmentMode} onChange={(e) => updateField('partsFulfilmentMode', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3">
+                      <label className={labelClass}>Parts Fulfilment</label>
+                      <select value={formData.partsFulfilmentMode} onChange={(e) => updateField('partsFulfilmentMode', e.target.value)} className={inputClass}>
                         <option value="inHouseProcurement" className="text-black">In-house Procurement</option>
                         <option value="thirdPartyDelivery" className="text-black">Third-party Delivery</option>
                       </select>
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Parts Procurement Cost (R)</label>
-                      <input type="number" min="0" step="0.01" value={formData.partsProcurementCost} onChange={(e) => updateField('partsProcurementCost', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Parts Procurement Cost (R)</label>
+                      <input type="number" min="0" step="0.01" value={formData.partsProcurementCost} onChange={(e) => updateField('partsProcurementCost', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Delivery Provider</label>
-                      <input value={formData.deliveryProvider} onChange={(e) => updateField('deliveryProvider', e.target.value)} disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Delivery Provider</label>
+                      <input value={formData.deliveryProvider} onChange={(e) => updateField('deliveryProvider', e.target.value)} disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Third-party Delivery Cost (R)</label>
-                      <input type="number" min="0" step="0.01" value={formData.thirdPartyDeliveryCost} onChange={(e) => updateField('thirdPartyDeliveryCost', e.target.value)} disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Third-party Delivery Cost (R)</label>
+                      <input type="number" min="0" step="0.01" value={formData.thirdPartyDeliveryCost} onChange={(e) => updateField('thirdPartyDeliveryCost', e.target.value)} disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Labour Hours</label>
-                      <input type="number" min="0" step="0.25" value={formData.laborHours} onChange={(e) => updateField('laborHours', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Labour Hours</label>
+                      <input type="number" min="0" step="0.25" value={formData.laborHours} onChange={(e) => updateField('laborHours', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Labour Rate (R/hour)</label>
-                      <input type="number" min="0" step="0.01" value={formData.laborRate} onChange={(e) => updateField('laborRate', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Labour Rate (R/hour)</label>
+                      <input type="number" min="0" step="0.01" value={formData.laborRate} onChange={(e) => updateField('laborRate', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Distance Travelled (km)</label>
-                      <input type="number" min="0" step="0.01" value={formData.distanceTravelledKm} onChange={(e) => updateField('distanceTravelledKm', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Distance Travelled (km)</label>
+                      <input type="number" min="0" step="0.01" value={formData.distanceTravelledKm} onChange={(e) => updateField('distanceTravelledKm', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Rate per km (R)</label>
-                      <input type="number" min="0" step="0.01" value={formData.travelRatePerKm} onChange={(e) => updateField('travelRatePerKm', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Rate per km (R)</label>
+                      <input type="number" min="0" step="0.01" value={formData.travelRatePerKm} onChange={(e) => updateField('travelRatePerKm', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Travel Time (minutes)</label>
-                      <input type="number" min="0" step="1" value={formData.travelTimeMinutes} onChange={(e) => updateField('travelTimeMinutes', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Travel Time (minutes)</label>
+                      <input type="number" min="0" step="1" value={formData.travelTimeMinutes} onChange={(e) => updateField('travelTimeMinutes', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Time Travelled Cost (R)</label>
-                      <input type="number" min="0" step="0.01" value={formData.timeTravelledCost} onChange={(e) => updateField('timeTravelledCost', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Time Travelled Cost (R)</label>
+                      <input type="number" min="0" step="0.01" value={formData.timeTravelledCost} onChange={(e) => updateField('timeTravelledCost', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Consumables Rate (%)</label>
-                      <input type="number" min="0" step="0.01" value={formData.consumablesRate} onChange={(e) => updateField('consumablesRate', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Consumables Rate (%)</label>
+                      <input type="number" min="0" step="0.01" value={formData.consumablesRate} onChange={(e) => updateField('consumablesRate', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">VAT Rate (%)</label>
-                      <input type="number" min="0" max="100" step="0.01" value={formData.vatRate} onChange={(e) => updateField('vatRate', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>VAT Rate (%)</label>
+                      <input type="number" min="0" max="100" step="0.01" value={formData.vatRate} onChange={(e) => updateField('vatRate', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="md:col-span-3 rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white">
+                    <div className="md:col-span-3 rounded-lg border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-100">
                       <p>Parts Cost: {formatCurrency(preview.partsCost)}</p>
                       <p>Parts Procurement Cost: {formatCurrency(preview.partsProcurementCost)}</p>
                       <p>Third-party Delivery Cost: {formatCurrency(preview.thirdPartyDeliveryCost)}</p>
                       <p className="font-semibold">Estimated Parts Profit: {formatCurrency(preview.estimatedPartsProfit)}</p>
                       <p>Labour: {preview.laborHours} h x {formatCurrency(preview.laborRate)} = {formatCurrency(preview.laborCost)}</p>
                       <p>Travel: ({preview.distanceTravelledKm} km x {formatCurrency(preview.travelRatePerKm)}) + {formatCurrency(preview.timeTravelledCost)}</p>
-                      {preview.isCallOutFloorApplicable ? <p className="text-xs text-yellow-200">Call-out floor rule applied: minimum {formatCurrency(CALL_OUT_FLOOR_AMOUNT)}</p> : null}
+                      {preview.isCallOutFloorApplicable ? <p className="text-xs text-amber-300">Call-out floor rule applied: minimum {formatCurrency(CALL_OUT_FLOOR_AMOUNT)}</p> : null}
                       <p>Travel Cost: {formatCurrency(preview.travelCost)}</p>
                       <p>Consumables Cost: {formatCurrency(preview.consumablesCost)}</p>
                       <p>Subtotal: {formatCurrency(preview.subtotal)}</p>
                       <p>VAT: {formatCurrency(preview.vatAmount)}</p>
-                      <p className="font-semibold text-yellow-200">Total: {formatCurrency(preview.totalAmount)}</p>
+                      <p className="font-semibold text-cyan-300">Total: {formatCurrency(preview.totalAmount)}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-4">
+                <div className={`${panelClass} space-y-4`}>
                   <div className="flex items-center gap-3">
                     <input id={`deposit-required-${serviceCall._id}`} type="checkbox" checked={Boolean(formData.depositRequired)} onChange={(e) => updateField('depositRequired', e.target.checked)} className="h-4 w-4 rounded border-white/30 bg-white/10" />
-                    <label htmlFor={`deposit-required-${serviceCall._id}`} className="glass-form-label text-white/90 mb-0">Deposit required before additional work starts</label>
+                    <label htmlFor={`deposit-required-${serviceCall._id}`} className="mb-0 text-sm font-medium text-slate-200">Deposit required before additional work starts</label>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="glass-form-label text-white/90">Deposit Amount (R)</label>
-                      <input type="number" min="0" step="0.01" value={formData.depositAmount} onChange={(e) => updateField('depositAmount', e.target.value)} disabled={!formData.depositRequired} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Deposit Amount (R)</label>
+                      <input type="number" min="0" step="0.01" value={formData.depositAmount} onChange={(e) => updateField('depositAmount', e.target.value)} disabled={!formData.depositRequired} className={inputClass} />
                     </div>
                     <div>
-                      <label className="glass-form-label text-white/90">Deposit Reason</label>
-                      <input value={formData.depositReason} onChange={(e) => updateField('depositReason', e.target.value)} disabled={!formData.depositRequired} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                      <label className={labelClass}>Deposit Reason</label>
+                      <input value={formData.depositReason} onChange={(e) => updateField('depositReason', e.target.value)} disabled={!formData.depositRequired} className={inputClass} />
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-4 space-y-4">
-                  <h3 className="text-white font-semibold">Site Instruction</h3>
-                  <textarea rows="3" value={formData.siteInstruction.problemsFound} onChange={(e) => updateSiteInstruction('problemsFound', e.target.value)} placeholder="Problems found on site" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
-                  <textarea rows="3" value={formData.siteInstruction.recommendedSolution} onChange={(e) => updateSiteInstruction('recommendedSolution', e.target.value)} placeholder="Recommended solution / additional work" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
-                  <textarea rows="3" value={formData.siteInstruction.requiredPartsAndMaterials} onChange={(e) => updateSiteInstruction('requiredPartsAndMaterials', e.target.value)} placeholder="Required parts / materials / components" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
-                  <textarea rows="2" value={formData.siteInstruction.thirdPartyServiceNotes} onChange={(e) => updateSiteInstruction('thirdPartyServiceNotes', e.target.value)} placeholder="Third-party service requirements (e.g. injectors, turbo, alternator, diesel pump)" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+                <div className="rounded-lg border border-cyan-800 bg-slate-900 p-4 space-y-4">
+                  <h3 className="text-slate-100 font-semibold">Site Instruction</h3>
+                  <textarea rows="3" value={formData.siteInstruction.problemsFound} onChange={(e) => updateSiteInstruction('problemsFound', e.target.value)} placeholder="Problems found on site" className={inputClass} />
+                  <textarea rows="3" value={formData.siteInstruction.recommendedSolution} onChange={(e) => updateSiteInstruction('recommendedSolution', e.target.value)} placeholder="Recommended solution / additional work" className={inputClass} />
+                  <textarea rows="3" value={formData.siteInstruction.requiredPartsAndMaterials} onChange={(e) => updateSiteInstruction('requiredPartsAndMaterials', e.target.value)} placeholder="Required parts / materials / components" className={inputClass} />
+                  <textarea rows="2" value={formData.siteInstruction.thirdPartyServiceNotes} onChange={(e) => updateSiteInstruction('thirdPartyServiceNotes', e.target.value)} placeholder="Third-party service requirements (e.g. injectors, turbo, alternator, diesel pump)" className={inputClass} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input value={formData.siteInstruction.approvalReference} onChange={(e) => updateSiteInstruction('approvalReference', e.target.value)} placeholder="Customer approval reference / PO / verbal ref" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
-                    <input value={formData.siteInstruction.approvalNotes} onChange={(e) => updateSiteInstruction('approvalNotes', e.target.value)} placeholder="Approval notes" className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3 placeholder-white/50" />
+                    <input value={formData.siteInstruction.approvalReference} onChange={(e) => updateSiteInstruction('approvalReference', e.target.value)} placeholder="Customer approval reference / PO / verbal ref" className={inputClass} />
+                    <input value={formData.siteInstruction.approvalNotes} onChange={(e) => updateSiteInstruction('approvalNotes', e.target.value)} placeholder="Approval notes" className={inputClass} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="glass-form-label text-white/90">Internal Notes</label>
-                    <textarea rows="3" value={formData.notes} onChange={(e) => updateField('notes', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                    <label className={labelClass}>Internal Notes</label>
+                    <textarea rows="3" value={formData.notes} onChange={(e) => updateField('notes', e.target.value)} className={inputClass} />
                   </div>
                   <div>
-                    <label className="glass-form-label text-white/90">Terms</label>
-                    <textarea rows="3" value={formData.terms} onChange={(e) => updateField('terms', e.target.value)} className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3" />
+                    <label className={labelClass}>Terms</label>
+                    <textarea rows="3" value={formData.terms} onChange={(e) => updateField('terms', e.target.value)} className={inputClass} />
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
-                  <h3 className="text-white font-semibold">Share Channels</h3>
+                <div className={`${panelClass} space-y-3`}>
+                  <h3 className="text-slate-100 font-semibold">Share Channels</h3>
                   <div className="flex flex-wrap gap-4">
                     {Object.entries(shareChannels).map(([channel, enabled]) => (
-                      <label key={channel} className="flex items-center gap-2 text-sm text-white/90">
+                      <label key={channel} className="flex items-center gap-2 text-sm text-slate-200">
                         <input type="checkbox" checked={enabled} onChange={(e) => setShareChannels((prev) => ({ ...prev, [channel]: e.target.checked }))} className="h-4 w-4 rounded border-white/30 bg-white/10" />
                         {channel.charAt(0).toUpperCase() + channel.slice(1)}
                       </label>
@@ -522,19 +539,21 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated 
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3 justify-end">
-                  <button type="button" onClick={() => saveDraft()} disabled={saving} className="glass-btn-secondary px-4 py-3 text-sm font-semibold disabled:opacity-50">
+                <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-6 mt-2 border-t border-slate-700 bg-slate-950/95 px-4 sm:px-6 py-4">
+                 <div className="flex flex-wrap gap-3 justify-end">
+                  <button type="button" onClick={() => saveDraft()} disabled={saving} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50">
                     {saving ? 'Saving...' : 'Save Draft'}
                   </button>
-                  <button type="button" onClick={handleSend} disabled={sending || saving} className="glass-btn-secondary px-4 py-3 text-sm font-semibold disabled:opacity-50">
+                  <button type="button" onClick={handleSend} disabled={sending || saving} className="rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-900 disabled:opacity-50">
                     {sending ? 'Sending...' : 'Send For Approval'}
                   </button>
-                  <button type="button" onClick={() => handleWorkflowAction('approved', 'Customer approval recorded.')} disabled={processing} className="glass-btn-secondary px-4 py-3 text-sm font-semibold disabled:opacity-50">
+                  <button type="button" onClick={() => handleWorkflowAction('approved', 'Customer approval recorded.')} disabled={processing} className="rounded-lg border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-900 disabled:opacity-50">
                     Mark Approved
                   </button>
-                  <button type="button" onClick={handleFinalize} disabled={processing || saving} className="glass-btn-primary px-4 py-3 text-sm font-semibold disabled:opacity-50">
+                  <button type="button" onClick={handleFinalize} disabled={processing || saving} className="rounded-lg border border-amber-700 bg-amber-950 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-900 disabled:opacity-50">
                     {processing ? 'Processing...' : 'Finalize Invoice'}
                   </button>
+                 </div>
                 </div>
               </div>
             )}

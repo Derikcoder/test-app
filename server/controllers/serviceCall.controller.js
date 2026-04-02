@@ -250,6 +250,67 @@ export const createServiceCall = async (req, res) => {
       return res.status(400).json({ message: 'A linked customer or booking request details are required' });
     }
 
+    // Auto-link or auto-create customer from booking request
+    let resolvedCustomer = customer;
+    if (!resolvedCustomer && bookingRequest?.contact) {
+      const rawEmail = String(bookingRequest.contact.contactEmail || '').trim().toLowerCase();
+      const rawContactPerson = String(bookingRequest.contact.contactPerson || '').trim();
+      const rawPhone = String(bookingRequest.contact.contactPhone || '').trim();
+
+      // Build a required-email fallback for private booking flows where email is optional.
+      const generatedEmail = `autogen-${Date.now()}@customer.local`;
+      const normalizedEmail = rawEmail || generatedEmail;
+
+      // Try to find existing customer by email in same tenant.
+      const existingCustomer = await Customer.findOne({
+        email: normalizedEmail,
+        createdBy: req.user._id,
+      });
+
+      if (existingCustomer) {
+        resolvedCustomer = existingCustomer._id;
+        logInfo(`✅ Linked service call to existing customer: ${existingCustomer.businessName || existingCustomer.contactFirstName}`);
+      } else {
+        try {
+          // Split contact name safely so required last name is always present.
+          const nameParts = rawContactPerson.split(' ').filter(Boolean);
+          const firstName = nameParts[0] || 'Private';
+          const lastName = nameParts.slice(1).join(' ') || 'Customer';
+
+          const addressParts = [
+            bookingRequest?.administrativeAddress?.streetAddress,
+            bookingRequest?.administrativeAddress?.suburb,
+            bookingRequest?.administrativeAddress?.cityDistrict,
+            bookingRequest?.administrativeAddress?.province,
+          ].filter(Boolean);
+
+          const physicalAddress = addressParts.join(', ') || 'Address pending';
+          const safePhone = rawPhone || 'Phone pending';
+
+          const customerIdSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-8);
+          const newCustomerRecord = await Customer.create({
+            customerType: 'residential',
+            contactFirstName: firstName,
+            contactLastName: lastName,
+            email: normalizedEmail,
+            phoneNumber: safePhone,
+            customerId: `RES-${customerIdSuffix}`,
+            physicalAddress,
+            accountStatus: 'active',
+            createdBy: req.user._id,
+          });
+
+          resolvedCustomer = newCustomerRecord._id;
+          logInfo(`✅ Auto-created residential customer from booking request: ${newCustomerRecord.contactFirstName} ${newCustomerRecord.contactLastName}`);
+        } catch (err) {
+          logError('⚠️ Failed to auto-create customer from booking request', {
+            message: err?.message,
+            bookingContact: bookingRequest?.contact,
+          });
+        }
+      }
+    }
+
     const serviceCall = await ServiceCall.create({
       callNumber: resolvedCallNumber,
       customer: resolvedCustomer,

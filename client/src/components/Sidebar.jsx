@@ -10,6 +10,14 @@ const Sidebar = () => {
   if (!user) return null;
 
   const toggleSidebar = () => setIsOpen(!isOpen);
+  const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
+  const roleLabelMap = {
+    superAdmin: 'Super Admin',
+    businessAdministrator: 'Business Administrator',
+    fieldServiceAgent: 'Field Service Agent',
+    customer: 'Customer',
+  };
+  const roleLabel = roleLabelMap[user?.role] || (isSuperAdmin ? 'Super Admin' : 'Platform User');
 
   const menuItems = [
     {
@@ -100,11 +108,22 @@ const Sidebar = () => {
       >
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="p-6 bg-gradient-to-r from-blue-900/40 to-blue-800/40 border-b border-white/20 backdrop-blur-md">
+          <div className="p-6 bg-slate-900 border-b border-slate-700">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="glass-heading text-xl">{user.businessName}</h2>
-                <p className="text-white/70 text-sm mt-1">SuperUser Dashboard</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                    isSuperAdmin
+                      ? 'border-fuchsia-700 bg-fuchsia-950 text-fuchsia-200'
+                      : 'border-cyan-700 bg-cyan-950 text-cyan-200'
+                  }`}>
+                    Role: {roleLabel}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-200">
+                    {isSuperAdmin ? 'Governance Mode' : 'Operational Mode'}
+                  </span>
+                </div>
               </div>
               <button
                 onClick={toggleSidebar}
@@ -139,10 +158,36 @@ const Sidebar = () => {
                 </li>
               ))}
             </ul>
+
+            <div className="mt-6 rounded-lg border border-slate-700 bg-slate-900/80 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Entity Legend</p>
+              <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-200">
+                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                  <span>Field Agents</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                  <span>Customers</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-indigo-400" />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                  <span>Service Calls</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                  <span>Quotations</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-orange-400" />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                  <span>Invoices / Pro-Forma</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                </div>
+              </div>
+            </div>
           </nav>
 
           {/* Footer - User Info */}
-          <div className="p-4 border-t border-white/20 backdrop-blur-sm bg-white/10">
+          <div className="p-4 border-t border-slate-700 bg-slate-900/90">
             <div className="flex items-center gap-3 px-4 py-2">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-900 rounded-full flex items-center justify-center border border-white/30">
                 <span className="text-white font-bold text-lg">
@@ -150,9 +195,8 @@ const Sidebar = () => {
                 </span>
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900">{user.userName}</p>
                 <p className="text-sm font-semibold text-white">{user.userName}</p>
-                <p className="text-xs text-white/60">{user.email}</p>
+                <p className="text-xs text-slate-400">{user.email}</p>
               </div>
             </div>
           </div>

@@ -242,6 +242,14 @@ const QuotationAuditPanel = ({ snapshot }) => {
  */
 const Quotations = () => {
   const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
+  const roleLabelMap = {
+    superAdmin: 'Super Admin',
+    businessAdministrator: 'Business Administrator',
+    fieldServiceAgent: 'Field Service Agent',
+    customer: 'Customer',
+  };
+  const roleLabel = roleLabelMap[user?.role] || (isSuperAdmin ? 'Super Admin' : 'Platform User');
 
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -294,6 +302,18 @@ const Quotations = () => {
                 </span>
               )}
             </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full border border-orange-400/60 bg-orange-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-200">
+                Entity: Quotations
+              </span>
+              <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                isSuperAdmin
+                  ? 'border-fuchsia-400/60 bg-fuchsia-500/20 text-fuchsia-200'
+                  : 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200'
+              }`}>
+                Role: {roleLabel}
+              </span>
+            </div>
           </div>
 
           {/* Filters */}

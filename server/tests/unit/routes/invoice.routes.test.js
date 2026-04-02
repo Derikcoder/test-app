@@ -108,6 +108,7 @@ describe('Invoice Routes - Public Share Endpoints', () => {
       invoiceNumber: 'INV-ROUTE-002',
       documentType: 'proForma',
       workflowStatus: 'awaitingApproval',
+      workflowTransitions: [],
       siteInstruction: {
         problemsFound: 'Bearing failure',
       },
@@ -141,6 +142,27 @@ describe('Invoice Routes - Public Share Endpoints', () => {
         rejectedAt: null,
       })
     );
+
+    expect(invoice.customerDecision).toEqual(
+      expect.objectContaining({
+        decision: 'approved',
+        reference: 'ROUTE-PO-44',
+        notes: 'Approved via route test',
+        decidedAt: expect.any(Date),
+        channel: 'publicLink',
+      })
+    );
+
+    expect(invoice.workflowTransitions).toHaveLength(1);
+    expect(invoice.workflowTransitions[0]).toEqual(
+      expect.objectContaining({
+        fromStatus: 'awaitingApproval',
+        toStatus: 'approved',
+        changedByRole: 'customer',
+        channel: 'publicLink',
+      })
+    );
+
     expect(invoice.save).toHaveBeenCalled();
   });
 

@@ -107,7 +107,6 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/invoice-approval/:token" element={<InvoiceApprovalPage />} />
-            
             {/* Protected Routes - Require authentication */}
             <Route
               path="/profile"
@@ -205,7 +204,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
             {/* Default Route - Redirect to login */}
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
