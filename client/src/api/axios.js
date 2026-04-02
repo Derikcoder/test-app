@@ -13,6 +13,21 @@
 import axios from 'axios';
 
 /**
+ * Resolve API base URL by environment.
+ *
+ * Development keeps Vite proxy behavior (`/api`).
+ * Production uses explicit `VITE_API_URL` when provided.
+ */
+const resolveApiBaseUrl = () => {
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+
+  const configuredUrl = import.meta.env.VITE_API_URL;
+  return configuredUrl && configuredUrl.trim() ? configuredUrl.trim() : '/api';
+};
+
+/**
  * Axios Instance Configuration
  * 
  * @constant {AxiosInstance} api
@@ -26,7 +41,7 @@ import axios from 'axios';
  * - Content-Type: application/json
  */
 const api = axios.create({
-  baseURL: '/api', // Proxied to backend server via Vite
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

@@ -40,6 +40,30 @@ const __dirname = path.dirname(__filename);
 // Initialize Express application
 const app = express();
 const PORT = process.env.PORT || 5000;
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser tools (Postman/cURL) and same-origin requests.
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // If no allowlist is defined, allow all origins (useful for local dev).
+    if (allowedOrigins.length === 0) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
+};
 
 /**
  * Middleware Configuration
@@ -47,7 +71,7 @@ const PORT = process.env.PORT || 5000;
  */
 
 // Enable CORS for all routes (allows frontend to make requests)
-app.use(cors());
+app.use(cors(corsOptions));
 
 // Parse incoming JSON payloads
 app.use(express.json());
