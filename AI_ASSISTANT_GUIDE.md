@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** March 20, 2026  
+**Last Updated:** April 2, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -44,6 +44,29 @@
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: April 2, 2026 — Remote-Test Readiness + Customer Onboarding Stabilization
+**Commit(s):** `889ba34` (feature branch), plus branch-tracking/documentation updates on `main`  
+**Focus:** Keep local and remote repositories synchronized for production-test builds from `main`
+
+**Remote Build Readiness (Branch + Repo Operations):**
+- ✅ Completed branch remediation queue across long-lived branches and synchronized key branches with `main`.
+- ✅ Performed stale worktree archival for clean worktrees and preserved dirty worktrees for manual follow-up.
+- ✅ Established explicit branch governance artifacts for sequencing and risk tracking.
+
+**Onboarding Flow Stabilization (Feature Branch):**
+- ✅ Fixed customer onboarding payload mismatch by including required `customerType` in customer create payload.
+- ✅ Reduced form friction in customer registration by making branch/site name conditionally required for `branch` and `franchise` only.
+- ✅ Updated field label to "Branch / Site Name" for clearer onboarding intent.
+- ✅ Frontend build validated after fix.
+
+**Primary Files Updated in This Session:**
+- `client/src/components/RegisterNewCustomer.jsx`
+- `BRANCH_SECURITY_TRACKER.md`
+- `PROJECT_TRACKING_SYSTEM.md`
+- `AGENT_OPERATING_MODEL.md`
+- `CLEANUP_SEQUENCE_AGENT_PLAN.md`
+- `DATA_CLEANUP_POLICY.md`
 
 #### Session: March 23, 2026 — Pro-forma Workflow Hardening + Role-Aware UI System
 **Commit:** `79c4424`  
