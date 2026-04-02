@@ -879,6 +879,13 @@ npm update
 
 ## 📋 Recent Updates
 
+### April 2, 2026 — Remote Sync Readiness + Customer Onboarding Fix
+
+- ✅ Synced local and remote `main` for production-style local test builds from remote repository state.
+- ✅ Promoted customer onboarding fix to `main` so registration payload now includes required `customerType`.
+- ✅ Adjusted onboarding branch/site input behavior so branch/site name is only required for `branch` and `franchise` customer types.
+- ✅ Updated onboarding label text to "Branch / Site Name" for clearer data entry intent.
+
 ### March 23, 2026 — Role-Aware UI System & Pro-forma Workflow Hardening
 
 **Backend Enhancements:**

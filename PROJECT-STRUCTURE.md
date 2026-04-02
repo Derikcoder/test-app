@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-03-23
+Last updated: 2026-04-02
 
 ---
 
@@ -24,6 +24,10 @@ This codebase is being built as a **digital transformation framework for service
 2. **Recreate** `Customers.jsx` as a true customer list page — dynamically renders all customers from the database
 3. **Create** `SingleCustomer.jsx` as the customer detail/profile view — child of `Customers.jsx`, navigated to per row
 4. **Wire** routing so `Customers` → list, clicking a customer → `SingleCustomer` profile
+
+### Current Status (April 2, 2026)
+- `RegisterNewCustomer.jsx` onboarding payload is aligned with backend requirements by sending `customerType` during customer creation.
+- Branch/site name input in onboarding is now conditionally required for `branch` and `franchise` customer types.
 
 ### Component Hierarchy
 ```

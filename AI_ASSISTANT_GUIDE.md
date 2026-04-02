@@ -46,7 +46,7 @@
 ### Recent Changes
 
 #### Session: April 2, 2026 — Remote-Test Readiness + Customer Onboarding Stabilization
-**Commit(s):** `889ba34` (feature branch), plus branch-tracking/documentation updates on `main`  
+**Commit(s):** `889ba34` (feature branch), `408d599` (cherry-picked to `main`), plus branch-tracking/documentation updates on `main`  
 **Focus:** Keep local and remote repositories synchronized for production-test builds from `main`
 
 **Remote Build Readiness (Branch + Repo Operations):**
@@ -59,6 +59,7 @@
 - ✅ Reduced form friction in customer registration by making branch/site name conditionally required for `branch` and `franchise` only.
 - ✅ Updated field label to "Branch / Site Name" for clearer onboarding intent.
 - ✅ Frontend build validated after fix.
+- ✅ Onboarding fix was promoted to `main` to ensure remote production-test builds include it.
 
 **Primary Files Updated in This Session:**
 - `client/src/components/RegisterNewCustomer.jsx`
