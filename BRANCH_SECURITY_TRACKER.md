@@ -1,6 +1,6 @@
 # Branch Security Tracker
 
-Last updated: 2026-04-02 (post foundation + feature/register-customer-process + customerManagement + addressing-dependabot + Quotation sync)
+Last updated: 2026-04-02 (post remediation queue + stale worktree archival pass)
 Owner: Copilot + Derick
 Purpose: Keep branch security/sync status in one place so work can continue quickly without context loss.
 
@@ -12,7 +12,8 @@ Purpose: Keep branch security/sync status in one place so work can continue quic
 
 ## Current Branch Inventory
 Local branches: 14
-Remote branches: 8
+Remote branches: 10
+Active worktrees: 3
 
 ## Branch Status Matrix
 
@@ -24,8 +25,9 @@ Remote branches: 8
 | customerManagement | 2 behind / 5 ahead | Resolved in current cycle | Monitoring | Keep aligned with main for future merges |
 | addressing-dependabot-identified-vulnerabilities | 1 behind / 22 ahead | Resolved in current cycle | Monitoring | Keep aligned with main for future merges |
 | Quotation | 0 behind / 3 ahead | Resolved in current cycle | Monitoring | Keep aligned with main for future merges |
-| copilot-worktree-2026-03-18T15-11-07 | 51 behind / 3 ahead | Low | Monitor | Evaluate if still needed, then sync or archive |
-| copilot-worktree-2026-03-18T21-23-41 | 51 behind / 1 ahead | Low | Monitor | Evaluate if still needed, then sync or archive |
+| archived/copilot-worktree-2026-03-18T15-11-07 | Archived | N/A | Archived | Archived with reversible tag snapshot |
+| archived/copilot-worktree-2026-03-18T21-23-41 | Archived | N/A | Archived | Archived with reversible tag snapshot |
+| copilot-worktree-2026-03-18T16-36-16 | Stale worktree (dirty) | Unknown | Blocked | Await user decision before stash/commit/archive |
 | consolidation | 50 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
 | feature/customer-management | 45 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
 | feature/field-agent-dispatch-protocol | 20 behind / 0 ahead | None detected | Candidate for fast-forward/align | Sync to main |
@@ -34,7 +36,13 @@ Remote branches: 8
 | copilot-worktree-2026-03-18T16-36-16 | 51 behind / 0 ahead | None detected | Candidate for fast-forward/align | Archive or sync |
 
 ## Remediation Queue (Order of Operations)
-1. Remaining behind-only branches (sync or archive)
+1. Confirm onboarding test outcome
+2. Decide handling for dirty `copilot-worktree-2026-03-18T16-36-16`
+3. Keep `feature/customer-management` deferred per user instruction
+4. Final stale branch cleanup pass (post decision)
+
+## Cleanup Plan
+- [CLEANUP_SEQUENCE_AGENT_PLAN.md](CLEANUP_SEQUENCE_AGENT_PLAN.md)
 
 ## Security-Sensitive Files to Check First
 - SECURITY.md
@@ -59,11 +67,11 @@ Remote branches: 8
 ## Latest Cycle Update
 Date: 2026-04-02
 Scanner: Copilot
-Branches checked: foundation, feature/register-customer-process, customerManagement, addressing-dependabot-identified-vulnerabilities, Quotation
+Branches checked: all local branches + worktrees
 New flags: none for obvious live key signatures in tip scans
 Branches cleared: foundation, feature/register-customer-process, customerManagement, addressing-dependabot-identified-vulnerabilities, Quotation
-Actions completed: merged main into Quotation, resolved conflicts in App.jsx and vite.config.js plus integrated updates, validated build, pushed branch
-Next branch in queue: behind-only branch cleanup/sync pass
+Actions completed: archived clean stale worktree branches (`copilot-worktree-2026-03-18T15-11-07`, `copilot-worktree-2026-03-18T21-23-41`), synced behind-only branches, left `feature/customer-management` untouched, identified dirty stale worktree blocker (`copilot-worktree-2026-03-18T16-36-16`)
+Next branch in queue: user decision gate after onboarding test
 
 ## Update Template (Use Each Cycle)
 Date:

@@ -873,6 +873,7 @@ npm update
 - **[BRANCH_SECURITY_TRACKER.md](BRANCH_SECURITY_TRACKER.md)** - Branch-by-branch security/sync tracker and remediation queue
 - **[PROJECT_TRACKING_SYSTEM.md](PROJECT_TRACKING_SYSTEM.md)** - Command-center workflow for delivery, risk, and branch operations
 - **[AGENT_OPERATING_MODEL.md](AGENT_OPERATING_MODEL.md)** - Specialized agent roles, handoffs, and rollout plan
+- **[CLEANUP_SEQUENCE_AGENT_PLAN.md](CLEANUP_SEQUENCE_AGENT_PLAN.md)** - Cleanup order-of-operations with agent delegation
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
 - **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
 
