@@ -870,6 +870,7 @@ npm update
 - **[FIELD_PERMISSIONS.md](FIELD_PERMISSIONS.md)** - Field-level permission rules
 - **[PROFILE_EDITING_GUIDE.md](PROFILE_EDITING_GUIDE.md)** - User profile editing guide
 - **[DATA_CLEANUP_POLICY.md](DATA_CLEANUP_POLICY.md)** - Safe targeted data cleanup policy (no full DB wipe scripts)
+- **[BRANCH_SECURITY_TRACKER.md](BRANCH_SECURITY_TRACKER.md)** - Branch-by-branch security/sync tracker and remediation queue
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
 - **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
 
