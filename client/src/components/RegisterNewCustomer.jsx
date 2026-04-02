@@ -319,6 +319,7 @@ const RegisterNewCustomer = () => {
   };
 
   return {
+    customerType,
    businessName,
    contactFirstName: formData.contactFirstName,
    contactLastName: formData.contactLastName,
@@ -648,13 +649,13 @@ const RegisterNewCustomer = () => {
          )}
          {customerType !== 'residential' && (
           <div className="md:col-span-2">
-           <label className="glass-form-label">Branch Name *</label>
+          <label className="glass-form-label">Branch / Site Name</label>
            <input
             type="text"
             name="branchName"
             value={formData.branchName}
             onChange={handleInputChange}
-            required
+          required={customerType === 'branch' || customerType === 'franchise'}
             className="glass-form-input"
            />
           </div>
