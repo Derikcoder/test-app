@@ -458,6 +458,7 @@ describe('Agent Controller', () => {
 
       await getTopRatedAgents(req, res);
 
+      // Express query params arrive as strings; the controller passes them directly to MongoDB
       expect(FieldServiceAgent.find).toHaveBeenCalledWith({
         createdBy: 'user-1',
         ratingsCount: { $gte: '10' },

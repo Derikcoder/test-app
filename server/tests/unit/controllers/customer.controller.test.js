@@ -207,7 +207,7 @@ describe('Customer Controller', () => {
         customerId: 'CUST-BIZ',
         businessName: 'New Corp',
         contactFirstName: 'Carol',
-        contactLastName: 'Carol',
+        contactLastName: 'White',
       });
 
       await createCustomer(req, res);
