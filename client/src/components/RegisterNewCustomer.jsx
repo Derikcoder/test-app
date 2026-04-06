@@ -5,12 +5,14 @@
  * Supports: headOffice, branch, franchise, singleBusiness, residential
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
 
 const RegisterNewCustomer = () => {
+ const navigate = useNavigate();
  const { user } = useAuth();
  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
  const { isLoaded: isGoogleMapsLoaded, loadError: googleMapsLoadError } = useJsApiLoader({
@@ -19,18 +21,11 @@ const RegisterNewCustomer = () => {
   libraries: ['places'],
  });
  const [customers, setCustomers] = useState([]);
- const [serviceCalls, setServiceCalls] = useState([]);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
  const [success, setSuccess] = useState('');
- const [useExistingCustomer, setUseExistingCustomer] = useState(false);
- const [selectedCustomerId, setSelectedCustomerId] = useState('');
+ const [createdCustomer, setCreatedCustomer] = useState(null);
  const [customerType, setCustomerType] = useState('singleBusiness');
- const [serviceCategory, setServiceCategory] = useState('generator');
- const [generatorServiceType, setGeneratorServiceType] = useState('service');
- const [electricalType, setElectricalType] = useState('appliance');
- const [plumbingType, setPlumbingType] = useState('storage');
- const [servicedBefore, setServicedBefore] = useState('no');
  const [formData, setFormData] = useState({
   businessName: '',
   branchName: '',
@@ -39,7 +34,6 @@ const RegisterNewCustomer = () => {
   email: '',
   phoneNumber: '',
   alternatePhone: '',
-  customerId: '',
     streetAddress: '',
     complexName: '',
     siteAddressDetail: '',
@@ -60,40 +54,69 @@ const RegisterNewCustomer = () => {
   machineCount: '',
   machinesDistributed: 'no'
  });
- const [generatorDetails, setGeneratorDetails] = useState({
-  brand: '',
-  model: '',
-  rating: '',
-  phases: '',
-  fuelType: '',
-  buildType: '',
-  subject: '',
-  message: ''
- });
- const [applianceDetails, setApplianceDetails] = useState({
-  applianceType: '',
-  brand: '',
-  model: '',
-  rating: '',
-  phases: '',
-  fuelType: '',
-  buildType: '',
-  subject: '',
-  message: ''
- });
- const [plumbingDetails, setPlumbingDetails] = useState({
-  subject: '',
-  message: ''
- });
  const [mapCenter, setMapCenter] = useState({ lat: -26.2041, lng: 28.0473 });
  const [markerPosition, setMarkerPosition] = useState(null);
  const [locationError, setLocationError] = useState('');
  const [autocomplete, setAutocomplete] = useState(null);
  const [pendingCoords, setPendingCoords] = useState(null);
 
+ // Existing-customer selection
+ const [useExistingCustomer, setUseExistingCustomer] = useState(false);
+ const [selectedCustomerId, setSelectedCustomerId] = useState('');
+
+ // Service history for selected existing customer
+ const [lastServiceCall, setLastServiceCall] = useState(null);
+ const [lastBookingRequest, setLastBookingRequest] = useState(null);
+ const [lastServiceDetails, setLastServiceDetails] = useState(null);
+
+ // Service category & history toggle
+ const [serviceCategory, setServiceCategory] = useState('generator');
+ const [servicedBefore, setServicedBefore] = useState('no');
+
+ // Generator
+ const [generatorServiceType, setGeneratorServiceType] = useState('service');
+ const [generatorDetails, setGeneratorDetails] = useState({
+  brand: '', model: '', rating: '', phases: '', fuelType: '',
+  buildType: '', subject: '', message: '',
+ });
+
+ // Electrical
+ const [electricalType, setElectricalType] = useState('appliance');
+ const isElectricalUnsupported = electricalType === 'building-wiring';
+ const [applianceDetails, setApplianceDetails] = useState({
+  applianceType: '', brand: '', model: '', rating: '', phases: '',
+  fuelType: '', buildType: '', subject: '', message: '',
+ });
+
+ // Plumbing
+ const [plumbingType, setPlumbingType] = useState('storage');
+ const [plumbingDetails, setPlumbingDetails] = useState({ subject: '', message: '' });
+
+ // Derived: selected customer object
+ const selectedCustomer = useMemo(
+  () => customers.find((c) => c._id === selectedCustomerId) || null,
+  [customers, selectedCustomerId]
+ );
+
+ const handleGeneratorChange = (e) => {
+  setGeneratorDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+ };
+
+ const handleApplianceChange = (e) => {
+  setApplianceDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+ };
+
+ const handlePlumbingChange = (e) => {
+  setPlumbingDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+ };
+
+ const formatDate = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  return new Date(dateStr).toLocaleDateString('en-ZA', { year: 'numeric', month: 'short', day: 'numeric' });
+ };
+
  useEffect(() => {
   fetchCustomers();
-  fetchServiceCalls();
  }, []);
 
  useEffect(() => {
@@ -106,6 +129,48 @@ const RegisterNewCustomer = () => {
    reverseGeocode(pendingCoords);
   }
  }, [isGoogleMapsLoaded, pendingCoords, formData.streetAddress]);
+
+ useEffect(() => {
+  if (!selectedCustomerId) {
+   setLastServiceCall(null);
+   setLastBookingRequest(null);
+   setLastServiceDetails(null);
+   return;
+  }
+  const fetchLastServiceCall = async () => {
+   try {
+    const res = await api.get(`/service-calls?customerId=${selectedCustomerId}&limit=1&sort=-createdAt`, {
+     headers: { Authorization: `Bearer ${user.token}` },
+    });
+    const calls = res.data?.serviceCalls || res.data || [];
+    const last = calls[0] || null;
+    setLastServiceCall(last);
+    if (last) {
+     try {
+      const parsed = typeof last.bookingRequest === 'string'
+       ? JSON.parse(last.bookingRequest)
+       : last.bookingRequest;
+      setLastBookingRequest(parsed || null);
+     } catch {
+      setLastBookingRequest(null);
+     }
+     try {
+      const parsed = typeof last.serviceDetails === 'string'
+       ? JSON.parse(last.serviceDetails)
+       : last.serviceDetails;
+      setLastServiceDetails(parsed || null);
+     } catch {
+      setLastServiceDetails(null);
+     }
+    }
+   } catch {
+    setLastServiceCall(null);
+    setLastBookingRequest(null);
+    setLastServiceDetails(null);
+   }
+  };
+  fetchLastServiceCall();
+ }, [selectedCustomerId, user.token]);
 
  const fetchCustomers = async () => {
   try {
@@ -120,45 +185,6 @@ const RegisterNewCustomer = () => {
   }
  };
 
- const fetchServiceCalls = async () => {
-  try {
-   const response = await api.get('/service-calls', {
-    headers: { Authorization: `Bearer ${user.token}` }
-   });
-   setServiceCalls(response.data);
-  } catch (err) {
-   setError(err.response?.data?.message || 'Failed to fetch service calls');
-  }
- };
-
- const selectedCustomer = useMemo(() => {
-  return customers.find(customer => customer._id === selectedCustomerId) || null;
- }, [customers, selectedCustomerId]);
-
- const lastServiceCall = useMemo(() => {
-  if (!selectedCustomerId) return null;
-  const matchingCalls = serviceCalls.filter(call => call.customer?._id === selectedCustomerId);
-  if (matchingCalls.length === 0) return null;
-  return matchingCalls.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
- }, [serviceCalls, selectedCustomerId]);
-
- const parseNotes = (value) => {
-  if (!value) return null;
-  try {
-   return JSON.parse(value);
-  } catch (err) {
-   return null;
-  }
- };
-
- const lastServiceDetails = useMemo(() => {
-  return lastServiceCall ? parseNotes(lastServiceCall.notes) : null;
- }, [lastServiceCall]);
-
- const lastBookingRequest = useMemo(() => {
-  return lastServiceCall?.bookingRequest || null;
- }, [lastServiceCall]);
-
  const formatStructuredAddress = (address) => {
   if (!address) return '';
 
@@ -171,11 +197,6 @@ const RegisterNewCustomer = () => {
    address.province,
    address.postalCode ? `Postal Code: ${address.postalCode}` : null,
   ].filter(Boolean).join(', ');
- };
-
- const formatDate = (value) => {
-  if (!value) return 'N/A';
-  return new Date(value).toLocaleDateString();
  };
 
  const physicalAddressDetails = {
@@ -240,8 +261,6 @@ const RegisterNewCustomer = () => {
   );
  };
 
- const isElectricalUnsupported = serviceCategory === 'electrical' && electricalType === 'building-wiring';
-
  const handleInputChange = (e) => {
   setFormData({ ...formData, [e.target.name]: e.target.value });
  };
@@ -269,21 +288,8 @@ const RegisterNewCustomer = () => {
   updateMapLocation(coords, null);
  };
 
- const handleGeneratorChange = (e) => {
-  setGeneratorDetails({ ...generatorDetails, [e.target.name]: e.target.value });
- };
-
- const handleApplianceChange = (e) => {
-  setApplianceDetails({ ...applianceDetails, [e.target.name]: e.target.value });
- };
-
- const handlePlumbingChange = (e) => {
-  setPlumbingDetails({ ...plumbingDetails, [e.target.name]: e.target.value });
- };
-
  const buildCustomerPayload = () => {
   const isResidential = customerType === 'residential';
-  const customerId = formData.customerId || `CUST-${Date.now()}`;
   const businessName = isResidential
    ? `Private - ${formData.contactFirstName} ${formData.contactLastName}`.trim()
    : formData.businessName;
@@ -326,7 +332,6 @@ const RegisterNewCustomer = () => {
    email: formData.email,
    phoneNumber: formData.phoneNumber,
    alternatePhone: formData.alternatePhone,
-   customerId,
   physicalAddress: formattedPhysicalAddress,
     physicalAddressDetails,
    billingAddress: formData.billingAddress,
@@ -334,67 +339,6 @@ const RegisterNewCustomer = () => {
    accountStatus: formData.accountStatus,
   notes: JSON.stringify(customerNotes),
   sites: businessSites,
-  };
- };
-
- const buildServiceCallPayload = (customerId) => {
-  let jobDetails = {
-   customerType,
-   servicedBefore,
-   bookingLocation: formData.bookingLocation,
-   serviceLocation: formData.serviceLocation,
-   locationRelationship: formData.locationRelationship
-  };
-
-  let title = 'Service Request';
-  let description = '';
-  let serviceType = serviceCategory;
-
-  if (serviceCategory === 'generator') {
-   title = generatorDetails.subject || 'Generator Service Request';
-   description = generatorDetails.message;
-   serviceType = `generator-${generatorServiceType}`;
-   jobDetails = {
-    ...jobDetails,
-    serviceCategory: 'generator',
-    serviceType: generatorServiceType,
-    generator: { ...generatorDetails }
-   };
-  }
-
-  if (serviceCategory === 'electrical') {
-   title = applianceDetails.subject || 'Electrical Service Request';
-   description = applianceDetails.message;
-   serviceType = `electrical-${electricalType}`;
-   jobDetails = {
-    ...jobDetails,
-    serviceCategory: 'electrical',
-    serviceType: electricalType,
-    appliance: electricalType === 'appliance' ? { ...applianceDetails } : null
-   };
-  }
-
-  if (serviceCategory === 'plumbing') {
-   title = plumbingDetails.subject || 'Plumbing Service Request';
-   description = plumbingDetails.message;
-   serviceType = `plumbing-${plumbingType}`;
-   jobDetails = {
-    ...jobDetails,
-    serviceCategory: 'plumbing',
-    serviceType: plumbingType,
-    plumbing: { ...plumbingDetails }
-   };
-  }
-
-  return {
-   customer: customerId,
-   title,
-   description,
-   priority: 'medium',
-   status: 'open',
-   serviceType,
-    serviceLocation: formData.serviceLocation || formatStructuredAddress(physicalAddressDetails),
-   notes: JSON.stringify(jobDetails)
   };
  };
 
@@ -407,7 +351,6 @@ const RegisterNewCustomer = () => {
    email: '',
    phoneNumber: '',
    alternatePhone: '',
-   customerId: '',
     streetAddress: '',
     complexName: '',
     siteAddressDetail: '',
@@ -428,38 +371,7 @@ const RegisterNewCustomer = () => {
    machineCount: '',
    machinesDistributed: 'no'
   });
-  setGeneratorDetails({
-   brand: '',
-   model: '',
-   rating: '',
-   phases: '',
-   fuelType: '',
-   buildType: '',
-   subject: '',
-   message: ''
-  });
-  setApplianceDetails({
-   applianceType: '',
-   brand: '',
-   model: '',
-   rating: '',
-   phases: '',
-   fuelType: '',
-   buildType: '',
-   subject: '',
-   message: ''
-  });
-  setPlumbingDetails({
-   subject: '',
-   message: ''
-  });
-  setUseExistingCustomer(false);
-  setSelectedCustomerId('');
-  setServicedBefore('no');
-  setServiceCategory('generator');
-  setGeneratorServiceType('service');
-  setElectricalType('appliance');
-  setPlumbingType('storage');
+  setCreatedCustomer(null);
  };
 
  const handleSubmit = async (e) => {
@@ -467,69 +379,41 @@ const RegisterNewCustomer = () => {
   setError('');
   setSuccess('');
 
-  if (useExistingCustomer && !selectedCustomerId) {
-   setError('Please select an existing customer.');
-   return;
-  }
-
-  if (isElectricalUnsupported) {
-   setError('We do not perform building wiring electrical services.');
-   return;
-  }
-
-  if (serviceCategory === 'generator') {
-   if (!generatorDetails.brand.trim() || !generatorDetails.model.trim()) {
-    setError('Generator brand and model are required.');
-    return;
-   }
-   if (!generatorDetails.subject.trim() || !generatorDetails.message.trim()) {
-    setError('Please provide a subject and message for the generator request.');
-    return;
-   }
-  }
-
-  if (serviceCategory === 'electrical' && electricalType === 'appliance') {
-   if (!applianceDetails.applianceType.trim() || !applianceDetails.brand.trim() || !applianceDetails.model.trim()) {
-    setError('Appliance type, brand, and model are required.');
-    return;
-   }
-   if (!applianceDetails.subject.trim() || !applianceDetails.message.trim()) {
-    setError('Please provide a subject and message for the electrical request.');
-    return;
-   }
-  }
-
-  if (serviceCategory === 'plumbing') {
-   if (!plumbingDetails.subject.trim() || !plumbingDetails.message.trim()) {
-    setError('Please provide a subject and message for the plumbing request.');
-    return;
-   }
-  }
-
   try {
-   let customerId = selectedCustomerId;
-
-   if (!useExistingCustomer) {
-    const customerPayload = buildCustomerPayload();
-    const customerResponse = await api.post('/customers', customerPayload, {
-     headers: { Authorization: `Bearer ${user.token}` }
-    });
-    customerId = customerResponse.data._id;
-   }
-
-   const serviceCallPayload = buildServiceCallPayload(customerId);
-   await api.post('/service-calls', serviceCallPayload, {
+   const customerPayload = buildCustomerPayload();
+   const customerResponse = await api.post('/customers', customerPayload, {
     headers: { Authorization: `Bearer ${user.token}` }
    });
 
-   setSuccess('Customer and service request saved successfully.');
+   const created = customerResponse.data;
+   setCreatedCustomer(created);
+   setSuccess('Customer saved successfully. You can now continue to service booking.');
    fetchCustomers();
-   fetchServiceCalls();
-   resetForm();
-   setTimeout(() => setSuccess(''), 3000);
   } catch (err) {
-   setError(err.response?.data?.message || 'Failed to save customer request');
+   setError(err.response?.data?.message || 'Failed to save customer');
   }
+ };
+
+ const handleBookService = () => {
+  if (!createdCustomer) {
+   navigate('/service-calls');
+   return;
+  }
+
+  navigate('/service-calls', {
+   state: {
+    prefillCustomer: {
+     id: createdCustomer._id,
+     customerType: createdCustomer.customerType,
+     businessName: createdCustomer.businessName,
+     contactFirstName: createdCustomer.contactFirstName,
+     contactLastName: createdCustomer.contactLastName,
+     email: createdCustomer.email,
+     phoneNumber: createdCustomer.phoneNumber,
+     physicalAddressDetails: createdCustomer.physicalAddressDetails,
+    },
+   },
+  });
  };
 
  if (loading) {
@@ -718,18 +602,6 @@ const RegisterNewCustomer = () => {
            className="glass-form-input"
           />
          </div>
-         <div>
-          <label className="glass-form-label">Customer ID</label>
-          <input
-           type="text"
-           name="customerId"
-           value={formData.customerId}
-           onChange={handleInputChange}
-           placeholder="Auto-generated if empty"
-           className="glass-form-input"
-          />
-         </div>
-
          <div className="md:col-span-2">
           <label className="glass-form-label">
            {customerType !== 'residential' ? 'Physical Address *' : 'Residential Address *'}
