@@ -30,6 +30,7 @@ const FranchiseCustomer = lazy(() => import('./components/FranchiseCustomer'));
 const SingleBusinessCustomer = lazy(() => import('./components/SingleBusinessCustomer'));
 const ResidentialCustomer = lazy(() => import('./components/ResidentialCustomer'));
 const ServiceCalls = lazy(() => import('./components/ServiceCalls'));
+const ServiceCallRegistration = lazy(() => import('./components/ServiceCallRegistration'));
 const Quotations = lazy(() => import('./components/Quotations'));
 
 const PageLoader = () => (
@@ -202,6 +203,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ServiceCalls />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/service-call-registration"
+              element={
+                <ProtectedRoute>
+                  <ServiceCallRegistration />
                 </ProtectedRoute>
               }
             />

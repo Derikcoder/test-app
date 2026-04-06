@@ -4,7 +4,7 @@
  * Extracted from Customers.jsx — call this from anywhere a new customer needs to be created.
  * Supports: headOffice, branch, franchise, singleBusiness, residential
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { useAuth } from '../context/AuthContext';
@@ -60,61 +60,6 @@ const RegisterNewCustomer = () => {
  const [autocomplete, setAutocomplete] = useState(null);
  const [pendingCoords, setPendingCoords] = useState(null);
 
- // Existing-customer selection
- const [useExistingCustomer, setUseExistingCustomer] = useState(false);
- const [selectedCustomerId, setSelectedCustomerId] = useState('');
-
- // Service history for selected existing customer
- const [lastServiceCall, setLastServiceCall] = useState(null);
- const [lastBookingRequest, setLastBookingRequest] = useState(null);
- const [lastServiceDetails, setLastServiceDetails] = useState(null);
-
- // Service category & history toggle
- const [serviceCategory, setServiceCategory] = useState('generator');
- const [servicedBefore, setServicedBefore] = useState('no');
-
- // Generator
- const [generatorServiceType, setGeneratorServiceType] = useState('service');
- const [generatorDetails, setGeneratorDetails] = useState({
-  brand: '', model: '', rating: '', phases: '', fuelType: '',
-  buildType: '', subject: '', message: '',
- });
-
- // Electrical
- const [electricalType, setElectricalType] = useState('appliance');
- const isElectricalUnsupported = electricalType === 'building-wiring';
- const [applianceDetails, setApplianceDetails] = useState({
-  applianceType: '', brand: '', model: '', rating: '', phases: '',
-  fuelType: '', buildType: '', subject: '', message: '',
- });
-
- // Plumbing
- const [plumbingType, setPlumbingType] = useState('storage');
- const [plumbingDetails, setPlumbingDetails] = useState({ subject: '', message: '' });
-
- // Derived: selected customer object
- const selectedCustomer = useMemo(
-  () => customers.find((c) => c._id === selectedCustomerId) || null,
-  [customers, selectedCustomerId]
- );
-
- const handleGeneratorChange = (e) => {
-  setGeneratorDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
- };
-
- const handleApplianceChange = (e) => {
-  setApplianceDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
- };
-
- const handlePlumbingChange = (e) => {
-  setPlumbingDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
- };
-
- const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleDateString('en-ZA', { year: 'numeric', month: 'short', day: 'numeric' });
- };
-
  useEffect(() => {
   fetchCustomers();
  }, []);
@@ -129,48 +74,6 @@ const RegisterNewCustomer = () => {
    reverseGeocode(pendingCoords);
   }
  }, [isGoogleMapsLoaded, pendingCoords, formData.streetAddress]);
-
- useEffect(() => {
-  if (!selectedCustomerId) {
-   setLastServiceCall(null);
-   setLastBookingRequest(null);
-   setLastServiceDetails(null);
-   return;
-  }
-  const fetchLastServiceCall = async () => {
-   try {
-    const res = await api.get(`/service-calls?customerId=${selectedCustomerId}&limit=1&sort=-createdAt`, {
-     headers: { Authorization: `Bearer ${user.token}` },
-    });
-    const calls = res.data?.serviceCalls || res.data || [];
-    const last = calls[0] || null;
-    setLastServiceCall(last);
-    if (last) {
-     try {
-      const parsed = typeof last.bookingRequest === 'string'
-       ? JSON.parse(last.bookingRequest)
-       : last.bookingRequest;
-      setLastBookingRequest(parsed || null);
-     } catch {
-      setLastBookingRequest(null);
-     }
-     try {
-      const parsed = typeof last.serviceDetails === 'string'
-       ? JSON.parse(last.serviceDetails)
-       : last.serviceDetails;
-      setLastServiceDetails(parsed || null);
-     } catch {
-      setLastServiceDetails(null);
-     }
-    }
-   } catch {
-    setLastServiceCall(null);
-    setLastBookingRequest(null);
-    setLastServiceDetails(null);
-   }
-  };
-  fetchLastServiceCall();
- }, [selectedCustomerId, user.token]);
 
  const fetchCustomers = async () => {
   try {
@@ -396,11 +299,11 @@ const RegisterNewCustomer = () => {
 
  const handleBookService = () => {
   if (!createdCustomer) {
-   navigate('/service-calls');
+   navigate('/service-call-registration');
    return;
   }
 
-  navigate('/service-calls', {
+  navigate('/service-call-registration', {
    state: {
     prefillCustomer: {
      id: createdCustomer._id,
@@ -469,52 +372,10 @@ const RegisterNewCustomer = () => {
           <option value="residential">Residential</option>
          </select>
         </div>
-        <div>
-         <label className="glass-form-label">Existing Customer?</label>
-         <select
-          value={useExistingCustomer ? 'yes' : 'no'}
-          onChange={(e) => setUseExistingCustomer(e.target.value === 'yes')}
-          className="glass-form-select"
-         >
-          <option value="no">No, create new</option>
-          <option value="yes">Yes, select existing</option>
-         </select>
-        </div>
        </div>
-
-       {useExistingCustomer && (
-        <div className="mt-6">
-         <label className="glass-form-label">Select Customer</label>
-         <select
-          value={selectedCustomerId}
-          onChange={(e) => setSelectedCustomerId(e.target.value)}
-          className="glass-form-select"
-         >
-          <option value="">Select a customer</option>
-          {customers.map((customer) => (
-           <option key={customer._id} value={customer._id}>
-            {customer.businessName} - {customer.customerId}
-           </option>
-          ))}
-         </select>
-        </div>
-       )}
-
-       {useExistingCustomer && selectedCustomer && (
-        <div className="mt-6 glass-alert-info rounded-lg p-4">
-         <p className="text-sm text-white/70">
-          Selected: {selectedCustomer.businessName} ({selectedCustomer.customerId})
-         </p>
-         {lastServiceCall && (
-          <div className="mt-3 text-sm text-white/70">
-           Last service call: {lastServiceCall.callNumber} - {lastServiceCall.title}
-          </div>
-         )}
-        </div>
-       )}
       </div>
 
-      {!useExistingCustomer && (
+      
        <div className="glass-card rounded-2xl shadow-xl p-8">
         <h2 className="glass-heading text-xl mb-6">Customer Details</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -801,373 +662,6 @@ const RegisterNewCustomer = () => {
          </div>
         )}
        </div>
-      )}
-
-      <div className="glass-card rounded-2xl shadow-xl p-8">
-       <h2 className="glass-heading text-xl mb-6">Service Details</h2>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-         <label className="glass-form-label">Service Category</label>
-         <select
-          value={serviceCategory}
-          onChange={(e) => setServiceCategory(e.target.value)}
-          className="glass-form-select"
-         >
-          <option value="generator">Generator Services</option>
-          <option value="electrical">Electrical Services</option>
-          <option value="plumbing">Plumbing Services</option>
-         </select>
-        </div>
-        <div>
-         <label className="glass-form-label">Serviced Before?</label>
-         <select
-          value={servicedBefore}
-          onChange={(e) => setServicedBefore(e.target.value)}
-          className="glass-form-select"
-         >
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-         </select>
-        </div>
-       </div>
-
-       {servicedBefore === 'yes' && (
-        <div className="mt-6 glass-alert-info rounded-lg p-4">
-         <h3 className="text-sm font-semibold text-white/90">Review Last Service Call</h3>
-         {lastServiceCall ? (
-          <div className="mt-3 text-sm text-white/70 space-y-2">
-           <div>
-            {lastServiceCall.callNumber} - {lastServiceCall.title}
-           </div>
-           <div>
-            Date: {formatDate(lastServiceCall.createdAt)} | Type: {lastServiceCall.serviceType}
-           </div>
-           {lastServiceCall.description && (
-            <div>Description: {lastServiceCall.description}</div>
-           )}
-           {lastBookingRequest && (
-            <>
-             <div>
-              Customer Type: <span className="font-medium">{lastBookingRequest.contact?.customerType || 'N/A'}</span>
-             </div>
-             {lastBookingRequest.contact?.contactPerson && (
-              <div>
-               Contact: <span className="font-medium">{lastBookingRequest.contact.contactPerson}</span>
-              </div>
-             )}
-             {lastBookingRequest.generatorDetails?.siteName && (
-              <div>
-               Site Name: <span className="font-medium">{lastBookingRequest.generatorDetails.siteName}</span>
-              </div>
-             )}
-             <div>
-              Generator: <span className="font-medium">{lastBookingRequest.generatorDetails?.generatorMakeModel || 'N/A'}</span>
-             </div>
-             <div>
-              Machine Model Number: <span className="font-medium">{lastBookingRequest.generatorDetails?.machineModelNumber || 'N/A'}</span>
-             </div>
-             <div>
-              Administrative Address: <span className="font-medium">{formatStructuredAddress(lastBookingRequest.administrativeAddress)}</span>
-             </div>
-             <div>
-              Machine Address: <span className="font-medium">{formatStructuredAddress(lastBookingRequest.machineAddress)}</span>
-             </div>
-            </>
-           )}
-           {lastServiceDetails?.generator && (
-            <div>
-             Generator: {lastServiceDetails.generator.brand || 'N/A'} {lastServiceDetails.generator.model || ''}
-            </div>
-           )}
-           {lastServiceDetails?.appliance && (
-            <div>
-             Appliance: {lastServiceDetails.appliance.applianceType || 'N/A'} {lastServiceDetails.appliance.brand || ''}
-            </div>
-           )}
-           {lastServiceDetails?.plumbing && (
-            <div>
-             Plumbing: {lastServiceDetails.plumbing.subject || 'Service details on file'}
-            </div>
-           )}
-           {!lastBookingRequest && !lastServiceDetails && (
-            <div>Previous job details are not in the new format.</div>
-           )}
-          </div>
-         ) : (
-          <p className="mt-3 text-sm text-white/70">
-           No previous service calls found for this customer.
-          </p>
-         )}
-        </div>
-       )}
-
-       {serviceCategory === 'generator' && (
-        <div className="mt-6">
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-           <label className="glass-form-label">Service Type</label>
-           <select
-            value={generatorServiceType}
-            onChange={(e) => setGeneratorServiceType(e.target.value)}
-            className="glass-form-select"
-           >
-            <option value="service">Service</option>
-            <option value="repair">Repair</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="installation">Installation</option>
-            <option value="transportation">Transportation</option>
-           </select>
-          </div>
-          <div>
-           <label className="glass-form-label">Generator Brand</label>
-           <input
-            type="text"
-            name="brand"
-            value={generatorDetails.brand}
-            onChange={handleGeneratorChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div>
-           <label className="glass-form-label">Model</label>
-           <input
-            type="text"
-            name="model"
-            value={generatorDetails.model}
-            onChange={handleGeneratorChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div>
-           <label className="glass-form-label">Rating</label>
-           <input
-            type="text"
-            name="rating"
-            value={generatorDetails.rating}
-            onChange={handleGeneratorChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div>
-           <label className="glass-form-label">Phases</label>
-           <input
-            type="text"
-            name="phases"
-            value={generatorDetails.phases}
-            onChange={handleGeneratorChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div>
-           <label className="glass-form-label">Fuel Type</label>
-           <input
-            type="text"
-            name="fuelType"
-            value={generatorDetails.fuelType}
-            onChange={handleGeneratorChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div>
-           <label className="glass-form-label">Build Type</label>
-           <input
-            type="text"
-            name="buildType"
-            value={generatorDetails.buildType}
-            onChange={handleGeneratorChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div className="md:col-span-2">
-           <label className="glass-form-label">Subject</label>
-           <input
-            type="text"
-            name="subject"
-            value={generatorDetails.subject}
-            onChange={handleGeneratorChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div className="md:col-span-2">
-           <label className="glass-form-label">Message</label>
-           <textarea
-            name="message"
-            value={generatorDetails.message}
-            onChange={handleGeneratorChange}
-            rows="4"
-            className="glass-form-textarea"
-           />
-          </div>
-         </div>
-        </div>
-       )}
-
-       {serviceCategory === 'electrical' && (
-        <div className="mt-6">
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-           <label className="glass-form-label">Electrical Service Type</label>
-           <select
-            value={electricalType}
-            onChange={(e) => setElectricalType(e.target.value)}
-            className="glass-form-select"
-           >
-            <option value="appliance">Appliance Repairs</option>
-            <option value="building-wiring">Building/Structural Wiring</option>
-           </select>
-          </div>
-         </div>
-
-         {isElectricalUnsupported && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
-           We do not perform building wiring electrical services. We can recommend our electrical
-           contract partners to ensure installations meet spec and are properly certified.
-          </div>
-         )}
-
-         {electricalType === 'appliance' && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-           <div>
-            <label className="glass-form-label">Appliance Type</label>
-            <input
-             type="text"
-             name="applianceType"
-             value={applianceDetails.applianceType}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div>
-            <label className="glass-form-label">Brand</label>
-            <input
-             type="text"
-             name="brand"
-             value={applianceDetails.brand}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div>
-            <label className="glass-form-label">Model</label>
-            <input
-             type="text"
-             name="model"
-             value={applianceDetails.model}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div>
-            <label className="glass-form-label">Rating</label>
-            <input
-             type="text"
-             name="rating"
-             value={applianceDetails.rating}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div>
-            <label className="glass-form-label">Phases</label>
-            <input
-             type="text"
-             name="phases"
-             value={applianceDetails.phases}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div>
-            <label className="glass-form-label">Fuel Type</label>
-            <input
-             type="text"
-             name="fuelType"
-             value={applianceDetails.fuelType}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div>
-            <label className="glass-form-label">Build Type</label>
-            <input
-             type="text"
-             name="buildType"
-             value={applianceDetails.buildType}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div className="md:col-span-2">
-            <label className="glass-form-label">Subject</label>
-            <input
-             type="text"
-             name="subject"
-             value={applianceDetails.subject}
-             onChange={handleApplianceChange}
-             className="glass-form-input"
-            />
-           </div>
-           <div className="md:col-span-2">
-            <label className="glass-form-label">Message</label>
-            <textarea
-             name="message"
-             value={applianceDetails.message}
-             onChange={handleApplianceChange}
-             rows="4"
-             className="glass-form-textarea"
-            />
-           </div>
-          </div>
-         )}
-        </div>
-       )}
-
-       {serviceCategory === 'plumbing' && (
-        <div className="mt-6">
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-           <label className="glass-form-label">Plumbing Service Type</label>
-           <select
-            value={plumbingType}
-            onChange={(e) => setPlumbingType(e.target.value)}
-            className="glass-form-select"
-           >
-            <option value="storage">Water Storage Solutions</option>
-            <option value="reticulation">Water Reticulation Solutions</option>
-            <option value="drainage">Water Drainage Solutions</option>
-           </select>
-          </div>
-         </div>
-         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-           <label className="glass-form-label">Subject</label>
-           <input
-            type="text"
-            name="subject"
-            value={plumbingDetails.subject}
-            onChange={handlePlumbingChange}
-            className="glass-form-input"
-           />
-          </div>
-          <div className="md:col-span-2">
-           <label className="glass-form-label">Message</label>
-           <textarea
-            name="message"
-            value={plumbingDetails.message}
-            onChange={handlePlumbingChange}
-            rows="4"
-            className="glass-form-textarea"
-           />
-          </div>
-         </div>
-         <div className="mt-4 text-sm text-gray-500">
-          Storage: hot/cold tanks, installs, repairs. Reticulation: borehole/pressure/heat pumps, valves
-          and pipes affecting supply. Drainage: storm, grey, sewage, septic systems, unblocking.
-         </div>
-        </div>
-       )}
-      </div>
-
       <div className="glass-card rounded-2xl shadow-xl p-8">
        <h2 className="glass-heading text-xl mb-6">Locations</h2>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1217,13 +711,19 @@ const RegisterNewCustomer = () => {
        </button>
        <button
         type="submit"
-        disabled={isElectricalUnsupported}
-        className={`glass-btn-primary px-6 py-2 ${
-         isElectricalUnsupported ? 'opacity-60 cursor-not-allowed' : ''
-        }`}
+        className="glass-btn-primary px-6 py-2"
        >
-        Save Customer Request
+        Save Customer Profile
        </button>
+       {createdCustomer && (
+        <button
+         type="button"
+         onClick={handleBookService}
+         className="glass-btn-outline px-6 py-2"
+        >
+         Book Service
+        </button>
+       )}
       </div>
      </form>
     </div>
