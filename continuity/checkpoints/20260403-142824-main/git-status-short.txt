@@ -1,0 +1,20 @@
+ M AGENT_OPERATING_MODEL.md
+ M END_OF_DAY_LOG.md
+ M PROJECT_TRACKING_SYSTEM.md
+ M client/src/components/FieldServiceAgents.jsx
+ M client/src/components/RegisterNewCustomer.jsx
+ M package.json
+ M server/config/db.js
+ M server/controllers/agent.controller.js
+ M server/controllers/customer.controller.js
+ M server/middleware/auth.middleware.js
+ M server/package-lock.json
+ M server/package.json
+ M start-dev.sh
+?? .github/project-tracker.agent.md
+?? .mongodb/
+?? continuity/
+?? scripts/create-checkpoint.sh
+?? scripts/recover-last-checkpoint.sh
+?? server/models/SequenceCounter.model.js
+?? server/utils/sequence.util.js

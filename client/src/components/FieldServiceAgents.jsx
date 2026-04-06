@@ -32,7 +32,6 @@ const FieldServiceAgents = () => {
   lastName: '',
   email: '',
   phoneNumber: '',
-  employeeId: '',
   skills: '',
   status: 'active',
   assignedArea: '',
@@ -82,7 +81,6 @@ const FieldServiceAgents = () => {
     lastName: '',
     email: '',
     phoneNumber: '',
-    employeeId: '',
     skills: '',
     status: 'active',
     assignedArea: '',
@@ -178,17 +176,6 @@ const FieldServiceAgents = () => {
           type="text"
           name="lastName"
           value={formData.lastName}
-          onChange={handleInputChange}
-          required
-          className={inputClass}
-         />
-        </div>
-        <div className="glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Employee ID *</label>
-         <input
-          type="text"
-          name="employeeId"
-          value={formData.employeeId}
           onChange={handleInputChange}
           required
           className={inputClass}

@@ -1,0 +1,31 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   AGENT_OPERATING_MODEL.md
+	modified:   END_OF_DAY_LOG.md
+	modified:   PROJECT_TRACKING_SYSTEM.md
+	modified:   client/src/components/FieldServiceAgents.jsx
+	modified:   client/src/components/RegisterNewCustomer.jsx
+	modified:   package.json
+	modified:   server/config/db.js
+	modified:   server/controllers/agent.controller.js
+	modified:   server/controllers/customer.controller.js
+	modified:   server/middleware/auth.middleware.js
+	modified:   server/package-lock.json
+	modified:   server/package.json
+	modified:   start-dev.sh
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.github/project-tracker.agent.md
+	.mongodb/
+	continuity/
+	scripts/create-checkpoint.sh
+	scripts/recover-last-checkpoint.sh
+	server/models/SequenceCounter.model.js
+	server/utils/sequence.util.js
+
+no changes added to commit (use "git add" and/or "git commit -a")

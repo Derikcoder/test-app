@@ -1,0 +1,1037 @@
+diff --git a/AGENT_OPERATING_MODEL.md b/AGENT_OPERATING_MODEL.md
+index 17bea60..9c75588 100644
+--- a/AGENT_OPERATING_MODEL.md
++++ b/AGENT_OPERATING_MODEL.md
+@@ -9,6 +9,9 @@ Create focused agent roles so delivery remains fast and predictable.
+ Copilot (Oracle) coordinates specialist agents, collects outputs, and decides final action path.
+ 
+ ## Essential Agents (Phase 1)
++1. Project Tracker Agent
++Purpose: convert goals into executable checklists, tick off validated work, keep blocker/evidence state current, and maintain next-action queue.
++
+ 1. Security Tracker Agent
+ Purpose: branch inventory, drift analysis, secret-risk scans, remediation queue updates.
+ 
+@@ -34,6 +37,30 @@ Purpose: map end-to-end workflows, identify bottlenecks, enforce operational che
+ 4. DevOps/Security Agent
+ Purpose: deployment configuration, environment hygiene, CI/CD gates, vulnerability triage.
+ 
++## Specialist Team Recommendations (Current State)
++Use this decision matrix when deciding whether to activate specialist agents.
++
++1. Activate now (high value this week)
++- Project Tracker Agent
++- Backend Agent
++- Integration Agent
++- Security Tracker Agent
++
++2. Activate this sprint only if work starts
++- Database Agent (if local-first mirror/event log implementation begins)
++- API Contract Agent (if auth/response shape changes across frontend/backend)
++
++3. Activate later (low immediate value)
++- Process Flow Agent (after sprint 1 backend stability)
++- DevOps/Security Agent (as release window approaches)
++
++## Oracle Routing For Next Week
++1. Project Tracker Agent starts each session and publishes the checklist.
++2. Backend Agent executes implementation tasks in priority order.
++3. Integration Agent validates contract and regression behavior after each major task group.
++4. Security Tracker Agent runs branch/risk checks before end-of-day closeout.
++5. Oracle resolves conflicts and sets next session top 3 actions.
++
+ ## Agent Handoff Contract
+ Each agent output must include:
+ 1. Task summary
+diff --git a/END_OF_DAY_LOG.md b/END_OF_DAY_LOG.md
+index e5ad85b..bb922c9 100644
+--- a/END_OF_DAY_LOG.md
++++ b/END_OF_DAY_LOG.md
+@@ -9,6 +9,7 @@ Use this file as a daily progress journal.
+ 3. Record what you worked on, why it mattered, and where you are heading next.
+ 4. Keep it concise but specific enough that tomorrow-you can continue without context loss.
+ 5. Run `npm run eod:new` from the project root to auto-insert a new timestamped entry skeleton.
++6. Before closing the session, run `npm run checkpoint -- "EOD checkpoint" "First step for next session"`.
+ 
+ ## Entry Template
+ 
+@@ -38,6 +39,28 @@ Use this file as a daily progress journal.
+ 
+ ## Entries
+ 
++## [2026-04-03] [00:00] [Local]
++
++### What We Were Busy With
++- Added crash-recovery continuity workflow using automated checkpoints and live status files.
++
++### Why This Work Mattered
++- Prevents loss of development intent and code-delta context after VS Code or system crashes.
++
++### Where We Intend Heading Next (Tomorrow)
++- Apply the same checkpoint protocol while repairing customer registration route stability.
++
++### Next Session Starter Tasks
++- [ ] Run `npm run checkpoint:recover` and review latest continuity snapshot.
++- [ ] Continue RegisterNewCustomer repair from recorded next action in continuity/CURRENT_STATUS.md.
++
++### Risks / Blockers
++- Checkpoints capture code diffs and may include sensitive edits if secrets are added to tracked files.
++
++### Commit / Branch Context
++- Branch: main
++- Last commit touched: Pending next commit
++
+ ## [2026-03-24] [00:00] [Local]
+ 
+ ### What We Were Busy With
+diff --git a/PROJECT_TRACKING_SYSTEM.md b/PROJECT_TRACKING_SYSTEM.md
+index 6ce4d11..9c2d42d 100644
+--- a/PROJECT_TRACKING_SYSTEM.md
++++ b/PROJECT_TRACKING_SYSTEM.md
+@@ -1,6 +1,6 @@
+ # Project Tracking System
+ 
+-Last updated: 2026-04-02
++Last updated: 2026-04-03
+ 
+ ## Objective
+ Run fast, low-confusion delivery across parallel branches using one command center.
+@@ -8,11 +8,54 @@ Run fast, low-confusion delivery across parallel branches using one command cent
+ ## Core Principle
+ Single source of truth for status, risk, and next action.
+ 
++## Project Tracker Agent Runbook
++Primary agent spec: `.github/project-tracker.agent.md`
++
++Daily execution protocol:
++1. Read active sprint tasks and branch risk state.
++2. Refresh the checkbox board below.
++3. Mark items complete only with evidence.
++4. Reorder backlog using risk-first sequence.
++5. Write end-of-day continuity log.
++
+ ## Tracking Stack
+ 1. Branch security and sync ledger: [BRANCH_SECURITY_TRACKER.md](BRANCH_SECURITY_TRACKER.md)
+ 2. Agent operating model: [AGENT_OPERATING_MODEL.md](AGENT_OPERATING_MODEL.md)
+ 3. Daily execution log: [END_OF_DAY_LOG.md](END_OF_DAY_LOG.md)
+ 4. User-facing readiness and release notes: [README.md](README.md)
++5. Crash continuity state: [continuity/CURRENT_STATUS.md](continuity/CURRENT_STATUS.md)
++6. Checkpoint timeline: [continuity/SESSION_HISTORY.md](continuity/SESSION_HISTORY.md)
++
++## Crash Recovery Protocol
++
++Purpose: prevent context loss when editor/session crashes during in-progress edits.
++
++Run these commands from the project root:
++1. `npm run checkpoint -- "What changed" "Next action"`
++2. `npm run checkpoint:recover`
++
++What the checkpoint command captures:
++1. Full git status and short status snapshot
++2. Unstaged diff patch
++3. Staged diff patch
++4. Untracked file list
++5. Machine-readable summary with branch, commit, note, and next action
++
++Artifacts written per snapshot:
++1. `continuity/checkpoints/<timestamp-branch>/summary.md`
++2. `continuity/checkpoints/<timestamp-branch>/unstaged.diff`
++3. `continuity/checkpoints/<timestamp-branch>/staged.diff`
++4. `continuity/checkpoints/<timestamp-branch>/git-status.txt`
++5. `continuity/checkpoints/<timestamp-branch>/untracked-files.txt`
++
++Live session context files:
++1. `continuity/CURRENT_STATUS.md` (single source of current task and next action)
++2. `continuity/SESSION_HISTORY.md` (chronological checkpoint ledger)
++
++Minimum operating rule while actively coding:
++1. Create a checkpoint before editing a risky file.
++2. Create a checkpoint after every meaningful milestone.
++3. Create a final checkpoint before switching branches or stopping work.
+ 
+ ## Command Center Views
+ 
+@@ -78,3 +121,50 @@ For every significant task, capture:
+ 1. Keep templates short and reusable.
+ 2. Prefer checklists over long prose for repeat operations.
+ 3. Update this system only when it improves speed or clarity.
++
++## Current Week Execution Board
++
++### Lane: Local-First Stability
++- [x] Enforce null-user auth guard across protected flows
++- [ ] Add local-first runtime mode logging in DB bootstrap
++- [ ] Confirm fallback behavior does not crash protected controllers
++
++### Lane: Data Seeding And Readiness
++- [ ] Implement local seed script for baseline users and sample records
++- [ ] Validate login flow for each required role against local DB
++- [ ] Validate agents/customers/service-calls/quotations fetch successfully in local mode
++
++### Lane: Mirror Preparation
++- [ ] Define event envelope shape and idempotency key format
++- [ ] Identify first 3 mutation paths for event emission
++- [ ] Define retry/backoff/dead-letter rules for outbound sync
++
++### Lane: Integration And Safety
++- [ ] Run regression matrix for offline and recovery scenarios
++- [ ] Capture evidence links (tests/logs/files) for each completed task
++- [ ] Update end-of-day log with next-session starter tasks
++
++## Latest Project Tracker Run
++Date: 2026-04-03
++Run type: Dry run verification of tracker agent workflow
++
++Completed Today:
++1. Enforced null-user auth guard across protected flows
++
++In Progress:
++1. Local-first runtime mode logging in DB bootstrap
++2. Fallback controller crash regression confirmation
++
++Blocked:
++1. Atlas reachability is unstable from hotspot, so mirror/Atlas validation is deferred
++
++Evidence:
++1. Auth guard for missing principal is present in [server/middleware/auth.middleware.js](server/middleware/auth.middleware.js#L58)
++2. Role middleware secondary guard is present in [server/middleware/auth.middleware.js](server/middleware/auth.middleware.js#L85)
++3. DB bootstrap currently falls back to local but does not emit explicit runtime mode state in [server/config/db.js](server/config/db.js#L41)
++4. Controller scan confirms wide reliance on req.user._id, validating why middleware guard is mandatory (captured in terminal scan output during this tracker run)
++
++Next 3 Actions (Dependency Order):
++1. Add explicit runtime mode logging in [server/config/db.js](server/config/db.js)
++2. Run fallback regression matrix and capture outcomes in [END_OF_DAY_LOG.md](END_OF_DAY_LOG.md)
++3. Implement local seed script and script entry in [server/package.json](server/package.json)
+diff --git a/client/src/components/FieldServiceAgents.jsx b/client/src/components/FieldServiceAgents.jsx
+index 2fb3656..89cb3c9 100644
+--- a/client/src/components/FieldServiceAgents.jsx
++++ b/client/src/components/FieldServiceAgents.jsx
+@@ -32,7 +32,6 @@ const FieldServiceAgents = () => {
+   lastName: '',
+   email: '',
+   phoneNumber: '',
+-  employeeId: '',
+   skills: '',
+   status: 'active',
+   assignedArea: '',
+@@ -82,7 +81,6 @@ const FieldServiceAgents = () => {
+     lastName: '',
+     email: '',
+     phoneNumber: '',
+-    employeeId: '',
+     skills: '',
+     status: 'active',
+     assignedArea: '',
+@@ -183,17 +181,6 @@ const FieldServiceAgents = () => {
+           className={inputClass}
+          />
+         </div>
+-        <div className="glass-form-group">
+-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Employee ID *</label>
+-         <input
+-          type="text"
+-          name="employeeId"
+-          value={formData.employeeId}
+-          onChange={handleInputChange}
+-          required
+-          className={inputClass}
+-         />
+-        </div>
+         <div className="glass-form-group">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Email *</label>
+          <input
+diff --git a/client/src/components/RegisterNewCustomer.jsx b/client/src/components/RegisterNewCustomer.jsx
+index 8bc0718..ff6a5f6 100644
+--- a/client/src/components/RegisterNewCustomer.jsx
++++ b/client/src/components/RegisterNewCustomer.jsx
+@@ -5,12 +5,14 @@
+  * Supports: headOffice, branch, franchise, singleBusiness, residential
+  */
+ import { useEffect, useMemo, useState } from 'react';
++import { useNavigate } from 'react-router-dom';
+ import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+ import { useAuth } from '../context/AuthContext';
+ import Sidebar from './Sidebar';
+ import api from '../api/axios';
+ 
+ const RegisterNewCustomer = () => {
++ const navigate = useNavigate();
+  const { user } = useAuth();
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+  const { isLoaded: isGoogleMapsLoaded, loadError: googleMapsLoadError } = useJsApiLoader({
+@@ -19,18 +21,11 @@ const RegisterNewCustomer = () => {
+   libraries: ['places'],
+  });
+  const [customers, setCustomers] = useState([]);
+- const [serviceCalls, setServiceCalls] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+- const [useExistingCustomer, setUseExistingCustomer] = useState(false);
+- const [selectedCustomerId, setSelectedCustomerId] = useState('');
++ const [createdCustomer, setCreatedCustomer] = useState(null);
+  const [customerType, setCustomerType] = useState('singleBusiness');
+- const [serviceCategory, setServiceCategory] = useState('generator');
+- const [generatorServiceType, setGeneratorServiceType] = useState('service');
+- const [electricalType, setElectricalType] = useState('appliance');
+- const [plumbingType, setPlumbingType] = useState('storage');
+- const [servicedBefore, setServicedBefore] = useState('no');
+  const [formData, setFormData] = useState({
+   businessName: '',
+   branchName: '',
+@@ -39,7 +34,6 @@ const RegisterNewCustomer = () => {
+   email: '',
+   phoneNumber: '',
+   alternatePhone: '',
+-  customerId: '',
+     streetAddress: '',
+     complexName: '',
+     siteAddressDetail: '',
+@@ -60,31 +54,6 @@ const RegisterNewCustomer = () => {
+   machineCount: '',
+   machinesDistributed: 'no'
+  });
+- const [generatorDetails, setGeneratorDetails] = useState({
+-  brand: '',
+-  model: '',
+-  rating: '',
+-  phases: '',
+-  fuelType: '',
+-  buildType: '',
+-  subject: '',
+-  message: ''
+- });
+- const [applianceDetails, setApplianceDetails] = useState({
+-  applianceType: '',
+-  brand: '',
+-  model: '',
+-  rating: '',
+-  phases: '',
+-  fuelType: '',
+-  buildType: '',
+-  subject: '',
+-  message: ''
+- });
+- const [plumbingDetails, setPlumbingDetails] = useState({
+-  subject: '',
+-  message: ''
+- });
+  const [mapCenter, setMapCenter] = useState({ lat: -26.2041, lng: 28.0473 });
+  const [markerPosition, setMarkerPosition] = useState(null);
+  const [locationError, setLocationError] = useState('');
+@@ -93,7 +62,6 @@ const RegisterNewCustomer = () => {
+ 
+  useEffect(() => {
+   fetchCustomers();
+-  fetchServiceCalls();
+  }, []);
+ 
+  useEffect(() => {
+@@ -120,45 +88,6 @@ const RegisterNewCustomer = () => {
+   }
+  };
+ 
+- const fetchServiceCalls = async () => {
+-  try {
+-   const response = await api.get('/service-calls', {
+-    headers: { Authorization: `Bearer ${user.token}` }
+-   });
+-   setServiceCalls(response.data);
+-  } catch (err) {
+-   setError(err.response?.data?.message || 'Failed to fetch service calls');
+-  }
+- };
+-
+- const selectedCustomer = useMemo(() => {
+-  return customers.find(customer => customer._id === selectedCustomerId) || null;
+- }, [customers, selectedCustomerId]);
+-
+- const lastServiceCall = useMemo(() => {
+-  if (!selectedCustomerId) return null;
+-  const matchingCalls = serviceCalls.filter(call => call.customer?._id === selectedCustomerId);
+-  if (matchingCalls.length === 0) return null;
+-  return matchingCalls.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+- }, [serviceCalls, selectedCustomerId]);
+-
+- const parseNotes = (value) => {
+-  if (!value) return null;
+-  try {
+-   return JSON.parse(value);
+-  } catch (err) {
+-   return null;
+-  }
+- };
+-
+- const lastServiceDetails = useMemo(() => {
+-  return lastServiceCall ? parseNotes(lastServiceCall.notes) : null;
+- }, [lastServiceCall]);
+-
+- const lastBookingRequest = useMemo(() => {
+-  return lastServiceCall?.bookingRequest || null;
+- }, [lastServiceCall]);
+-
+  const formatStructuredAddress = (address) => {
+   if (!address) return '';
+ 
+@@ -173,11 +102,6 @@ const RegisterNewCustomer = () => {
+   ].filter(Boolean).join(', ');
+  };
+ 
+- const formatDate = (value) => {
+-  if (!value) return 'N/A';
+-  return new Date(value).toLocaleDateString();
+- };
+-
+  const physicalAddressDetails = {
+   streetAddress: formData.streetAddress,
+   complexName: formData.complexName,
+@@ -240,8 +164,6 @@ const RegisterNewCustomer = () => {
+   );
+  };
+ 
+- const isElectricalUnsupported = serviceCategory === 'electrical' && electricalType === 'building-wiring';
+-
+  const handleInputChange = (e) => {
+   setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+@@ -269,21 +191,8 @@ const RegisterNewCustomer = () => {
+   updateMapLocation(coords, null);
+  };
+ 
+- const handleGeneratorChange = (e) => {
+-  setGeneratorDetails({ ...generatorDetails, [e.target.name]: e.target.value });
+- };
+-
+- const handleApplianceChange = (e) => {
+-  setApplianceDetails({ ...applianceDetails, [e.target.name]: e.target.value });
+- };
+-
+- const handlePlumbingChange = (e) => {
+-  setPlumbingDetails({ ...plumbingDetails, [e.target.name]: e.target.value });
+- };
+-
+  const buildCustomerPayload = () => {
+   const isResidential = customerType === 'residential';
+-  const customerId = formData.customerId || `CUST-${Date.now()}`;
+   const businessName = isResidential
+    ? `Private - ${formData.contactFirstName} ${formData.contactLastName}`.trim()
+    : formData.businessName;
+@@ -326,7 +235,6 @@ const RegisterNewCustomer = () => {
+    email: formData.email,
+    phoneNumber: formData.phoneNumber,
+    alternatePhone: formData.alternatePhone,
+-   customerId,
+   physicalAddress: formattedPhysicalAddress,
+     physicalAddressDetails,
+    billingAddress: formData.billingAddress,
+@@ -337,67 +245,6 @@ const RegisterNewCustomer = () => {
+   };
+  };
+ 
+- const buildServiceCallPayload = (customerId) => {
+-  let jobDetails = {
+-   customerType,
+-   servicedBefore,
+-   bookingLocation: formData.bookingLocation,
+-   serviceLocation: formData.serviceLocation,
+-   locationRelationship: formData.locationRelationship
+-  };
+-
+-  let title = 'Service Request';
+-  let description = '';
+-  let serviceType = serviceCategory;
+-
+-  if (serviceCategory === 'generator') {
+-   title = generatorDetails.subject || 'Generator Service Request';
+-   description = generatorDetails.message;
+-   serviceType = `generator-${generatorServiceType}`;
+-   jobDetails = {
+-    ...jobDetails,
+-    serviceCategory: 'generator',
+-    serviceType: generatorServiceType,
+-    generator: { ...generatorDetails }
+-   };
+-  }
+-
+-  if (serviceCategory === 'electrical') {
+-   title = applianceDetails.subject || 'Electrical Service Request';
+-   description = applianceDetails.message;
+-   serviceType = `electrical-${electricalType}`;
+-   jobDetails = {
+-    ...jobDetails,
+-    serviceCategory: 'electrical',
+-    serviceType: electricalType,
+-    appliance: electricalType === 'appliance' ? { ...applianceDetails } : null
+-   };
+-  }
+-
+-  if (serviceCategory === 'plumbing') {
+-   title = plumbingDetails.subject || 'Plumbing Service Request';
+-   description = plumbingDetails.message;
+-   serviceType = `plumbing-${plumbingType}`;
+-   jobDetails = {
+-    ...jobDetails,
+-    serviceCategory: 'plumbing',
+-    serviceType: plumbingType,
+-    plumbing: { ...plumbingDetails }
+-   };
+-  }
+-
+-  return {
+-   customer: customerId,
+-   title,
+-   description,
+-   priority: 'medium',
+-   status: 'open',
+-   serviceType,
+-    serviceLocation: formData.serviceLocation || formatStructuredAddress(physicalAddressDetails),
+-   notes: JSON.stringify(jobDetails)
+-  };
+- };
+-
+  const resetForm = () => {
+   setFormData({
+    businessName: '',
+@@ -407,7 +254,6 @@ const RegisterNewCustomer = () => {
+    email: '',
+    phoneNumber: '',
+    alternatePhone: '',
+-   customerId: '',
+     streetAddress: '',
+     complexName: '',
+     siteAddressDetail: '',
+@@ -428,38 +274,7 @@ const RegisterNewCustomer = () => {
+    machineCount: '',
+    machinesDistributed: 'no'
+   });
+-  setGeneratorDetails({
+-   brand: '',
+-   model: '',
+-   rating: '',
+-   phases: '',
+-   fuelType: '',
+-   buildType: '',
+-   subject: '',
+-   message: ''
+-  });
+-  setApplianceDetails({
+-   applianceType: '',
+-   brand: '',
+-   model: '',
+-   rating: '',
+-   phases: '',
+-   fuelType: '',
+-   buildType: '',
+-   subject: '',
+-   message: ''
+-  });
+-  setPlumbingDetails({
+-   subject: '',
+-   message: ''
+-  });
+-  setUseExistingCustomer(false);
+-  setSelectedCustomerId('');
+-  setServicedBefore('no');
+-  setServiceCategory('generator');
+-  setGeneratorServiceType('service');
+-  setElectricalType('appliance');
+-  setPlumbingType('storage');
++  setCreatedCustomer(null);
+  };
+ 
+  const handleSubmit = async (e) => {
+@@ -467,71 +282,43 @@ const RegisterNewCustomer = () => {
+   setError('');
+   setSuccess('');
+ 
+-  if (useExistingCustomer && !selectedCustomerId) {
+-   setError('Please select an existing customer.');
+-   return;
+-  }
+-
+-  if (isElectricalUnsupported) {
+-   setError('We do not perform building wiring electrical services.');
+-   return;
+-  }
+-
+-  if (serviceCategory === 'generator') {
+-   if (!generatorDetails.brand.trim() || !generatorDetails.model.trim()) {
+-    setError('Generator brand and model are required.');
+-    return;
+-   }
+-   if (!generatorDetails.subject.trim() || !generatorDetails.message.trim()) {
+-    setError('Please provide a subject and message for the generator request.');
+-    return;
+-   }
+-  }
+-
+-  if (serviceCategory === 'electrical' && electricalType === 'appliance') {
+-   if (!applianceDetails.applianceType.trim() || !applianceDetails.brand.trim() || !applianceDetails.model.trim()) {
+-    setError('Appliance type, brand, and model are required.');
+-    return;
+-   }
+-   if (!applianceDetails.subject.trim() || !applianceDetails.message.trim()) {
+-    setError('Please provide a subject and message for the electrical request.');
+-    return;
+-   }
+-  }
+-
+-  if (serviceCategory === 'plumbing') {
+-   if (!plumbingDetails.subject.trim() || !plumbingDetails.message.trim()) {
+-    setError('Please provide a subject and message for the plumbing request.');
+-    return;
+-   }
+-  }
+-
+   try {
+-   let customerId = selectedCustomerId;
+-
+-   if (!useExistingCustomer) {
+-    const customerPayload = buildCustomerPayload();
+-    const customerResponse = await api.post('/customers', customerPayload, {
+-     headers: { Authorization: `Bearer ${user.token}` }
+-    });
+-    customerId = customerResponse.data._id;
+-   }
+-
+-   const serviceCallPayload = buildServiceCallPayload(customerId);
+-   await api.post('/service-calls', serviceCallPayload, {
++   const customerPayload = buildCustomerPayload();
++   const customerResponse = await api.post('/customers', customerPayload, {
+     headers: { Authorization: `Bearer ${user.token}` }
+    });
+ 
+-   setSuccess('Customer and service request saved successfully.');
++   const created = customerResponse.data;
++   setCreatedCustomer(created);
++   setSuccess('Customer saved successfully. You can now continue to service booking.');
+    fetchCustomers();
+-   fetchServiceCalls();
+-   resetForm();
+-   setTimeout(() => setSuccess(''), 3000);
+   } catch (err) {
+-   setError(err.response?.data?.message || 'Failed to save customer request');
++   setError(err.response?.data?.message || 'Failed to save customer');
+   }
+  };
+ 
++ const handleBookService = () => {
++  if (!createdCustomer) {
++   navigate('/service-calls');
++   return;
++  }
++
++  navigate('/service-calls', {
++   state: {
++    prefillCustomer: {
++     id: createdCustomer._id,
++     customerType: createdCustomer.customerType,
++     businessName: createdCustomer.businessName,
++     contactFirstName: createdCustomer.contactFirstName,
++     contactLastName: createdCustomer.contactLastName,
++     email: createdCustomer.email,
++     phoneNumber: createdCustomer.phoneNumber,
++     physicalAddressDetails: createdCustomer.physicalAddressDetails,
++    },
++   },
++  });
++ };
++
+  if (loading) {
+   return (
+    <>
+@@ -718,18 +505,6 @@ const RegisterNewCustomer = () => {
+            className="glass-form-input"
+           />
+          </div>
+-         <div>
+-          <label className="glass-form-label">Customer ID</label>
+-          <input
+-           type="text"
+-           name="customerId"
+-           value={formData.customerId}
+-           onChange={handleInputChange}
+-           placeholder="Auto-generated if empty"
+-           className="glass-form-input"
+-          />
+-         </div>
+-
+          <div className="md:col-span-2">
+           <label className="glass-form-label">
+            {customerType !== 'residential' ? 'Physical Address *' : 'Residential Address *'}
+diff --git a/package.json b/package.json
+index b9444d3..eb4ba9c 100644
+--- a/package.json
++++ b/package.json
+@@ -6,6 +6,8 @@
+     "install:all": "npm install --prefix server && npm install --prefix client",
+     "dev": "bash ./start-dev.sh",
+     "refresh": "bash ./refresh.sh",
++    "checkpoint": "bash ./scripts/create-checkpoint.sh",
++    "checkpoint:recover": "bash ./scripts/recover-last-checkpoint.sh",
+     "eod:new": "bash ./scripts/new-eod-entry.sh",
+     "dev:server": "npm run dev --prefix server",
+     "dev:client": "npm run dev --prefix client",
+diff --git a/server/config/db.js b/server/config/db.js
+index fe313a6..85c5695 100644
+--- a/server/config/db.js
++++ b/server/config/db.js
+@@ -40,37 +40,40 @@ const connectAndSync = async (uri) => {
+  * await connectDB();
+  */
+ const connectDB = async () => {
++  const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
+   const primaryUri = process.env.MONGODB_URI;
++  const localUri = process.env.MONGODB_LOCAL_URI || DEFAULT_LOCAL_MONGO_URI;
++  const attempts = [];
+ 
+-  try {
+-    // Attempt to connect using configured URI first (Atlas or local)
+-    const conn = await connectAndSync(primaryUri);
+-    
+-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+-    console.log('✅ User indexes synchronized');
+-    return conn;
+-  } catch (error) {
+-    console.error(`❌ Primary MongoDB connection failed: ${error.message}`);
+-
+-    const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
+-    const fallbackUri = process.env.MONGODB_LOCAL_URI || DEFAULT_LOCAL_MONGO_URI;
+-
+-    if (isDevelopment) {
+-      try {
+-        const fallbackConn = await connectAndSync(fallbackUri);
+-        console.log(`✅ Fallback MongoDB Connected (local): ${fallbackConn.connection.host}`);
+-        console.log('✅ User indexes synchronized');
+-        return fallbackConn;
+-      } catch (fallbackError) {
+-        console.error(`❌ Local MongoDB fallback failed: ${fallbackError.message}`);
+-      }
++  // In development, prefer local MongoDB first to avoid Atlas IP whitelist friction.
++  if (isDevelopment) {
++    attempts.push({ label: 'Local MongoDB', uri: localUri });
++    if (primaryUri && primaryUri !== localUri) {
++      attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
+     }
++  } else if (primaryUri) {
++    attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
++  }
+ 
+-    // Handle connection errors gracefully
+-    console.log('⚠️  Server will continue without MongoDB - Database features disabled');
+-    console.log('💡 To fix: whitelist current Atlas IP or set MONGODB_LOCAL_URI for local development');
++  if (attempts.length === 0) {
++    console.error('❌ MongoDB connection skipped: no URI configured. Set MONGODB_URI or MONGODB_LOCAL_URI.');
+     return null;
+   }
++
++  for (const attempt of attempts) {
++    try {
++      const conn = await connectAndSync(attempt.uri);
++      console.log(`✅ ${attempt.label} Connected: ${conn.connection.host}`);
++      console.log('✅ User indexes synchronized');
++      return conn;
++    } catch (error) {
++      console.error(`❌ ${attempt.label} connection failed: ${error.message}`);
++    }
++  }
++
++  console.log('⚠️  Server will continue without MongoDB - Database features disabled');
++  console.log('💡 To fix: start local mongod or whitelist current Atlas IP');
++  return null;
+ };
+ 
+ export default connectDB;
+diff --git a/server/controllers/agent.controller.js b/server/controllers/agent.controller.js
+index a6b6ef1..f57fa75 100644
+--- a/server/controllers/agent.controller.js
++++ b/server/controllers/agent.controller.js
+@@ -1,5 +1,6 @@
+ import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
+ import { logError, logInfo } from '../middleware/logger.middleware.js';
++import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
+ 
+ // @desc    Get all field service agents
+ // @route   GET /api/agents
+@@ -45,7 +46,6 @@ export const createAgent = async (req, res) => {
+       lastName,
+       email,
+       phoneNumber,
+-      employeeId,
+       skills,
+       status,
+       assignedArea,
+@@ -54,21 +54,29 @@ export const createAgent = async (req, res) => {
+     } = req.body;
+ 
+     // Validate required fields
+-    if (!firstName || !lastName || !email || !phoneNumber || !employeeId) {
++    if (!firstName || !lastName || !email || !phoneNumber) {
+       return res.status(400).json({ message: 'Please fill in all required fields' });
+     }
+ 
+-    // Check if employeeId or email already exists
+-    const agentExists = await FieldServiceAgent.findOne({
+-      $or: [{ employeeId }, { email }]
+-    });
++    // Check if email already exists
++    const agentExists = await FieldServiceAgent.findOne({ email });
+ 
+     if (agentExists) {
+-      return res.status(400).json({
+-        message: agentExists.employeeId === employeeId
+-          ? 'Employee ID already exists'
+-          : 'Email already registered'
+-      });
++      return res.status(400).json({ message: 'Email already registered' });
++    }
++
++    // Employee IDs are generated by the system to keep sequence integrity.
++    let employeeId;
++    let attempts = 0;
++
++    do {
++      const nextEmployeeSequence = await getNextSequenceValue('agent_employee_id');
++      employeeId = formatSequenceId('AGT', nextEmployeeSequence);
++      attempts += 1;
++    } while (await FieldServiceAgent.findOne({ employeeId }) && attempts < 5);
++
++    if (await FieldServiceAgent.findOne({ employeeId })) {
++      return res.status(500).json({ message: 'Failed to generate a unique employee ID' });
+     }
+ 
+     const agent = await FieldServiceAgent.create({
+diff --git a/server/controllers/customer.controller.js b/server/controllers/customer.controller.js
+index 333f235..8935c5d 100644
+--- a/server/controllers/customer.controller.js
++++ b/server/controllers/customer.controller.js
+@@ -1,5 +1,6 @@
+ import Customer from '../models/Customer.model.js';
+ import { logError, logInfo } from '../middleware/logger.middleware.js';
++import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
+ 
+ const BUSINESS_TYPES = ['headOffice', 'branch', 'franchise', 'singleBusiness'];
+ 
+@@ -88,7 +89,6 @@ export const createCustomer = async (req, res) => {
+       email,
+       phoneNumber,
+       alternatePhone,
+-      customerId,
+       physicalAddress,
+       physicalAddressDetails,
+       billingAddress,
+@@ -107,7 +107,7 @@ export const createCustomer = async (req, res) => {
+     const normalizedSites = normalizeSites(sites);
+ 
+     // Validate required fields
+-    if (!customerType || !contactFirstName || !contactLastName || !email || !phoneNumber || !customerId) {
++    if (!customerType || !contactFirstName || !contactLastName || !email || !phoneNumber) {
+       return res.status(400).json({ message: 'Please fill in all required fields' });
+     }
+ 
+@@ -125,11 +125,18 @@ export const createCustomer = async (req, res) => {
+       }
+     }
+ 
+-    // Check if customerId already exists
+-    const customerExists = await Customer.findOne({ customerId });
++    // Customer IDs are generated by the system to keep sequence integrity.
++    let customerId;
++    let attempts = 0;
++
++    do {
++      const nextCustomerSequence = await getNextSequenceValue('customer_id');
++      customerId = formatSequenceId('CUST', nextCustomerSequence);
++      attempts += 1;
++    } while (await Customer.findOne({ customerId }) && attempts < 5);
+ 
+-    if (customerExists) {
+-      return res.status(400).json({ message: 'Customer ID already exists' });
++    if (await Customer.findOne({ customerId })) {
++      return res.status(500).json({ message: 'Failed to generate a unique customer ID' });
+     }
+ 
+     const customer = await Customer.create({
+diff --git a/server/middleware/auth.middleware.js b/server/middleware/auth.middleware.js
+index 59d3790..ea7c80f 100644
+--- a/server/middleware/auth.middleware.js
++++ b/server/middleware/auth.middleware.js
+@@ -54,6 +54,11 @@ export const protect = async (req, res, next) => {
+       // Fetch user from database using decoded ID, exclude password field
+       req.user = await User.findById(decoded.id).select('-password');
+ 
++      // User not found in the database (e.g. DB fallback, deleted account)
++      if (!req.user) {
++        return res.status(401).json({ message: 'Not authorized, user not found' });
++      }
++
+       // Continue to next middleware or route handler
+       next();
+     } catch (error) {
+diff --git a/server/package-lock.json b/server/package-lock.json
+index 3cd311a..f016821 100644
+--- a/server/package-lock.json
++++ b/server/package-lock.json
+@@ -15,6 +15,7 @@
+         "dotenv": "^16.3.1",
+         "express": "^4.18.2",
+         "jsonwebtoken": "^9.0.3",
++        "mongodb-connection-string-url": "7.0.1",
+         "mongoose": "^8.0.3",
+         "nodemailer": "^8.0.1",
+         "pdfkit": "^0.18.0"
+@@ -2487,9 +2488,9 @@
+       "license": "MIT"
+     },
+     "node_modules/@types/whatwg-url": {
+-      "version": "11.0.5",
+-      "resolved": "https://registry.npmjs.org/@types/whatwg-url/-/whatwg-url-11.0.5.tgz",
+-      "integrity": "sha512-coYR071JRaHa+xoEvvYqvnIHaVqaYrLPbsufM9BF63HkwI5Lgmy2QR8Q5K/lYDYo5AK82wOvSOS0UsLTpTG7uQ==",
++      "version": "13.0.0",
++      "resolved": "https://registry.npmjs.org/@types/whatwg-url/-/whatwg-url-13.0.0.tgz",
++      "integrity": "sha512-N8WXpbE6Wgri7KUSvrmQcqrMllKZ9uxkYWMt+mCSGwNc0Hsw9VQTW7ApqI4XNrx6/SaM2QQJCzMPDEXE058s+Q==",
+       "license": "MIT",
+       "dependencies": {
+         "@types/webidl-conversions": "*"
+@@ -5802,6 +5803,28 @@
+       }
+     },
+     "node_modules/mongodb-connection-string-url": {
++      "version": "7.0.1",
++      "resolved": "https://registry.npmjs.org/mongodb-connection-string-url/-/mongodb-connection-string-url-7.0.1.tgz",
++      "integrity": "sha512-h0AZ9A7IDVwwHyMxmdMXKy+9oNlF0zFoahHiX3vQ8e3KFcSP3VmsmfvtRSuLPxmyv2vjIDxqty8smTgie/SNRQ==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@types/whatwg-url": "^13.0.0",
++        "whatwg-url": "^14.1.0"
++      },
++      "engines": {
++        "node": ">=20.19.0"
++      }
++    },
++    "node_modules/mongodb/node_modules/@types/whatwg-url": {
++      "version": "11.0.5",
++      "resolved": "https://registry.npmjs.org/@types/whatwg-url/-/whatwg-url-11.0.5.tgz",
++      "integrity": "sha512-coYR071JRaHa+xoEvvYqvnIHaVqaYrLPbsufM9BF63HkwI5Lgmy2QR8Q5K/lYDYo5AK82wOvSOS0UsLTpTG7uQ==",
++      "license": "MIT",
++      "dependencies": {
++        "@types/webidl-conversions": "*"
++      }
++    },
++    "node_modules/mongodb/node_modules/mongodb-connection-string-url": {
+       "version": "3.0.2",
+       "resolved": "https://registry.npmjs.org/mongodb-connection-string-url/-/mongodb-connection-string-url-3.0.2.tgz",
+       "integrity": "sha512-rMO7CGo/9BFwyZABcKAWL8UJwH/Kc2x0g72uhDWzG48URRax5TCIcJ7Rc3RZqffZzO/Gwff/jyKwCU9TN8gehA==",
+diff --git a/server/package.json b/server/package.json
+index 9149038..ead8568 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -21,6 +21,7 @@
+     "dotenv": "^16.3.1",
+     "express": "^4.18.2",
+     "jsonwebtoken": "^9.0.3",
++    "mongodb-connection-string-url": "7.0.1",
+     "mongoose": "^8.0.3",
+     "nodemailer": "^8.0.1",
+     "pdfkit": "^0.18.0"
+diff --git a/start-dev.sh b/start-dev.sh
+index f19ff47..4945418 100755
+--- a/start-dev.sh
++++ b/start-dev.sh
+@@ -10,6 +10,10 @@
+ 
+ set -e
+ 
++ROOT_DIR="$(pwd)"
++USER_MONGO_PID_FILE="$ROOT_DIR/.mongodb/mongod.pid"
++MONGOD_USER_MODE_STARTED=0
++
+ echo "🚀 Starting Field Service Management System..."
+ echo ""
+ 
+@@ -30,7 +34,20 @@ if [[ -f "client/.env" ]] && grep -Eq '^VITE_SSL_ENABLED=true' client/.env; then
+ fi
+ 
+ # Trap to kill all background processes on exit
+-trap 'kill $(jobs -p) 2>/dev/null' EXIT
++cleanup() {
++  kill $(jobs -p) 2>/dev/null || true
++
++  # Only stop user-mode mongod instances started by this script.
++  if [[ "$MONGOD_USER_MODE_STARTED" -eq 1 ]] && [[ -f "$USER_MONGO_PID_FILE" ]]; then
++    local mongod_pid
++    mongod_pid="$(cat "$USER_MONGO_PID_FILE" 2>/dev/null || true)"
++    if [[ -n "$mongod_pid" ]] && kill -0 "$mongod_pid" 2>/dev/null; then
++      kill "$mongod_pid" 2>/dev/null || true
++    fi
++    rm -f "$USER_MONGO_PID_FILE"
++  fi
++}
++trap cleanup EXIT
+ 
+ # Function to check if port is available
+ check_port() {
+@@ -45,6 +62,40 @@ check_port() {
+   fi
+ }
+ 
++start_system_mongodb() {
++  if ! command -v systemctl >/dev/null 2>&1; then
++    return 1
++  fi
++
++  if ! systemctl list-unit-files 2>/dev/null | grep -q '^mongod\.service'; then
++    return 1
++  fi
++
++  if sudo -n true >/dev/null 2>&1; then
++    sudo systemctl start mongod
++    return 0
++  fi
++
++  echo -e "${YELLOW}ℹ️  Skipping system MongoDB start (sudo privileges unavailable).${NC}"
++  return 1
++}
++
++start_user_mode_mongodb() {
++  if ! command -v mongod >/dev/null 2>&1; then
++    return 1
++  fi
++
++  mkdir -p "$ROOT_DIR/.mongodb/data" "$ROOT_DIR/.mongodb/logs"
++
++  mongod \
++    --dbpath "$ROOT_DIR/.mongodb/data" \
++    --bind_ip 127.0.0.1 \
++    --port 27017 \
++    --logpath "$ROOT_DIR/.mongodb/logs/mongod.log" \
++    --pidfilepath "$USER_MONGO_PID_FILE" \
++    --fork
++}
++
+ # Check if ports are available
+ echo "Checking ports..."
+ check_port 5000  # Backend
+@@ -54,7 +105,12 @@ echo ""
+ # Start MongoDB
+ echo -e "${BLUE}📦 Starting MongoDB...${NC}"
+ if ! pgrep -x "mongod" > /dev/null 2>&1; then
+-  sudo systemctl start mongod 2>/dev/null || {
++  if start_system_mongodb; then
++    echo -e "${GREEN}✓ MongoDB system service started${NC}"
++  elif start_user_mode_mongodb; then
++    MONGOD_USER_MODE_STARTED=1
++    echo -e "${GREEN}✓ MongoDB started in user mode (${ROOT_DIR}/.mongodb)${NC}"
++  else
+     echo -e "${YELLOW}⚠️  Could not start MongoDB service.${NC}"
+     echo "   Make sure MongoDB is installed: ./install-mongodb.sh"
+     read -p "Continue without MongoDB? (y/n) " -n 1 -r
+@@ -62,7 +118,7 @@ if ! pgrep -x "mongod" > /dev/null 2>&1; then
+     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+       exit 1
+     fi
+-  }
++  fi
+ else
+   echo -e "${GREEN}✓ MongoDB is already running${NC}"
+ fi

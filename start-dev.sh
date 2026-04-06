@@ -10,6 +10,10 @@
 
 set -e
 
+ROOT_DIR="$(pwd)"
+USER_MONGO_PID_FILE="$ROOT_DIR/.mongodb/mongod.pid"
+MONGOD_USER_MODE_STARTED=0
+
 echo "🚀 Starting Field Service Management System..."
 echo ""
 
@@ -30,7 +34,20 @@ if [[ -f "client/.env" ]] && grep -Eq '^VITE_SSL_ENABLED=true' client/.env; then
 fi
 
 # Trap to kill all background processes on exit
-trap 'kill $(jobs -p) 2>/dev/null' EXIT
+cleanup() {
+  kill $(jobs -p) 2>/dev/null || true
+
+  # Only stop user-mode mongod instances started by this script.
+  if [[ "$MONGOD_USER_MODE_STARTED" -eq 1 ]] && [[ -f "$USER_MONGO_PID_FILE" ]]; then
+    local mongod_pid
+    mongod_pid="$(cat "$USER_MONGO_PID_FILE" 2>/dev/null || true)"
+    if [[ -n "$mongod_pid" ]] && kill -0 "$mongod_pid" 2>/dev/null; then
+      kill "$mongod_pid" 2>/dev/null || true
+    fi
+    rm -f "$USER_MONGO_PID_FILE"
+  fi
+}
+trap cleanup EXIT
 
 # Function to check if port is available
 check_port() {
@@ -45,6 +62,40 @@ check_port() {
   fi
 }
 
+start_system_mongodb() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if ! systemctl list-unit-files 2>/dev/null | grep -q '^mongod\.service'; then
+    return 1
+  fi
+
+  if sudo -n true >/dev/null 2>&1; then
+    sudo systemctl start mongod
+    return 0
+  fi
+
+  echo -e "${YELLOW}ℹ️  Skipping system MongoDB start (sudo privileges unavailable).${NC}"
+  return 1
+}
+
+start_user_mode_mongodb() {
+  if ! command -v mongod >/dev/null 2>&1; then
+    return 1
+  fi
+
+  mkdir -p "$ROOT_DIR/.mongodb/data" "$ROOT_DIR/.mongodb/logs"
+
+  mongod \
+    --dbpath "$ROOT_DIR/.mongodb/data" \
+    --bind_ip 127.0.0.1 \
+    --port 27017 \
+    --logpath "$ROOT_DIR/.mongodb/logs/mongod.log" \
+    --pidfilepath "$USER_MONGO_PID_FILE" \
+    --fork
+}
+
 # Check if ports are available
 echo "Checking ports..."
 check_port 5000  # Backend
@@ -54,7 +105,12 @@ echo ""
 # Start MongoDB
 echo -e "${BLUE}📦 Starting MongoDB...${NC}"
 if ! pgrep -x "mongod" > /dev/null 2>&1; then
-  sudo systemctl start mongod 2>/dev/null || {
+  if start_system_mongodb; then
+    echo -e "${GREEN}✓ MongoDB system service started${NC}"
+  elif start_user_mode_mongodb; then
+    MONGOD_USER_MODE_STARTED=1
+    echo -e "${GREEN}✓ MongoDB started in user mode (${ROOT_DIR}/.mongodb)${NC}"
+  else
     echo -e "${YELLOW}⚠️  Could not start MongoDB service.${NC}"
     echo "   Make sure MongoDB is installed: ./install-mongodb.sh"
     read -p "Continue without MongoDB? (y/n) " -n 1 -r
@@ -62,7 +118,7 @@ if ! pgrep -x "mongod" > /dev/null 2>&1; then
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
       exit 1
     fi
-  }
+  fi
 else
   echo -e "${GREEN}✓ MongoDB is already running${NC}"
 fi

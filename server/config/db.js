@@ -40,37 +40,40 @@ const connectAndSync = async (uri) => {
  * await connectDB();
  */
 const connectDB = async () => {
+  const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
   const primaryUri = process.env.MONGODB_URI;
+  const localUri = process.env.MONGODB_LOCAL_URI || DEFAULT_LOCAL_MONGO_URI;
+  const attempts = [];
 
-  try {
-    // Attempt to connect using configured URI first (Atlas or local)
-    const conn = await connectAndSync(primaryUri);
-    
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log('✅ User indexes synchronized');
-    return conn;
-  } catch (error) {
-    console.error(`❌ Primary MongoDB connection failed: ${error.message}`);
-
-    const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
-    const fallbackUri = process.env.MONGODB_LOCAL_URI || DEFAULT_LOCAL_MONGO_URI;
-
-    if (isDevelopment) {
-      try {
-        const fallbackConn = await connectAndSync(fallbackUri);
-        console.log(`✅ Fallback MongoDB Connected (local): ${fallbackConn.connection.host}`);
-        console.log('✅ User indexes synchronized');
-        return fallbackConn;
-      } catch (fallbackError) {
-        console.error(`❌ Local MongoDB fallback failed: ${fallbackError.message}`);
-      }
+  // In development, prefer local MongoDB first to avoid Atlas IP whitelist friction.
+  if (isDevelopment) {
+    attempts.push({ label: 'Local MongoDB', uri: localUri });
+    if (primaryUri && primaryUri !== localUri) {
+      attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
     }
+  } else if (primaryUri) {
+    attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
+  }
 
-    // Handle connection errors gracefully
-    console.log('⚠️  Server will continue without MongoDB - Database features disabled');
-    console.log('💡 To fix: whitelist current Atlas IP or set MONGODB_LOCAL_URI for local development');
+  if (attempts.length === 0) {
+    console.error('❌ MongoDB connection skipped: no URI configured. Set MONGODB_URI or MONGODB_LOCAL_URI.');
     return null;
   }
+
+  for (const attempt of attempts) {
+    try {
+      const conn = await connectAndSync(attempt.uri);
+      console.log(`✅ ${attempt.label} Connected: ${conn.connection.host}`);
+      console.log('✅ User indexes synchronized');
+      return conn;
+    } catch (error) {
+      console.error(`❌ ${attempt.label} connection failed: ${error.message}`);
+    }
+  }
+
+  console.log('⚠️  Server will continue without MongoDB - Database features disabled');
+  console.log('💡 To fix: start local mongod or whitelist current Atlas IP');
+  return null;
 };
 
 export default connectDB;

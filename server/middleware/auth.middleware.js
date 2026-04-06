@@ -54,6 +54,11 @@ export const protect = async (req, res, next) => {
       // Fetch user from database using decoded ID, exclude password field
       req.user = await User.findById(decoded.id).select('-password');
 
+      // User not found in the database (e.g. DB fallback, deleted account)
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized, user not found' });
+      }
+
       // Continue to next middleware or route handler
       next();
     } catch (error) {

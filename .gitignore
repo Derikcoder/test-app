@@ -41,6 +41,9 @@ lerna-debug.log*
 coverage/
 .nyc_output/
 
+# Local MongoDB user-mode data (runtime artefacts — never commit)
+.mongodb/
+
 # Misc
 .cache
 .temp

@@ -9,6 +9,9 @@ Create focused agent roles so delivery remains fast and predictable.
 Copilot (Oracle) coordinates specialist agents, collects outputs, and decides final action path.
 
 ## Essential Agents (Phase 1)
+1. Project Tracker Agent
+Purpose: convert goals into executable checklists, tick off validated work, keep blocker/evidence state current, and maintain next-action queue.
+
 1. Security Tracker Agent
 Purpose: branch inventory, drift analysis, secret-risk scans, remediation queue updates.
 
@@ -33,6 +36,30 @@ Purpose: map end-to-end workflows, identify bottlenecks, enforce operational che
 
 4. DevOps/Security Agent
 Purpose: deployment configuration, environment hygiene, CI/CD gates, vulnerability triage.
+
+## Specialist Team Recommendations (Current State)
+Use this decision matrix when deciding whether to activate specialist agents.
+
+1. Activate now (high value this week)
+- Project Tracker Agent
+- Backend Agent
+- Integration Agent
+- Security Tracker Agent
+
+2. Activate this sprint only if work starts
+- Database Agent (if local-first mirror/event log implementation begins)
+- API Contract Agent (if auth/response shape changes across frontend/backend)
+
+3. Activate later (low immediate value)
+- Process Flow Agent (after sprint 1 backend stability)
+- DevOps/Security Agent (as release window approaches)
+
+## Oracle Routing For Next Week
+1. Project Tracker Agent starts each session and publishes the checklist.
+2. Backend Agent executes implementation tasks in priority order.
+3. Integration Agent validates contract and regression behavior after each major task group.
+4. Security Tracker Agent runs branch/risk checks before end-of-day closeout.
+5. Oracle resolves conflicts and sets next session top 3 actions.
 
 ## Agent Handoff Contract
 Each agent output must include:
