@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-04-02
+Last updated: 2026-04-06
 
 ---
 
@@ -95,6 +95,7 @@ main                 ← Production (stable, never touched directly)
 - `UNIT_TESTING_SUMMARY.md`: Summary of unit test coverage and results.
 - `setup-and-run.sh`: Full environment setup and app startup script.
 - `refresh.sh`: ⚠️ DEV ONLY — stops and restarts all dev processes. Remove before production.
+- `start-dev.sh`: Developer-facing startup script. Supports system MongoDB and user-mode `mongod` (forks into `.mongodb/data/` if system service is unavailable); cleans up on exit via named trap.
 - `install-mongodb.sh`: MongoDB install helper for first-time setup.
 - `invoice.schema.v1.json`: Starter JSON Schema matching current invoice payload format.
 - `invoice.schema.v1.1.json`: Normalized JSON Schema for cleaner integration format.
@@ -130,7 +131,7 @@ main                 ← Production (stable, never touched directly)
 - `ForgotPassword.jsx`: Password reset request form — sends reset email.
 - `ResetPassword.jsx`: Password reset form — consumes reset token from email link.
 - `UserProfile.jsx`: Profile display and edits with write-once registration identifiers, legal-evidence override capture for superAdmin, and role-aware account dashboard.
-- `FieldServiceAgents.jsx`: Field service agent list and CRUD screen.
+- `FieldServiceAgents.jsx`: Field service agent list and CRUD screen. Employee ID (`AGT-XXXXXX`) is system-generated; input field was removed from registration form.
 - `AgentProfile.jsx`: Agent detail view with job statistics.
 - `InvoiceApprovalPage.jsx`: Public customer review page for shared pro-forma documents with approve/reject actions.
 - `Customers.jsx`: Customer list page — all customers filtered by type, with navigation to type-specific profiles.
@@ -139,7 +140,7 @@ main                 ← Production (stable, never touched directly)
 - `BranchCustomer.jsx`: Profile view for Branch accounts (child of Head Office).
 - `FranchiseCustomer.jsx`: Profile view for Franchise accounts (child of Head Office, independent billing).
 - `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
-- `ResidentialCustomer.jsx`: Profile view for individual/residential customers.
+- `ResidentialCustomer.jsx`: Profile view for individual/residential customers. Fully built — hero header, contact card, address card, service locations, account details, conditional notes, and service call history with status badges.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
 - `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.
 - `CreateQuoteModal.jsx`: Reusable quotation submission modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing inputs (`distanceTravelledKm`, superAdmin-controlled `ratePerKm`, `travelTimeMinutes`, manual `timeTravelledCost`), call-out floor rule support, first-site-visit 15-minute assessment inclusion, procurement/delivery profitability capture, 14-day default quotation validity with calendar override, section-level helper-note placement to preserve row alignment, and optional post-submit PDF share action (Email/WhatsApp/Telegram).
@@ -196,7 +197,7 @@ Each page now includes role and entity context chips in header, immediately belo
 - `.env.example`: Template for server environment variables.
 - `babel.config.cjs`: Babel config for Jest/ESM transpilation.
 - `jest.config.js`: Jest test runner configuration.
-- `config/db.js`: MongoDB connection and initialization.
+- `config/db.js`: MongoDB connection — dev-first strategy: tries local MongoDB first in `development`, falls back to Atlas; uses `MONGODB_URI` only in `production`.
 - `logs/error.log`: Runtime error log.
 - `logs/request.log`: HTTP request log.
 
@@ -208,6 +209,7 @@ Each page now includes role and entity context chips in header, immediately belo
 - `PasskeyRenewalRequest.model.js`: Approval-driven passkey renewal requests.
 - `ProfileLinkAudit.model.js`: Audit log for attach/detach/reassign user-profile link corrections.
 - `RegistrationOverrideAudit.model.js`: Immutable legal-evidence snapshot audit for superAdmin registration identifier overrides.
+- `SequenceCounter.model.js`: Atomic sequential counter for system-generated IDs (Agent: `AGT-XXXXXX`, Customer: `CUST-XXXXXX`). Uses `findOneAndUpdate` with `$inc` + upsert for collision-safe incrementing.
 - `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), with assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`).
 - `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call, structured travel fields (including travel time for call-out floor logic), first-site-visit assessment fields (`isFirstSiteVisit`, `includedAssessmentMinutes`, `chargeableLabourHours`), procurement/delivery analytics fields, and default 14-day validity.
 - `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking.
@@ -216,8 +218,8 @@ Each page now includes role and entity context chips in header, immediately belo
 
 ### Server Controllers (`server/controllers/`)
 - `auth.controller.js`: Multi-principal registration/login, passkey generation/renewal, profile updates with write-once/legal-evidence policy, admin profile-link correction flows, and legal override audit query endpoint.
-- `agent.controller.js`: Field service agent CRUD.
-- `customer.controller.js`: Customer CRUD.
+- `agent.controller.js`: Field service agent CRUD. `employeeId` is now auto-generated (`AGT-000001` format) via `SequenceCounter`; no longer accepted from client input.
+- `customer.controller.js`: Customer CRUD. `customerId` is now auto-generated (`CUST-000001` format) via `SequenceCounter`; no longer accepted from client input.
 - `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `quotation.controller.js`: Quotation creation, line items, status management, and create-time pricing calculation (subtotal/VAT/total).
@@ -236,8 +238,12 @@ Each page now includes role and entity context chips in header, immediately belo
 - `example.routes.js`: `/api/example` — example/template endpoints.
 
 ### Server Middleware (`server/middleware/`)
-- `auth.middleware.js`: JWT verification (`protect` middleware) — applied to all private routes.
+- `auth.middleware.js`: JWT verification (`protect` middleware) — applied to all private routes. Includes null-user guard: returns 401 if decoded user ID no longer exists in the database.
 - `logger.middleware.js`: `logInfo`, `logError`, `logRequest` helpers used throughout controllers.
+
+### Server Utils (`server/utils/`)
+- `emailService.js`: Email sending with Ethereal fake SMTP for development and configurable real SMTP for production.
+- `sequence.util.js`: Sequential ID generation — `getNextSequenceValue(sequenceName)` (atomic DB counter) and `formatSequenceId(prefix, value, width)` (e.g. `AGT-000001`).
 
 ### Server Tests (`server/tests/`)
 - `setup.js`: Test environment setup and MongoDB in-memory configuration.

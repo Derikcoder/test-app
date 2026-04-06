@@ -160,7 +160,8 @@ test-app/
 │   │   │   ├── FieldServiceAgents.jsx  # Agent CRUD operations
 │   │   │   ├── AgentProfile.jsx    # Agent details & statistics
 │   │   │   ├── InvoiceApprovalPage.jsx # Public customer pro-forma approval screen
-│   │   │   ├── Customers.jsx       # Customer intake form
+│   │   │   ├── Customers.jsx       # Customer list page (filtered by type)
+│   │   │   ├── ResidentialCustomer.jsx  # Residential customer profile
 │   │   │   └── ServiceCalls.jsx    # Service call management
 │   │   └── context/
 │   │       └── AuthContext.jsx     # Authentication state management
@@ -184,9 +185,10 @@ test-app/
 │   │   └── logger.middleware.js    # Request/error logging
 │   ├── models/
 │   │   ├── User.model.js           # User schema with field protection
-│   │   ├── Agent.model.js          # Field agent schema
+│   │   ├── FieldServiceAgent.model.js  # Field agent schema
 │   │   ├── Customer.model.js       # Customer schema
-│   │   └── ServiceCall.model.js    # Service call schema
+│   │   ├── ServiceCall.model.js    # Service call schema
+│   │   └── SequenceCounter.model.js    # Auto-ID counter (AGT/CUST)
 │   ├── routes/
 │   │   ├── auth.routes.js          # Authentication routes
 │   │   ├── agent.routes.js         # Agent routes

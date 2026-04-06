@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** April 2, 2026  
+**Last Updated:** April 6, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -44,6 +44,51 @@
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: April 6, 2026 — Auto-ID System, DB Resilience, Auth Hardening + Residential Customer Profile UI
+**Commits:** `589108b` (feat: auto-IDs, DB resilience, auth hardening), `c2d7cf6` (feature/customer-profile-ui), `801b5b2` (merge to main)  
+**Focus:** Backend infrastructure improvements + full residential customer profile page
+
+**Backend — Auto-Generated Sequential IDs:**
+- ✅ Created `server/models/SequenceCounter.model.js` — atomic Mongoose counter model for sequential ID generation
+- ✅ Created `server/utils/sequence.util.js` — `getNextSequenceValue()` + `formatSequenceId()` helpers
+- ✅ `agent.controller.js` — `employeeId` is now auto-generated (`AGT-000001` format); removed from manual input requirement
+- ✅ `customer.controller.js` — `customerId` is now auto-generated (`CUST-000001` format); removed from manual input requirement
+- ✅ `FieldServiceAgents.jsx` — Employee ID input field removed (system-generated now)
+
+**Backend — DB Connection Resilience:**
+- ✅ `server/config/db.js` — dev-first connection strategy: in `development`, tries local MongoDB first, falls back to Atlas if local fails; in `production`, uses `MONGODB_URI` only
+
+**Backend — Auth Hardening:**
+- ✅ `server/middleware/auth.middleware.js` — added null-user guard after `User.findById(decoded.id)`: returns 401 if user no longer exists in DB
+
+**Dev Tooling:**
+- ✅ `start-dev.sh` — added `start_user_mode_mongodb()` function that forks `mongod` into `.mongodb/data/`; named `cleanup()` trap stops user-mode mongod on exit
+- ✅ `.gitignore` — added `.mongodb/` exclusion (WiredTiger binary data was previously untracked)
+
+**Frontend — Residential Customer Profile:**
+- ✅ `client/src/components/ResidentialCustomer.jsx` — complete rewrite from 30-line JSON shell to ~340-line bespoke profile page
+  - `safeParseNotes()` — safely parses JSON-stringified customer notes field
+  - Hero header with initials avatar, account status badge, customer ID, member-since, "+Book Service" CTA
+  - Sections: Contact Info, Residential Address, Service Locations, Account Details, Additional Notes (conditional), Service Call History
+  - Service call history fetched via `/api/service-calls` filtered to this customer's `_id`
+  - Status badges for all 8 service call statuses; empty state + booking link
+  - Fully responsive 2-column grid (`sm:grid-cols-2`)
+  - Built on `feature/customer-profile-ui` branch, merged `--no-ff` to main
+- ✅ Build clean: `ResidentialCustomer-CZVYmhdC.js` 10.26 kB
+- ✅ 38/38 tests pass
+
+**Primary Files Updated in This Session:**
+- `server/models/SequenceCounter.model.js` (NEW)
+- `server/utils/sequence.util.js` (NEW)
+- `server/controllers/agent.controller.js`
+- `server/controllers/customer.controller.js`
+- `server/middleware/auth.middleware.js`
+- `server/config/db.js`
+- `client/src/components/ResidentialCustomer.jsx`
+- `client/src/components/FieldServiceAgents.jsx`
+- `start-dev.sh`
+- `.gitignore`
 
 #### Session: April 2, 2026 — Remote-Test Readiness + Customer Onboarding Stabilization
 **Commit(s):** `889ba34` (feature branch), `408d599` (cherry-picked to `main`), plus branch-tracking/documentation updates on `main`  
@@ -180,14 +225,16 @@ test-app/
 │   │   ├── OnboardingPasskey.model.js
 │   │   ├── PasskeyRenewalRequest.model.js
 │   │   ├── ProfileLinkAudit.model.js
-│   │   └── RegistrationOverrideAudit.model.js
+│   │   ├── RegistrationOverrideAudit.model.js
+│   │   └── SequenceCounter.model.js  # Atomic sequential ID counter (AGT/CUST)
 │   ├── controllers/
 │   │   ├── auth.controller.js      # Multi-role auth, passkeys, profile policy, admin audits
 │   │   ├── agent.controller.js     # Agent CRUD
 │   │   ├── customer.controller.js  # Customer CRUD
 │   │   └── serviceCall.controller.js
 │   ├── utils/
-│   │   └── emailService.js         # Email sending (Ethereal for dev, SMTP for prod)
+│   │   ├── emailService.js         # Email sending (Ethereal for dev, SMTP for prod)
+│   │   └── sequence.util.js        # Sequential ID helpers: getNextSequenceValue, formatSequenceId
 │   ├── routes/
 │   │   ├── auth.routes.js
 │   │   ├── agent.routes.js
@@ -211,13 +258,15 @@ test-app/
 │   │       ├── UserProfile.jsx
 │   │       ├── ForgotPassword.jsx       # 🆕 Password reset request
 │   │       ├── ResetPassword.jsx        # 🆕 Password reset form
-│   │       ├── FieldServiceAgents.jsx   # 🔄 Agent directory + role context
+│   │       ├── FieldServiceAgents.jsx   # 🔄 Agent directory + role context (employeeId system-generated)
 │   │       ├── AgentProfile.jsx         # 🔄 Agent detail + role context + pro-forma
 │   │       ├── Customers.jsx            # 🔄 Customer list + entity chip
 │   │       ├── ServiceCalls.jsx         # 🔄 Service call queue + entity chip
 │   │       ├── Quotations.jsx           # 🔄 Quotation list + entity chip
 │   │       ├── SiteInstructionModal.jsx # 🔄 Pro-forma editor + entity/role chips
-│   │       └── InvoiceApprovalPage.jsx  # 🔄 Public invoice approval + context chips
+│   │       ├── InvoiceApprovalPage.jsx  # 🔄 Public invoice approval + context chips
+│   │       ├── ServiceCallRegistration.jsx  # 🆕 Standalone service call booking form
+│   │       └── ResidentialCustomer.jsx      # 🔄 Full bespoke residential customer profile (complete)
 │   ├── index.html
 │   └── vite.config.js      # Dev server + proxy config
 │
@@ -463,6 +512,17 @@ VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 - Use `.populate('assignedAgent')` for agent details
 
 ### 7. Auto-Generated Fields
+
+**Agent Employee IDs:**
+- Format: `AGT-000001`, `AGT-000002`, etc.
+- Auto-generated in `agent.controller.js` using `getNextSequenceValue('agent_employee_id')`
+- Collision-safe: up to 5 retry attempts before returning 500
+- See: `server/utils/sequence.util.js`, `server/models/SequenceCounter.model.js`
+
+**Customer IDs:**
+- Format: `CUST-000001`, `CUST-000002`, etc.
+- Auto-generated in `customer.controller.js` using `getNextSequenceValue('customer_id')`
+- See: `server/utils/sequence.util.js`, `server/models/SequenceCounter.model.js`
 
 **Service Call Numbers:**
 - Format: `SC-000001`, `SC-000002`, etc.
