@@ -1,0 +1,11 @@
+continuity/checkpoints/20260407-172604-main/git-status-short.txt
+continuity/checkpoints/20260407-172604-main/git-status.txt
+continuity/checkpoints/20260407-172604-main/staged.diff
+continuity/checkpoints/20260407-172604-main/summary.md
+continuity/checkpoints/20260407-172604-main/unstaged.diff
+continuity/checkpoints/20260407-172604-main/untracked-files.txt
+continuity/checkpoints/20260407-173027-main/git-status-short.txt
+continuity/checkpoints/20260407-173027-main/git-status.txt
+continuity/checkpoints/20260407-173027-main/staged.diff
+continuity/checkpoints/20260407-173027-main/unstaged.diff
+continuity/checkpoints/20260407-173027-main/untracked-files.txt

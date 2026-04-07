@@ -1,0 +1,4 @@
+ M continuity/CURRENT_STATUS.md
+ M continuity/SESSION_HISTORY.md
+?? continuity/checkpoints/20260407-172604-main/
+?? continuity/checkpoints/20260407-173027-main/
