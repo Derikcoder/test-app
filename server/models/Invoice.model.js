@@ -565,26 +565,29 @@ const invoiceSchema = new mongoose.Schema(
 );
 
 /**
- * Pre-save Middleware: Auto-generate Invoice Number
+ * Pre-validate Middleware: Auto-generate Invoice Number
  * 
  * @description
  * Automatically generates a unique invoice number in format INV-XXXXXX
  * if not provided. Uses sequential numbering based on existing count.
  * 
- * @fires invoiceSchema#pre('save')
+ * @fires invoiceSchema#pre('validate')
  * 
  * @example
  * // First invoice: INV-000001
  * // Second invoice: INV-000002
  */
-invoiceSchema.pre('save', async function (next) {
-  // Only generate for new documents without an invoice number
+invoiceSchema.pre('validate', async function (next) {
+  // Only generate for new documents without an invoice number.
+  // Must run pre-validate so the required field check passes.
   if (this.isNew && !this.invoiceNumber) {
     const count = await mongoose.model('Invoice').countDocuments();
-    // Format: INV-000001 (padded to 6 digits)
     this.invoiceNumber = `INV-${String(count + 1).padStart(6, '0')}`;
   }
+  next();
+});
 
+invoiceSchema.pre('save', function (next) {
   // Set default due date if not provided (payment terms from issue date)
   if (this.isNew && !this.dueDate) {
     const dueDate = new Date(this.issueDate);

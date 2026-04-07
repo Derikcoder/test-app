@@ -357,19 +357,20 @@ const quotationSchema = new mongoose.Schema(
 );
 
 /**
- * Pre-save Middleware: Auto-generate Quotation Number
+ * Pre-validate Middleware: Auto-generate Quotation Number
  * 
  * @description
  * Automatically generates a unique quotation number in format QT-XXXXXX
  * if not provided. Uses sequential numbering based on existing count.
+ * Must run pre-validate (not pre-save) so the required field check passes.
  * 
- * @fires quotationSchema#pre('save')
+ * @fires quotationSchema#pre('validate')
  * 
  * @example
  * // First quotation: QT-000001
  * // Second quotation: QT-000002
  */
-quotationSchema.pre('save', async function (next) {
+quotationSchema.pre('validate', async function (next) {
   // Only generate for new documents without a quotation number
   if (this.isNew && !this.quotationNumber) {
     const count = await mongoose.model('Quotation').countDocuments();
