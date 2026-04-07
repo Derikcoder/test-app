@@ -149,10 +149,14 @@ const ResidentialCustomer = () => {
  useEffect(() => {
   const fetchQuotations = async () => {
    try {
-    const res = await api.get(`/quotations?customer=${id}&status=sent`, {
+    const res = await api.get(`/quotations?customer=${id}`, {
      headers: { Authorization: `Bearer ${user.token}` },
     });
-    setQuotations(Array.isArray(res.data) ? res.data : []);
+    setQuotations(
+     Array.isArray(res.data)
+      ? res.data.filter((q) => !['converted', 'rejected', 'expired'].includes(q.status))
+      : []
+    );
    } catch {
     /* non-critical — silently skip */
    } finally {
@@ -351,39 +355,58 @@ const ResidentialCustomer = () => {
       </SectionCard>
      )}
 
-     {/* ── Pending Quotations ── */}
-     <SectionCard title="Pending Quotations" icon="📄">
+     {/* ── Active Quotations ── */}
+     <SectionCard title="Active Quotations" icon="📄">
       {quotsLoading ? (
        <div className="flex items-center gap-3 py-2">
         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400" />
         <span className="text-sm text-white/50">Loading quotations…</span>
        </div>
       ) : quotations.length === 0 ? (
-       <p className="text-sm text-white/40">No pending quotations</p>
+       <p className="text-sm text-white/40">No active quotations</p>
       ) : (
-       quotations.map((q) => (
-        <div key={q._id} className="flex items-start justify-between gap-4 py-3 border-b border-white/10 last:border-0">
-         <div className="flex flex-col gap-1 min-w-0">
-          <span className="text-sm font-semibold text-white/90">{q.quotationNumber}</span>
-          <span className="text-xs text-white/60 truncate">{q.title}</span>
-          <span className="text-xs text-white/40">Valid until {formatDate(q.validUntil)}</span>
-         </div>
-         <div className="flex flex-col items-end gap-2 shrink-0">
-          <span className="text-sm font-bold text-yellow-300">R {Number(q.totalAmount ?? 0).toFixed(2)}</span>
-          {q.shareToken && (
-           <button
-            onClick={() => {
-             const url = `${window.location.origin}/api/quotations/share/${q.shareToken}/pdf`;
-             navigator.clipboard.writeText(url).catch(() => {});
-            }}
-            className="text-[10px] font-semibold text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
-           >
-            Copy acceptance link
-           </button>
-          )}
-         </div>
-        </div>
-       ))
+       <>
+        <p className="text-xs text-white/40 mb-3">Customer accepts or declines from their own portal. Admins cannot accept on behalf of the customer.</p>
+        {quotations.map((q) => {
+         const statusStyles = {
+          draft: 'bg-white/10 text-white/60 border-white/20',
+          sent: 'bg-blue-500/20 text-blue-200 border-blue-400/30',
+          approved: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30',
+         };
+         const badgeClass = statusStyles[q.status] || 'bg-white/10 text-white/60 border-white/20';
+         return (
+          <div key={q._id} className="flex items-start justify-between gap-4 py-3 border-b border-white/10 last:border-0">
+           <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+             <span className="text-sm font-semibold text-white/90">{q.quotationNumber}</span>
+             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badgeClass}`}>
+              {q.status}
+             </span>
+            </div>
+            <span className="text-xs text-white/60 truncate">{q.title}</span>
+            <span className="text-xs text-white/40">Valid until {formatDate(q.validUntil)}</span>
+           </div>
+           <div className="flex flex-col items-end gap-2 shrink-0">
+            <span className="text-sm font-bold text-yellow-300">R {Number(q.totalAmount ?? 0).toFixed(2)}</span>
+            {q.shareToken && q.status === 'sent' && (
+             <button
+              onClick={() => {
+               const url = `${window.location.origin}/api/quotations/share/${q.shareToken}/pdf`;
+               navigator.clipboard.writeText(url).catch(() => {});
+              }}
+              className="text-[10px] font-semibold text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
+             >
+              Copy acceptance link
+             </button>
+            )}
+            {q.status === 'draft' && (
+             <span className="text-[10px] text-white/40 italic">Not sent to customer yet</span>
+            )}
+           </div>
+          </div>
+         );
+        })}
+       </>
       )}
      </SectionCard>
 
