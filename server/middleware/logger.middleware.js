@@ -73,12 +73,29 @@ const writeLog = (logPath, message) => {
  * - Returns JSON error response to client
  * - Includes stack trace only in development mode
  */
+/**
+ * Strips sensitive query parameters (e.g. password) from a URL string before logging.
+ * @param {string} rawUrl
+ * @returns {string}
+ */
+const sanitizeUrl = (rawUrl) => {
+  try {
+    const u = new URL(rawUrl, 'https://localhost');
+    ['password', 'token', 'secret'].forEach(p => {
+      if (u.searchParams.has(p)) u.searchParams.set(p, '***');
+    });
+    return u.pathname + (u.search ? u.search : '');
+  } catch {
+    return rawUrl;
+  }
+};
+
 export const errorLogger = (err, req, res, next) => {
   // Compile comprehensive error details
   const errorDetails = {
     timestamp: new Date().toISOString(),
     method: req.method,
-    url: req.url,
+    url: sanitizeUrl(req.url),
     ip: req.ip,
     error: {
       message: err.message,
@@ -128,14 +145,14 @@ export const requestLogger = (req, res, next) => {
   const requestDetails = {
     timestamp: new Date().toISOString(),
     method: req.method,
-    url: req.url,
+    url: sanitizeUrl(req.url),
     ip: req.ip,
     // Only include body for write operations, mask password field
     body: req.method === 'POST' || req.method === 'PUT' ? { ...req.body, password: '***' } : undefined,
   };
 
   // Console log with emoji for quick visual scanning
-  console.log(`📝 ${req.method} ${req.url}`);
+  console.log(`📝 ${req.method} ${sanitizeUrl(req.url)}`);
   
   // Write detailed request info to file
   writeLog(requestLogPath, JSON.stringify(requestDetails));
