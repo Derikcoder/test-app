@@ -22,6 +22,8 @@ const ServiceCalls = () => {
  const [queueActionSuccess, setQueueActionSuccess] = useState('');
  const [assigningCallId, setAssigningCallId] = useState('');
  const [loading, setLoading] = useState(true);
+ const [pendingDeleteId, setPendingDeleteId] = useState('');
+ const [deletingCallId, setDeletingCallId] = useState('');
 
  const fetchServiceCalls = async () => {
   try {
@@ -133,6 +135,23 @@ const ServiceCalls = () => {
   }
  };
 
+ const isAdmin = user?.role === 'superAdmin' || user?.role === 'businessAdministrator';
+
+ const handleDeleteCall = async (call) => {
+  setDeletingCallId(call._id);
+  try {
+   await api.delete(`/service-calls/${call._id}`, {
+    headers: { Authorization: `Bearer ${user?.token}` },
+   });
+   setPendingDeleteId('');
+   await fetchServiceCalls();
+  } catch (err) {
+   setQueueActionError(err?.response?.data?.message || 'Failed to delete service call.');
+  } finally {
+   setDeletingCallId('');
+  }
+ };
+
  const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A';
   return new Date(dateStr).toLocaleDateString('en-ZA', {
@@ -206,6 +225,38 @@ const ServiceCalls = () => {
      >
       {assigningCallId === call._id ? 'Assigning...' : 'Assign'}
      </button>
+    </div>
+   )}
+   {isAdmin && (
+    <div className="pt-2 border-t border-white/10 mt-1">
+     {pendingDeleteId !== call._id ? (
+      <button
+       type="button"
+       onClick={() => setPendingDeleteId(call._id)}
+       className="text-xs text-red-400 hover:text-red-300 font-semibold transition-colors"
+      >
+       Delete call
+      </button>
+     ) : (
+      <div className="flex items-center gap-3 flex-wrap">
+       <span className="text-xs text-white/70">Remove this service call?</span>
+       <button
+        type="button"
+        disabled={deletingCallId === call._id}
+        onClick={() => handleDeleteCall(call)}
+        className="rounded-lg bg-red-500/30 hover:bg-red-500/40 border border-red-300/30 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition"
+       >
+        {deletingCallId === call._id ? 'Deleting...' : 'Yes, delete'}
+       </button>
+       <button
+        type="button"
+        onClick={() => setPendingDeleteId('')}
+        className="text-xs text-white/50 hover:text-white/80 transition-colors"
+       >
+        Cancel
+       </button>
+      </div>
+     )}
     </div>
    )}
   </div>
