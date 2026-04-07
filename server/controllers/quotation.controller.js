@@ -1052,6 +1052,38 @@ export const deleteQuotation = async (req, res) => {
   }
 };
 
+// @desc    Purge stale quotations (superAdmin only)
+//          Removes: expired, rejected, and draft/sent quotes past their validUntil date.
+//          Converted and approved quotations are never purged.
+// @route   DELETE /api/quotations/purge
+// @access  Private — superAdmin only
+export const purgeQuotations = async (req, res) => {
+  try {
+    if (req.user?.role !== 'superAdmin') {
+      return res.status(403).json({ message: 'Only superAdmin can run a purge.' });
+    }
+
+    const now = new Date();
+
+    const result = await Quotation.deleteMany({
+      createdBy: req.user._id,
+      $or: [
+        { status: { $in: ['expired', 'rejected'] } },
+        { status: { $in: ['draft', 'sent'] }, validUntil: { $lt: now } },
+      ],
+    });
+
+    logInfo(`✅ Quotation purge: ${result.deletedCount} stale record(s) removed by ${req.user._id}`);
+    res.json({
+      message: `Purge complete. ${result.deletedCount} stale quotation(s) removed.`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    logError('Purge quotations error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Generate PDF for quotation (placeholder)
 // @route   GET /api/quotations/:id/pdf
 // @access  Private

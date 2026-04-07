@@ -256,6 +256,13 @@ const Quotations = () => {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [expandedAudit, setExpandedAudit] = useState(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState('');
+  const [deletingId, setDeletingId] = useState('');
+  const [purging, setPurging] = useState(false);
+  const [actionMsg, setActionMsg] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  const isAdmin = isSuperAdmin || user?.role === 'businessAdministrator';
 
   const fetchQuotations = useCallback(async () => {
     setLoading(true);
@@ -281,6 +288,41 @@ const Quotations = () => {
 
   const toggleAudit = (id) => {
     setExpandedAudit((prev) => (prev === id ? null : id));
+  };
+
+  const handleDeleteQuotation = async (q) => {
+    setDeletingId(q._id);
+    setActionMsg('');
+    setActionError('');
+    try {
+      await api.delete(`/quotations/${q._id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setActionMsg(`Quotation ${q.quotationNumber} deleted.`);
+      setPendingDeleteId('');
+      await fetchQuotations();
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Failed to delete quotation.');
+    } finally {
+      setDeletingId('');
+    }
+  };
+
+  const handlePurgeStale = async () => {
+    setPurging(true);
+    setActionMsg('');
+    setActionError('');
+    try {
+      const res = await api.delete('/quotations/purge', {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setActionMsg(res.data?.message || 'Purge complete.');
+      await fetchQuotations();
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Purge failed.');
+    } finally {
+      setPurging(false);
+    }
   };
 
   const auditableCount = quotations.filter((q) => q.autoResolutionSnapshot).length;
@@ -341,7 +383,28 @@ const Quotations = () => {
             >
               {loading ? 'Loading…' : 'Refresh'}
             </button>
+            {isSuperAdmin && (
+              <button
+                onClick={handlePurgeStale}
+                disabled={purging || loading}
+                className="ml-auto glass-btn-secondary px-4 py-1.5 text-sm text-red-300 border-red-400/40 hover:bg-red-500/20 disabled:opacity-50"
+              >
+                {purging ? 'Purging…' : '🗑 Purge Stale'}
+              </button>
+            )}
           </div>
+
+          {/* Action feedback */}
+          {actionMsg && (
+            <div className="mb-4 p-3 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 text-sm">
+              {actionMsg}
+            </div>
+          )}
+          {actionError && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/20 text-red-200 border border-red-400/40 text-sm">
+              {actionError}
+            </div>
+          )}
 
           {/* Error */}
           {error && (
@@ -469,6 +532,40 @@ const Quotations = () => {
                       <p className="mt-3 text-xs text-white/30 italic">
                         No template resolution data — quote was created manually or before auto-resolution was enabled.
                       </p>
+                    )}
+
+                    {/* Delete action — admin only, blocked for converted/approved */}
+                    {isAdmin && q.status !== 'converted' && q.status !== 'approved' && (
+                      <div className="mt-4 flex items-center gap-3">
+                        {pendingDeleteId === q._id ? (
+                          <>
+                            <span className="text-xs text-red-300">Delete this quotation?</span>
+                            <button
+                              type="button"
+                              disabled={deletingId === q._id}
+                              onClick={() => handleDeleteQuotation(q)}
+                              className="rounded-lg bg-red-500/25 border border-red-400/40 text-red-200 text-xs px-3 py-1 hover:bg-red-500/40 disabled:opacity-50"
+                            >
+                              {deletingId === q._id ? 'Deleting…' : 'Yes, delete'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingDeleteId('')}
+                              className="text-xs text-white/50 hover:text-white/80"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setPendingDeleteId(q._id); setActionMsg(''); setActionError(''); }}
+                            className="text-xs text-red-400/70 hover:text-red-300 underline underline-offset-2"
+                          >
+                            Delete quotation
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 );

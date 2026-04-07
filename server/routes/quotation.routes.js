@@ -20,6 +20,7 @@ import {
   updateQuotationStatus,
   convertQuotationToServiceCall,
   deleteQuotation,
+  purgeQuotations,
   generateQuotationPDF,
   generateSharedQuotationPDF,
   sendQuotation,
@@ -113,6 +114,13 @@ router.post('/:id/convert', protect, convertQuotationToServiceCall);
  * @access  Private (JWT required)
  */
 router.get('/:id/pdf', protect, generateQuotationPDF);
+
+/**
+ * @route   DELETE /api/quotations/purge
+ * @desc    Purge all stale quotations (expired, rejected, or draft/sent past validUntil)
+ * @access  Private — superAdmin only
+ */
+router.delete('/purge', protect, purgeQuotations);
 
 /**
  * @route   DELETE /api/quotations/:id
