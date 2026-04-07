@@ -845,7 +845,10 @@ export const sendQuotation = async (req, res) => {
       ? [...new Set(channels.map((channel) => String(channel).trim().toLowerCase()))].filter((channel) => allowedChannels.includes(channel))
       : ['email', 'whatsapp'];
 
-    if (Array.isArray(channels) && selectedChannels.length === 0) {
+    // An empty channels array means portal-only — quote is marked sent so the
+    // customer can see it in their portal, but no external dispatch is triggered.
+    // A non-empty channels array with only invalid entries is still rejected.
+    if (Array.isArray(channels) && channels.length > 0 && selectedChannels.length === 0) {
       return res.status(400).json({
         message: 'Please select at least one valid channel: email, whatsapp, or telegram.',
       });

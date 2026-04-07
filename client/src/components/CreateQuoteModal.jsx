@@ -458,8 +458,25 @@ const CreateQuoteModal = ({
         );
       }
 
-      setCreatedQuotationId(response.data?._id || '');
-      setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted successfully.`.trim());
+      const newId = response.data?._id || '';
+      setCreatedQuotationId(newId);
+
+      // Immediately mark as sent so the customer can view and accept it from
+      // their portal. No external channels → portal-only publish.
+      if (newId) {
+        try {
+          await api.post(
+            `/quotations/${newId}/send`,
+            { channels: [] },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } catch {
+          // Non-fatal: quote was created but portal visibility may be delayed.
+          // Admin can still use "Share PDF" to publish it.
+        }
+      }
+
+      setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted. The customer can now view and accept it from their portal.`.trim());
       if (response.data?.autoResolution?.source || response.data?.autoResolution?.confidence) {
         setAutoResolutionInfo(response.data.autoResolution);
       }
@@ -963,9 +980,9 @@ const CreateQuoteModal = ({
               </div>
 
               <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
-                <h3 className="text-white font-semibold">Share Channels</h3>
+                <h3 className="text-white font-semibold">Share PDF Externally</h3>
                 <p className="text-xs text-white/70">
-                  Select where to share this quotation after submission. Telegram is enabled by default for local testing.
+                  The quotation is already visible in the customer&apos;s portal once submitted. Use these options to also deliver a PDF copy via external channels — useful for customers who do not yet have a platform account.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <label className="flex items-center gap-2 text-sm text-white/90">

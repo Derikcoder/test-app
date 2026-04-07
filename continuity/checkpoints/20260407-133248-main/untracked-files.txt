@@ -1,0 +1,12 @@
+MVP_ROADMAP.md
+continuity/checkpoints/20260407-130841-main/git-status-short.txt
+continuity/checkpoints/20260407-130841-main/git-status.txt
+continuity/checkpoints/20260407-130841-main/staged.diff
+continuity/checkpoints/20260407-130841-main/summary.md
+continuity/checkpoints/20260407-130841-main/unstaged.diff
+continuity/checkpoints/20260407-130841-main/untracked-files.txt
+continuity/checkpoints/20260407-133248-main/git-status-short.txt
+continuity/checkpoints/20260407-133248-main/git-status.txt
+continuity/checkpoints/20260407-133248-main/staged.diff
+continuity/checkpoints/20260407-133248-main/unstaged.diff
+continuity/checkpoints/20260407-133248-main/untracked-files.txt
