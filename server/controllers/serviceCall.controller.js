@@ -1,6 +1,7 @@
 import ServiceCall from '../models/ServiceCall.model.js';
 import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
 import Customer from '../models/Customer.model.js';
+import ServiceCallEmailLock from '../models/ServiceCallEmailLock.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
 const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
@@ -237,6 +238,19 @@ export const createServiceCall = async (req, res) => {
       const generatedEmail = `autogen-${Date.now()}@customer.local`;
       const normalizedEmail = rawEmail || generatedEmail;
 
+      // Duplicate-booking guard: block if a pending quotation lock exists for this email
+      if (rawEmail) {
+        const existingLock = await ServiceCallEmailLock.findOne({ email: rawEmail });
+        if (existingLock) {
+          return res.status(409).json({
+            message: `Quotation ${existingLock.quotationNumber} is already awaiting acceptance for this customer. No new service call is needed until the current quotation is resolved.`,
+            quotationNumber: existingLock.quotationNumber,
+            email: rawEmail,
+            canRegister: true,
+          });
+        }
+      }
+
       // Try to find existing customer by email in same tenant.
       const existingCustomer = await Customer.findOne({
         email: normalizedEmail,
@@ -282,6 +296,22 @@ export const createServiceCall = async (req, res) => {
           logError('⚠️ Failed to auto-create customer from booking request', {
             message: err?.message,
             bookingContact: bookingRequest?.contact,
+          });
+        }
+      }
+    }
+
+    // Path B guard: customer provided by ObjectId — check for active quotation lock via stored email
+    if (customer) {
+      const linkedCust = await Customer.findById(customer).select('email');
+      if (linkedCust?.email) {
+        const existingLock = await ServiceCallEmailLock.findOne({ email: linkedCust.email.toLowerCase() });
+        if (existingLock) {
+          return res.status(409).json({
+            message: `Quotation ${existingLock.quotationNumber} is already awaiting acceptance for this customer.`,
+            quotationNumber: existingLock.quotationNumber,
+            email: linkedCust.email.toLowerCase(),
+            canRegister: true,
           });
         }
       }

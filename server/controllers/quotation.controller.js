@@ -1,6 +1,7 @@
 import Quotation from '../models/Quotation.model.js';
 import ServiceCall from '../models/ServiceCall.model.js';
 import Customer from '../models/Customer.model.js';
+import ServiceCallEmailLock from '../models/ServiceCallEmailLock.model.js';
 import { resolveAutoMachineDataForQuote } from '../services/quotationAutoResolver.service.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import PDFDocument from 'pdfkit';
@@ -796,6 +797,15 @@ export const updateQuotationStatus = async (req, res) => {
     }
 
     const updatedQuotation = await quotation.save();
+
+    // Release email lock when quotation resolves (rejected, expired, or auto-converted)
+    if (['rejected', 'expired', 'converted'].includes(updatedQuotation.status)) {
+      const custForLock = await Customer.findById(updatedQuotation.customer).select('email');
+      if (custForLock?.email) {
+        await ServiceCallEmailLock.deleteOne({ email: custForLock.email.toLowerCase() });
+      }
+    }
+
     await updatedQuotation.populate('customer', 'businessName contactFirstName contactLastName');
 
     if (createdJobcard) {
@@ -890,6 +900,21 @@ export const sendQuotation = async (req, res) => {
     quotation.lastSentChannels = selectedChannels;
     await quotation.save();
 
+    // Upsert email lock — prevents duplicate service calls while quotation is pending
+    if (quotation.customer?.email) {
+      await ServiceCallEmailLock.findOneAndUpdate(
+        { email: quotation.customer.email.toLowerCase() },
+        {
+          email: quotation.customer.email.toLowerCase(),
+          customerId: quotation.customer._id ?? null,
+          quotationId: quotation._id,
+          quotationNumber: quotation.quotationNumber,
+          lockedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+    }
+
     logInfo(`✅ Quotation sent: ${quotation.quotationNumber} via ${selectedChannels.join(', ')}`);
     res.json({
       message: 'Quotation sent successfully',
@@ -958,6 +983,12 @@ export const convertQuotationToServiceCall = async (req, res) => {
     quotation.convertedToServiceCall = serviceCall._id;
     quotation.convertedDate = new Date();
     await quotation.save();
+
+    // Release email lock — quotation converted to active service call
+    const custForLock = await Customer.findById(quotation.customer).select('email');
+    if (custForLock?.email) {
+      await ServiceCallEmailLock.deleteOne({ email: custForLock.email.toLowerCase() });
+    }
 
     // Populate service call details
     await serviceCall.populate('customer', 'businessName contactFirstName contactLastName');
@@ -1127,7 +1158,7 @@ export const rejectPublicQuotation = async (req, res) => {
     const { token } = req.params;
     const { reason } = req.body;
     const quotation = await Quotation.findOne({ shareToken: token })
-      .populate('customer', 'contactFirstName contactLastName customerId');
+      .populate('customer', 'contactFirstName contactLastName customerId email');
 
     if (!quotation) {
       return res.status(404).json({ message: 'Quotation not found or link is invalid' });
@@ -1147,6 +1178,11 @@ export const rejectPublicQuotation = async (req, res) => {
     quotation.rejectedDate = new Date();
     if (reason) quotation.rejectionReason = String(reason).trim().slice(0, 500);
     await quotation.save();
+
+    // Release email lock — customer declined via share link
+    if (quotation.customer?.email) {
+      await ServiceCallEmailLock.deleteOne({ email: quotation.customer.email.toLowerCase() });
+    }
 
     logInfo(`❌ Quote rejected via share token: ${quotation.quotationNumber}`);
 

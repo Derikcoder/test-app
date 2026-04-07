@@ -29,6 +29,7 @@ import serviceCallRoutes from './routes/serviceCall.routes.js';
 import equipmentRoutes from './routes/equipment.routes.js';
 import quotationRoutes from './routes/quotation.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
+import serviceCallEmailLockRoutes from './routes/serviceCallEmailLock.routes.js';
 import { requestLogger, errorLogger, logInfo, logError } from './middleware/logger.middleware.js';
 
 // Load environment variables from .env file
@@ -140,6 +141,9 @@ app.use('/api/quotations', quotationRoutes);
 
 // Invoice and payment management
 app.use('/api/invoices', invoiceRoutes);
+
+// Email lock management (prevents duplicate service calls for pending quotations)
+app.use('/api/service-call-locks', serviceCallEmailLockRoutes);
 
 /**
  * 404 Handler

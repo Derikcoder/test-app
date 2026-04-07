@@ -28,6 +28,7 @@ const ServiceCallRegistration = () => {
 
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [errorMessage, setErrorMessage] = useState('');
+ const [pendingQuotationBlock, setPendingQuotationBlock] = useState(null);
  const [successMessage, setSuccessMessage] = useState('');
  const [serviceCalls, setServiceCalls] = useState([]);
  const [lastServiceAutofillMeta, setLastServiceAutofillMeta] = useState(null);
@@ -357,6 +358,10 @@ const ServiceCallRegistration = () => {
    setSuccessMessage('Service call booked successfully. Redirecting to the service call queue...');
    setTimeout(() => navigate('/service-calls'), 1500);
   } catch (error) {
+   if (error?.response?.status === 409 && error?.response?.data?.canRegister) {
+    setPendingQuotationBlock(error.response.data);
+    return;
+   }
    setErrorMessage(
     error?.response?.data?.message || 'Unable to submit booking. Please try again.'
    );
@@ -429,6 +434,48 @@ const ServiceCallRegistration = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="p-8 space-y-8">
+       {pendingQuotationBlock && (
+        <div className="rounded-xl p-6 border border-amber-400/40 bg-amber-500/10">
+         <div className="flex items-start gap-4">
+          <span className="text-2xl leading-none mt-0.5">&#9888;&#65039;</span>
+          <div className="flex-1">
+           <h3 className="text-sm font-bold text-amber-300 uppercase tracking-widest mb-1">
+            Pending Quotation Detected
+           </h3>
+           <p className="text-sm text-white/80 mb-4">
+            Quotation{' '}
+            <span className="font-semibold text-yellow-300">{pendingQuotationBlock.quotationNumber}</span>{' '}
+            is still awaiting acceptance for{' '}
+            <span className="font-semibold">{pendingQuotationBlock.email}</span>.
+            A new service call is not required until the current quotation is resolved.
+           </p>
+           <div className="flex flex-wrap gap-3">
+            <button
+             type="button"
+             onClick={() =>
+              navigate('/customers/register', {
+               state: {
+                prefillEmail: pendingQuotationBlock.email,
+                prefillQuotationNumber: pendingQuotationBlock.quotationNumber,
+               },
+              })
+             }
+             className="glass-btn-primary py-2 px-5 text-sm"
+            >
+             Register Customer Account
+            </button>
+            <button
+             type="button"
+             onClick={() => setPendingQuotationBlock(null)}
+             className="glass-btn-secondary py-2 px-5 text-sm"
+            >
+             &larr; Back to Form
+            </button>
+           </div>
+          </div>
+         </div>
+        </div>
+       )}
        {errorMessage && (
         <div className="rounded-lg px-4 py-3 border border-red-300/40 bg-red-500/20 text-white">
          {errorMessage}
