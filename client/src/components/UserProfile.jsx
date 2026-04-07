@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -30,10 +30,54 @@ const UserProfile = () => {
   confirmPassword: '',
  });
 
+ const [pendingQuotations, setPendingQuotations] = useState([]);
+ const [quotsLoading, setQuotsLoading] = useState(true);
+ const [quoteMsg, setQuoteMsg] = useState('');
+
+ useEffect(() => {
+  if (!user || user.role !== 'customer') { setQuotsLoading(false); return; }
+  const fetchPending = async () => {
+   try {
+    const res = await api.get('/quotations', {
+     headers: { Authorization: `Bearer ${user.token}` },
+     params: { status: 'sent' },
+    });
+    setPendingQuotations(Array.isArray(res.data) ? res.data : []);
+   } catch {
+    /* non-critical */
+   } finally {
+    setQuotsLoading(false);
+   }
+  };
+  fetchPending();
+ }, [user?.role, user?.token]);
+
  if (!user) {
   navigate('/login');
   return null;
  }
+
+ const handleAcceptQuotation = async (quotation) => {
+  setQuoteMsg('');
+  try {
+   const res = await api.patch(`/quotations/share/${quotation.shareToken}/accept`);
+   setQuoteMsg(res.data.message || 'Quotation accepted!');
+   setPendingQuotations((prev) => prev.filter((q) => q._id !== quotation._id));
+  } catch (err) {
+   setQuoteMsg(err.response?.data?.message || 'Failed to accept quotation');
+  }
+ };
+
+ const handleRejectQuotation = async (quotation) => {
+  setQuoteMsg('');
+  try {
+   const res = await api.patch(`/quotations/share/${quotation.shareToken}/reject`);
+   setQuoteMsg(res.data.message || 'Quotation declined.');
+   setPendingQuotations((prev) => prev.filter((q) => q._id !== quotation._id));
+  } catch (err) {
+   setQuoteMsg(err.response?.data?.message || 'Failed to decline quotation');
+  }
+ };
 
  const roleDisplayName = {
   superAdmin: 'Super Admin',
@@ -514,6 +558,54 @@ const UserProfile = () => {
        )}
       </section>
      </div>
+
+     {user.role === 'customer' && (
+      <div className="mt-6">
+       {quoteMsg && (
+        <div className="glass-alert-success mb-4">
+         <p className="font-medium">{quoteMsg}</p>
+        </div>
+       )}
+       <div className="glass-card p-6">
+        <h2 className="text-base font-bold text-white mb-4">📄 Pending Quotations</h2>
+        {quotsLoading ? (
+         <div className="flex items-center gap-3 py-2">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400" />
+          <span className="text-sm text-white/50">Loading quotations…</span>
+         </div>
+        ) : pendingQuotations.length === 0 ? (
+         <p className="text-sm text-white/40">No pending quotations</p>
+        ) : (
+         pendingQuotations.map((q) => (
+          <div key={q._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 border-b border-white/10 last:border-0">
+           <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-sm font-semibold text-white/90">{q.quotationNumber}</span>
+            <span className="text-xs text-white/60 truncate">{q.title}</span>
+            <span className="text-xs text-white/40">Valid until {q.validUntil ? new Date(q.validUntil).toLocaleDateString() : 'N/A'}</span>
+           </div>
+           <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+            <span className="text-sm font-bold text-yellow-300">R {Number(q.totalAmount ?? 0).toFixed(2)}</span>
+            <div className="flex gap-2">
+             <button
+              onClick={() => handleAcceptQuotation(q)}
+              className="glass-btn-primary py-1.5 px-4 text-xs"
+             >
+              Accept
+             </button>
+             <button
+              onClick={() => handleRejectQuotation(q)}
+              className="glass-btn-outline py-1.5 px-4 text-xs"
+             >
+              Decline
+             </button>
+            </div>
+           </div>
+          </div>
+         ))
+        )}
+       </div>
+      </div>
+     )}
     </div>
    </div>
   </>
