@@ -314,6 +314,12 @@ const quotationSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** How the quotation was accepted — establishes audit trail for customer formalization */
+    acceptedVia: {
+      type: String,
+      enum: ['share_token', 'customer_portal', 'admin_manual'],
+      default: null,
+    },
     /** Reference to ServiceCall (when quotation is converted) */
     convertedToServiceCall: {
       type: mongoose.Schema.Types.ObjectId,
@@ -458,6 +464,7 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'approvedDate',
   'rejectedDate',
   'rejectionReason',
+  'acceptedVia',
   'convertedToServiceCall',
   'convertedDate',
   'notes',

@@ -250,10 +250,15 @@ export const getQuotations = async (req, res) => {
   try {
     const { status, customer } = req.query;
     
-    // Build filter
-    const filter = { createdBy: req.user._id };
+    // Build filter — customer role sees only their own quotations via customerProfile link
+    let filter;
+    if (req.user.role === 'customer' && req.user.customerProfile) {
+      filter = { customer: req.user.customerProfile };
+    } else {
+      filter = { createdBy: req.user._id };
+      if (customer) filter.customer = customer;
+    }
     if (status) filter.status = status;
-    if (customer) filter.customer = customer;
     
     const quotations = await Quotation.find(filter)
       .populate('customer', 'businessName contactFirstName contactLastName customerId customerType')
@@ -1060,5 +1065,98 @@ export const generateSharedQuotationPDF = async (req, res) => {
   } catch (error) {
     logError('Generate shared quotation PDF error:', error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Customer accepts quotation via public share token (no auth required)
+// @route   PATCH /api/quotations/share/:token/accept
+// @access  Public
+export const acceptPublicQuotation = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const quotation = await Quotation.findOne({ shareToken: token })
+      .populate('customer', 'contactFirstName contactLastName customerId');
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found or link is invalid' });
+    }
+
+    if (quotation.shareTokenExpiresAt && quotation.shareTokenExpiresAt < new Date()) {
+      return res.status(410).json({ message: 'This quotation link has expired' });
+    }
+
+    if (quotation.status !== 'sent') {
+      const statusMessages = {
+        approved: 'This quotation has already been accepted',
+        rejected: 'This quotation has been rejected',
+        converted: 'This quotation has already been processed',
+        expired: 'This quotation has expired',
+        draft: 'This quotation is not ready for acceptance',
+      };
+      return res.status(409).json({
+        message: statusMessages[quotation.status] || `Quotation cannot be accepted — current status: ${quotation.status}`,
+      });
+    }
+
+    quotation.status = 'approved';
+    quotation.approvedDate = new Date();
+    quotation.acceptedVia = 'share_token';
+    await quotation.save();
+
+    const customerName = quotation.customer
+      ? `${quotation.customer.contactFirstName} ${quotation.customer.contactLastName}`.trim()
+      : 'Customer';
+    logInfo(`✅ Quote accepted via share token: ${quotation.quotationNumber} by ${customerName}`);
+
+    res.json({
+      message: 'Thank you! Your quotation has been accepted.',
+      quotationNumber: quotation.quotationNumber,
+      acceptedDate: quotation.approvedDate,
+    });
+  } catch (error) {
+    logError('Accept public quotation error:', error);
+    res.status(500).json({ message: 'Failed to process acceptance' });
+  }
+};
+
+// @desc    Customer rejects quotation via public share token (no auth required)
+// @route   PATCH /api/quotations/share/:token/reject
+// @access  Public
+export const rejectPublicQuotation = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { reason } = req.body;
+    const quotation = await Quotation.findOne({ shareToken: token })
+      .populate('customer', 'contactFirstName contactLastName customerId');
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found or link is invalid' });
+    }
+
+    if (quotation.shareTokenExpiresAt && quotation.shareTokenExpiresAt < new Date()) {
+      return res.status(410).json({ message: 'This quotation link has expired' });
+    }
+
+    if (quotation.status !== 'sent') {
+      return res.status(409).json({
+        message: `Quotation cannot be rejected — current status: ${quotation.status}`,
+      });
+    }
+
+    quotation.status = 'rejected';
+    quotation.rejectedDate = new Date();
+    if (reason) quotation.rejectionReason = String(reason).trim().slice(0, 500);
+    await quotation.save();
+
+    logInfo(`❌ Quote rejected via share token: ${quotation.quotationNumber}`);
+
+    res.json({
+      message: 'Quotation has been declined.',
+      quotationNumber: quotation.quotationNumber,
+      rejectedDate: quotation.rejectedDate,
+    });
+  } catch (error) {
+    logError('Reject public quotation error:', error);
+    res.status(500).json({ message: 'Failed to process rejection' });
   }
 };

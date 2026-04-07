@@ -23,6 +23,8 @@ import {
   generateQuotationPDF,
   generateSharedQuotationPDF,
   sendQuotation,
+  acceptPublicQuotation,
+  rejectPublicQuotation,
 } from '../controllers/quotation.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -55,6 +57,20 @@ router.post('/from-service-call/:serviceCallId', protect, createQuotationFromSer
  * @access  Public
  */
 router.get('/share/:token/pdf', generateSharedQuotationPDF);
+
+/**
+ * @route   PATCH /api/quotations/share/:token/accept
+ * @desc    Customer accepts quotation via share token (no auth)
+ * @access  Public
+ */
+router.patch('/share/:token/accept', acceptPublicQuotation);
+
+/**
+ * @route   PATCH /api/quotations/share/:token/reject
+ * @desc    Customer declines quotation via share token (no auth)
+ * @access  Public
+ */
+router.patch('/share/:token/reject', rejectPublicQuotation);
 
 /**
  * @route   GET /api/quotations/:id

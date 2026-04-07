@@ -104,8 +104,10 @@ const ResidentialCustomer = () => {
 
  const [customer, setCustomer] = useState(null);
  const [serviceCalls, setServiceCalls] = useState([]);
+ const [quotations, setQuotations] = useState([]);
  const [loading, setLoading] = useState(true);
  const [callsLoading, setCallsLoading] = useState(true);
+ const [quotsLoading, setQuotsLoading] = useState(true);
  const [error, setError] = useState('');
 
  /* fetch customer profile */
@@ -141,6 +143,23 @@ const ResidentialCustomer = () => {
    }
   };
   fetchCalls();
+ }, [id]);
+
+ /* fetch pending quotations for this customer */
+ useEffect(() => {
+  const fetchQuotations = async () => {
+   try {
+    const res = await api.get(`/quotations?customer=${id}&status=sent`, {
+     headers: { Authorization: `Bearer ${user.token}` },
+    });
+    setQuotations(Array.isArray(res.data) ? res.data : []);
+   } catch {
+    /* non-critical — silently skip */
+   } finally {
+    setQuotsLoading(false);
+   }
+  };
+  fetchQuotations();
  }, [id]);
 
  const notes = useMemo(() => safeParseNotes(customer?.notes), [customer]);
@@ -331,6 +350,42 @@ const ResidentialCustomer = () => {
        <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">{notes.extraNotes}</p>
       </SectionCard>
      )}
+
+     {/* ── Pending Quotations ── */}
+     <SectionCard title="Pending Quotations" icon="📄">
+      {quotsLoading ? (
+       <div className="flex items-center gap-3 py-2">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400" />
+        <span className="text-sm text-white/50">Loading quotations…</span>
+       </div>
+      ) : quotations.length === 0 ? (
+       <p className="text-sm text-white/40">No pending quotations</p>
+      ) : (
+       quotations.map((q) => (
+        <div key={q._id} className="flex items-start justify-between gap-4 py-3 border-b border-white/10 last:border-0">
+         <div className="flex flex-col gap-1 min-w-0">
+          <span className="text-sm font-semibold text-white/90">{q.quotationNumber}</span>
+          <span className="text-xs text-white/60 truncate">{q.title}</span>
+          <span className="text-xs text-white/40">Valid until {formatDate(q.validUntil)}</span>
+         </div>
+         <div className="flex flex-col items-end gap-2 shrink-0">
+          <span className="text-sm font-bold text-yellow-300">R {Number(q.totalAmount ?? 0).toFixed(2)}</span>
+          {q.shareToken && (
+           <button
+            onClick={() => {
+             const url = `${window.location.origin}/api/quotations/share/${q.shareToken}/pdf`;
+             navigator.clipboard.writeText(url).catch(() => {});
+            }}
+            className="text-[10px] font-semibold text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
+           >
+            Copy acceptance link
+           </button>
+          )}
+         </div>
+        </div>
+       ))
+      )}
+     </SectionCard>
 
      {/* ── Service Call History ── */}
      <SectionCard title="Service Call History" icon="🔧">

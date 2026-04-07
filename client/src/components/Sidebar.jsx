@@ -11,6 +11,8 @@ const Sidebar = () => {
 
   const toggleSidebar = () => setIsOpen(!isOpen);
   const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
+  const isCustomer = user?.role === 'customer';
+  const isFieldAgent = user?.role === 'fieldServiceAgent';
   const roleLabelMap = {
     superAdmin: 'Super Admin',
     businessAdministrator: 'Business Administrator',
@@ -19,7 +21,7 @@ const Sidebar = () => {
   };
   const roleLabel = roleLabelMap[user?.role] || (isSuperAdmin ? 'Super Admin' : 'Platform User');
 
-  const menuItems = [
+  const allMenuItems = [
     {
       name: 'Dashboard',
       path: '/profile',
@@ -68,6 +70,15 @@ const Sidebar = () => {
   ];
 
   const isActive = (path) => location.pathname === path;
+
+  const adminOnlyPaths = ['/agents', '/customers', '/quotations'];
+  const agentAllowedPaths = ['/profile', '/service-calls'];
+
+  const menuItems = allMenuItems.filter((item) => {
+    if (isCustomer) return item.path === '/profile';
+    if (isFieldAgent) return agentAllowedPaths.includes(item.path);
+    return true;
+  });
 
   return (
     <>
