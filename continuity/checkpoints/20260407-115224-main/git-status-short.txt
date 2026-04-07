@@ -1,0 +1,7 @@
+ M server/tests/unit/controllers/agent.controller.test.js
+ M server/tests/unit/controllers/customer.controller.test.js
+ M server/tests/unit/controllers/invoice.controller.test.js
+ M server/tests/unit/middleware/auth.middleware.test.js
+ M server/tests/unit/routes/invoice.routes.test.js
+?? MVP_ROADMAP.md
+?? continuity/checkpoints/20260407-115224-main/

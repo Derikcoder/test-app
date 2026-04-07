@@ -86,7 +86,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
           problemsFound: 'Radiator leak detected',
           recommendedSolution: 'Replace damaged hose and refill coolant',
         },
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: new Date('2027-04-07T08:00:00.000Z'),
       };
 
       Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
@@ -145,7 +145,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         siteInstruction: {
           problemsFound: 'Radiator leak detected',
         },
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: new Date('2027-04-07T08:00:00.000Z'),
         save: jest.fn().mockResolvedValue(true),
       };
 
@@ -203,7 +203,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         shareToken: 'share-token-123',
         documentType: 'proForma',
         workflowStatus: 'awaitingApproval',
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: new Date('2027-04-07T08:00:00.000Z'),
       };
 
       req.body = { decision: 'pending' };
@@ -220,7 +220,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         shareToken: 'share-token-123',
         documentType: 'final',
         workflowStatus: 'finalized',
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: new Date('2027-04-07T08:00:00.000Z'),
       };
 
       req.body = { decision: 'approved' };
@@ -239,7 +239,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         shareToken: 'share-token-123',
         documentType: 'proForma',
         workflowStatus: 'approved',
-        shareTokenExpiresAt: new Date('2026-03-30T08:00:00.000Z'),
+        shareTokenExpiresAt: new Date('2027-04-07T08:00:00.000Z'),
       };
 
       req.body = { decision: 'rejected' };

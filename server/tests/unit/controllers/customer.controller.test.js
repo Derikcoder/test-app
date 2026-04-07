@@ -17,6 +17,10 @@ import {
 import Customer from '../../../models/Customer.model.js';
 
 jest.mock('../../../models/Customer.model.js');
+jest.mock('../../../utils/sequence.util.js', () => ({
+  getNextSequenceValue: jest.fn().mockResolvedValue(1),
+  formatSequenceId: jest.fn().mockReturnValue('CUST-000001'),
+}));
 jest.mock('../../../middleware/logger.middleware.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
@@ -262,14 +266,15 @@ describe('Customer Controller', () => {
       expect(res.json).toHaveBeenCalledWith({ message: 'Physical address is required for residential customers' });
     });
 
-    test('returns 400 when customerId already exists', async () => {
+    test('returns 500 when ID generation cannot produce a unique customer ID', async () => {
       req.body = validResidentialBody;
+      // All ID-collision checks return an existing customer, exhausting the retry loop
       Customer.findOne = jest.fn().mockResolvedValue(mockResidentialCustomer);
 
       await createCustomer(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ message: 'Customer ID already exists' });
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Failed to generate a unique customer ID' });
     });
 
     test('returns 500 on database error', async () => {

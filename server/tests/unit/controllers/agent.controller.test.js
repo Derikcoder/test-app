@@ -20,6 +20,10 @@ import {
 import FieldServiceAgent from '../../../models/FieldServiceAgent.model.js';
 
 jest.mock('../../../models/FieldServiceAgent.model.js');
+jest.mock('../../../utils/sequence.util.js', () => ({
+  getNextSequenceValue: jest.fn().mockResolvedValue(1),
+  formatSequenceId: jest.fn().mockReturnValue('AGT-000001'),
+}));
 jest.mock('../../../middleware/logger.middleware.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
@@ -174,17 +178,17 @@ describe('Agent Controller', () => {
       expect(res.json).toHaveBeenCalledWith({ message: 'Please fill in all required fields' });
     });
 
-    test('returns 400 when employeeId already exists', async () => {
+    test('returns 500 when ID generation cannot produce a unique employee ID', async () => {
       req.body = validBody;
-      FieldServiceAgent.findOne = jest.fn().mockResolvedValue({
-        ...mockAgent,
-        employeeId: validBody.employeeId,
-      });
+      // Email check passes (null), all subsequent ID-collision checks return an existing agent
+      FieldServiceAgent.findOne = jest.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({ ...mockAgent });
 
       await createAgent(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ message: 'Employee ID already exists' });
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Failed to generate a unique employee ID' });
     });
 
     test('returns 400 when email already registered', async () => {
