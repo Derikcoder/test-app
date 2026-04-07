@@ -89,7 +89,7 @@ const ServiceCalls = () => {
   [serviceCalls]
  );
  const awaitingQuoteApprovalCalls = useMemo(
-  () => serviceCalls.filter((call) => call.status === 'on-hold'),
+  () => serviceCalls.filter((call) => call.status === 'awaiting-quote-approval'),
   [serviceCalls]
  );
  const inProgressCalls = useMemo(
@@ -167,6 +167,7 @@ const ServiceCalls = () => {
    assigned: 'bg-blue-500/25 text-blue-200 border-blue-400/40',
    scheduled: 'bg-cyan-500/25 text-cyan-200 border-cyan-400/40',
    'in-progress': 'bg-indigo-500/25 text-indigo-200 border-indigo-400/40',
+   'awaiting-quote-approval': 'bg-amber-500/25 text-amber-200 border-amber-400/40',
    'on-hold': 'bg-orange-500/25 text-orange-200 border-orange-400/40',
    completed: 'bg-emerald-500/25 text-emerald-200 border-emerald-400/40',
    invoiced: 'bg-teal-500/25 text-teal-200 border-teal-400/40',

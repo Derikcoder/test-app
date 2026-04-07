@@ -341,7 +341,7 @@ const serviceCallSchema = new mongoose.Schema(
     /** Current status in the service call lifecycle */
     status: {
       type: String,
-      enum: ['pending', 'scheduled', 'assigned', 'in-progress', 'on-hold', 'completed', 'invoiced', 'cancelled'],
+      enum: ['pending', 'scheduled', 'assigned', 'in-progress', 'awaiting-quote-approval', 'on-hold', 'completed', 'invoiced', 'cancelled'],
       default: 'pending',
     },
     /** Type/category of service */

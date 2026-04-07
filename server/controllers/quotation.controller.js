@@ -584,6 +584,13 @@ export const createQuotationFromServiceCall = async (req, res) => {
       await quotation.populate('equipment', 'equipmentId equipmentType brand model');
     }
 
+    // Site inspection implied — advance the service call to awaiting-quote-approval
+    // so it surfaces correctly in the 'Attended — Quotation Submitted' queue.
+    if (!['completed', 'invoiced', 'cancelled'].includes(serviceCall.status)) {
+      serviceCall.status = 'awaiting-quote-approval';
+      await serviceCall.save();
+    }
+
     const responsePayload = quotation.toObject();
     responsePayload.autoResolution = autoResolution;
 
