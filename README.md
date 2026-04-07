@@ -64,12 +64,13 @@ This is an enterprise-grade field service management application built with the 
 - 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
 - ✅ Quote submission flow uses `Submit Quote` action semantics
 - 📄 Real quotation PDF generation endpoint available at `GET /api/quotations/:id/pdf`
-- 📤 Quote delivery endpoint available at `POST /api/quotations/:id/send` for optional Email/WhatsApp/Telegram distribution
+- 📤 Quote delivery: `POST /api/quotations/:id/send` — quote is published to the customer's portal immediately on submit (pass `channels: []`); also pass channel names (`email`, `whatsapp`, `telegram`) to deliver a PDF copy via external channels (for customers without a platform account)
+- 🧹 Stale-data purge: `DELETE /api/quotations/purge` — removes `expired`/`rejected` quotations and overdue `draft`/`sent` quotes past their `validUntil` date (superAdmin only, scoped to account)
 - 🔗 Public share link support for customer PDF access: `GET /api/quotations/share/:token/pdf`
 - 📊 Auto-calculated subtotal, VAT, and total during quotation creation
 - 🔁 Quote prefill from historical/service-call machine data
 - 🧠 Machine-model quote templates (Perkins/Cummins/generic fallback)
-- ⚡ Shortcut API to create quote from service call context: `POST /api/quotations/from-service-call/:serviceCallId`
+- ⚡ Shortcut API to create quote from service call context: `POST /api/quotations/from-service-call/:serviceCallId` — automatically advances the service call to `awaiting-quote-approval` status
 - 🎛️ Explicit template selector in quote modal: Auto, Perkins, Cummins, Emergency Repair, Generic
 - 🏷️ Optional line-item part number field to improve future auto-quote generation from machine/parts history
 - 📈 Unit cost entry now auto-applies tiered markup to selling unit price: <R1000 (50%), <R2000 (40%), <R3000 (30%), <R4000 (25%), <R5000 (20%), >=R5000 (20%)

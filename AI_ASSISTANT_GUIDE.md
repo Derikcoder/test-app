@@ -45,6 +45,22 @@
 
 ### Recent Changes
 
+#### Session: April 7, 2026 — Portal-Publish on Submit, `awaiting-quote-approval` Status, Quotation Delete + Purge
+**Commits:** `cfcbed5` (feat: auto portal-publish), `e2906f5` (feat: awaiting-quote-approval status), `e070c6f` (feat: delete + purge quotations)  
+**Focus:** Quotation lifecycle — instant portal visibility, new service-call status, bulk stale-data purge
+
+- ✅ `POST /api/quotations/:id/send` now accepts `channels: []` for portal-only publish (no external dispatch); non-empty array with all-invalid channel names still returns 400
+- ✅ `CreateQuoteModal.jsx` `handleSubmit` auto-calls `/send` with `channels: []` after creation — customer sees quote immediately in their portal
+- ✅ "Share Channels" UI section renamed to "Share PDF Externally" with clarifying description: portal-first, external channels are for non-account holders
+- ✅ New `ServiceCall` status enum value: `awaiting-quote-approval` (sits between `in-progress` and `on-hold`)
+- ✅ `createQuotationFromServiceCall` controller now auto-sets `serviceCall.status = 'awaiting-quote-approval'` after quote creation (unless terminal status)
+- ✅ `ServiceCalls.jsx` filter + amber badge updated to use `awaiting-quote-approval`
+- ✅ `DELETE /api/quotations/purge` — new endpoint (superAdmin only); deletes `expired`/`rejected` + overdue `draft`/`sent` (past `validUntil`); scoped to `createdBy`
+- ✅ Route registered before `DELETE /api/quotations/:id` to prevent conflict
+- ✅ Per-card two-step delete in `Quotations.jsx` (superAdmin + businessAdministrator; blocked for `converted`/`approved`)
+- ✅ "Purge Stale" button in `Quotations.jsx` filter bar (superAdmin only)
+- ✅ All 227 tests green across all three commits
+
 #### Session: April 6, 2026 — Auto-ID System, DB Resilience, Auth Hardening + Residential Customer Profile UI
 **Commits:** `589108b` (feat: auto-IDs, DB resilience, auth hardening), `c2d7cf6` (feature/customer-profile-ui), `801b5b2` (merge to main)  
 **Focus:** Backend infrastructure improvements + full residential customer profile page
@@ -1052,6 +1068,20 @@ git merge consolidation
 ---
 
 ## 🔄 Recent Changes
+
+### 2026-04-07 (Session 25)
+- ✅ Portal-publish on submit: `POST /api/quotations/:id/send` with `channels: []` → status `sent`; customer sees quote in portal immediately
+  - `sendQuotation` guard changed: empty array is allowed (portal-only); only non-empty all-invalid arrays → 400
+  - `CreateQuoteModal.jsx` `handleSubmit` auto-calls send with `channels: []` after creation; failure is non-fatal
+  - "Share Channels" section renamed "Share PDF Externally" to clarify portal-first model
+- ✅ New `ServiceCall` status `awaiting-quote-approval` between `in-progress` and `on-hold`
+  - `ServiceCall.model.js` enum updated
+  - `createQuotationFromServiceCall` controller auto-saves new status after `Quotation.create`
+  - `ServiceCalls.jsx` `awaitingQuoteApprovalCalls` filter and amber `colorMap` entry updated
+- ✅ Delete & purge quotations
+  - `purgeQuotations` controller (superAdmin only, scoped to `createdBy`): deletes `expired`/`rejected` + overdue `draft`/`sent`
+  - `DELETE /api/quotations/purge` route registered before `DELETE /api/quotations/:id`
+  - `Quotations.jsx`: per-card two-step delete (`superAdmin`/`businessAdministrator`; blocked for `converted`/`approved`); "Purge Stale" button
 
 ### 2026-03-23 (Session 23)
 ### 2026-03-24 (Session 24)
