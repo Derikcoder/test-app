@@ -268,8 +268,11 @@ describe('Customer Controller', () => {
 
     test('returns 500 when ID generation cannot produce a unique customer ID', async () => {
       req.body = validResidentialBody;
-      // All ID-collision checks return an existing customer, exhausting the retry loop
-      Customer.findOne = jest.fn().mockResolvedValue(mockResidentialCustomer);
+      // First call is the duplicate-email check (returns null = no duplicate),
+      // subsequent calls are the ID-collision checks (return a customer to exhaust the retry loop)
+      Customer.findOne = jest.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue(mockResidentialCustomer);
 
       await createCustomer(req, res);
 
