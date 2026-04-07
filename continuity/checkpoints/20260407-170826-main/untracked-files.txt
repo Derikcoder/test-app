@@ -1,0 +1,5 @@
+continuity/checkpoints/20260407-170826-main/git-status-short.txt
+continuity/checkpoints/20260407-170826-main/git-status.txt
+continuity/checkpoints/20260407-170826-main/staged.diff
+continuity/checkpoints/20260407-170826-main/unstaged.diff
+continuity/checkpoints/20260407-170826-main/untracked-files.txt
