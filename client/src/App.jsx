@@ -80,6 +80,40 @@ const ProtectedRoute = ({ children }) => {
 };
 
 /**
+ * Admin-Only Route Wrapper Component
+ *
+ * @component
+ * @param {Object} props
+ * @param {React.ReactNode} props.children - Child components to render if authorised
+ *
+ * @description
+ * Extends ProtectedRoute with role-based access control.
+ * Only superAdmin and businessAdministrator roles may access wrapped routes.
+ * customer and fieldServiceAgent roles are redirected to /profile.
+ */
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+        <div className="glass-card p-8 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-b-transparent mx-auto mb-4"></div>
+          <p className="text-lg font-semibold opacity-90" style={{ color: 'white' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" />;
+
+  const adminRoles = ['superAdmin', 'businessAdministrator'];
+  if (!adminRoles.includes(user.role)) return <Navigate to="/profile" />;
+
+  return children;
+};
+
+/**
  * Main Application Component
  * 
  * @component
@@ -123,41 +157,41 @@ function App() {
             <Route
               path="/quotations"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Quotations />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/agents"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <FieldServiceAgents />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/agents/:id"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AgentProfile />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/customers"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Customers />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/customers/register"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <RegisterNewCustomer />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
@@ -212,9 +246,9 @@ function App() {
             <Route
               path="/service-call-registration"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <ServiceCallRegistration />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
 

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { getPostLoginRedirect } from '../utils/authRedirect';
 
 /**
  * Reset Password Component
@@ -101,8 +102,8 @@ const ResetPassword = () => {
    // Log user in with returned token
    login(response.data.user);
    
-   // Redirect to profile
-   navigate('/profile');
+   // Redirect based on role (customers land on their profile page)
+   navigate(getPostLoginRedirect(response.data.user));
   } catch (err) {
    setError(
     err.response?.data?.message || 

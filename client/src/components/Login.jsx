@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { getPostLoginRedirect } from '../utils/authRedirect';
 
 /**
  * Login Component
@@ -90,8 +91,9 @@ const Login = () => {
 
         try {
             const response = await api.post('/auth/login', formData);
-            login(response.data);
-            navigate('/profile');
+            const data = response.data;
+            login(data);
+            navigate(getPostLoginRedirect(data));
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {

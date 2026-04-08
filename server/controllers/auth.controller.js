@@ -366,6 +366,7 @@ export const registerUser = async (req, res) => {
         role: user.role,
         fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
         customerProfile: user.customerProfile || null,
+        customerType: customerProfile ? customerProfile.customerType : null,
         token: generateToken(user._id),
       });
     } else {
@@ -432,6 +433,13 @@ export const loginUser = async (req, res) => {
     // Verify user exists and password matches
     if (user && (await user.comparePassword(password))) {
       logInfo(`✅ User logged in successfully: ${user.email}`);
+
+      // Look up customerType from the linked Customer record for customer-role users
+      let customerType = null;
+      if (user.role === 'customer' && user.customerProfile) {
+        const customerDoc = await Customer.findById(user.customerProfile).select('customerType');
+        customerType = customerDoc?.customerType ?? null;
+      }
       
       // Return user data with JWT token
       res.json({
@@ -449,6 +457,7 @@ export const loginUser = async (req, res) => {
         role: user.role,
         fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
         customerProfile: user.customerProfile || null,
+        customerType: customerType,
         token: generateToken(user._id),
       });
     } else {
@@ -1486,17 +1495,36 @@ export const resetPassword = async (req, res) => {
     await user.save();
     
     logInfo(`✅ Password reset successful for user: ${user.email}`);
+
+    // Look up customerType for customer-role users
+    let customerType = null;
+    if (user.role === 'customer' && user.customerProfile) {
+      const customerDoc = await Customer.findById(user.customerProfile).select('customerType');
+      customerType = customerDoc?.customerType ?? null;
+    }
     
-    // Return success with login token
+    // Return success with login token — token is included inside user object so
+    // login(response.data.user) in the frontend stores a fully-formed auth session
     res.status(200).json({
       message: 'Password reset successful! You are now logged in.',
-      token: generateToken(user._id),
       user: {
         _id: user._id,
         userName: user.userName,
         email: user.email,
         businessName: user.businessName,
-      }
+        businessRegistrationNumber: user.businessRegistrationNumber,
+        taxNumber: user.taxNumber,
+        vatNumber: user.vatNumber,
+        phoneNumber: user.phoneNumber,
+        physicalAddress: user.physicalAddress,
+        websiteAddress: user.websiteAddress,
+        isSuperUser: user.isSuperUser,
+        role: user.role,
+        fieldServiceAgentProfile: user.fieldServiceAgentProfile || null,
+        customerProfile: user.customerProfile || null,
+        customerType: customerType,
+        token: generateToken(user._id),
+      },
     });
   } catch (error) {
     logError('Reset password error:', error);

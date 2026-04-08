@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { getPostLoginRedirect } from '../utils/authRedirect';
 
 const ROLE_OPTIONS = [
   {
@@ -105,8 +106,8 @@ const Register = () => {
    // Store user info and token
    login(response.data);
    
-   // Redirect to profile
-   navigate('/profile');
+   // Redirect based on role (customers land on their profile page)
+   navigate(getPostLoginRedirect(response.data));
   } catch (err) {
    setError(err.response?.data?.message || 'Registration failed. Please try again.');
   } finally {
