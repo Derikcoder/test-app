@@ -99,3 +99,10 @@ Chronological checkpoint record for crash recovery and continuity.
 - Checkpoint: 20260407-173027-main
 - Note: Checkpoint snapshot
 - Next Action: Continue from latest checkpoint notes
+
+## 2026-04-08 13:58:48 SAST
+- Branch: main
+- HEAD: 53e4b1a
+- Checkpoint: 20260408-135848-main
+- Note: post-crash-recovery-all-committed
+- Next Action: Resume: quotation approval portal + final invoice committed; all tests green

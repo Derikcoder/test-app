@@ -24,6 +24,9 @@ const ServiceCalls = () => {
  const [loading, setLoading] = useState(true);
  const [pendingDeleteId, setPendingDeleteId] = useState('');
  const [deletingCallId, setDeletingCallId] = useState('');
+ const [markingCompleteId, setMarkingCompleteId] = useState('');
+ const [creatingInvoiceId, setCreatingInvoiceId] = useState('');
+ const [invoiceSuccessMap, setInvoiceSuccessMap] = useState({});
 
  const fetchServiceCalls = async () => {
   try {
@@ -152,6 +155,44 @@ const ServiceCalls = () => {
   }
  };
 
+ const handleMarkComplete = async (call) => {
+  setMarkingCompleteId(call._id);
+  setQueueActionError('');
+  try {
+   await api.put(
+    `/service-calls/${call._id}`,
+    { status: 'completed' },
+    { headers: { Authorization: `Bearer ${user?.token}` } }
+   );
+   setQueueActionSuccess(`${call.callNumber || call._id} marked as completed.`);
+   await fetchServiceCalls();
+  } catch (err) {
+   setQueueActionError(err?.response?.data?.message || 'Failed to mark call as complete.');
+  } finally {
+   setMarkingCompleteId('');
+  }
+ };
+
+ const handleCreateInvoice = async (call) => {
+  setCreatingInvoiceId(call._id);
+  setQueueActionError('');
+  try {
+   const res = await api.post(
+    `/invoices/from-service-call/${call._id}/final`,
+    {},
+    { headers: { Authorization: `Bearer ${user?.token}` } }
+   );
+   const num = res.data?.invoice?.invoiceNumber;
+   setInvoiceSuccessMap((prev) => ({ ...prev, [call._id]: num || 'Created' }));
+   setQueueActionSuccess(`Invoice ${num} created for ${call.callNumber || call._id}.`);
+   await fetchServiceCalls();
+  } catch (err) {
+   setQueueActionError(err?.response?.data?.message || 'Failed to create invoice.');
+  } finally {
+   setCreatingInvoiceId('');
+  }
+ };
+
  const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A';
   return new Date(dateStr).toLocaleDateString('en-ZA', {
@@ -229,12 +270,53 @@ const ServiceCalls = () => {
     </div>
    )}
    {isAdmin && (
-    <div className="pt-2 border-t border-white/10 mt-1">
+    <div className="pt-2 border-t border-white/10 mt-1 flex flex-col gap-2">
+
+     {/* Mark Complete — for in-progress calls */}
+     {call.status === 'in-progress' && (
+      <button
+       type="button"
+       disabled={markingCompleteId === call._id}
+       onClick={() => handleMarkComplete(call)}
+       className="rounded-lg bg-emerald-500/25 hover:bg-emerald-500/35 border border-emerald-300/30 px-4 py-1.5 text-xs font-semibold text-emerald-200 disabled:opacity-50 transition"
+      >
+       {markingCompleteId === call._id ? 'Marking complete…' : '✓ Mark as Complete'}
+      </button>
+     )}
+
+     {/* Create Invoice — for completed (not yet invoiced) calls */}
+     {call.status === 'completed' && !call.invoice && (
+      <button
+       type="button"
+       disabled={creatingInvoiceId === call._id}
+       onClick={() => handleCreateInvoice(call)}
+       className="rounded-lg bg-teal-500/25 hover:bg-teal-500/35 border border-teal-300/30 px-4 py-1.5 text-xs font-semibold text-teal-200 disabled:opacity-50 transition"
+      >
+       {creatingInvoiceId === call._id ? 'Creating invoice…' : '+ Create Invoice'}
+      </button>
+     )}
+
+     {/* Invoice reference — for invoiced calls or freshly created */}
+     {(call.status === 'invoiced' || invoiceSuccessMap[call._id]) && (
+      <div className="flex items-center gap-2 flex-wrap">
+       <span className="text-[10px] font-bold uppercase tracking-wide text-teal-300">Invoice</span>
+       <span className="text-xs font-semibold text-white/80">
+        {call.invoice?.invoiceNumber || invoiceSuccessMap[call._id] || '—'}
+       </span>
+       {call.invoice?.totalAmount != null && (
+        <span className="text-xs text-yellow-300 font-bold">
+         R {Number(call.invoice.totalAmount).toFixed(2)}
+        </span>
+       )}
+      </div>
+     )}
+
+     {/* Delete */}
      {pendingDeleteId !== call._id ? (
       <button
        type="button"
        onClick={() => setPendingDeleteId(call._id)}
-       className="text-xs text-red-400 hover:text-red-300 font-semibold transition-colors"
+       className="text-xs text-red-400 hover:text-red-300 font-semibold transition-colors self-start"
       >
        Delete call
       </button>
