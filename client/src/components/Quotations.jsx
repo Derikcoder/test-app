@@ -352,7 +352,7 @@ const Quotations = () => {
   return (
     <>
       <Sidebar />
-      <div className="min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 pt-20 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1200px] mx-auto">
 
           {/* Page header */}

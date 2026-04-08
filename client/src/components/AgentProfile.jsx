@@ -6,7 +6,7 @@ import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
 import SiteInstructionModal from './SiteInstructionModal';
 
-const pageShellClass = 'min-h-screen bg-slate-950 py-8 px-3 sm:px-6 lg:px-8';
+const pageShellClass = 'min-h-screen bg-slate-950 pt-20 pb-8 px-3 sm:px-6 lg:px-8';
 const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
 const statCardClass = 'rounded-xl border border-slate-700 bg-slate-900/85 p-6';
 const tabActiveClass = 'text-cyan-300 border-b-2 border-cyan-300';

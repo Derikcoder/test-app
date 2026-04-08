@@ -241,7 +241,7 @@ const UserProfile = () => {
  return (
   <>
    <Sidebar />
-   <div className="glass-bg-particles auth-surface min-h-screen bg-fixed py-10 px-4 sm:px-6 lg:px-8">
+   <div className="glass-bg-particles auth-surface min-h-screen bg-fixed pt-20 pb-10 px-4 sm:px-6 lg:px-8">
     <div className="mx-auto max-w-7xl">
      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.15fr_1fr]">
       <section className="auth-aside-card">

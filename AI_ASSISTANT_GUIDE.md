@@ -1124,6 +1124,21 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-04-08 (Session 26)
+- ✅ Site-wide nav z-index / padding fix (UI/UX)
+  - **Problem**: Sidebar hamburger button (`fixed top-4 inset-x-0 z-50`) was visually overlapping page headers (e.g. "+ Create Agent" button) because all page content wrappers used `py-8`/`py-10`/`py-12` (32–48px) — less than the nav's ~64px height.
+  - **Fix**: Split vertical padding on all Sidebar-using pages: `py-*` → `pt-20 pb-*` (80px top = 16px clearance).
+  - **Scope**: 10 files changed:
+    - `client/src/index.css` — `.page-body` utility: `py-12` → `pt-20 pb-12` (covers Customers, ServiceCalls, RegisterNewCustomer, ServiceCallRegistration)
+    - `FieldServiceAgents.jsx` + `AgentProfile.jsx` — `pageShellClass` constant: `py-8` → `pt-20 pb-8`
+    - `ResidentialCustomer.jsx`, `BranchCustomer.jsx`, `FranchiseCustomer.jsx`, `HeadOfficeCustomer.jsx`, `SingleBusinessCustomer.jsx` — inline `py-10` → `pt-20 pb-10`
+    - `UserProfile.jsx` — inline `py-10` → `pt-20 pb-10`
+    - `Quotations.jsx` — inline `py-12` → `pt-20 pb-12`
+  - Also includes `FieldServiceAgents.jsx` syntax fix (missing `);` `};` before `export default`, from prior session)
+- ✅ UAT test accounts added to `server/.env` under "App Test Accounts Secrets" section
+  - Field Service Agent: `UAT_FIELD_AGENT_EMAIL` / `UAT_FIELD_AGENT_PASSWORD`
+  - Customer (Private): `UAT_CUSTOMER_EMAIL` / `UAT_CUSTOMER_PASSWORD`
+
 ### 2026-04-07 (Session 25)
 - ✅ Portal-publish on submit: `POST /api/quotations/:id/send` with `channels: []` → status `sent`; customer sees quote in portal immediately
   - `sendQuotation` guard changed: empty array is allowed (portal-only); only non-empty all-invalid arrays → 400

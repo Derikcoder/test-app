@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
 
-const pageShellClass = 'min-h-screen bg-slate-950 py-8 px-3 sm:px-6 lg:px-8';
+const pageShellClass = 'min-h-screen bg-slate-950 pt-20 pb-8 px-3 sm:px-6 lg:px-8';
 const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
 const inputClass = 'w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30';
 const roleLabelMap = {
@@ -493,4 +493,7 @@ const FieldServiceAgents = () => {
    </div>
   )}
  </>
+ );
+};
+
 export default FieldServiceAgents;

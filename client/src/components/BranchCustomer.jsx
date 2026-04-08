@@ -211,7 +211,7 @@ const BranchCustomer = () => {
  return (
   <>
    <Sidebar />
-   <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 py-10 px-4 sm:px-6 lg:px-8">
+   <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 pt-20 pb-10 px-4 sm:px-6 lg:px-8">
     <div className="max-w-[1040px] mx-auto space-y-6">
 
      <button onClick={() => navigate('/customers')}
