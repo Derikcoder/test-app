@@ -18,6 +18,7 @@ import {
   getOverdueInvoicesSummary,
   createInvoice,
   upsertProFormaInvoiceFromServiceCall,
+  createFinalInvoiceFromServiceCall,
   recordPayment,
   updateInvoice,
   updateInvoiceWorkflowStatus,
@@ -53,6 +54,13 @@ router.post('/', protect, createInvoice);
  * @access  Private (JWT required)
  */
 router.post('/from-service-call/:serviceCallId/pro-forma', protect, upsertProFormaInvoiceFromServiceCall);
+
+/**
+ * @route   POST /api/invoices/from-service-call/:serviceCallId/final
+ * @desc    Create a final invoice seeded from the approved quotation on a completed service call
+ * @access  Private (JWT required)
+ */
+router.post('/from-service-call/:serviceCallId/final', protect, createFinalInvoiceFromServiceCall);
 
 /**
  * @route   GET /api/invoices/share/:token

@@ -39,9 +39,9 @@ const FranchiseCustomer = () => {
   return (
    <>
     <Sidebar />
-    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+    <div className="page-center">
      <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
+      <div className="spinner-lg"></div>
       <p className="mt-4 text-white/70">Loading customer...</p>
      </div>
     </div>
@@ -53,7 +53,7 @@ const FranchiseCustomer = () => {
   return (
    <>
     <Sidebar />
-    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+    <div className="page-center">
      <div className="glass-card p-8 text-center">
       <p className="text-red-300">{error || 'Customer not found'}</p>
       <button onClick={() => navigate('/customers')} className="glass-btn-primary mt-4 px-6 py-2">
@@ -68,7 +68,7 @@ const FranchiseCustomer = () => {
  return (
   <>
    <Sidebar />
-   <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 py-12 px-4 sm:px-6 lg:px-8">
+   <div className="page-body sm:px-6 lg:px-8">
     <div className="max-w-[1000px] mx-auto">
 
      {/* Header */}

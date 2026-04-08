@@ -173,23 +173,23 @@ const Sidebar = () => {
             <div className="mt-6 rounded-lg border border-slate-700 bg-slate-900/80 p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">Entity Legend</p>
               <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-200">
-                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                <div className="collapsible-hd">
                   <span>Field Agents</span>
                   <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                <div className="collapsible-hd">
                   <span>Customers</span>
                   <span className="h-2.5 w-2.5 rounded-full bg-indigo-400" />
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                <div className="collapsible-hd">
                   <span>Service Calls</span>
                   <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                <div className="collapsible-hd">
                   <span>Quotations</span>
                   <span className="h-2.5 w-2.5 rounded-full bg-orange-400" />
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                <div className="collapsible-hd">
                   <span>Invoices / Pro-Forma</span>
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
                 </div>

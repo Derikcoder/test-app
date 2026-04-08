@@ -160,7 +160,7 @@ const FieldServiceAgents = () => {
              <h2 className="text-xl font-bold mb-6 text-slate-100">Add New Agent</h2>
        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="glass-form-group">
-                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">First Name *</label>
+                 <label className="dark-label">First Name *</label>
          <input
           type="text"
           name="firstName"
@@ -171,7 +171,7 @@ const FieldServiceAgents = () => {
          />
         </div>
         <div className="glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Last Name *</label>
+         <label className="dark-label">Last Name *</label>
          <input
           type="text"
           name="lastName"
@@ -182,7 +182,7 @@ const FieldServiceAgents = () => {
          />
         </div>
         <div className="glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Email *</label>
+         <label className="dark-label">Email *</label>
          <input
           type="email"
           name="email"
@@ -193,7 +193,7 @@ const FieldServiceAgents = () => {
          />
         </div>
         <div className="glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Phone Number *</label>
+         <label className="dark-label">Phone Number *</label>
          <input
           type="text"
           name="phoneNumber"
@@ -204,7 +204,7 @@ const FieldServiceAgents = () => {
          />
         </div>
         <div className="glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Status</label>
+         <label className="dark-label">Status</label>
          <select
           name="status"
           value={formData.status}
@@ -217,7 +217,7 @@ const FieldServiceAgents = () => {
          </select>
         </div>
         <div className="glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Assigned Area</label>
+         <label className="dark-label">Assigned Area</label>
          <input
           type="text"
           name="assignedArea"
@@ -227,7 +227,7 @@ const FieldServiceAgents = () => {
          />
         </div>
         <div className="glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Vehicle Number</label>
+         <label className="dark-label">Vehicle Number</label>
          <input
           type="text"
           name="vehicleNumber"
@@ -237,7 +237,7 @@ const FieldServiceAgents = () => {
          />
         </div>
         <div className="md:col-span-2 glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Skills (comma separated)</label>
+         <label className="dark-label">Skills (comma separated)</label>
          <input
           type="text"
           name="skills"
@@ -248,7 +248,7 @@ const FieldServiceAgents = () => {
          />
         </div>
         <div className="md:col-span-2 glass-form-group">
-         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300">Notes</label>
+         <label className="dark-label">Notes</label>
          <textarea
           name="notes"
           value={formData.notes}
@@ -292,11 +292,11 @@ const FieldServiceAgents = () => {
         <table className="w-full">
                  <thead className="bg-slate-900 border-b border-slate-700">
           <tr>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-cyan-300 uppercase tracking-wide">Name</th>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-cyan-300 uppercase tracking-wide">Employee ID</th>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-cyan-300 uppercase tracking-wide">Contact</th>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-cyan-300 uppercase tracking-wide">Status</th>
-                     <th className="px-6 py-3 text-left text-xs font-medium text-cyan-300 uppercase tracking-wide">Area</th>
+                     <th className="th-cyan">Name</th>
+                     <th className="th-cyan">Employee ID</th>
+                     <th className="th-cyan">Contact</th>
+                     <th className="th-cyan">Status</th>
+                     <th className="th-cyan">Area</th>
                      <th className="px-6 py-3 text-right text-xs font-medium text-cyan-300 uppercase tracking-wide">Actions</th>
           </tr>
          </thead>

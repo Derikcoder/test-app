@@ -19,6 +19,7 @@ const Login = lazy(() => import('./components/Login'));
 const ForgotPassword = lazy(() => import('./components/ForgotPassword'));
 const ResetPassword = lazy(() => import('./components/ResetPassword'));
 const InvoiceApprovalPage = lazy(() => import('./components/InvoiceApprovalPage'));
+const QuotationApprovalPage = lazy(() => import('./components/QuotationApprovalPage'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
 const FieldServiceAgents = lazy(() => import('./components/FieldServiceAgents'));
 const AgentProfile = lazy(() => import('./components/AgentProfile'));
@@ -108,6 +109,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/invoice-approval/:token" element={<InvoiceApprovalPage />} />
+            <Route path="/quotation-approval/:token" element={<QuotationApprovalPage />} />
 
             {/* Protected Routes - Require authentication */}
             <Route

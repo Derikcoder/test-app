@@ -149,7 +149,7 @@ export const getServiceCalls = async (req, res) => {
     const serviceCalls = await ServiceCall.find({ createdBy: req.user._id })
       .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
       .populate('assignedAgent', 'firstName lastName employeeId')
-      .populate('quotation', 'quotationNumber title status totalAmount')
+      .populate({ path: 'quotation', select: 'quotationNumber title status totalAmount createdBy', populate: { path: 'createdBy', select: 'userName role' } })
       .populate('proFormaInvoice', 'invoiceNumber documentType workflowStatus totalAmount depositRequired depositAmount')
       .populate('invoice', 'invoiceNumber documentType workflowStatus totalAmount paymentStatus')
       .sort({ createdAt: -1 });

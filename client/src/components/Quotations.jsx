@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import CreateQuoteModal from './CreateQuoteModal';
 
 /**
  * Source label map for autoResolutionSnapshot source values
@@ -532,6 +533,21 @@ const Quotations = () => {
                       <p className="mt-3 text-xs text-white/30 italic">
                         No template resolution data — quote was created manually or before auto-resolution was enabled.
                       </p>
+                    )}
+
+                    {/* Edit action — for draft/sent quotations */}
+                    {(q.status === 'draft' || q.status === 'sent') && (
+                      <div className="mt-3">
+                        <CreateQuoteModal
+                          token={user?.token}
+                          isSuperUser={isAdmin}
+                          editMode
+                          existingQuotation={q}
+                          triggerLabel="Edit quotation"
+                          triggerClassName="text-xs text-amber-300/80 hover:text-amber-200 underline underline-offset-2"
+                          onCreated={fetchQuotations}
+                        />
+                      </div>
                     )}
 
                     {/* Delete action — admin only, blocked for converted/approved */}

@@ -466,6 +466,90 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
   }
 };
 
+// @desc    Create a final invoice seeded from the approved quotation linked to a completed service call
+// @route   POST /api/invoices/from-service-call/:serviceCallId/final
+// @access  Private (JWT required)
+export const createFinalInvoiceFromServiceCall = async (req, res) => {
+  try {
+    const serviceCall = await ServiceCall.findOne({ _id: req.params.serviceCallId, createdBy: req.user._id })
+      .populate('quotation')
+      .populate('customer')
+      .populate('equipment');
+
+    if (!serviceCall) {
+      return res.status(404).json({ message: 'Service call not found' });
+    }
+
+    // Idempotency: return existing final invoice if one was already created
+    const existing = await populateInvoiceDocument(
+      Invoice.findOne({ serviceCall: serviceCall._id, documentType: 'final', createdBy: req.user._id })
+    );
+    if (existing) {
+      return res.json({ invoice: existing, created: false });
+    }
+
+    const linkedQuotation = serviceCall.quotation?._id
+      ? await Quotation.findOne({ _id: serviceCall.quotation._id, createdBy: req.user._id })
+      : null;
+    const resolvedCustomer = serviceCall.customer?._id || linkedQuotation?.customer;
+
+    if (!resolvedCustomer) {
+      return res.status(409).json({ message: 'A linked customer is required before a final invoice can be created.' });
+    }
+
+    const seed = mapQuotationToInvoiceSeed({ quotation: linkedQuotation, serviceCall });
+    const costing = calculateInvoiceCosts(seed);
+
+    const invoice = await Invoice.create({
+      serviceCall: serviceCall._id,
+      quotation: linkedQuotation?._id,
+      customer: resolvedCustomer,
+      siteId: serviceCall.siteId || linkedQuotation?.siteId,
+      equipment: serviceCall.equipment?._id || linkedQuotation?.equipment,
+      title: seed.title,
+      description: seed.description,
+      documentType: 'final',
+      workflowStatus: 'finalized',
+      serviceType: linkedQuotation?.serviceType || serviceCall.serviceType,
+      serviceDate: serviceCall.completedDate || serviceCall.scheduledDate || new Date(),
+      lineItems: costing.normalizedLineItems,
+      partsFulfilmentMode: costing.partsFulfilmentMode,
+      deliveryProvider: costing.deliveryProvider,
+      partsProcurementCost: costing.partsProcurementCost,
+      thirdPartyDeliveryCost: costing.thirdPartyDeliveryCost,
+      estimatedPartsProfit: costing.estimatedPartsProfit,
+      laborHours: costing.laborHours,
+      laborRate: costing.laborRate,
+      laborCost: costing.laborCost,
+      partsCost: costing.partsCost,
+      distanceTravelledKm: costing.distanceTravelledKm,
+      travelRatePerKm: costing.travelRatePerKm,
+      travelTimeMinutes: costing.travelTimeMinutes,
+      timeTravelledCost: costing.timeTravelledCost,
+      travelCost: costing.travelCost,
+      consumablesRate: costing.consumablesRate,
+      consumablesCost: costing.consumablesCost,
+      subtotal: costing.subtotal,
+      vatRate: costing.vatRate,
+      vatAmount: costing.vatAmount,
+      totalAmount: costing.totalAmount,
+      paymentTerms: linkedQuotation?.paymentTerms || 30,
+      notes: seed.notes,
+      terms: seed.terms,
+      createdBy: req.user._id,
+    });
+
+    await syncServiceCallInvoicePointers({ invoice, serviceCall, mode: 'final' });
+    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id, createdBy: req.user._id }));
+
+    logInfo(`✅ Final invoice created: ${invoice.invoiceNumber} for service call ${serviceCall.callNumber}`);
+    res.status(201).json({ invoice: populated, created: true });
+  } catch (error) {
+    logError('Create final invoice error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const createInvoice = async (req, res) => {
   try {
     const {

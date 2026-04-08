@@ -308,19 +308,19 @@ const UserProfile = () => {
           <h3 className="glass-heading-secondary mb-3 text-left">User Details</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Username</p>
+            <p className="col-label">Username</p>
             <p className="font-semibold text-white">{user.userName}</p>
            </div>
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Email</p>
+            <p className="col-label">Email</p>
             <p className="font-semibold text-white">{user.email}</p>
            </div>
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Phone Number</p>
+            <p className="col-label">Phone Number</p>
             <p className="font-semibold text-white">{user.phoneNumber || 'Not provided'}</p>
            </div>
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Role</p>
+            <p className="col-label">Role</p>
             <p className="font-semibold text-white">{profileRole}</p>
            </div>
           </div>
@@ -330,19 +330,19 @@ const UserProfile = () => {
           <h3 className="glass-heading-secondary mb-3 text-left">Business Information</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Business Name</p>
+            <p className="col-label">Business Name</p>
             <p className="font-semibold text-white">{user.businessName || 'Not provided'}</p>
            </div>
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Registration Number</p>
+            <p className="col-label">Registration Number</p>
             <p className="font-semibold text-white">{user.businessRegistrationNumber || 'Not provided'}</p>
            </div>
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Tax Number</p>
+            <p className="col-label">Tax Number</p>
             <p className="font-semibold text-white">{user.taxNumber || 'Not provided'}</p>
            </div>
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">VAT Number</p>
+            <p className="col-label">VAT Number</p>
             <p className="font-semibold text-white">{user.vatNumber || 'Not provided'}</p>
            </div>
           </div>
@@ -352,11 +352,11 @@ const UserProfile = () => {
           <h3 className="glass-heading-secondary mb-3 text-left">Address & Web</h3>
           <div className="space-y-3">
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Physical Address</p>
+            <p className="col-label">Physical Address</p>
             <p className="font-semibold text-white">{user.physicalAddress || 'Not provided'}</p>
            </div>
            <div>
-            <p className="text-xs uppercase tracking-wider text-white/70">Website</p>
+            <p className="col-label">Website</p>
             {user.websiteAddress ? (
              <a
               href={user.websiteAddress}
@@ -570,7 +570,7 @@ const UserProfile = () => {
         <h2 className="text-base font-bold text-white mb-4">📄 Pending Quotations</h2>
         {quotsLoading ? (
          <div className="flex items-center gap-3 py-2">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400" />
+          <div className="spinner-sm" />
           <span className="text-sm text-white/50">Loading quotations…</span>
          </div>
         ) : pendingQuotations.length === 0 ? (

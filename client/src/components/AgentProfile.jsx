@@ -36,7 +36,21 @@ const AgentProfile = () => {
  const [actionError, setActionError] = useState('');
  const [actionSuccess, setActionSuccess] = useState('');
  const [acceptingCallId, setAcceptingCallId] = useState('');
+ const [completingCallId, setCompletingCallId] = useState(null);
+ const [creatingInvoiceCallId, setCreatingInvoiceCallId] = useState(null);
  const [activeTab, setActiveTab] = useState('all');
+ const [editingQuotation, setEditingQuotation] = useState(null);
+
+ const handleEditQuotation = async (quotationId) => {
+  try {
+   const res = await api.get(`/quotations/${quotationId}`, {
+    headers: { Authorization: `Bearer ${user.token}` },
+   });
+   setEditingQuotation(res.data);
+  } catch (err) {
+   setActionError(err?.response?.data?.message || 'Failed to load quotation for editing.');
+  }
+ };
 
  useEffect(() => {
   fetchAgentData();
@@ -108,11 +122,49 @@ const AgentProfile = () => {
   }
  };
 
+ const markJobComplete = async (callId) => {
+  setActionError('');
+  setActionSuccess('');
+  setCompletingCallId(callId);
+  try {
+   await api.put(
+    `/service-calls/${callId}`,
+    { status: 'completed' },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+   setActionSuccess('Job marked as completed.');
+   await fetchAgentData();
+  } catch (err) {
+   setActionError(err.response?.data?.message || 'Failed to mark job as complete.');
+  } finally {
+   setCompletingCallId(null);
+  }
+ };
+
+ const createFinalInvoice = async (callId) => {
+  setActionError('');
+  setActionSuccess('');
+  setCreatingInvoiceCallId(callId);
+  try {
+   await api.post(
+    `/invoices/from-service-call/${callId}/final`,
+    {},
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+   setActionSuccess('Invoice created successfully.');
+   await fetchAgentData();
+  } catch (err) {
+   setActionError(err.response?.data?.message || 'Failed to create invoice.');
+  } finally {
+   setCreatingInvoiceCallId(null);
+  }
+ };
+
  // Calculate statistics
  const stats = {
   total: serviceCalls.length,
   completed: serviceCalls.filter(call => call.status === 'completed').length,
-  inProgress: serviceCalls.filter(call => call.status === 'in-progress').length,
+  inProgress: serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval').length,
   toBeAttended: serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open').length,
   unassigned: eligibleUnassignedCalls.length,
  };
@@ -123,7 +175,7 @@ const AgentProfile = () => {
    case 'completed':
     return serviceCalls.filter(call => call.status === 'completed');
    case 'in-progress':
-    return serviceCalls.filter(call => call.status === 'in-progress');
+    return serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval');
    case 'to-attend':
     return serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open');
    case 'unassigned':
@@ -139,6 +191,10 @@ const AgentProfile = () => {
     return 'bg-green-500/30 text-green-100 border border-green-400/50';
    case 'in-progress':
     return 'bg-blue-500/30 text-blue-100 border border-blue-400/50';
+   case 'awaiting-quote-approval':
+    return 'bg-purple-500/30 text-purple-100 border border-purple-400/50';
+   case 'invoiced':
+    return 'bg-teal-500/30 text-teal-100 border border-teal-400/50';
    case 'assigned':
     return 'bg-yellow-500/30 text-yellow-100 border border-yellow-400/50';
    case 'open':
@@ -670,6 +726,22 @@ const AgentProfile = () => {
                 <span className="ml-2 text-slate-100">{call.serviceLocation || call.location}</span>
                </div>
               )}
+              {call.quotation && ['sent', 'approved'].includes(call.quotation.status) && (
+               <div className="col-span-2 rounded-lg border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200">
+                <span className="font-semibold">
+                 {call.quotation.status === 'approved' ? '✓ Approved Quotation' : '⏳ Quotation Sent — Awaiting Approval'}
+                </span>{': '}
+                {call.quotation.quotationNumber}
+                {call.quotation.title ? ` — ${call.quotation.title}` : ''}
+                {call.quotation.totalAmount != null ? ` — R${Number(call.quotation.totalAmount).toLocaleString()}` : ''}
+                {call.quotation.createdBy && (
+                 <span className="ml-2 text-xs text-emerald-400">
+                  · Created by: {call.quotation.createdBy.userName}
+                  {call.quotation.createdBy.role ? ` (${roleLabelMap[call.quotation.createdBy.role] || call.quotation.createdBy.role})` : ''}
+                 </span>
+                )}
+               </div>
+              )}
               <div className="col-span-2 pt-1">
                {hasPhone ? (
                 <div className="flex flex-wrap gap-2 items-center">
@@ -677,7 +749,7 @@ const AgentProfile = () => {
                   href={`https://wa.me/${whatsappPhone}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-100 transition"
+                  className="btn-action-emerald"
                   title="Start WhatsApp call/chat with customer"
                  >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -687,7 +759,7 @@ const AgentProfile = () => {
                  </a>
                  <a
                   href={`tel:${telPhone}`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-950 hover:bg-blue-900 border border-blue-700 px-3 py-2 text-sm font-semibold text-blue-100 transition"
+                  className="btn-action-blue"
                   title="Place a regular phone call"
                  >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -695,31 +767,70 @@ const AgentProfile = () => {
                   </svg>
                   Call Customer
                  </a>
-                 <CreateQuoteModal
-                  token={user?.token}
-                  isSuperUser={Boolean(user?.isSuperUser)}
-                  sourceData={buildQuoteSourceFromCall(call)}
-                  triggerLabel="Create Quote"
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-950 hover:bg-amber-900 border border-amber-700 px-3 py-2 text-sm font-semibold text-amber-100 transition"
-                  onCreated={fetchAgentData}
-                 />
+                 {(!call.quotation || !['sent', 'approved', 'converted'].includes(call.quotation.status)) && (
+                  <CreateQuoteModal
+                   token={user?.token}
+                   isSuperUser={Boolean(user?.isSuperUser)}
+                   sourceData={buildQuoteSourceFromCall(call)}
+                   triggerLabel="Create Quote"
+                   triggerClassName="btn-action-amber"
+                   onCreated={fetchAgentData}
+                  />
+                 )}
+                 {call.quotation && call.quotation.status === 'sent' && (
+                  <button
+                   type="button"
+                   onClick={() => handleEditQuotation(call.quotation._id)}
+                   className="btn-action-amber"
+                  >
+                   Edit Quote
+                  </button>
+                 )}
                  <SiteInstructionModal
                   token={user?.token}
                   serviceCall={call}
                   roleLabel={roleLabel}
                   isSuperAdmin={isSuperAdmin}
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 px-3 py-2 text-sm font-semibold text-cyan-100 transition"
+                  triggerClassName="btn-action-cyan"
                   onUpdated={fetchAgentData}
                  />
+                 {call.status === 'in-progress' && (
+                  <button
+                   type="button"
+                   onClick={() => markJobComplete(call._id)}
+                   disabled={completingCallId === call._id}
+                   className={`btn-action text-white ${
+                    completingCallId === call._id
+                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                     : 'btn-action-green'
+                   }`}
+                  >
+                   {completingCallId === call._id ? 'Completing...' : 'Mark Job Complete'}
+                  </button>
+                 )}
+                 {call.status === 'completed' && !call.invoice && (
+                  <button
+                   type="button"
+                   onClick={() => createFinalInvoice(call._id)}
+                   disabled={creatingInvoiceCallId === call._id}
+                   className={`btn-action text-white ${
+                    creatingInvoiceCallId === call._id
+                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                     : 'btn-action-emerald'
+                   }`}
+                  >
+                   {creatingInvoiceCallId === call._id ? 'Creating Invoice...' : 'Create Invoice'}
+                  </button>
+                 )}
                   {activeTab === 'unassigned' && (
                    <button
                     type="button"
                     onClick={() => acceptUnassignedJob(call._id)}
                     disabled={acceptingCallId === call._id}
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-white transition ${
+                    className={`btn-action text-white ${
                      acceptingCallId === call._id
                       ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                      : 'border-orange-700 bg-orange-950 hover:bg-orange-900'
+                      : 'btn-action-orange'
                     }`}
                    >
                     {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
@@ -729,28 +840,67 @@ const AgentProfile = () => {
                ) : (
                 <div className="flex flex-wrap gap-2 items-center">
                  <p className="text-xs text-slate-400">No valid customer phone number available for call actions.</p>
-                 <CreateQuoteModal
-                  token={user?.token}
-                  isSuperUser={Boolean(user?.isSuperUser)}
-                  sourceData={buildQuoteSourceFromCall(call)}
-                  triggerLabel="Create Quote"
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-amber-950 hover:bg-amber-900 border border-amber-700 px-3 py-2 text-sm font-semibold text-amber-100 transition"
-                  onCreated={fetchAgentData}
-                 />
+                 {(!call.quotation || !['sent', 'approved', 'converted'].includes(call.quotation.status)) && (
+                  <CreateQuoteModal
+                   token={user?.token}
+                   isSuperUser={Boolean(user?.isSuperUser)}
+                   sourceData={buildQuoteSourceFromCall(call)}
+                   triggerLabel="Create Quote"
+                   triggerClassName="btn-action-amber"
+                   onCreated={fetchAgentData}
+                  />
+                 )}
+                 {call.quotation && call.quotation.status === 'sent' && (
+                  <button
+                   type="button"
+                   onClick={() => handleEditQuotation(call.quotation._id)}
+                   className="btn-action-amber"
+                  >
+                   Edit Quote
+                  </button>
+                 )}
                  <SiteInstructionModal
                   token={user?.token}
                   serviceCall={call}
                   roleLabel={roleLabel}
                   isSuperAdmin={isSuperAdmin}
-                  triggerClassName="inline-flex items-center gap-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 px-3 py-2 text-sm font-semibold text-cyan-100 transition"
+                  triggerClassName="btn-action-cyan"
                   onUpdated={fetchAgentData}
                  />
+                 {call.status === 'in-progress' && (
+                  <button
+                   type="button"
+                   onClick={() => markJobComplete(call._id)}
+                   disabled={completingCallId === call._id}
+                   className={`btn-action text-white ${
+                    completingCallId === call._id
+                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                     : 'border-green-700 bg-green-950 hover:bg-green-900'
+                   }`}
+                  >
+                   {completingCallId === call._id ? 'Completing...' : 'Mark Job Complete'}
+                  </button>
+                 )}
+                 {call.status === 'completed' && !call.invoice && (
+                  <button
+                   type="button"
+                   onClick={() => createFinalInvoice(call._id)}
+                   disabled={creatingInvoiceCallId === call._id}
+                   className={`btn-action text-white ${
+                    creatingInvoiceCallId === call._id
+                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                     : 'border-emerald-600 bg-emerald-950 hover:bg-emerald-900'
+                   }`}
+                  >
+                   {creatingInvoiceCallId === call._id ? 'Creating Invoice...' : 'Create Invoice'}
+                  </button>
+                 )}
                  {activeTab === 'unassigned' && (
                   <button
                    type="button"
                    onClick={() => acceptUnassignedJob(call._id)}
                    disabled={acceptingCallId === call._id}
-                   className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-white transition ${
+                   className={`btn-action text-white ${
                     acceptingCallId === call._id
                      ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
                      : 'border-orange-700 bg-orange-950 hover:bg-orange-900'
@@ -781,6 +931,17 @@ const AgentProfile = () => {
      </div>
     </div>
    </div>
+   {editingQuotation && (
+    <CreateQuoteModal
+     token={user?.token}
+     isSuperUser={Boolean(user?.isSuperUser)}
+     editMode
+     existingQuotation={editingQuotation}
+     forceOpen
+     onClose={() => setEditingQuotation(null)}
+     onCreated={() => { setEditingQuotation(null); fetchAgentData(); }}
+    />
+   )}
   </>
  );
 };

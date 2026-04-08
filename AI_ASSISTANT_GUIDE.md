@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** April 6, 2026  
+**Last Updated:** April 8, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -44,6 +44,61 @@
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: April 8, 2026 — CSS Refactoring + Design Principles
+**Focus:** Token efficiency — extract repeated inline Tailwind strings into named CSS classes; fix `@layer components` syntax error; add CSS regression test suite; establish enterprise design principles
+
+**CSS Refactoring:**
+- ✅ Added second `@layer components {}` block to `client/src/index.css` containing 19 new named classes (details in `APPATUNID_UI_QUICKREF.md` and `GLASSMORPHISM_DESIGN_GUIDE.md`)
+- ✅ Fixed PostCSS syntax error: new classes were written outside the `@layer components` closing brace — added the missing opening brace, file is now balanced
+- ✅ Ran three `find . -name "*.jsx" -exec sed -i` batch passes across all 14 component files to replace raw inline Tailwind strings with named classes
+- ✅ Manually fixed `AgentProfile.jsx` `!hasPhone` branch — three template-literal buttons updated to use `btn-action` base class + color variants
+- ✅ Replaced two `md:w-1/2` half-width inputs in `ServiceCallRegistration.jsx` with `dark-field-input md:w-1/2` (responsive override preserved)
+- ✅ Applied missed `page-center` and `collapsible-hd` sed passes that did not run in prior batch
+- ✅ Zero raw inline patterns remain across all components (verified by `grep`)
+
+**CSS Test Suite:**
+- ✅ Created `client/src/__tests__/css/index.css.test.js` — 45 Vitest tests across 4 suites:
+  - **Syntax**: brace balance, `@layer` count, `@apply` scope, `@apply` semicolons
+  - **Class inventory**: asserts each of 24 expected classes is defined in `index.css`
+  - **No raw inline patterns**: asserts 12 banned Tailwind strings do not appear in any component
+  - **Usage sanity**: minimum usage counts for key classes to catch mass-reversion
+- ✅ 45/45 passing
+
+**New Classes Added (all in `client/src/index.css` second `@layer components` block):**
+
+| Class | Replaces | Count |
+|---|---|---|
+| `.dark-field-input` | `w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3` | 68× |
+| `.dark-label` | `mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300` | 9× |
+| `.field-kicker` | `text-xs font-bold uppercase tracking-[0.16em] text-white/55` | 14× |
+| `.col-label` | `text-xs uppercase tracking-wider text-white/70` | 10× |
+| `.page-center` | full-screen gradient + flex center | 12× |
+| `.page-body` | full-screen gradient + py-12 px-4 | 8× |
+| `.sub-card` | `rounded-2xl border border-white/15 bg-slate-950/25 p-4` | 6× |
+| `.collapsible-hd` | collapsible row header pattern | 5× |
+| `.form-checkbox-dark` | `h-4 w-4 rounded border-white/30 bg-white/10` | 6× |
+| `.spinner-lg` | `animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto` | 6× |
+| `.spinner-sm` | `animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400` | 3× |
+| `.btn-action` | `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition` | base |
+| `.btn-action-amber/cyan/emerald/blue/green/orange` | per-color button variants | 17× total |
+| `.th-yellow` | `px-6 py-3 text-left text-xs font-medium text-yellow-300 uppercase tracking-wider` | 5× |
+| `.th-cyan` | `px-6 py-3 text-left text-xs font-medium text-cyan-300 uppercase tracking-wide` | 5× |
+
+**Documentation:**
+- ✅ `AI_ASSISTANT_GUIDE.md` — this entry
+- ✅ `PROJECT-STRUCTURE.md` — CSS architecture section updated
+- ✅ `DESIGN_PRINCIPLES.md` — new file; enterprise-grade design guidelines
+
+**Primary Files Updated:**
+- `client/src/index.css`
+- `client/src/components/AgentProfile.jsx`
+- `client/src/components/ServiceCallRegistration.jsx`
+- `client/src/components/*.jsx` (14 files via sed batch)
+- `client/src/__tests__/css/index.css.test.js` (NEW)
+- `DESIGN_PRINCIPLES.md` (NEW)
+
+---
 
 #### Session: April 7, 2026 — Portal-Publish on Submit, `awaiting-quote-approval` Status, Quotation Delete + Purge
 **Commits:** `cfcbed5` (feat: auto portal-publish), `e2906f5` (feat: awaiting-quote-approval status), `e070c6f` (feat: delete + purge quotations)  

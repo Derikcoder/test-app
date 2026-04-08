@@ -114,7 +114,7 @@ const ResetPassword = () => {
  };
 
  return (
-  <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+  <div className="page-center px-4 sm:px-6 lg:px-8">
    <div className="glass-form ">
     {/* Heading */}
     <h1 className="glass-heading">Reset Password</h1>

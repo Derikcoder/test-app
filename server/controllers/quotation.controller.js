@@ -279,10 +279,9 @@ export const getQuotations = async (req, res) => {
 // @access  Private
 export const getQuotationById = async (req, res) => {
   try {
-    const quotation = await Quotation.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    })
+    const isPrivileged = ['superAdmin', 'businessAdministrator'].includes(req.user?.role);
+    const ownershipFilter = isPrivileged ? { _id: req.params.id } : { _id: req.params.id, createdBy: req.user._id };
+    const quotation = await Quotation.findOne(ownershipFilter)
       .populate('customer')
       .populate('equipment')
       .populate('convertedToServiceCall');
@@ -584,9 +583,11 @@ export const createQuotationFromServiceCall = async (req, res) => {
       await quotation.populate('equipment', 'equipmentId equipmentType brand model');
     }
 
-    // Site inspection implied — advance the service call to awaiting-quote-approval
-    // so it surfaces correctly in the 'Attended — Quotation Submitted' queue.
+    // Link the quotation back to the service call and advance its status.
+    // Both the forward ref (SC → quotation) and the reverse (quotation → SC via customer)
+    // need to be consistent so AgentProfile can show the approved quotation on the jobcard.
     if (!['completed', 'invoiced', 'cancelled'].includes(serviceCall.status)) {
+      serviceCall.quotation = quotation._id;
       serviceCall.status = 'awaiting-quote-approval';
       await serviceCall.save();
     }
@@ -610,10 +611,9 @@ export const createQuotationFromServiceCall = async (req, res) => {
 // @access  Private
 export const updateQuotation = async (req, res) => {
   try {
-    const quotation = await Quotation.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const isPrivileged = ['superAdmin', 'businessAdministrator'].includes(req.user?.role);
+    const ownershipFilter = isPrivileged ? { _id: req.params.id } : { _id: req.params.id, createdBy: req.user._id };
+    const quotation = await Quotation.findOne(ownershipFilter);
 
     if (!quotation) {
       return res.status(404).json({ message: 'Quotation not found' });
@@ -1141,6 +1141,52 @@ export const generateSharedQuotationPDF = async (req, res) => {
   }
 };
 
+// @desc    Get quotation summary for public approval page (no auth required)
+// @route   GET /api/quotations/share/:token
+// @access  Public
+export const getPublicQuotationByToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const quotation = await Quotation.findOne({ shareToken: token })
+      .populate('customer', 'contactFirstName contactLastName customerId email phone')
+      .populate('equipment', 'type makeOrBrand modelNumber serialNumber');
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found or link is invalid' });
+    }
+
+    if (quotation.shareTokenExpiresAt && quotation.shareTokenExpiresAt < new Date()) {
+      return res.status(410).json({ message: 'This quotation link has expired' });
+    }
+
+    res.json({
+      quotationNumber: quotation.quotationNumber,
+      status: quotation.status,
+      validUntil: quotation.validUntil,
+      lineItems: quotation.lineItems,
+      subtotal: quotation.subtotal,
+      vatAmount: quotation.vatAmount,
+      totalAmount: quotation.totalAmount,
+      vatRate: quotation.vatRate,
+      notes: quotation.notes,
+      approvedDate: quotation.approvedDate,
+      rejectedDate: quotation.rejectedDate,
+      rejectionReason: quotation.rejectionReason,
+      customer: quotation.customer
+        ? {
+            name: `${quotation.customer.contactFirstName} ${quotation.customer.contactLastName}`.trim(),
+            customerId: quotation.customer.customerId,
+            email: quotation.customer.email,
+          }
+        : null,
+      equipment: quotation.equipment || null,
+    });
+  } catch (error) {
+    logError('Get public quotation by token error:', error);
+    res.status(500).json({ message: 'Failed to load quotation' });
+  }
+};
+
 // @desc    Customer accepts quotation via public share token (no auth required)
 // @route   PATCH /api/quotations/share/:token/accept
 // @access  Public
@@ -1175,6 +1221,14 @@ export const acceptPublicQuotation = async (req, res) => {
     quotation.approvedDate = new Date();
     quotation.acceptedVia = 'share_token';
     await quotation.save();
+
+    // Advance the linked service call to in-progress when customer accepts
+    const linkedServiceCall = await ServiceCall.findOne({ quotation: quotation._id });
+    if (linkedServiceCall && !['completed', 'invoiced', 'cancelled'].includes(linkedServiceCall.status)) {
+      linkedServiceCall.status = 'in-progress';
+      if (!linkedServiceCall.startedDate) linkedServiceCall.startedDate = new Date();
+      await linkedServiceCall.save();
+    }
 
     const customerName = quotation.customer
       ? `${quotation.customer.contactFirstName} ${quotation.customer.contactLastName}`.trim()

@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-04-06
+Last updated: 2026-04-08
 
 ---
 
@@ -119,7 +119,7 @@ main                 ← Production (stable, never touched directly)
 ### Client Source (`client/src/`)
 - `main.jsx`: React bootstrap and root render.
 - `App.jsx`: Router and protected route configuration.
-- `index.css`: Global styles and Tailwind base layers (glassmorphism variables).
+- `index.css`: Global stylesheet — Tailwind base layers, CSS variables, and two `@layer components` blocks. The first block defines the original Glassmorphism system (`.glass-*` classes). The second block defines the shared dark-surface utility classes (`.dark-field-input`, `.btn-action-*`, `.spinner-*`, `.page-center`, `.page-body`, etc.). **All reusable Tailwind patterns must be extracted here — never left inline.** See `APPATUNID_UI_QUICKREF.md` for the full class reference.
 - `api/axios.js`: Axios instance with API base URL config.
 - `context/AuthContext.jsx`: Global auth state, JWT handling, login/logout, profile updates.
 - `components/`: Page-level screens and shared UI components.
@@ -142,8 +142,7 @@ main                 ← Production (stable, never touched directly)
 - `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers. Fully built — hero header, contact card, address card, service locations, account details, conditional notes, and service call history with status badges.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
-- `CreateQuoteModal.jsx`: Reusable quotation creation modal, shared across superAdmin and customer-oriented flows.
-- `CreateQuoteModal.jsx`: Reusable quotation submission modal, shared across superAdmin and customer-oriented flows, with machine-model template loading, unit-cost tiered markup conversion for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing inputs (`distanceTravelledKm`, superAdmin-controlled `ratePerKm`, `travelTimeMinutes`, manual `timeTravelledCost`), call-out floor rule support, first-site-visit 15-minute assessment inclusion, procurement/delivery profitability capture, 14-day default quotation validity with calendar override, section-level helper-note placement to preserve row alignment, and optional post-submit PDF share action (Email/WhatsApp/Telegram).
+- `CreateQuoteModal.jsx`: Reusable quotation creation and editing modal, shared across superAdmin, businessAdministrator, and agent flows. Features: machine-model template loading, tiered unit-cost markup for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing (`distanceTravelledKm × ratePerKm + timeTravelledCost`), call-out floor rule, first-site-visit 15-minute assessment inclusion, procurement/delivery profit capture, 14-day default validity with calendar override, optional PDF share (Email/WhatsApp/Telegram), and full edit mode (`editMode` prop) that pre-populates from an existing quotation and submits via PUT — stored prices used as-is (no markup re-applied on edit).
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
 ### Frontend UI System — Role-Aware Visual Cues
@@ -186,7 +185,9 @@ Each page now includes role and entity context chips in header, immediately belo
 - `setup.js`: Test environment setup (jsdom, mocks).
 - `api/axios.test.js`: Axios instance and API config tests.
 - `components/Login.test.jsx`: Login component unit tests.
+- `components/CreateQuoteModal.test.jsx`: Quotation modal unit tests.
 - `context/AuthContext.test.jsx`: Auth context unit tests.
+- `css/index.css.test.js`: CSS regression suite — 45 Vitest tests across 4 suites: brace balance, class inventory (24 named classes), no-raw-inline-patterns (12 banned Tailwind strings), and usage sanity checks. Run with `npx vitest run src/__tests__/css/index.css.test.js`.
 - `TEST_RESULTS_FINAL.md`, `TEST_RESULTS_SUMMARY.md`: Test run documentation.
 
 ---

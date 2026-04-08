@@ -100,9 +100,9 @@ const Customers = () => {
   return (
    <>
     <Sidebar />
-    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+    <div className="page-center">
      <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
+      <div className="spinner-lg"></div>
       <p className="mt-4 text-white/70">Loading customers...</p>
      </div>
     </div>
@@ -113,7 +113,7 @@ const Customers = () => {
  return (
   <>
    <Sidebar />
-   <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 py-12 px-4 sm:px-6 lg:px-8">
+   <div className="page-body sm:px-6 lg:px-8">
     <div className="max-w-[1200px] mx-auto">
 
      {/* Header */}
@@ -194,11 +194,11 @@ const Customers = () => {
         <table className="w-full">
          <thead className="bg-white/10 border-b border-white/20">
           <tr>
-           <th className="px-6 py-3 text-left text-xs font-medium text-yellow-300 uppercase tracking-wider">Customer</th>
-           <th className="px-6 py-3 text-left text-xs font-medium text-yellow-300 uppercase tracking-wider">Type</th>
-           <th className="px-6 py-3 text-left text-xs font-medium text-yellow-300 uppercase tracking-wider">Contact</th>
-           <th className="px-6 py-3 text-left text-xs font-medium text-yellow-300 uppercase tracking-wider">Parent Account</th>
-           <th className="px-6 py-3 text-left text-xs font-medium text-yellow-300 uppercase tracking-wider">Registered</th>
+           <th className="th-yellow">Customer</th>
+           <th className="th-yellow">Type</th>
+           <th className="th-yellow">Contact</th>
+           <th className="th-yellow">Parent Account</th>
+           <th className="th-yellow">Registered</th>
           </tr>
          </thead>
          <tbody className="divide-y divide-white/10">

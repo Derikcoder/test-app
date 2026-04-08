@@ -122,6 +122,10 @@ const CreateQuoteModal = ({
   triggerLabel = 'Submit Quote',
   triggerClassName = 'glass-btn-primary font-semibold py-2 px-4',
   onCreated,
+  editMode = false,
+  existingQuotation = null,
+  forceOpen = false,
+  onClose,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -247,6 +251,45 @@ const CreateQuoteModal = ({
     }));
   };
 
+  useEffect(() => {
+    if (forceOpen) setIsOpen(true);
+  }, [forceOpen]);
+
+  useEffect(() => {
+    if (editMode && existingQuotation && isOpen) {
+      setFormData({
+        customerId: existingQuotation.customer?._id || existingQuotation.customer || '',
+        siteId: existingQuotation.siteId || '',
+        equipmentId: existingQuotation.equipment?._id || existingQuotation.equipment || '',
+        serviceType: existingQuotation.serviceType || 'Preventive Maintenance',
+        title: existingQuotation.title || 'Service Quotation',
+        description: existingQuotation.description || '',
+        validUntil: toDateInputValue(existingQuotation.validUntil) || getDefaultValidUntilDateString(),
+        partsFulfilmentMode: existingQuotation.partsFulfilmentMode || 'inHouseProcurement',
+        deliveryProvider: existingQuotation.deliveryProvider || '',
+        partsProcurementCost: existingQuotation.partsProcurementCost ?? 0,
+        thirdPartyDeliveryCost: existingQuotation.thirdPartyDeliveryCost ?? 0,
+        vatRate: existingQuotation.vatRate ?? 15,
+        labourHours: existingQuotation.labourHours ?? 0,
+        isFirstSiteVisit: existingQuotation.isFirstSiteVisit ?? true,
+        labourRate: existingQuotation.labourRate ?? 650,
+        distanceTravelledKm: existingQuotation.distanceTravelledKm ?? 0,
+        travelRatePerKm: existingQuotation.travelRatePerKm ?? TRAVEL_RATE_PER_KM,
+        travelTimeMinutes: existingQuotation.travelTimeMinutes ?? 0,
+        timeTravelledCost: existingQuotation.timeTravelledCost ?? 0,
+        consumablesRate: existingQuotation.consumablesRate ?? 2,
+        notes: existingQuotation.notes || '',
+        terms: existingQuotation.terms || 'Payment due within 30 days. Quotation valid for 14 days from date of issue.',
+        lineItems: (existingQuotation.lineItems || []).map((item) => ({
+          partNumber: item.partNumber || '',
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || 0,
+        })),
+      });
+    }
+  }, [editMode, existingQuotation, isOpen]);
+
   const closeModal = () => {
     setIsOpen(false);
     setError('');
@@ -254,6 +297,7 @@ const CreateQuoteModal = ({
     setSendSuccess('');
     setAutoResolutionInfo(null);
     setCreatedQuotationId('');
+    if (onClose) onClose();
   };
 
   const updateLineItem = (index, key, value) => {
@@ -410,7 +454,9 @@ const CreateQuoteModal = ({
           partNumber: item.partNumber?.trim() || undefined,
           description: item.description,
           quantity: Number(item.quantity),
-          unitPrice: getMarkedUpUnitPrice(item.unitPrice),
+          // In edit mode the stored price already includes markup — send as-is.
+          // In create mode apply tiered markup to the entered cost price.
+          unitPrice: editMode ? Number(item.unitPrice) : getMarkedUpUnitPrice(item.unitPrice),
         })),
         partsFulfilmentMode: formData.partsFulfilmentMode,
         deliveryProvider: formData.partsFulfilmentMode === 'thirdPartyDelivery'
@@ -435,7 +481,16 @@ const CreateQuoteModal = ({
       };
 
       let response;
-      if (canUseServiceCallShortcut) {
+      if (editMode && existingQuotation?._id) {
+        response = await api.put(
+          `/quotations/${existingQuotation._id}`,
+          payload,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setSuccess(`Quotation ${response.data?.quotationNumber || ''} updated successfully.`.trim());
+        if (onCreated) onCreated(response.data);
+        closeModal();
+      } else if (canUseServiceCallShortcut) {
         response = await api.post(
           `/quotations/from-service-call/${sourceData.serviceCallId}`,
           payload,
@@ -458,29 +513,31 @@ const CreateQuoteModal = ({
         );
       }
 
-      const newId = response.data?._id || '';
-      setCreatedQuotationId(newId);
+      if (!editMode) {
+        const newId = response.data?._id || '';
+        setCreatedQuotationId(newId);
 
-      // Immediately mark as sent so the customer can view and accept it from
-      // their portal. No external channels → portal-only publish.
-      if (newId) {
-        try {
-          await api.post(
-            `/quotations/${newId}/send`,
-            { channels: [] },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        } catch {
-          // Non-fatal: quote was created but portal visibility may be delayed.
-          // Admin can still use "Share PDF" to publish it.
+        // Immediately mark as sent so the customer can view and accept it from
+        // their portal. No external channels → portal-only publish.
+        if (newId) {
+          try {
+            await api.post(
+              `/quotations/${newId}/send`,
+              { channels: [] },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          } catch {
+            // Non-fatal: quote was created but portal visibility may be delayed.
+            // Admin can still use "Share PDF" to publish it.
+          }
         }
-      }
 
-      setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted. The customer can now view and accept it from their portal.`.trim());
-      if (response.data?.autoResolution?.source || response.data?.autoResolution?.confidence) {
-        setAutoResolutionInfo(response.data.autoResolution);
+        setSuccess(`Quotation ${response.data?.quotationNumber || ''} submitted. The customer can now view and accept it from their portal.`.trim());
+        if (response.data?.autoResolution?.source || response.data?.autoResolution?.confidence) {
+          setAutoResolutionInfo(response.data.autoResolution);
+        }
+        if (onCreated) onCreated(response.data);
       }
-      if (onCreated) onCreated(response.data);
     } catch (submitError) {
       setError(submitError?.response?.data?.message || 'Failed to submit quotation.');
     } finally {
@@ -547,7 +604,7 @@ const CreateQuoteModal = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="glass-card w-full max-w-4xl rounded-2xl border border-white/20 bg-slate-900/85 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="glass-heading-secondary">Submit Quote</h2>
+              <h2 className="glass-heading-secondary">{editMode ? 'Edit Quotation' : 'Submit Quote'}</h2>
               <button type="button" onClick={closeModal} className="text-white/80 hover:text-white">Close</button>
             </div>
 
@@ -607,13 +664,13 @@ const CreateQuoteModal = ({
                     <input
                       value={selectedCustomerOptionLabel || 'Linked Service Call Customer'}
                       readOnly
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     />
                   ) : (
                     <select
                       value={formData.customerId}
                       onChange={(event) => setFormData((prev) => ({ ...prev, customerId: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                       disabled={loadingCustomers}
                       required
                     >
@@ -637,7 +694,7 @@ const CreateQuoteModal = ({
                   <input
                     value={formData.serviceType}
                     onChange={(event) => setFormData((prev) => ({ ...prev, serviceType: event.target.value }))}
-                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    className="dark-field-input"
                     required
                   />
                 </div>
@@ -647,7 +704,7 @@ const CreateQuoteModal = ({
                   <input
                     value={formData.title}
                     onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
-                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    className="dark-field-input"
                     required
                   />
                 </div>
@@ -658,7 +715,7 @@ const CreateQuoteModal = ({
                     rows="3"
                     value={formData.description}
                     onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
-                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    className="dark-field-input"
                   />
                 </div>
 
@@ -668,7 +725,7 @@ const CreateQuoteModal = ({
                     <select
                       value={selectedTemplate}
                       onChange={(event) => setSelectedTemplate(event.target.value)}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     >
                       {TEMPLATE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value} className="text-black">
@@ -736,7 +793,7 @@ const CreateQuoteModal = ({
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="glass-form-label text-white/80">Unit Cost (R)</label>
+                      <label className="glass-form-label text-white/80">{editMode ? 'Unit Price (R)' : 'Unit Cost (R)'}</label>
                       <input
                         type="number"
                         min="0"
@@ -779,7 +836,7 @@ const CreateQuoteModal = ({
                     <select
                       value={formData.partsFulfilmentMode}
                       onChange={(event) => setFormData((prev) => ({ ...prev, partsFulfilmentMode: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     >
                       <option value="inHouseProcurement" className="text-black">In-house Procurement</option>
                       <option value="thirdPartyDelivery" className="text-black">Third-party Delivery</option>
@@ -793,7 +850,7 @@ const CreateQuoteModal = ({
                       step="0.01"
                       value={formData.partsProcurementCost}
                       onChange={(event) => setFormData((prev) => ({ ...prev, partsProcurementCost: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     />
                   </div>
                   <div>
@@ -802,7 +859,7 @@ const CreateQuoteModal = ({
                       value={formData.deliveryProvider}
                       onChange={(event) => setFormData((prev) => ({ ...prev, deliveryProvider: event.target.value }))}
                       placeholder="e.g. Picup"
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                       disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'}
                     />
                   </div>
@@ -814,7 +871,7 @@ const CreateQuoteModal = ({
                       step="0.01"
                       value={formData.thirdPartyDeliveryCost}
                       onChange={(event) => setFormData((prev) => ({ ...prev, thirdPartyDeliveryCost: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                       disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'}
                     />
                   </div>
@@ -826,7 +883,7 @@ const CreateQuoteModal = ({
                       step="0.25"
                       value={formData.labourHours}
                       onChange={(event) => setFormData((prev) => ({ ...prev, labourHours: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     />
                   </div>
                   <div className="flex items-center gap-3 pt-8">
@@ -835,7 +892,7 @@ const CreateQuoteModal = ({
                       type="checkbox"
                       checked={Boolean(formData.isFirstSiteVisit)}
                       onChange={(event) => setFormData((prev) => ({ ...prev, isFirstSiteVisit: event.target.checked }))}
-                      className="h-4 w-4 rounded border-white/30 bg-white/10"
+                      className="form-checkbox-dark"
                     />
                     <label htmlFor="first-site-visit" className="glass-form-label text-white/90 mb-0">
                       First-time customer/site visit
@@ -849,7 +906,7 @@ const CreateQuoteModal = ({
                       step="0.01"
                       value={formData.labourRate}
                       onChange={(event) => setFormData((prev) => ({ ...prev, labourRate: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                       disabled={!isSuperUser}
                     />
                   </div>
@@ -861,7 +918,7 @@ const CreateQuoteModal = ({
                       step="0.01"
                       value={formData.distanceTravelledKm}
                       onChange={(event) => setFormData((prev) => ({ ...prev, distanceTravelledKm: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     />
                   </div>
                   <div>
@@ -872,7 +929,7 @@ const CreateQuoteModal = ({
                       step="0.01"
                       value={formData.travelRatePerKm}
                       onChange={(event) => setFormData((prev) => ({ ...prev, travelRatePerKm: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                       disabled={!isSuperUser}
                     />
                   </div>
@@ -884,7 +941,7 @@ const CreateQuoteModal = ({
                       step="1"
                       value={formData.travelTimeMinutes}
                       onChange={(event) => setFormData((prev) => ({ ...prev, travelTimeMinutes: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     />
                   </div>
                   <div>
@@ -895,7 +952,7 @@ const CreateQuoteModal = ({
                       step="0.01"
                       value={formData.timeTravelledCost}
                       onChange={(event) => setFormData((prev) => ({ ...prev, timeTravelledCost: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     />
                   </div>
                   <div>
@@ -906,7 +963,7 @@ const CreateQuoteModal = ({
                       step="0.01"
                       value={formData.consumablesRate}
                       onChange={(event) => setFormData((prev) => ({ ...prev, consumablesRate: event.target.value }))}
-                      className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                      className="dark-field-input"
                     />
                   </div>
                 </div>
@@ -919,7 +976,7 @@ const CreateQuoteModal = ({
                     type="date"
                     value={formData.validUntil}
                     onChange={(event) => setFormData((prev) => ({ ...prev, validUntil: event.target.value }))}
-                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    className="dark-field-input"
                   />
                 </div>
                 <div>
@@ -931,7 +988,7 @@ const CreateQuoteModal = ({
                     step="0.01"
                     value={formData.vatRate}
                     onChange={(event) => setFormData((prev) => ({ ...prev, vatRate: event.target.value }))}
-                    className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                    className="dark-field-input"
                   />
                 </div>
                 <div className="rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white">
@@ -965,7 +1022,7 @@ const CreateQuoteModal = ({
                   rows="2"
                   value={formData.notes}
                   onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
-                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                  className="dark-field-input"
                 />
               </div>
 
@@ -975,7 +1032,7 @@ const CreateQuoteModal = ({
                   rows="2"
                   value={formData.terms}
                   onChange={(event) => setFormData((prev) => ({ ...prev, terms: event.target.value }))}
-                  className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3"
+                  className="dark-field-input"
                 />
               </div>
 
@@ -990,7 +1047,7 @@ const CreateQuoteModal = ({
                       type="checkbox"
                       checked={Boolean(shareChannels.email)}
                       onChange={(event) => setShareChannels((prev) => ({ ...prev, email: event.target.checked }))}
-                      className="h-4 w-4 rounded border-white/30 bg-white/10"
+                      className="form-checkbox-dark"
                     />
                     Email
                   </label>
@@ -999,7 +1056,7 @@ const CreateQuoteModal = ({
                       type="checkbox"
                       checked={Boolean(shareChannels.whatsapp)}
                       onChange={(event) => setShareChannels((prev) => ({ ...prev, whatsapp: event.target.checked }))}
-                      className="h-4 w-4 rounded border-white/30 bg-white/10"
+                      className="form-checkbox-dark"
                     />
                     WhatsApp
                   </label>
@@ -1008,7 +1065,7 @@ const CreateQuoteModal = ({
                       type="checkbox"
                       checked={Boolean(shareChannels.telegram)}
                       onChange={(event) => setShareChannels((prev) => ({ ...prev, telegram: event.target.checked }))}
-                      className="h-4 w-4 rounded border-white/30 bg-white/10"
+                      className="form-checkbox-dark"
                     />
                     Telegram
                   </label>
@@ -1021,7 +1078,7 @@ const CreateQuoteModal = ({
                   disabled={submitting}
                   className="glass-btn-primary font-semibold py-2 px-5 disabled:opacity-60"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Quote'}
+                  {submitting ? (editMode ? 'Saving...' : 'Submitting...') : (editMode ? 'Save Changes' : 'Submit Quote')}
                 </button>
                 <button
                   type="button"

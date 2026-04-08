@@ -9,7 +9,7 @@ const CALL_OUT_FLOOR_AMOUNT = 650;
 const formatCurrency = (value) => `R ${Number(value || 0).toFixed(2)}`;
 
 const panelClass = 'rounded-lg border border-slate-700 bg-slate-900/90 p-4';
-const labelClass = 'mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300';
+const labelClass = 'dark-label';
 const inputClass = 'w-full rounded-lg border border-slate-600 bg-slate-950 text-slate-100 px-4 py-3 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40';
 const mutedCardClass = 'rounded-lg border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-100';
 
@@ -489,7 +489,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
 
                 <div className={`${panelClass} space-y-4`}>
                   <div className="flex items-center gap-3">
-                    <input id={`deposit-required-${serviceCall._id}`} type="checkbox" checked={Boolean(formData.depositRequired)} onChange={(e) => updateField('depositRequired', e.target.checked)} className="h-4 w-4 rounded border-white/30 bg-white/10" />
+                    <input id={`deposit-required-${serviceCall._id}`} type="checkbox" checked={Boolean(formData.depositRequired)} onChange={(e) => updateField('depositRequired', e.target.checked)} className="form-checkbox-dark" />
                     <label htmlFor={`deposit-required-${serviceCall._id}`} className="mb-0 text-sm font-medium text-slate-200">Deposit required before additional work starts</label>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -532,7 +532,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                   <div className="flex flex-wrap gap-4">
                     {Object.entries(shareChannels).map(([channel, enabled]) => (
                       <label key={channel} className="flex items-center gap-2 text-sm text-slate-200">
-                        <input type="checkbox" checked={enabled} onChange={(e) => setShareChannels((prev) => ({ ...prev, [channel]: e.target.checked }))} className="h-4 w-4 rounded border-white/30 bg-white/10" />
+                        <input type="checkbox" checked={enabled} onChange={(e) => setShareChannels((prev) => ({ ...prev, [channel]: e.target.checked }))} className="form-checkbox-dark" />
                         {channel.charAt(0).toUpperCase() + channel.slice(1)}
                       </label>
                     ))}

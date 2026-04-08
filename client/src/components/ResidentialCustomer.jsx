@@ -196,9 +196,9 @@ const ResidentialCustomer = () => {
   return (
    <>
     <Sidebar />
-    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
+    <div className="page-center">
      <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto" />
+      <div className="spinner-lg" />
       <p className="mt-4 text-white/70 text-sm">Loading profile…</p>
      </div>
     </div>
@@ -211,7 +211,7 @@ const ResidentialCustomer = () => {
   return (
    <>
     <Sidebar />
-    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center px-4">
+    <div className="page-center px-4">
      <div className="glass-card p-8 text-center max-w-sm w-full">
       <p className="text-red-300 text-sm mb-4">{error || 'Customer not found'}</p>
       <button onClick={() => navigate('/customers')} className="glass-btn-primary py-2 px-6 text-sm">
@@ -359,7 +359,7 @@ const ResidentialCustomer = () => {
      <SectionCard title="Active Quotations" icon="📄">
       {quotsLoading ? (
        <div className="flex items-center gap-3 py-2">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400" />
+        <div className="spinner-sm" />
         <span className="text-sm text-white/50">Loading quotations…</span>
        </div>
       ) : quotations.length === 0 ? (
@@ -391,7 +391,7 @@ const ResidentialCustomer = () => {
             {q.shareToken && q.status === 'sent' && (
              <button
               onClick={() => {
-               const url = `${window.location.origin}/api/quotations/share/${q.shareToken}/pdf`;
+               const url = `${window.location.origin}/quotation-approval/${q.shareToken}`;
                navigator.clipboard.writeText(url).catch(() => {});
               }}
               className="text-[10px] font-semibold text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors"
@@ -414,7 +414,7 @@ const ResidentialCustomer = () => {
      <SectionCard title="Service Call History" icon="🔧">
       {callsLoading ? (
        <div className="flex items-center gap-3 py-2">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400" />
+        <div className="spinner-sm" />
         <span className="text-sm text-white/50">Loading history…</span>
        </div>
       ) : serviceCalls.length === 0 ? (

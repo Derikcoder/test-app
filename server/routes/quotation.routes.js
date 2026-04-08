@@ -26,6 +26,7 @@ import {
   sendQuotation,
   acceptPublicQuotation,
   rejectPublicQuotation,
+  getPublicQuotationByToken,
 } from '../controllers/quotation.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -51,6 +52,13 @@ router.post('/', protect, createQuotation);
  * @access  Private (JWT required)
  */
 router.post('/from-service-call/:serviceCallId', protect, createQuotationFromServiceCall);
+
+/**
+ * @route   GET /api/quotations/share/:token
+ * @desc    Public JSON summary of quotation for approval page
+ * @access  Public
+ */
+router.get('/share/:token', getPublicQuotationByToken);
 
 /**
  * @route   GET /api/quotations/share/:token/pdf

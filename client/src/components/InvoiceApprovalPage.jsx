@@ -179,23 +179,23 @@ function InvoiceApprovalPage() {
               </p>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/15 bg-slate-950/25 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Document</p>
+                <div className="sub-card">
+                  <p className="field-kicker">Document</p>
                   <p className="mt-2 text-lg font-bold">{documentData.invoiceNumber}</p>
                   <p className="mt-1 text-sm text-white/70">{documentData.documentType === 'proForma' ? 'Pro-forma site instruction' : documentData.documentType}</p>
                 </div>
-                <div className="rounded-2xl border border-white/15 bg-slate-950/25 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Customer</p>
+                <div className="sub-card">
+                  <p className="field-kicker">Customer</p>
                   <p className="mt-2 text-lg font-bold">{documentData.customer?.businessName || customerName || 'Customer'}</p>
                   <p className="mt-1 text-sm text-white/70">{customerName || 'Customer contact not specified'}</p>
                 </div>
-                <div className="rounded-2xl border border-white/15 bg-slate-950/25 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Service Date</p>
+                <div className="sub-card">
+                  <p className="field-kicker">Service Date</p>
                   <p className="mt-2 text-lg font-bold">{formatDate(documentData.serviceDate)}</p>
                   <p className="mt-1 text-sm text-white/70">{documentData.serviceType || 'General service work'}</p>
                 </div>
-                <div className="rounded-2xl border border-white/15 bg-slate-950/25 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Total Value</p>
+                <div className="sub-card">
+                  <p className="field-kicker">Total Value</p>
                   <p className="mt-2 text-lg font-bold text-yellow-200">{formatCurrency(documentData.totalAmount)}</p>
                   <p className="mt-1 text-sm text-white/70">VAT included</p>
                 </div>
@@ -203,20 +203,20 @@ function InvoiceApprovalPage() {
 
               {documentData.description ? (
                 <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Summary</p>
+                  <p className="field-kicker">Summary</p>
                   <p className="mt-3 text-sm leading-6 text-white/85">{documentData.description}</p>
                 </div>
               ) : null}
 
               <div className="mt-8 grid gap-6 xl:grid-cols-2">
                 <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Problems Found</p>
+                  <p className="field-kicker">Problems Found</p>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">
                     {documentData.siteInstruction?.problemsFound || 'No site findings were captured on this document.'}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Recommended Solution</p>
+                  <p className="field-kicker">Recommended Solution</p>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">
                     {documentData.siteInstruction?.recommendedSolution || 'No recommended solution was captured on this document.'}
                   </p>
@@ -226,7 +226,7 @@ function InvoiceApprovalPage() {
               <div className="mt-8 rounded-2xl border border-white/15 bg-slate-950/25 p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Line Items</p>
+                    <p className="field-kicker">Line Items</p>
                     <p className="mt-1 text-sm text-white/70">Detailed pricing for the requested work.</p>
                   </div>
                   <a
@@ -307,7 +307,7 @@ function InvoiceApprovalPage() {
               </div>
 
               <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-5">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Cost Summary</p>
+                <p className="field-kicker">Cost Summary</p>
                 <div className="mt-4 space-y-3 text-sm text-white/85">
                   <div className="flex items-center justify-between gap-4">
                     <span>Parts</span>
@@ -377,13 +377,13 @@ function InvoiceApprovalPage() {
                 <div className="mt-8 space-y-4">
                   {documentData.notes ? (
                     <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Notes</p>
+                      <p className="field-kicker">Notes</p>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">{documentData.notes}</p>
                     </div>
                   ) : null}
                   {documentData.terms ? (
                     <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/55">Terms</p>
+                      <p className="field-kicker">Terms</p>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">{documentData.terms}</p>
                     </div>
                   ) : null}
