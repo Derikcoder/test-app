@@ -55,9 +55,16 @@ const Customers = () => {
  const [customers, setCustomers] = useState([]);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
+ const [success, setSuccess] = useState('');
 
  const [search, setSearch] = useState('');
  const [typeFilter, setTypeFilter] = useState('all');
+
+ const [provisionModal, setProvisionModal] = useState(null); // customer object or null
+ const [provisionForm, setProvisionForm] = useState({ userName: '', password: '' });
+ const [provisionLoading, setProvisionLoading] = useState(false);
+ const [provisionError, setProvisionError] = useState('');
+ const [provisionSuccess, setProvisionSuccess] = useState('');
 
  useEffect(() => {
   fetchCustomers();
@@ -95,6 +102,57 @@ const Customers = () => {
  }, [customers, search, typeFilter]);
 
  const formatDate = (v) => v ? new Date(v).toLocaleDateString() : '—';
+
+ const handleDeleteCustomer = async (e, customerId) => {
+  e.stopPropagation();
+  if (!window.confirm('Delete this customer profile? Transaction history (service calls, invoices) will be preserved.')) return;
+  try {
+   await api.delete(`/customers/${customerId}`, {
+    headers: { Authorization: `Bearer ${user.token}` },
+   });
+   setSuccess('Customer deleted.');
+   fetchCustomers();
+   setTimeout(() => setSuccess(''), 3000);
+  } catch (err) {
+   setError(err.response?.data?.message || 'Failed to delete customer');
+  }
+ };
+
+ const handleOpenProvisionModal = (e, customer) => {
+  e.stopPropagation();
+  setProvisionModal(customer);
+  const nameSlug = (customer.businessName || `${customer.contactFirstName}_${customer.contactLastName}`)
+   .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  setProvisionForm({ userName: nameSlug, password: '' });
+  setProvisionError('');
+  setProvisionSuccess('');
+ };
+
+ const handleProvisionSubmit = async (e) => {
+  e.preventDefault();
+  setProvisionError('');
+  setProvisionSuccess('');
+  setProvisionLoading(true);
+  try {
+   await api.post(
+    '/auth/admin/provision-user',
+    {
+     role: 'customer',
+     profileId: provisionModal._id,
+     userName: provisionForm.userName,
+     email: provisionModal.email,
+     password: provisionForm.password,
+    },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+   setProvisionSuccess(`Login provisioned! Username: ${provisionForm.userName} | Email: ${provisionModal.email}`);
+   fetchCustomers();
+  } catch (err) {
+   setProvisionError(err.response?.data?.message || 'Failed to provision login');
+  } finally {
+   setProvisionLoading(false);
+  }
+ };
 
  if (loading) {
   return (
@@ -143,6 +201,7 @@ const Customers = () => {
      </div>
 
      {error && <div className="glass-alert-error mb-4 p-4 rounded-lg">{error}</div>}
+     {success && <div className="mb-4 p-4 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-700">{success}</div>}
 
      {/* Stats strip */}
      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
@@ -199,6 +258,7 @@ const Customers = () => {
            <th className="th-yellow">Contact</th>
            <th className="th-yellow">Parent Account</th>
            <th className="th-yellow">Registered</th>
+           <th className="px-6 py-3 text-right text-xs font-medium text-yellow-300 uppercase tracking-wide">Actions</th>
           </tr>
          </thead>
          <tbody className="divide-y divide-white/10">
@@ -233,6 +293,24 @@ const Customers = () => {
              <td className="px-6 py-4 text-sm text-white/60">
               {formatDate(customer.createdAt)}
              </td>
+             <td className="px-6 py-4 text-right whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+              {customer.userAccount ? (
+               <span className="mr-3 text-xs text-emerald-400 font-semibold">Login ✓</span>
+              ) : (
+               <button
+                onClick={(e) => handleOpenProvisionModal(e, customer)}
+                className="mr-3 text-cyan-400 hover:text-cyan-200"
+               >
+                Provision Login
+               </button>
+              )}
+              <button
+               onClick={(e) => handleDeleteCustomer(e, customer._id)}
+               className="text-red-300 hover:text-red-200"
+              >
+               Delete
+              </button>
+             </td>
             </tr>
            );
           })}
@@ -248,6 +326,93 @@ const Customers = () => {
     </div>
    </div>
 
+  {/* Provision Login Modal */}
+  {provisionModal && (
+   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl border border-cyan-700 bg-slate-900 p-8 shadow-2xl mx-4">
+     <h2 className="text-xl font-bold text-slate-100 mb-1">Provision Login Credentials</h2>
+     <p className="text-sm text-slate-400 mb-6">
+      Creating a login account for{' '}
+      <span className="text-cyan-300 font-semibold">
+       {provisionModal.businessName || `${provisionModal.contactFirstName} ${provisionModal.contactLastName}`}
+      </span>
+     </p>
+
+     {provisionSuccess ? (
+      <div className="mb-4 p-4 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-700 text-sm">
+       <p className="font-semibold mb-1">Account created!</p>
+       <p>{provisionSuccess}</p>
+       <p className="mt-2 text-emerald-300">Share these credentials securely with the customer.</p>
+      </div>
+     ) : (
+      <form onSubmit={handleProvisionSubmit} className="space-y-4">
+       <div>
+        <label className="dark-label">Email (login email)</label>
+        <input
+         type="email"
+         value={provisionModal.email}
+         readOnly
+         className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 opacity-60 cursor-not-allowed"
+        />
+       </div>
+       <div>
+        <label className="dark-label">Username *</label>
+        <input
+         type="text"
+         value={provisionForm.userName}
+         onChange={(e) => setProvisionForm({ ...provisionForm, userName: e.target.value })}
+         required
+         className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+        />
+       </div>
+       <div>
+        <label className="dark-label">Temporary Password *</label>
+        <input
+         type="text"
+         value={provisionForm.password}
+         onChange={(e) => setProvisionForm({ ...provisionForm, password: e.target.value })}
+         required
+         minLength={6}
+         placeholder="Min. 6 characters"
+         className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+        />
+        <p className="mt-1 text-xs text-slate-500">Shown in plain text so you can share it with the customer.</p>
+       </div>
+       {provisionError && (
+        <div className="p-3 rounded-lg bg-red-950 text-red-200 border border-red-700 text-sm">{provisionError}</div>
+       )}
+       <div className="flex justify-end gap-3 pt-2">
+        <button
+         type="button"
+         onClick={() => setProvisionModal(null)}
+         className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+        >
+         Cancel
+        </button>
+        <button
+         type="submit"
+         disabled={provisionLoading}
+         className="px-5 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold disabled:opacity-50"
+        >
+         {provisionLoading ? 'Creating...' : 'Create Login'}
+        </button>
+       </div>
+      </form>
+     )}
+
+     {provisionSuccess && (
+      <div className="mt-4 flex justify-end">
+       <button
+        onClick={() => setProvisionModal(null)}
+        className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+       >
+        Close
+       </button>
+      </div>
+     )}
+    </div>
+   </div>
+  )}
   </>
  );
 };

@@ -27,6 +27,11 @@ const FieldServiceAgents = () => {
  const [showForm, setShowForm] = useState(false);
  const [error, setError] = useState('');
  const [success, setSuccess] = useState('');
+ const [provisionModal, setProvisionModal] = useState(null); // agent object or null
+ const [provisionForm, setProvisionForm] = useState({ userName: '', password: '' });
+ const [provisionLoading, setProvisionLoading] = useState(false);
+ const [provisionError, setProvisionError] = useState('');
+ const [provisionSuccess, setProvisionSuccess] = useState('');
  const [formData, setFormData] = useState({
   firstName: '',
   lastName: '',
@@ -107,6 +112,42 @@ const FieldServiceAgents = () => {
    setTimeout(() => setSuccess(''), 3000);
   } catch (err) {
    setError(err.response?.data?.message || 'Failed to delete agent');
+  }
+ };
+
+ const handleOpenProvisionModal = (agent) => {
+  setProvisionModal(agent);
+  setProvisionForm({
+   userName: `${agent.firstName.toLowerCase()}_${agent.lastName.toLowerCase()}`.replace(/\s+/g, ''),
+   password: '',
+  });
+  setProvisionError('');
+  setProvisionSuccess('');
+ };
+
+ const handleProvisionSubmit = async (e) => {
+  e.preventDefault();
+  setProvisionError('');
+  setProvisionSuccess('');
+  setProvisionLoading(true);
+  try {
+   await api.post(
+    '/auth/admin/provision-user',
+    {
+     role: 'fieldServiceAgent',
+     profileId: provisionModal._id,
+     userName: provisionForm.userName,
+     email: provisionModal.email,
+     password: provisionForm.password,
+    },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+   setProvisionSuccess(`Login provisioned! Username: ${provisionForm.userName} | Email: ${provisionModal.email}`);
+   fetchAgents();
+  } catch (err) {
+   setProvisionError(err.response?.data?.message || 'Failed to provision login');
+  } finally {
+   setProvisionLoading(false);
   }
  };
 
@@ -334,6 +375,19 @@ const FieldServiceAgents = () => {
             </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.assignedArea || '-'}</td>
             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+             {agent.userAccount ? (
+              <span className="mr-3 text-xs text-emerald-400 font-semibold">Login ✓</span>
+             ) : (
+              <button
+               onClick={(e) => {
+                e.stopPropagation();
+                handleOpenProvisionModal(agent);
+               }}
+               className="mr-3 text-cyan-400 hover:text-cyan-200"
+              >
+               Provision Login
+              </button>
+             )}
              <button
               onClick={(e) => {
                e.stopPropagation();
@@ -353,8 +407,90 @@ const FieldServiceAgents = () => {
      </div>
     </div>
    </div>
-  </>
- );
-};
 
+  {/* Provision Login Modal */}
+  {provisionModal && (
+   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl border border-cyan-700 bg-slate-900 p-8 shadow-2xl mx-4">
+     <h2 className="text-xl font-bold text-slate-100 mb-1">Provision Login Credentials</h2>
+     <p className="text-sm text-slate-400 mb-6">
+      Creating a login account for <span className="text-cyan-300 font-semibold">{provisionModal.firstName} {provisionModal.lastName}</span>
+     </p>
+
+     {provisionSuccess ? (
+      <div className="mb-4 p-4 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-700 text-sm">
+       <p className="font-semibold mb-1">Account created!</p>
+       <p>{provisionSuccess}</p>
+       <p className="mt-2 text-emerald-300">Share these credentials securely with the agent.</p>
+      </div>
+     ) : (
+      <form onSubmit={handleProvisionSubmit} className="space-y-4">
+       <div>
+        <label className="dark-label">Email (login email)</label>
+        <input
+         type="email"
+         value={provisionModal.email}
+         readOnly
+         className={`${inputClass} opacity-60 cursor-not-allowed`}
+        />
+       </div>
+       <div>
+        <label className="dark-label">Username *</label>
+        <input
+         type="text"
+         value={provisionForm.userName}
+         onChange={(e) => setProvisionForm({ ...provisionForm, userName: e.target.value })}
+         required
+         className={inputClass}
+        />
+       </div>
+       <div>
+        <label className="dark-label">Temporary Password *</label>
+        <input
+         type="text"
+         value={provisionForm.password}
+         onChange={(e) => setProvisionForm({ ...provisionForm, password: e.target.value })}
+         required
+         minLength={6}
+         placeholder="Min. 6 characters"
+         className={inputClass}
+        />
+        <p className="mt-1 text-xs text-slate-500">Shown in plain text so you can share it with the agent.</p>
+       </div>
+       {provisionError && (
+        <div className="p-3 rounded-lg bg-red-950 text-red-200 border border-red-700 text-sm">{provisionError}</div>
+       )}
+       <div className="flex justify-end gap-3 pt-2">
+        <button
+         type="button"
+         onClick={() => setProvisionModal(null)}
+         className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+        >
+         Cancel
+        </button>
+        <button
+         type="submit"
+         disabled={provisionLoading}
+         className="px-5 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold disabled:opacity-50"
+        >
+         {provisionLoading ? 'Creating...' : 'Create Login'}
+        </button>
+       </div>
+      </form>
+     )}
+
+     {provisionSuccess && (
+      <div className="mt-4 flex justify-end">
+       <button
+        onClick={() => setProvisionModal(null)}
+        className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+       >
+        Close
+       </button>
+      </div>
+     )}
+    </div>
+   </div>
+  )}
+ </>
 export default FieldServiceAgents;

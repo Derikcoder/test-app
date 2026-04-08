@@ -1006,6 +1006,110 @@ export const fulfillPasskeyRenewal = async (req, res) => {
 };
 
 /**
+ * Admin Provision User
+ *
+ * @async
+ * @function adminProvisionUser
+ * @description Directly creates a User account for an existing FieldServiceAgent or Customer
+ *              profile, bypassing the passkey self-registration flow. Intended for admin-driven
+ *              onboarding (e.g. UAT, staff setup). Sets isSuperUser=false and links the User
+ *              back to the operational profile.
+ * @route POST /api/auth/admin/provision-user
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const adminProvisionUser = async (req, res) => {
+  try {
+    const { role, profileId, userName, email, password } = req.body;
+
+    if (!role || !profileId || !userName || !email || !password) {
+      return res.status(400).json({ message: 'role, profileId, userName, email and password are all required' });
+    }
+
+    const PROVISIONABLE_ROLES = ['fieldServiceAgent', 'customer'];
+    if (!PROVISIONABLE_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Only fieldServiceAgent and customer accounts can be provisioned via this endpoint' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Verify profile exists and has no linked account yet
+    let profile = null;
+    let profileLink = {};
+    let businessData = {};
+
+    if (role === 'fieldServiceAgent') {
+      profile = await FieldServiceAgent.findById(profileId);
+      if (!profile) {
+        return res.status(404).json({ message: 'FieldServiceAgent profile not found' });
+      }
+      if (profile.userAccount) {
+        return res.status(400).json({ message: 'This agent profile already has a linked user account' });
+      }
+      profileLink.fieldServiceAgentProfile = profileId;
+    } else {
+      profile = await Customer.findById(profileId);
+      if (!profile) {
+        return res.status(404).json({ message: 'Customer profile not found' });
+      }
+      if (profile.userAccount) {
+        return res.status(400).json({ message: 'This customer profile already has a linked user account' });
+      }
+      profileLink.customerProfile = profileId;
+      // Customer role requires businessName, phoneNumber, physicalAddress on User — derive from profile
+      businessData.businessName = profile.businessName
+        || `${profile.contactFirstName} ${profile.contactLastName}`;
+      businessData.phoneNumber = profile.phoneNumber || '';
+      businessData.physicalAddress = profile.physicalAddress
+        || (profile.physicalAddressDetails?.streetAddress)
+        || 'Not provided';
+    }
+
+    // Check uniqueness before creation
+    const conflict = await User.findOne({ $or: [{ email: normalizedEmail }, { userName }] });
+    if (conflict) {
+      const field = conflict.email === normalizedEmail ? 'email' : 'userName';
+      return res.status(400).json({ message: `A user with this ${field} already exists` });
+    }
+
+    const newUser = await User.create({
+      userName,
+      email: normalizedEmail,
+      password,
+      role,
+      isSuperUser: false,
+      ...profileLink,
+      ...businessData,
+    });
+
+    // Link the profile back to the new User
+    if (role === 'fieldServiceAgent') {
+      await FieldServiceAgent.findByIdAndUpdate(profileId, { userAccount: newUser._id });
+    } else {
+      await Customer.findByIdAndUpdate(profileId, { userAccount: newUser._id });
+    }
+
+    logInfo('Admin provisioned user account', {
+      provisionedBy: req.user._id,
+      newUserId: newUser._id,
+      role,
+      profileId,
+      email: normalizedEmail,
+    });
+
+    return res.status(201).json({
+      message: 'User account provisioned successfully',
+      userId: newUser._id,
+      userName: newUser.userName,
+      email: newUser.email,
+      role: newUser.role,
+    });
+  } catch (error) {
+    logError('Admin provision user error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
  * Attach User to Operational Profile
  *
  * @async

@@ -27,6 +27,7 @@ import {
   detachUserProfileLink,
   reassignUserProfileLink,
   listRegistrationOverrideAudits,
+  adminProvisionUser,
 } from '../controllers/auth.controller.js';
 import { protect, authorizeRoles } from '../middleware/auth.middleware.js';
 
@@ -75,6 +76,18 @@ router.post(
   protect,
   authorizeRoles('superAdmin', 'businessAdministrator'),
   fulfillPasskeyRenewal
+);
+
+/**
+ * @route   POST /api/auth/admin/provision-user
+ * @desc    Admin directly creates a User login account for an existing agent or customer profile
+ * @access  Private (superAdmin, businessAdministrator)
+ */
+router.post(
+  '/admin/provision-user',
+  protect,
+  authorizeRoles('superAdmin', 'businessAdministrator'),
+  adminProvisionUser
 );
 
 /**
