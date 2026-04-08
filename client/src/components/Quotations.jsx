@@ -259,6 +259,8 @@ const Quotations = () => {
   const [expandedAudit, setExpandedAudit] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState('');
   const [deletingId, setDeletingId] = useState('');
+  const [convertPendingId, setConvertPendingId] = useState('');
+  const [convertingId, setConvertingId] = useState('');
   const [purging, setPurging] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
   const [actionError, setActionError] = useState('');
@@ -306,6 +308,25 @@ const Quotations = () => {
       setActionError(err?.response?.data?.message || 'Failed to delete quotation.');
     } finally {
       setDeletingId('');
+    }
+  };
+
+  const handleConvertToJob = async (q) => {
+    setConvertingId(q._id);
+    setActionMsg('');
+    setActionError('');
+    try {
+      const res = await api.post(`/quotations/${q._id}/convert`, {}, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      const callNum = res.data?.serviceCall?.callNumber;
+      setActionMsg(`Quotation ${q.quotationNumber} converted to service call${callNum ? ` ${callNum}` : ''}.`);
+      setConvertPendingId('');
+      await fetchQuotations();
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Failed to convert quotation.');
+    } finally {
+      setConvertingId('');
     }
   };
 
@@ -547,6 +568,40 @@ const Quotations = () => {
                           triggerClassName="text-xs text-amber-300/80 hover:text-amber-200 underline underline-offset-2"
                           onCreated={fetchQuotations}
                         />
+                      </div>
+                    )}
+
+                    {/* Convert to Job action — admin only, approved quotations only */}
+                    {isAdmin && q.status === 'approved' && !q.convertedToServiceCall && (
+                      <div className="mt-3 flex items-center gap-3">
+                        {convertPendingId === q._id ? (
+                          <>
+                            <span className="text-xs text-emerald-300">Convert this quotation to a service call?</span>
+                            <button
+                              type="button"
+                              disabled={convertingId === q._id}
+                              onClick={() => handleConvertToJob(q)}
+                              className="rounded-lg bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 text-xs px-3 py-1 hover:bg-emerald-500/40 disabled:opacity-50"
+                            >
+                              {convertingId === q._id ? 'Converting…' : 'Yes, convert'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConvertPendingId('')}
+                              className="text-xs text-white/50 hover:text-white/80"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setConvertPendingId(q._id); setActionMsg(''); setActionError(''); }}
+                            className="text-xs text-emerald-400/80 hover:text-emerald-300 underline underline-offset-2"
+                          >
+                            Convert to service call
+                          </button>
+                        )}
                       </div>
                     )}
 

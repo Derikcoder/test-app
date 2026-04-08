@@ -360,7 +360,9 @@ const FranchiseCustomer = () => {
            <div className="flex flex-col items-end gap-2 shrink-0">
             <span className="text-sm font-bold text-yellow-300">R {Number(q.totalAmount ?? 0).toFixed(2)}</span>
             {isOwnProfile && q.status === 'sent' && q.shareToken && (
-             quotActionState[q._id] === 'accepted' ? (
+             new Date(q.validUntil) < new Date() ? (
+              <span className="text-[10px] text-orange-300/70 italic">Expired</span>
+             ) : quotActionState[q._id] === 'accepted' ? (
               <span className="text-[10px] font-semibold text-emerald-300">✓ Accepted</span>
              ) : quotActionState[q._id] === 'rejected' ? (
               <span className="text-[10px] font-semibold text-red-300">✗ Declined</span>
