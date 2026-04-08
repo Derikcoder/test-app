@@ -97,6 +97,9 @@ const SingleBusinessCustomer = () => {
  const [callsLoading, setCallsLoading] = useState(true);
  const [quotsLoading, setQuotsLoading] = useState(true);
  const [error, setError]             = useState('');
+ const [quotActionState, setQuotActionState] = useState({});
+ const [rejectingId, setRejectingId]         = useState(null);
+ const [rejectReason, setRejectReason]       = useState('');
 
  useEffect(() => {
   api.get(`/customers/${id}`, { headers: { Authorization: `Bearer ${user.token}` } })
@@ -140,6 +143,33 @@ const SingleBusinessCustomer = () => {
   return [d.streetAddress, d.complexName, d.siteAddressDetail, d.suburb,
    [d.cityDistrict, d.province].filter(Boolean).join(', '),
    d.postalCode ? `Postal Code: ${d.postalCode}` : ''].filter(Boolean);
+ };
+
+ const isOwnProfile = user?.role === 'customer' && String(user?.customerProfile) === id;
+
+ const handleAcceptQuot = async (q) => {
+  setQuotActionState((s) => ({ ...s, [q._id]: 'loading' }));
+  try {
+   await api.patch(`/quotations/share/${q.shareToken}/accept`);
+   setQuotActionState((s) => ({ ...s, [q._id]: 'accepted' }));
+   setQuotations((prev) => prev.map((x) => x._id === q._id ? { ...x, status: 'approved' } : x));
+  } catch {
+   setQuotActionState((s) => ({ ...s, [q._id]: null }));
+  }
+ };
+
+ const handleRejectQuot = async (q) => {
+  setQuotActionState((s) => ({ ...s, [q._id]: 'loading' }));
+  try {
+   const body = rejectReason.trim() ? { reason: rejectReason.trim() } : {};
+   await api.patch(`/quotations/share/${q.shareToken}/reject`, body);
+   setQuotActionState((s) => ({ ...s, [q._id]: 'rejected' }));
+   setQuotations((prev) => prev.map((x) => x._id === q._id ? { ...x, status: 'rejected' } : x));
+   setRejectingId(null);
+   setRejectReason('');
+  } catch {
+   setQuotActionState((s) => ({ ...s, [q._id]: null }));
+  }
  };
 
  /* ── loading / error guards ── */
@@ -325,7 +355,10 @@ const SingleBusinessCustomer = () => {
        <p className="text-sm text-white/40">No active quotations</p>
       ) : (
        <>
-        <p className="text-xs text-white/40 mb-3">Customer accepts or declines from their own portal.</p>
+        {isOwnProfile
+         ? <p className="text-xs text-white/40 mb-3">Review and accept or decline your pending quotes below.</p>
+         : <p className="text-xs text-white/40 mb-3">Customer accepts or declines from their own portal.</p>
+        }
         {quotations.map((q) => {
          const statusStyles = {
           draft:    'bg-white/10 text-white/60 border-white/20',
@@ -347,7 +380,51 @@ const SingleBusinessCustomer = () => {
            </div>
            <div className="flex flex-col items-end gap-2 shrink-0">
             <span className="text-sm font-bold text-yellow-300">R {Number(q.totalAmount ?? 0).toFixed(2)}</span>
-            {q.shareToken && q.status === 'sent' && (
+            {isOwnProfile && q.status === 'sent' && q.shareToken && (
+             quotActionState[q._id] === 'accepted' ? (
+              <span className="text-[10px] font-semibold text-emerald-300">✓ Accepted</span>
+             ) : quotActionState[q._id] === 'rejected' ? (
+              <span className="text-[10px] font-semibold text-red-300">✗ Declined</span>
+             ) : rejectingId === q._id ? (
+              <div className="flex flex-col gap-1 items-end">
+               <input
+                type="text"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Reason (optional)"
+                className="text-[10px] bg-white/10 border border-white/20 rounded px-2 py-1 text-white/80 placeholder:text-white/30 w-36 focus:outline-none"
+               />
+               <div className="flex gap-1">
+                <button
+                 disabled={quotActionState[q._id] === 'loading'}
+                 onClick={() => handleRejectQuot(q)}
+                 className="text-[10px] font-semibold text-red-300 hover:text-red-200 transition-colors px-2 py-0.5 border border-red-400/30 rounded">
+                 {quotActionState[q._id] === 'loading' ? '…' : 'Confirm'}
+                </button>
+                <button
+                 onClick={() => { setRejectingId(null); setRejectReason(''); }}
+                 className="text-[10px] text-white/40 hover:text-white/60 transition-colors">
+                 Cancel
+                </button>
+               </div>
+              </div>
+             ) : (
+              <div className="flex gap-2">
+               <button
+                disabled={quotActionState[q._id] === 'loading'}
+                onClick={() => handleAcceptQuot(q)}
+                className="text-[10px] font-semibold text-emerald-300 hover:text-emerald-200 transition-colors px-2 py-0.5 border border-emerald-400/30 rounded">
+                {quotActionState[q._id] === 'loading' ? '…' : 'Accept'}
+               </button>
+               <button
+                onClick={() => setRejectingId(q._id)}
+                className="text-[10px] font-semibold text-red-300 hover:text-red-200 transition-colors px-2 py-0.5 border border-red-400/30 rounded">
+                Decline
+               </button>
+              </div>
+             )
+            )}
+            {!isOwnProfile && q.shareToken && q.status === 'sent' && (
              <button
               onClick={() => navigator.clipboard.writeText(`${window.location.origin}/quotation-approval/${q.shareToken}`).catch(() => {})}
               className="text-[10px] font-semibold text-blue-300 hover:text-blue-200 underline underline-offset-2 transition-colors">
