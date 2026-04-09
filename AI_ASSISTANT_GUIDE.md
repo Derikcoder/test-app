@@ -45,6 +45,43 @@
 
 ### Recent Changes
 
+#### Session: April 9, 2026 — Password-Free Agent Onboarding + Email Infrastructure + UAT-0 Pass
+**Focus:** Security-correct agent invite flow, SMTP resilience, resend capability, email test suite, UAT-0 validated
+
+**Agent Onboarding — Password Removed:**
+- ✅ `adminProvisionUser` (auth.controller.js): `password` removed from required fields; system generates `crypto.randomBytes(32).toString('hex')` as internal unguessable password; calls `user.generatePasswordResetToken()` + `sendAgentWelcomeEmail()` after account creation
+- ✅ `FieldServiceAgents.jsx`: provision modal rebuilt — password input removed, submit button is "Send Invitation", info text explains the email link flow; success message confirms "Welcome email sent"
+
+**SMTP Fix:**
+- ✅ `emailService.js` `createTransporter()`: now checks `SMTP_USER`/`SMTP_PASS` env vars first → uses real SMTP if present; falls back to Ethereal test account (with console warning) only when credentials are absent
+- Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_NAME`, `FROM_EMAIL`
+
+**Resend Invitation:**
+- ✅ `resendAgentWelcomeEmail` exported from `auth.controller.js` — looks up agent profile → linked User → generates fresh reset token → resends welcome email
+- ✅ `POST /api/auth/admin/resend-agent-welcome/:agentProfileId` registered in `auth.routes.js` (protect + authorizeRoles superAdmin/businessAdministrator)
+- ✅ `FieldServiceAgents.jsx`: "Resend Invite" button added beside "Login ✓" for already-provisioned agents; `resendLoadingId` + `resendMessage` state; 5-second auto-clear feedback banner
+
+**Email Test Suite:**
+- ✅ `server/tests/unit/utils/emailService.test.js`: expanded from 9 → 22 tests; new suites for `createTransporter` (SMTP-first, Ethereal fallback) and `sendAgentWelcomeEmail` (recipient, username, reset URL, subject, text fallback, missing field throws, SMTP error propagation)
+- ✅ `server/tests/integration/email.integration.test.js` (NEW): 7 integration tests using real Ethereal SMTP; covers `createTransporter()`, `sendAgentWelcomeEmail()`, `sendPasswordResetEmail()` end-to-end; all green in ~20 s
+
+**UAT-0 Milestone:**
+- ✅ Field agent `mechagent001_test` provisioned via secure invite flow
+- ✅ Email delivered via Ethereal (preview URL: https://ethereal.email/message/adetCM1XWISjMMIIadetDEI3YJ8VjvU5AAAAAdzdm6FYk5KU55z7LzL.W2Q)
+- ✅ Agent completed set-password flow and logged in successfully
+- ✅ Dual-login confirmed: `jj@wolmaranskontrakdienste.co.za` (SuperAdmin) + `mechagent001_test` (fieldServiceAgent) simultaneously active
+- ✅ 22 unit tests + 7 integration email tests all green
+
+**Primary Files Updated:**
+- `server/utils/emailService.js`
+- `server/controllers/auth.controller.js`
+- `server/routes/auth.routes.js`
+- `client/src/components/FieldServiceAgents.jsx`
+- `server/tests/unit/utils/emailService.test.js`
+- `server/tests/integration/email.integration.test.js` (NEW)
+
+---
+
 #### Session: April 8, 2026 — CSS Refactoring + Design Principles
 **Focus:** Token efficiency — extract repeated inline Tailwind strings into named CSS classes; fix `@layer components` syntax error; add CSS regression test suite; establish enterprise design principles
 

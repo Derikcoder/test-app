@@ -105,10 +105,23 @@ Complete unit testing infrastructure has been implemented for the WKD Field Serv
 | **Server Models** | 1 | 20+ | ~350 lines |
 | **Server Middleware** | 1 | 9 | ~180 lines |
 | **Server Controllers** | 1 | 12 | ~250 lines |
+| **Server Utils (Email)** | 1 | 22 | ~280 lines |
 | **Client Context** | 1 | 13 | ~200 lines |
-| **Client Components** | 1 | 15 | ~320 lines |
+| **Client Components** | 2 | 18 | ~370 lines |
 | **Client API** | 1 | 13 | ~180 lines |
-| **Total** | **6 test files** | **82+ tests** | **~1,480 lines** |
+| **Total (unit)** | **8 test files** | **107+ tests** | **~1,610 lines** |
+
+### Integration Tests (server)
+
+| Suite | File | Tests | Notes |
+|-------|------|-------|-------|
+| Email (Ethereal SMTP) | `tests/integration/email.integration.test.js` | 7 | Real network — ~20 s |
+| **Total (integration)** | **1 file** | **7 tests** | Run separately |
+
+> Integration tests use real Ethereal SMTP accounts and are kept separate so CI can skip them:
+> ```bash
+> npx jest --testPathIgnorePatterns=integration
+> ```
 
 ## 🚀 Quick Start
 

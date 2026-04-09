@@ -3,7 +3,7 @@
  * @description Unit tests for email service
  */
 
-import { sendPasswordResetEmail, createTransporter } from '../../../utils/emailService.js';
+import { sendPasswordResetEmail, sendAgentWelcomeEmail, createTransporter } from '../../../utils/emailService.js';
 import nodemailer from 'nodemailer';
 
 // Mock nodemailer
@@ -175,6 +175,105 @@ describe('Email Service', () => {
       delete process.env.SMTP_PORT;
       delete process.env.SMTP_USER;
       delete process.env.SMTP_PASS;
+    });
+
+    test('should use real SMTP when SMTP_USER and SMTP_PASS are set (any env)', async () => {
+      process.env.NODE_ENV = 'development';
+      process.env.SMTP_USER = 'dev@example.com';
+      process.env.SMTP_PASS = 'devpassword';
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_PORT = '465';
+
+      await createTransporter();
+
+      expect(nodemailer.createTransport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          host: 'smtp.example.com',
+          auth: expect.objectContaining({ user: 'dev@example.com' }),
+        })
+      );
+      expect(nodemailer.createTestAccount).not.toHaveBeenCalled();
+
+      delete process.env.SMTP_USER;
+      delete process.env.SMTP_PASS;
+      delete process.env.SMTP_HOST;
+      delete process.env.SMTP_PORT;
+    });
+
+    test('should fall back to Ethereal when SMTP credentials are absent', async () => {
+      delete process.env.SMTP_USER;
+      delete process.env.SMTP_PASS;
+
+      await createTransporter();
+
+      expect(nodemailer.createTestAccount).toHaveBeenCalled();
+    });
+  });
+
+  describe('sendAgentWelcomeEmail', () => {
+    const validData = {
+      to: 'agent@example.com',
+      agentName: 'Jane Doe',
+      userName: 'jane_doe',
+      resetUrl: 'http://localhost:3002/reset-password/abc123',
+    };
+
+    test('should send to the correct recipient', async () => {
+      await sendAgentWelcomeEmail(validData);
+
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.to).toBe('agent@example.com');
+    });
+
+    test('should include the agent username in the email body', async () => {
+      await sendAgentWelcomeEmail(validData);
+
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.html).toContain('jane_doe');
+    });
+
+    test('should include the reset URL in the email body', async () => {
+      await sendAgentWelcomeEmail(validData);
+
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.html).toContain('abc123');
+    });
+
+    test('should include the agent name in the email body', async () => {
+      await sendAgentWelcomeEmail(validData);
+
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.html).toContain('Jane Doe');
+    });
+
+    test('should have a welcome-related subject line', async () => {
+      await sendAgentWelcomeEmail(validData);
+
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.subject.toLowerCase()).toMatch(/welcome|account|invitation|password/);
+    });
+
+    test('should include plain text fallback with reset URL', async () => {
+      await sendAgentWelcomeEmail(validData);
+
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.text).toBeDefined();
+      expect(mail.text).toContain('abc123');
+    });
+
+    test('should throw when required field "to" is missing', async () => {
+      const { to: _omit, ...missingTo } = validData;
+      await expect(sendAgentWelcomeEmail(missingTo)).rejects.toThrow();
+    });
+
+    test('should throw when required field "resetUrl" is missing', async () => {
+      const { resetUrl: _omit, ...missingUrl } = validData;
+      await expect(sendAgentWelcomeEmail(missingUrl)).rejects.toThrow();
+    });
+
+    test('should propagate SMTP errors', async () => {
+      mockTransporter.sendMail = jest.fn().mockRejectedValue(new Error('SMTP timeout'));
+      await expect(sendAgentWelcomeEmail(validData)).rejects.toThrow('SMTP timeout');
     });
   });
 });

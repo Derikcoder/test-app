@@ -28,10 +28,12 @@ const FieldServiceAgents = () => {
  const [error, setError] = useState('');
  const [success, setSuccess] = useState('');
  const [provisionModal, setProvisionModal] = useState(null); // agent object or null
- const [provisionForm, setProvisionForm] = useState({ userName: '', password: '' });
+ const [provisionForm, setProvisionForm] = useState({ userName: '' });
  const [provisionLoading, setProvisionLoading] = useState(false);
  const [provisionError, setProvisionError] = useState('');
  const [provisionSuccess, setProvisionSuccess] = useState('');
+ const [resendLoadingId, setResendLoadingId] = useState(null);
+ const [resendMessage, setResendMessage] = useState({ id: null, text: '', isError: false });
  const [formData, setFormData] = useState({
   firstName: '',
   lastName: '',
@@ -119,7 +121,6 @@ const FieldServiceAgents = () => {
   setProvisionModal(agent);
   setProvisionForm({
    userName: `${agent.firstName.toLowerCase()}_${agent.lastName.toLowerCase()}`.replace(/\s+/g, ''),
-   password: '',
   });
   setProvisionError('');
   setProvisionSuccess('');
@@ -138,16 +139,34 @@ const FieldServiceAgents = () => {
      profileId: provisionModal._id,
      userName: provisionForm.userName,
      email: provisionModal.email,
-     password: provisionForm.password,
     },
     { headers: { Authorization: `Bearer ${user.token}` } }
    );
-   setProvisionSuccess(`Login provisioned! Username: ${provisionForm.userName} | Email: ${provisionModal.email}`);
+   setProvisionSuccess(`Welcome email sent to ${provisionModal.email}. The agent will set their own password via the link in the email.`);
    fetchAgents();
   } catch (err) {
    setProvisionError(err.response?.data?.message || 'Failed to provision login');
   } finally {
    setProvisionLoading(false);
+  }
+ };
+
+ const handleResendWelcome = async (agent) => {
+  setResendLoadingId(agent._id);
+  setResendMessage({ id: null, text: '', isError: false });
+  try {
+   await api.post(
+    `/auth/admin/resend-agent-welcome/${agent._id}`,
+    {},
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+   setResendMessage({ id: agent._id, text: `Invitation resent to ${agent.email}.`, isError: false });
+   setTimeout(() => setResendMessage({ id: null, text: '', isError: false }), 5000);
+  } catch (err) {
+   setResendMessage({ id: agent._id, text: err.response?.data?.message || 'Failed to resend invitation.', isError: true });
+   setTimeout(() => setResendMessage({ id: null, text: '', isError: false }), 5000);
+  } finally {
+   setResendLoadingId(null);
   }
  };
 
@@ -192,6 +211,11 @@ const FieldServiceAgents = () => {
      {error && (
             <div className="mb-4 p-4 rounded-lg bg-red-950 text-red-200 border border-red-700">
        {error}
+      </div>
+     )}
+     {resendMessage.text && (
+      <div className={`mb-4 p-4 rounded-lg border text-sm ${resendMessage.isError ? 'bg-red-950 text-red-200 border-red-700' : 'bg-emerald-950 text-emerald-200 border-emerald-700'}`}>
+       {resendMessage.text}
       </div>
      )}
 
@@ -376,7 +400,16 @@ const FieldServiceAgents = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.assignedArea || '-'}</td>
             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
              {agent.userAccount ? (
-              <span className="mr-3 text-xs text-emerald-400 font-semibold">Login ✓</span>
+              <span className="inline-flex items-center gap-2 mr-3">
+               <span className="text-xs text-emerald-400 font-semibold">Login ✓</span>
+               <button
+                onClick={(e) => { e.stopPropagation(); handleResendWelcome(agent); }}
+                disabled={resendLoadingId === agent._id}
+                className="text-xs text-cyan-400 hover:text-cyan-200 disabled:opacity-50"
+               >
+                {resendLoadingId === agent._id ? 'Sending...' : 'Resend Invite'}
+               </button>
+              </span>
              ) : (
               <button
                onClick={(e) => {
@@ -421,7 +454,7 @@ const FieldServiceAgents = () => {
       <div className="mb-4 p-4 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-700 text-sm">
        <p className="font-semibold mb-1">Account created!</p>
        <p>{provisionSuccess}</p>
-       <p className="mt-2 text-emerald-300">Share these credentials securely with the agent.</p>
+       <p className="mt-2 text-emerald-300">The agent will receive a secure link to set their own password. The link expires in 1 hour.</p>
       </div>
      ) : (
       <form onSubmit={handleProvisionSubmit} className="space-y-4">
@@ -444,19 +477,7 @@ const FieldServiceAgents = () => {
          className={inputClass}
         />
        </div>
-       <div>
-        <label className="dark-label">Temporary Password *</label>
-        <input
-         type="text"
-         value={provisionForm.password}
-         onChange={(e) => setProvisionForm({ ...provisionForm, password: e.target.value })}
-         required
-         minLength={6}
-         placeholder="Min. 6 characters"
-         className={inputClass}
-        />
-        <p className="mt-1 text-xs text-slate-500">Shown in plain text so you can share it with the agent.</p>
-       </div>
+       <p className="text-xs text-slate-400 -mt-2">A secure set-password link will be emailed to the agent. No password required from you.</p>
        {provisionError && (
         <div className="p-3 rounded-lg bg-red-950 text-red-200 border border-red-700 text-sm">{provisionError}</div>
        )}
@@ -473,7 +494,7 @@ const FieldServiceAgents = () => {
          disabled={provisionLoading}
          className="px-5 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold disabled:opacity-50"
         >
-         {provisionLoading ? 'Creating...' : 'Create Login'}
+         {provisionLoading ? 'Sending...' : 'Send Invitation'}
         </button>
        </div>
       </form>

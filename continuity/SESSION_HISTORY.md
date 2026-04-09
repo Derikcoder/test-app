@@ -100,6 +100,15 @@ Chronological checkpoint record for crash recovery and continuity.
 - Note: Checkpoint snapshot
 - Next Action: Continue from latest checkpoint notes
 
+## 2026-04-08 17:00:00 SAST (Session 27 — EOD)
+- Branch: main
+- HEAD: 5142a98
+- Checkpoint: 20260408-135848-main
+- Note: DB purge complete — test-app + test-app-test dropped; indexes rebuilt clean on next start
+- Note: Orphaned TDD diagnostic test file deleted; working tree confirmed clean
+- Note: UAT test credentials confirmed in server/.env; SuperAdmin must be recreated tomorrow
+- Next Action: npm run dev → register SuperAdmin → create UAT accounts → begin UAT-1
+
 ## 2026-04-08 13:58:48 SAST
 - Branch: main
 - HEAD: 53e4b1a

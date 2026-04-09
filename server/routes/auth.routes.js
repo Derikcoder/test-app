@@ -28,6 +28,7 @@ import {
   reassignUserProfileLink,
   listRegistrationOverrideAudits,
   adminProvisionUser,
+  resendAgentWelcomeEmail,
 } from '../controllers/auth.controller.js';
 import { protect, authorizeRoles } from '../middleware/auth.middleware.js';
 
@@ -88,6 +89,18 @@ router.post(
   protect,
   authorizeRoles('superAdmin', 'businessAdministrator'),
   adminProvisionUser
+);
+
+/**
+ * @route   POST /api/auth/admin/resend-agent-welcome/:agentProfileId
+ * @desc    Resend welcome email with a fresh set-password link to an already-provisioned agent
+ * @access  Private (superAdmin, businessAdministrator)
+ */
+router.post(
+  '/admin/resend-agent-welcome/:agentProfileId',
+  protect,
+  authorizeRoles('superAdmin', 'businessAdministrator'),
+  resendAgentWelcomeEmail
 );
 
 /**

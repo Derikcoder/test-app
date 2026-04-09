@@ -29,29 +29,30 @@ import nodemailer from 'nodemailer';
  * - FROM_NAME: Sender name
  */
 const createTransporter = async () => {
-  // For development: Use Ethereal (fake SMTP service)
-  if (process.env.NODE_ENV !== 'production') {
-    const testAccount = await nodemailer.createTestAccount();
-    
+  // Use real SMTP whenever credentials are provided (works in any NODE_ENV)
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     return nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT, 10) || 587,
+      secure: false, // true for 465, false for other ports
       auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
     });
   }
-  
-  // For production: Use real SMTP credentials
+
+  // Fallback: Ethereal fake SMTP — preview URL is logged to console
+  // NOTE: Emails sent via Ethereal do NOT reach real inboxes.
+  // To receive real emails, set SMTP_USER and SMTP_PASS in server/.env
+  const testAccount = await nodemailer.createTestAccount();
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT, 10) || 587,
-    secure: false, // true for 465, false for other ports
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: testAccount.user,
+      pass: testAccount.pass,
     },
   });
 };
@@ -448,4 +449,98 @@ export const sendInvoiceDocumentEmail = async ({
 // Export createTransporter for testing
 export { createTransporter };
 
-export default { sendPasswordResetEmail, sendEmail, sendQuotationEmail, sendInvoiceDocumentEmail, createTransporter };
+/**
+ * Send Agent Welcome / Set-Password Email
+ *
+ * @async
+ * @param {Object} options
+ * @param {string} options.to - Agent email address
+ * @param {string} options.agentName - Agent full name
+ * @param {string} options.userName - Pre-assigned username
+ * @param {string} options.resetUrl - Secure one-time set-password URL (expires in 1 hour)
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendAgentWelcomeEmail = async ({ to, agentName, userName, resetUrl }) => {
+  if (!to) throw new Error('Agent email is required');
+  if (!resetUrl) throw new Error('Reset URL is required');
+
+  const transporter = await createTransporter();
+
+  const mailOptions = {
+    from: `${process.env.FROM_NAME || 'Appatunid'} <${process.env.FROM_EMAIL || 'noreply@appatunid.com'}>`,
+    to,
+    subject: 'Welcome to Appatunid — Set Up Your Password',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #05198C 0%, #1a3ba8 100%); color: white; padding: 30px; text-align: center; }
+          .header h1 { margin: 0; font-size: 26px; font-weight: 700; }
+          .header p { margin: 10px 0 0; opacity: 0.9; font-size: 14px; }
+          .content { padding: 40px 30px; }
+          .content p { margin: 0 0 20px; color: #555; }
+          .button-container { text-align: center; margin: 35px 0; }
+          .cta-button { display: inline-block; padding: 16px 36px; background: linear-gradient(135deg, #05198C 0%, #1a3ba8 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(5,25,140,0.3); }
+          .info-box { background: #f0f4ff; border-left: 4px solid #05198C; padding: 15px; margin: 25px 0; border-radius: 4px; }
+          .info-box p { margin: 0; color: #444; font-size: 14px; }
+          .warning-box { background: #fff9e6; border-left: 4px solid #FFFB28; padding: 15px; margin: 25px 0; border-radius: 4px; }
+          .warning-box p { margin: 0; color: #666; font-size: 14px; }
+          .link-text { color: #05198C; word-break: break-all; font-size: 13px; background: #f0f4ff; padding: 12px; border-radius: 6px; margin: 20px 0; display: block; }
+          .footer { background: #f8f8f8; padding: 25px 30px; text-align: center; border-top: 1px solid #e0e0e0; }
+          .footer p { margin: 5px 0; color: #999; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>👋 Welcome to Appatunid</h1>
+            <p>WKD Field Service Management Portal</p>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${agentName || 'Agent'}</strong>,</p>
+            <p>Your field service agent account has been created. Before you can log in, you need to set your password using the secure link below.</p>
+            <div class="info-box">
+              <p><strong>Your login details:</strong></p>
+              <p>Email: <strong>${to}</strong></p>
+              <p>Username: <strong>${userName}</strong></p>
+            </div>
+            <div class="button-container">
+              <a href="${resetUrl}" class="cta-button">Set My Password</a>
+            </div>
+            <p style="text-align:center;color:#999;font-size:13px;">Or copy and paste this link into your browser:</p>
+            <div class="link-text">${resetUrl}</div>
+            <div class="warning-box">
+              <p><strong>⚠️ Important:</strong></p>
+              <p>• This link expires in <strong>1 hour</strong></p>
+              <p>• Do not share this link with anyone</p>
+              <p>• If you did not expect this email, contact your administrator</p>
+            </div>
+            <p>Once your password is set, you will be directed to your agent dashboard.</p>
+            <p style="margin-top:30px;">Welcome aboard,<br/><strong>Appatunid Team</strong></p>
+          </div>
+          <div class="footer">
+            <p><strong>Appatunid WKD Field Service Management</strong></p>
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>© ${new Date().getFullYear()} Appatunid. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `Welcome to Appatunid\n\nHello ${agentName || 'Agent'},\n\nYour field service agent account has been created.\n\nLogin details:\nEmail: ${to}\nUsername: ${userName}\n\nSet your password here (expires in 1 hour):\n${resetUrl}\n\nDo not share this link with anyone.\n\nWelcome aboard,\nAppatunid Team`,
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('📧 Agent welcome email sent!');
+    console.log('📬 Preview URL:', nodemailer.getTestMessageUrl(info));
+  }
+
+  return info;
+};
+
+export default { sendPasswordResetEmail, sendEmail, sendQuotationEmail, sendInvoiceDocumentEmail, sendAgentWelcomeEmail, createTransporter };

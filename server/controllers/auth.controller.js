@@ -22,7 +22,7 @@ import Customer from '../models/Customer.model.js';
 import ProfileLinkAudit from '../models/ProfileLinkAudit.model.js';
 import RegistrationOverrideAudit from '../models/RegistrationOverrideAudit.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
-import { sendPasswordResetEmail } from '../utils/emailService.js';
+import { sendPasswordResetEmail, sendAgentWelcomeEmail } from '../utils/emailService.js';
 
 const ROLE_TYPES = ['superAdmin', 'businessAdministrator', 'fieldServiceAgent', 'customer'];
 const PASSKEY_REQUIRED_ROLES = ['businessAdministrator', 'fieldServiceAgent'];
@@ -1019,10 +1019,10 @@ export const fulfillPasskeyRenewal = async (req, res) => {
  */
 export const adminProvisionUser = async (req, res) => {
   try {
-    const { role, profileId, userName, email, password } = req.body;
+    const { role, profileId, userName, email } = req.body;
 
-    if (!role || !profileId || !userName || !email || !password) {
-      return res.status(400).json({ message: 'role, profileId, userName, email and password are all required' });
+    if (!role || !profileId || !userName || !email) {
+      return res.status(400).json({ message: 'role, profileId, userName, and email are all required' });
     }
 
     const PROVISIONABLE_ROLES = ['fieldServiceAgent', 'customer'];
@@ -1074,7 +1074,7 @@ export const adminProvisionUser = async (req, res) => {
     const newUser = await User.create({
       userName,
       email: normalizedEmail,
-      password,
+      password: crypto.randomBytes(32).toString('hex'), // random unguessable — agent sets own password via welcome email
       role,
       isSuperUser: false,
       ...profileLink,
@@ -1088,6 +1088,19 @@ export const adminProvisionUser = async (req, res) => {
       await Customer.findByIdAndUpdate(profileId, { userAccount: newUser._id });
     }
 
+    // Generate a one-time set-password token and email it to the agent
+    const resetToken = newUser.generatePasswordResetToken();
+    await newUser.save();
+
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+
+    if (role === 'fieldServiceAgent') {
+      const agentName = profile.firstName && profile.lastName
+        ? `${profile.firstName} ${profile.lastName}`
+        : undefined;
+      await sendAgentWelcomeEmail({ to: normalizedEmail, agentName, userName, resetUrl });
+    }
+
     logInfo('Admin provisioned user account', {
       provisionedBy: req.user._id,
       newUserId: newUser._id,
@@ -1097,7 +1110,7 @@ export const adminProvisionUser = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: 'User account provisioned successfully',
+      message: `User account provisioned. Welcome email sent to ${normalizedEmail}.`,
       userId: newUser._id,
       userName: newUser.userName,
       email: newUser.email,
@@ -1440,6 +1453,55 @@ export const listRegistrationOverrideAudits = async (req, res) => {
     });
   } catch (error) {
     logError('List registration override audits error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Resend Agent Welcome / Set-Password Email
+ *
+ * @async
+ * @function resendAgentWelcomeEmail
+ * @description Regenerates a password reset token and resends the welcome email to an already-provisioned
+ *              field service agent. Used when the original email was not received or has expired.
+ * @route POST /api/auth/admin/resend-agent-welcome/:agentProfileId
+ * @access Private (superAdmin, businessAdministrator)
+ */
+export const resendAgentWelcomeEmail = async (req, res) => {
+  try {
+    const { agentProfileId } = req.params;
+
+    const profile = await FieldServiceAgent.findById(agentProfileId);
+    if (!profile) {
+      return res.status(404).json({ message: 'Agent profile not found' });
+    }
+    if (!profile.userAccount) {
+      return res.status(400).json({ message: 'No user account is linked to this agent. Provision one first.' });
+    }
+
+    const agentUser = await User.findById(profile.userAccount);
+    if (!agentUser) {
+      return res.status(404).json({ message: 'Linked user account not found' });
+    }
+
+    const resetToken = agentUser.generatePasswordResetToken();
+    await agentUser.save();
+
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+    const agentName = `${profile.firstName} ${profile.lastName}`;
+
+    await sendAgentWelcomeEmail({ to: agentUser.email, agentName, userName: agentUser.userName, resetUrl });
+
+    logInfo('Admin resent agent welcome email', {
+      sentBy: req.user._id,
+      agentProfileId,
+      userId: agentUser._id,
+      email: agentUser.email,
+    });
+
+    return res.status(200).json({ message: `Welcome email resent to ${agentUser.email}` });
+  } catch (error) {
+    logError('Resend agent welcome email error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };
