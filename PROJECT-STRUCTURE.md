@@ -133,6 +133,7 @@ main                 ← Production (stable, never touched directly)
 - `UserProfile.jsx`: Profile display and edits with write-once registration identifiers, legal-evidence override capture for superAdmin, and role-aware account dashboard.
 - `FieldServiceAgents.jsx`: Field service agent list and CRUD screen. Employee ID (`AGT-XXXXXX`) is system-generated; input field was removed from registration form.
 - `AgentProfile.jsx`: Agent detail view with job statistics.
+- `FieldAgentSelfProfile.jsx`: Field agent's own workspace — loads the calling agent's profile via `GET /api/agents/me` (no `createdBy` restriction) and their assigned service calls via `GET /api/service-calls/my-assigned`. Role-scoped: only accessible when `user.role === 'fieldServiceAgent'`; routed via `ProfileRoute` in `App.jsx`.
 - `InvoiceApprovalPage.jsx`: Public customer review page for shared pro-forma documents with approve/reject actions.
 - `Customers.jsx`: Customer list page — all customers filtered by type, with navigation to type-specific profiles.
 - `RegisterNewCustomer.jsx`: Reusable modal/form for registering any customer type. Callable from any screen.
@@ -219,9 +220,9 @@ Each page now includes role and entity context chips in header, immediately belo
 
 ### Server Controllers (`server/controllers/`)
 - `auth.controller.js`: Multi-principal registration/login, passkey generation/renewal, profile updates with write-once/legal-evidence policy, admin profile-link correction flows, and legal override audit query endpoint.
-- `agent.controller.js`: Field service agent CRUD. `employeeId` is now auto-generated (`AGT-000001` format) via `SequenceCounter`; no longer accepted from client input.
+- `agent.controller.js`: Field service agent CRUD. `employeeId` is now auto-generated (`AGT-000001` format) via `SequenceCounter`; no longer accepted from client input. Includes `getMyAgentProfile` — looks up the calling user's own agent record via `{ userAccount: req.user._id }` (no `createdBy` restriction) for fieldServiceAgent self-access.
 - `customer.controller.js`: Customer CRUD. `customerId` is now auto-generated (`CUST-000001` format) via `SequenceCounter`; no longer accepted from client input.
-- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff.
+- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff. Includes `getMyAssignedServiceCalls` — returns calls where `assignedAgent === req.user.fieldServiceAgentProfile` for field agent self-access. `getEligibleUnassignedServiceCalls` and `selfAcceptServiceCall` resolve `businessCreatedBy` from the agent record when the caller is a `fieldServiceAgent`, avoiding the `createdBy: req.user._id` mismatch.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `quotation.controller.js`: Quotation creation, line items, status management, and create-time pricing calculation (subtotal/VAT/total).
 - `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, function-based travel-cost calculation (`distanceTravelledKm × ratePerKm + timeTravelledCost`) with call-out floor condition support, first-site-visit included assessment logic, procurement/delivery profit capture, 14-day default validity fallback, PDF generation, quote delivery endpoints (optional Email/WhatsApp/Telegram), and auto-conversion of approved quotations into in-progress service jobcards.
@@ -230,9 +231,9 @@ Each page now includes role and entity context chips in header, immediately belo
 
 ### Server Routes (`server/routes/`)
 - `auth.routes.js`: `/api/auth` — login, register, profile, password reset, passkey lifecycle endpoints, profile-link correction endpoints, and legal override audit query endpoint.
-- `agent.routes.js`: `/api/agents` — agent endpoints.
+- `agent.routes.js`: `/api/agents` — agent endpoints. `GET /me` (before `/:id`) returns the calling field agent's own profile.
 - `customer.routes.js`: `/api/customers` — customer endpoints.
-- `serviceCall.routes.js`: `/api/service-calls` — service call endpoints.
+- `serviceCall.routes.js`: `/api/service-calls` — service call endpoints. `GET /my-assigned` returns assigned calls scoped to the calling field agent.
 - `quotation.routes.js`: `/api/quotations` — quotation endpoints including PDF generation, send/distribution, and tokenized share access.
 - `invoice.routes.js`: `/api/invoices` — invoice endpoints including pro-forma workflows, tokenized public PDF access, and public customer approval/rejection routes.
 - `equipment.routes.js`: `/api/equipment` — equipment endpoints.

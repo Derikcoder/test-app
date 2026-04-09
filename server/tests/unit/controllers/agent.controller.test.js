@@ -6,6 +6,7 @@
 import {
   getAgents,
   getAgentById,
+  getMyAgentProfile,
   createAgent,
   updateAgent,
   deleteAgent,
@@ -737,6 +738,39 @@ describe('Agent Controller', () => {
       });
 
       await getAvailableAgents(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  // ─── getMyAgentProfile ───────────────────────────────────────────────────────
+
+  describe('getMyAgentProfile', () => {
+    test('returns agent profile linked to the calling user account', async () => {
+      req.user = { _id: 'user-agent-1' };
+      FieldServiceAgent.findOne = jest.fn().mockResolvedValue(mockAgent);
+
+      await getMyAgentProfile(req, res);
+
+      expect(FieldServiceAgent.findOne).toHaveBeenCalledWith({ userAccount: 'user-agent-1' });
+      expect(res.json).toHaveBeenCalledWith(mockAgent);
+    });
+
+    test('returns 404 when no linked agent profile exists', async () => {
+      req.user = { _id: 'user-no-agent' };
+      FieldServiceAgent.findOne = jest.fn().mockResolvedValue(null);
+
+      await getMyAgentProfile(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Agent profile not found' });
+    });
+
+    test('returns 500 on database error', async () => {
+      req.user = { _id: 'user-agent-1' };
+      FieldServiceAgent.findOne = jest.fn().mockRejectedValue(new Error('DB error'));
+
+      await getMyAgentProfile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
     });

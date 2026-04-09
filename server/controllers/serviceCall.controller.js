@@ -141,6 +141,29 @@ const getAgentSelfDispatchEligibility = async ({ createdBy, agentId }) => {
   };
 };
 
+// @desc    Get service calls assigned to the calling field agent
+// @route   GET /api/service-calls/my-assigned
+// @access  Private (fieldServiceAgent)
+export const getMyAssignedServiceCalls = async (req, res) => {
+  try {
+    const agentProfileId = req.user.fieldServiceAgentProfile;
+    if (!agentProfileId) {
+      return res.status(400).json({ message: 'No agent profile linked to your account' });
+    }
+    const serviceCalls = await ServiceCall.find({ assignedAgent: agentProfileId })
+      .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
+      .populate('assignedAgent', 'firstName lastName employeeId')
+      .populate({ path: 'quotation', select: 'quotationNumber title status totalAmount createdBy', populate: { path: 'createdBy', select: 'userName role' } })
+      .populate('proFormaInvoice', 'invoiceNumber documentType workflowStatus totalAmount depositRequired depositAmount')
+      .populate('invoice', 'invoiceNumber documentType workflowStatus totalAmount paymentStatus')
+      .sort({ createdAt: -1 });
+    res.json(serviceCalls);
+  } catch (error) {
+    logError('Get my assigned service calls error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Get all service calls
 // @route   GET /api/service-calls
 // @access  Private
@@ -426,8 +449,19 @@ export const updateServiceCall = async (req, res) => {
 export const getEligibleUnassignedServiceCalls = async (req, res) => {
   try {
     const { agentId } = req.params;
+
+    // When called by a fieldServiceAgent, resolve the business owner from the agent record
+    let businessCreatedBy = req.user._id;
+    if (req.user.role === 'fieldServiceAgent') {
+      const agent = await FieldServiceAgent.findOne({ _id: agentId, userAccount: req.user._id });
+      if (!agent) {
+        return res.status(403).json({ message: 'Access denied', jobs: [], meta: null });
+      }
+      businessCreatedBy = agent.createdBy;
+    }
+
     const eligibility = await getAgentSelfDispatchEligibility({
-      createdBy: req.user._id,
+      createdBy: businessCreatedBy,
       agentId,
     });
 
@@ -440,7 +474,7 @@ export const getEligibleUnassignedServiceCalls = async (req, res) => {
     }
 
     const jobs = await ServiceCall.find({
-      createdBy: req.user._id,
+      createdBy: businessCreatedBy,
       assignedAgent: null,
       selfDispatchEnabled: { $ne: false },
       status: { $nin: TERMINAL_SERVICE_CALL_STATUSES },
@@ -466,9 +500,19 @@ export const selfAcceptServiceCall = async (req, res) => {
       return res.status(400).json({ message: 'agentId is required' });
     }
 
+    // When called by a fieldServiceAgent, resolve the business owner from the agent record
+    let businessCreatedBy = req.user._id;
+    if (req.user.role === 'fieldServiceAgent') {
+      const agent = await FieldServiceAgent.findOne({ _id: agentId, userAccount: req.user._id });
+      if (!agent) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      businessCreatedBy = agent.createdBy;
+    }
+
     const serviceCall = await ServiceCall.findOne({
       _id: req.params.id,
-      createdBy: req.user._id,
+      createdBy: businessCreatedBy,
     });
 
     if (!serviceCall) {
@@ -476,7 +520,7 @@ export const selfAcceptServiceCall = async (req, res) => {
     }
 
     const eligibility = await getAgentSelfDispatchEligibility({
-      createdBy: req.user._id,
+      createdBy: businessCreatedBy,
       agentId,
     });
 
@@ -527,7 +571,7 @@ export const selfAcceptServiceCall = async (req, res) => {
     const updatedServiceCall = await ServiceCall.findOneAndUpdate(
       {
         _id: req.params.id,
-        createdBy: req.user._id,
+        createdBy: businessCreatedBy,
         assignedAgent: null,
         selfDispatchEnabled: { $ne: false },
         status: { $nin: TERMINAL_SERVICE_CALL_STATUSES },

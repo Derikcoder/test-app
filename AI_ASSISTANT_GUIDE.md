@@ -45,19 +45,21 @@
 
 ### Recent Changes
 
-#### Session: April 9, 2026 — Password-Free Agent Onboarding + Email Infrastructure + UAT-0 Pass
-**Focus:** Security-correct agent invite flow, SMTP resilience, resend capability, email test suite, UAT-0 validated
+#### Session: April 9, 2026 — FieldAgentSelfProfile + Role-Scoped API Endpoints
+**Focus:** Built field agent's own workspace view; fixed `createdBy` filter bug blocking all agent data fetches
 
-**Agent Onboarding — Password Removed:**
-- ✅ `adminProvisionUser` (auth.controller.js): `password` removed from required fields; system generates `crypto.randomBytes(32).toString('hex')` as internal unguessable password; calls `user.generatePasswordResetToken()` + `sendAgentWelcomeEmail()` after account creation
-- ✅ `FieldServiceAgents.jsx`: provision modal rebuilt — password input removed, submit button is "Send Invitation", info text explains the email link flow; success message confirms "Welcome email sent"
+**New Component `FieldAgentSelfProfile.jsx`:**
+- ✅ Renders at `/profile` when `user.role === 'fieldServiceAgent'` (via `ProfileRoute` in `App.jsx`)
+- ✅ Reads `user.fieldServiceAgentProfile` (ObjectId string from auth) — no `useParams`
+- ✅ Uses new role-scoped endpoints: `GET /api/agents/me`, `GET /api/service-calls/my-assigned`, `GET /api/service-calls/eligible-unassigned/:id`
+- ✅ Same display/actions as `AgentProfile.jsx` but self-scoped: stats, tabbed calls, modals, accept/complete/invoice actions
 
-**SMTP Fix:**
-- ✅ `emailService.js` `createTransporter()`: now checks `SMTP_USER`/`SMTP_PASS` env vars first → uses real SMTP if present; falls back to Ethereal test account (with console warning) only when credentials are absent
-- Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FROM_NAME`, `FROM_EMAIL`
+**Bug Fix — `createdBy` filter:**
+- ✅ `GET /api/agents/me` → `findOne({ userAccount: req.user._id })` (no `createdBy`)
+- ✅ `GET /api/service-calls/my-assigned` → `find({ assignedAgent: req.user.fieldServiceAgentProfile })`
+- ✅ `getEligibleUnassignedServiceCalls` + `selfAcceptServiceCall`: when caller is `fieldServiceAgent`, resolves `businessCreatedBy` from `agent.createdBy`; ownership guard on `userAccount`
 
-**Resend Invitation:**
-- ✅ `resendAgentWelcomeEmail` exported from `auth.controller.js` — looks up agent profile → linked User → generates fresh reset token → resends welcome email
+**Tests:** 255/255 pass (+10 new unit tests covering all new functions and fieldServiceAgent role paths)
 - ✅ `POST /api/auth/admin/resend-agent-welcome/:agentProfileId` registered in `auth.routes.js` (protect + authorizeRoles superAdmin/businessAdministrator)
 - ✅ `FieldServiceAgents.jsx`: "Resend Invite" button added beside "Login ✓" for already-provisioned agents; `resendLoadingId` + `resendMessage` state; 5-second auto-clear feedback banner
 
@@ -1160,6 +1162,46 @@ git merge consolidation
 ---
 
 ## 🔄 Recent Changes
+
+### 2026-04-09 (Session 27)
+**Feature: FieldAgentSelfProfile — Field Service Agent's Own Workspace**
+
+- ✅ **`client/src/components/FieldAgentSelfProfile.jsx`** — Created (new component)
+  - Self-scoped workspace view rendered at `/profile` when `user.role === 'fieldServiceAgent'`
+  - Reads agent ID from `user.fieldServiceAgentProfile` (no `useParams`); shows early error if missing
+  - Same data display and actions as `AgentProfile.jsx`: stats, tabbed service calls (All / To Attend / In Progress / Completed / Unassigned), WhatsApp, Call Customer, CreateQuoteModal, SiteInstructionModal, Mark Job Complete, Create Invoice, Accept Job
+  - `isSuperUser={false}`, `isSuperAdmin={false}` passed to all modals (no admin-only actions exposed)
+  - Framing: "My Workspace", "My Service Calls", "My Profile" badge; no Back button, no "Governance + Override" badge
+  - Uses new role-scoped endpoints: `GET /api/agents/me`, `GET /api/service-calls/my-assigned`, `GET /api/service-calls/eligible-unassigned/:id`, `POST /api/service-calls/:id/self-accept`
+
+- ✅ **`client/src/App.jsx`** — Modified
+  - Lazy import for `FieldAgentSelfProfile`
+  - New `ProfileRoute` component: `user.role === 'fieldServiceAgent'` → `<FieldAgentSelfProfile />`, else → `<UserProfile />`
+  - `/profile` route uses `ProfileRoute` (no change to URL)
+
+**Bug Fix: `createdBy` filter blocked all field agent data fetches**
+- Root cause: `getAgentById`, `getServiceCalls`, `getEligibleUnassignedServiceCalls`, `selfAcceptServiceCall` all filtered by `createdBy: req.user._id`. Agent profiles and service calls are owned by the admin (`createdBy = admin._id`). When a `fieldServiceAgent` logs in, their `req.user._id` ≠ admin's `_id` → 404s and empty arrays.
+
+- ✅ **`server/controllers/agent.controller.js`** — Added `getMyAgentProfile`
+  - `GET /api/agents/me`: `FieldServiceAgent.findOne({ userAccount: req.user._id })` — no `createdBy` constraint
+  - Existing `getAgentById` unchanged (admin-to-admin scoping preserved)
+
+- ✅ **`server/routes/agent.routes.js`** — Added `GET /me` route
+  - Registered before `GET /:id` to prevent "me" being captured as an `:id` param
+
+- ✅ **`server/controllers/serviceCall.controller.js`** — Added `getMyAssignedServiceCalls`; fixed `getEligibleUnassignedServiceCalls` + `selfAcceptServiceCall`
+  - `getMyAssignedServiceCalls`: `ServiceCall.find({ assignedAgent: req.user.fieldServiceAgentProfile })` — no `createdBy` constraint
+  - `getEligibleUnassignedServiceCalls` + `selfAcceptServiceCall`: when `req.user.role === 'fieldServiceAgent'`, resolves `businessCreatedBy` from `agent.createdBy` (the admin who created the agent record) for all downstream queries; adds ownership guard (`FieldServiceAgent.findOne({ _id: agentId, userAccount: req.user._id })`)
+
+- ✅ **`server/routes/serviceCall.routes.js`** — Added `GET /my-assigned` route
+  - Registered before `GET /eligible-unassigned/:agentId` (static before parametric)
+
+**Tests — 10 new unit tests, 255 total pass:**
+- `agent.controller.test.js`: +3 tests for `getMyAgentProfile` (found, not found, DB error)
+- `serviceCall.controller.test.js`: +7 tests:
+  - `getMyAssignedServiceCalls`: found, no profile → 400, DB error
+  - `getEligibleUnassignedServiceCalls` (fieldServiceAgent): resolves business owner + returns jobs; denies mismatched userAccount → 403
+  - `selfAcceptServiceCall` (fieldServiceAgent): resolves business owner + self-accepts; denies mismatched userAccount → 403
 
 ### 2026-04-08 (Session 26)
 - ✅ Site-wide nav z-index / padding fix (UI/UX)
