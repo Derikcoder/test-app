@@ -12,6 +12,7 @@
 import express from 'express';
 import {
   getServiceCalls,
+  getMyAssignedServiceCalls,
   getEligibleUnassignedServiceCalls,
   getServiceCallById,
   createServiceCall,
@@ -41,6 +42,13 @@ router.get('/', protect, getServiceCalls);
  * @access  Private (JWT required)
  */
 router.post('/', protect, createServiceCall);
+
+/**
+ * @route   GET /api/service-calls/my-assigned
+ * @desc    Get service calls assigned to the calling field agent
+ * @access  Private (JWT required)
+ */
+router.get('/my-assigned', protect, getMyAssignedServiceCalls);
 
 /**
  * @route   GET /api/service-calls/eligible-unassigned/:agentId

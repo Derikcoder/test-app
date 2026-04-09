@@ -13,6 +13,7 @@ import express from 'express';
 import {
   getAgents,
   getAgentById,
+  getMyAgentProfile,
   createAgent,
   updateAgent,
   deleteAgent,
@@ -41,6 +42,13 @@ router.get('/', protect, getAgents);
  * @access  Private (JWT required)
  */
 router.post('/', protect, createAgent);
+
+/**
+ * @route   GET /api/agents/me
+ * @desc    Get the calling field agent's own profile
+ * @access  Private (JWT required)
+ */
+router.get('/me', protect, getMyAgentProfile);
 
 /**
  * @route   GET /api/agents/:id

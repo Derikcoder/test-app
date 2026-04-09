@@ -21,6 +21,7 @@ const ResetPassword = lazy(() => import('./components/ResetPassword'));
 const InvoiceApprovalPage = lazy(() => import('./components/InvoiceApprovalPage'));
 const QuotationApprovalPage = lazy(() => import('./components/QuotationApprovalPage'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
+const FieldAgentSelfProfile = lazy(() => import('./components/FieldAgentSelfProfile'));
 const FieldServiceAgents = lazy(() => import('./components/FieldServiceAgents'));
 const AgentProfile = lazy(() => import('./components/AgentProfile'));
 const Customers = lazy(() => import('./components/Customers'));
@@ -114,6 +115,16 @@ const AdminRoute = ({ children }) => {
 };
 
 /**
+ * Role-based profile route — renders the agent's own workspace for fieldServiceAgent,
+ * or the generic UserProfile for all other roles.
+ */
+const ProfileRoute = () => {
+  const { user } = useAuth();
+  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile />;
+  return <UserProfile />;
+};
+
+/**
  * Main Application Component
  * 
  * @component
@@ -150,7 +161,7 @@ function App() {
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <UserProfile />
+                  <ProfileRoute />
                 </ProtectedRoute>
               }
             />

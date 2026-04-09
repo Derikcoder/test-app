@@ -36,6 +36,22 @@ export const getAgentById = async (req, res) => {
   }
 };
 
+// @desc    Get calling field agent's own profile (no createdBy restriction)
+// @route   GET /api/agents/me
+// @access  Private (fieldServiceAgent)
+export const getMyAgentProfile = async (req, res) => {
+  try {
+    const agent = await FieldServiceAgent.findOne({ userAccount: req.user._id });
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent profile not found' });
+    }
+    res.json(agent);
+  } catch (error) {
+    logError('Get my agent profile error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Create new field service agent
 // @route   POST /api/agents
 // @access  Private
