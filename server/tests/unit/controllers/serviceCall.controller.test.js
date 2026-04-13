@@ -4,15 +4,20 @@
  */
 
 import {
+  createServiceCall,
   getEligibleUnassignedServiceCalls,
   getMyAssignedServiceCalls,
   selfAcceptServiceCall,
 } from '../../../controllers/serviceCall.controller.js';
 import ServiceCall from '../../../models/ServiceCall.model.js';
 import FieldServiceAgent from '../../../models/FieldServiceAgent.model.js';
+import Customer from '../../../models/Customer.model.js';
+import ServiceCallEmailLock from '../../../models/ServiceCallEmailLock.model.js';
 
 jest.mock('../../../models/ServiceCall.model.js');
 jest.mock('../../../models/FieldServiceAgent.model.js');
+jest.mock('../../../models/Customer.model.js');
+jest.mock('../../../models/ServiceCallEmailLock.model.js');
 jest.mock('../../../middleware/logger.middleware.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
@@ -35,6 +40,54 @@ describe('Service Call Controller - Self Dispatch', () => {
     };
 
     jest.clearAllMocks();
+  });
+
+  describe('createServiceCall - prospect-first intake', () => {
+    test('does not auto-create a customer profile from booking request when no existing customer matches', async () => {
+      req.body = {
+        title: 'Blocked drain at private residence',
+        description: 'Customer reported drain blockage via WhatsApp',
+        serviceType: 'Plumbing',
+        bookingRequest: {
+          contact: {
+            customerType: 'private',
+            contactPerson: 'Jane Prospect',
+            contactEmail: 'jane@example.com',
+            contactPhone: '0821234567',
+          },
+          administrativeAddress: {
+            streetAddress: '12 Test Street',
+            suburb: 'Northcliff',
+            cityDistrict: 'Johannesburg',
+            province: 'Gauteng',
+          },
+        },
+      };
+
+      Customer.findOne = jest.fn().mockResolvedValue(null);
+      ServiceCallEmailLock.findOne = jest.fn().mockResolvedValue(null);
+      ServiceCall.countDocuments = jest.fn().mockResolvedValue(0);
+
+      const createdCall = {
+        _id: 'call-100',
+        callNumber: 'SC-000001',
+        customer: undefined,
+        populate: jest.fn().mockResolvedValue(null),
+      };
+
+      ServiceCall.create = jest.fn().mockResolvedValue(createdCall);
+
+      await createServiceCall(req, res);
+
+      expect(Customer.create).not.toHaveBeenCalled();
+      expect(ServiceCall.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customer: undefined,
+          bookingRequest: req.body.bookingRequest,
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
   });
 
   test('returns eligible unassigned jobs for an available active agent', async () => {

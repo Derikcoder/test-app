@@ -4,13 +4,20 @@
  */
 
 import {
+  finalizeInvoice,
   getSharedInvoiceDetails,
   sendInvoice,
   submitSharedInvoiceDecision,
 } from '../../../controllers/invoice.controller.js';
 import Invoice from '../../../models/Invoice.model.js';
+import ServiceCall from '../../../models/ServiceCall.model.js';
+import { sendInvoiceDocumentEmail } from '../../../utils/emailService.js';
 
 jest.mock('../../../models/Invoice.model.js');
+jest.mock('../../../models/ServiceCall.model.js');
+jest.mock('../../../utils/emailService.js', () => ({
+  sendInvoiceDocumentEmail: jest.fn(),
+}));
 jest.mock('../../../middleware/logger.middleware.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
@@ -353,6 +360,145 @@ describe('Invoice Controller - Public Share Endpoints', () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({ message: 'Customer phone number format is invalid for WhatsApp delivery.' });
+    });
+
+    test('moves a draft pro-forma to awaitingApproval when sent successfully', async () => {
+      const invoice = {
+        _id: 'invoice-id-123',
+        invoiceNumber: 'INV-000555',
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        workflowTransitions: [],
+        serviceType: 'Emergency Repair',
+        title: 'Generator Repair Approval',
+        description: 'Approval required for on-site repair work',
+        lineItems: [{ description: 'Labour', quantity: 1, unitPrice: 650, total: 650 }],
+        partsCost: 650,
+        laborHours: 1,
+        laborRate: 650,
+        laborCost: 650,
+        travelCost: 0,
+        consumablesCost: 0,
+        subtotal: 650,
+        vatRate: 15,
+        vatAmount: 97.5,
+        totalAmount: 747.5,
+        terms: 'Approval required before work proceeds.',
+        customer: {
+          businessName: 'Acme Mining',
+          contactFirstName: 'John',
+          contactLastName: 'Doe',
+          email: 'customer@example.com',
+          phoneNumber: '0821234567',
+        },
+        siteInstruction: {},
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      req.body = { channels: ['email'] };
+      sendInvoiceDocumentEmail.mockResolvedValue({ messageId: 'email-123' });
+      Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
+
+      await sendInvoice(req, res);
+
+      expect(sendInvoiceDocumentEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'customer@example.com',
+          documentNumber: 'INV-000555',
+          approvalRequired: true,
+        })
+      );
+      expect(invoice.workflowStatus).toBe('awaitingApproval');
+      expect(invoice.siteInstruction).toEqual(
+        expect.objectContaining({
+          approvalRequestedAt: expect.any(Date),
+        })
+      );
+      expect(invoice.workflowTransitions).toHaveLength(1);
+      expect(invoice.workflowTransitions[0]).toEqual(
+        expect.objectContaining({
+          fromStatus: 'draft',
+          toStatus: 'awaitingApproval',
+          changedByRole: 'user',
+          channel: 'internal',
+        })
+      );
+      expect(invoice.save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Pro-Forma Site Instruction sent successfully',
+          documentNumber: 'INV-000555',
+          channels: ['email'],
+        })
+      );
+    });
+  });
+
+  describe('finalizeInvoice', () => {
+    test('finalizes an approved pro-forma into a final invoice', async () => {
+      req = {
+        params: { id: 'invoice-id-123' },
+        user: { _id: 'user-123' },
+      };
+
+      res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      const invoice = {
+        _id: 'invoice-id-123',
+        invoiceNumber: 'INV-000777',
+        documentType: 'proForma',
+        workflowStatus: 'approved',
+        workflowTransitions: [],
+        serviceCall: 'service-call-123',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      const serviceCall = {
+        _id: 'service-call-123',
+        completedDate: new Date('2026-04-12T10:00:00.000Z'),
+        status: 'completed',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      const populatedInvoice = {
+        _id: 'invoice-id-123',
+        invoiceNumber: 'INV-000777',
+        documentType: 'final',
+        workflowStatus: 'finalized',
+      };
+
+      Invoice.findOne = jest.fn()
+        .mockResolvedValueOnce(invoice)
+        .mockReturnValueOnce(buildPopulateQuery(populatedInvoice));
+      ServiceCall.findOne = jest.fn().mockResolvedValue(serviceCall);
+
+      await finalizeInvoice(req, res);
+
+      expect(invoice.documentType).toBe('final');
+      expect(invoice.workflowStatus).toBe('finalized');
+      expect(invoice.finalizedAt).toEqual(expect.any(Date));
+      expect(invoice.serviceDate).toEqual(serviceCall.completedDate);
+      expect(invoice.workflowTransitions).toHaveLength(1);
+      expect(invoice.workflowTransitions[0]).toEqual(
+        expect.objectContaining({
+          fromStatus: 'approved',
+          toStatus: 'finalized',
+          changedBy: 'user-123',
+          changedByRole: 'user',
+          channel: 'internal',
+          note: 'Pro-forma finalized to final invoice',
+        })
+      );
+      expect(invoice.save).toHaveBeenCalled();
+      expect(serviceCall.status).toBe('invoiced');
+      expect(serviceCall.invoice).toBe('invoice-id-123');
+      expect(serviceCall.proFormaInvoice).toBe('invoice-id-123');
+      expect(serviceCall.invoicedDate).toEqual(expect.any(Date));
+      expect(serviceCall.save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(populatedInvoice);
     });
   });
 });

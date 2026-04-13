@@ -45,6 +45,26 @@
 
 ### Recent Changes
 
+#### Session: April 13, 2026 — Prospect-First Quote Conversion Policy
+**Focus:** Prevent stale customer accounts by delaying customer/profile creation until a quotation is actually accepted
+
+- ✅ `serviceCall.controller.js` no longer auto-creates `Customer` records from booking requests when a WhatsApp/phone prospect is captured; service calls can remain prospect-only until conversion
+- ✅ `Quotation.model.js` now supports `recipientSnapshot` so quotations can be sent to prospects before a customer profile exists
+- ✅ `createQuotationFromServiceCall` now allows quotation creation from service calls that only have booking request contact details, provided a prospect email exists
+- ✅ `sendQuotation` now dispatches using either linked customer data or `recipientSnapshot` fallback data
+- ✅ `acceptPublicQuotation` now performs the first true conversion step:
+   - creates a `Customer` record if none exists
+   - links the existing service call to that customer
+   - creates the `customer` portal `User` account only at acceptance time
+   - sends the new customer a set-password email after acceptance
+- ✅ `rejectPublicQuotation` and quotation resolution cleanup now release email locks for both linked customers and prospect-only quotations
+- ✅ New unit coverage added for prospect-first intake and quote acceptance conversion
+
+**Policy Clarification:**
+- Quotes may be sent to prospects without creating platform accounts
+- Only accepted quotations produce real `Customer` + `User` records in MongoDB
+- This keeps the CRM/auth store limited to converted sales customers, while still preserving pre-sale quotation workflow
+
 #### Session: April 9, 2026 — FieldAgentSelfProfile + Role-Scoped API Endpoints
 **Focus:** Built field agent's own workspace view; fixed `createdBy` filter bug blocking all agent data fetches
 

@@ -284,43 +284,14 @@ export const createServiceCall = async (req, res) => {
         resolvedCustomer = existingCustomer._id;
         logInfo(`✅ Linked service call to existing customer: ${existingCustomer.businessName || existingCustomer.contactFirstName}`);
       } else {
-        try {
-          // Split contact name safely so required last name is always present.
-          const nameParts = rawContactPerson.split(' ').filter(Boolean);
-          const firstName = nameParts[0] || 'Private';
-          const lastName = nameParts.slice(1).join(' ') || 'Customer';
-
-          const addressParts = [
-            bookingRequest?.administrativeAddress?.streetAddress,
-            bookingRequest?.administrativeAddress?.suburb,
-            bookingRequest?.administrativeAddress?.cityDistrict,
-            bookingRequest?.administrativeAddress?.province,
-          ].filter(Boolean);
-
-          const physicalAddress = addressParts.join(', ') || 'Address pending';
-          const safePhone = rawPhone || 'Phone pending';
-
-          const customerIdSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-8);
-          const newCustomerRecord = await Customer.create({
-            customerType: 'residential',
-            contactFirstName: firstName,
-            contactLastName: lastName,
-            email: normalizedEmail,
-            phoneNumber: safePhone,
-            customerId: `RES-${customerIdSuffix}`,
-            physicalAddress,
-            accountStatus: 'active',
-            createdBy: req.user._id,
-          });
-
-          resolvedCustomer = newCustomerRecord._id;
-          logInfo(`✅ Auto-created residential customer from booking request: ${newCustomerRecord.contactFirstName} ${newCustomerRecord.contactLastName}`);
-        } catch (err) {
-          logError('⚠️ Failed to auto-create customer from booking request', {
-            message: err?.message,
-            bookingContact: bookingRequest?.contact,
-          });
-        }
+        // Prospect-first intake: keep booking-request calls unlinked until a quote is accepted.
+        // This prevents stale customer profiles when prospects never convert.
+        logInfo('ℹ️ Service call captured as prospect (no customer profile created yet)', {
+          contactEmail: normalizedEmail,
+          contactPerson: rawContactPerson || null,
+          hasPhone: Boolean(rawPhone),
+          createdBy: req.user._id,
+        });
       }
     }
 

@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-04-08
+Last updated: 2026-04-13
 
 ---
 
@@ -83,6 +83,7 @@ main                 ← Production (stable, never touched directly)
 ## 📁 Root
 - `README.md`: User-facing setup guide, API reference, and developer workflow.
 - `AI_ASSISTANT_GUIDE.md`: Primary briefing for AI assistants — read this first before making changes.
+- `BUSINESSRULES.md`: Consolidated business rules reference extracted from policy docs and enforced code paths.
 - `PROJECT-STRUCTURE.md`: This document — enterprise-grade structural reference.
 - `APPATUNID_UI_QUICKREF.md`: Glassmorphism UI component quick reference.
 - `GLASSMORPHISM_DESIGN_GUIDE.md`: Full design system guide for the Appatunid UI.
@@ -96,7 +97,7 @@ main                 ← Production (stable, never touched directly)
 - `setup-and-run.sh`: Full environment setup and app startup script.
 - `refresh.sh`: ⚠️ DEV ONLY — stops and restarts all dev processes. Remove before production.
 - `start-dev.sh`: Developer-facing startup script. Supports system MongoDB and user-mode `mongod` (forks into `.mongodb/data/` if system service is unavailable); cleans up on exit via named trap.
-- `install-mongodb.sh`: MongoDB install helper for first-time setup.
+- `install-mongodb.sh`: MongoDB install helper for first-time setup. Updated for modern Ubuntu/Debian installs via the official MongoDB Community Server 8.0 apt repository; fixes earlier script corruption and supports environments where only `mongosh` was present.
 - `invoice.schema.v1.json`: Starter JSON Schema matching current invoice payload format.
 - `invoice.schema.v1.1.json`: Normalized JSON Schema for cleaner integration format.
 - `invoice.v1-to-v1.1.keymap.json`: Field mapping and transform hints from v1 to v1.1.
@@ -142,7 +143,7 @@ main                 ← Production (stable, never touched directly)
 - `FranchiseCustomer.jsx`: Profile view for Franchise accounts (child of Head Office, independent billing).
 - `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
 - `ResidentialCustomer.jsx`: Profile view for individual/residential customers. Fully built — hero header, contact card, address card, service locations, account details, conditional notes, and service call history with status badges.
-- `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents.
+- `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents. Booking-request intake now supports prospect-first capture: a service call may remain unlinked to a `Customer` until a quotation is actually accepted.
 - `CreateQuoteModal.jsx`: Reusable quotation creation and editing modal, shared across superAdmin, businessAdministrator, and agent flows. Features: machine-model template loading, tiered unit-cost markup for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing (`distanceTravelledKm × ratePerKm + timeTravelledCost`), call-out floor rule, first-site-visit 15-minute assessment inclusion, procurement/delivery profit capture, 14-day default validity with calendar override, optional PDF share (Email/WhatsApp/Telegram), and full edit mode (`editMode` prop) that pre-populates from an existing quotation and submits via PUT — stored prices used as-is (no markup re-applied on edit).
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
 
@@ -206,14 +207,14 @@ Each page now includes role and entity context chips in header, immediately belo
 ### Server Models (`server/models/`)
 - `User.model.js`: Multi-principal user schema (`superAdmin`, `businessAdministrator`, `fieldServiceAgent`, `customer`) with role/profile-link constraints and write-once registration policy support.
 - `FieldServiceAgent.model.js`: Field agent schema, employee details, and metadata.
-- `Customer.model.js`: Customer schema, contact information, sites, and account status.
+- `Customer.model.js`: Customer schema, contact information, sites, and account status. Under the prospect-first policy, customer records represent converted customers, not every quoted prospect.
 - `OnboardingPasskey.model.js`: One-time passkey lifecycle for delegated-role onboarding.
 - `PasskeyRenewalRequest.model.js`: Approval-driven passkey renewal requests.
 - `ProfileLinkAudit.model.js`: Audit log for attach/detach/reassign user-profile link corrections.
 - `RegistrationOverrideAudit.model.js`: Immutable legal-evidence snapshot audit for superAdmin registration identifier overrides.
 - `SequenceCounter.model.js`: Atomic sequential counter for system-generated IDs (Agent: `AGT-XXXXXX`, Customer: `CUST-XXXXXX`). Uses `findOneAndUpdate` with `$inc` + upsert for collision-safe incrementing.
-- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), with assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`).
-- `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call, structured travel fields (including travel time for call-out floor logic), first-site-visit assessment fields (`isFirstSiteVisit`, `includedAssessmentMinutes`, `chargeableLabourHours`), procurement/delivery analytics fields, and default 14-day validity.
+- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), with assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`). Service calls can now exist in a prospect-only state via `bookingRequest` without an immediate `customer` link.
+- `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call, structured travel fields (including travel time for call-out floor logic), first-site-visit assessment fields (`isFirstSiteVisit`, `includedAssessmentMinutes`, `chargeableLabourHours`), procurement/delivery analytics fields, and default 14-day validity. Supports prospect delivery via `recipientSnapshot` so a quote can be sent before a `Customer` or portal `User` exists.
 - `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking.
 - `Equipment.model.js`: Equipment/asset tracking schema.
 - `Example.model.js`: Example/template entity schema.

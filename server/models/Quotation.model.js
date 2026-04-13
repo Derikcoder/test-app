@@ -74,11 +74,40 @@ const quotationSchema = new mongoose.Schema(
       trim: true,
       immutable: true, // Prevents modification of quotation ID
     },
-    /** Reference to Customer receiving the quotation */
+    /** Reference to Customer receiving the quotation (optional until conversion) */
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
-      required: [true, 'Customer is required'],
+      default: null,
+    },
+    /** Prospect recipient details captured when no customer profile exists yet */
+    recipientSnapshot: {
+      name: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      email: {
+        type: String,
+        lowercase: true,
+        trim: true,
+        default: '',
+      },
+      phoneNumber: {
+        type: String,
+        trim: true,
+        default: '',
+      },
+      customerType: {
+        type: String,
+        enum: ['headOffice', 'branch', 'franchise', 'singleBusiness', 'residential'],
+        default: 'residential',
+      },
+      source: {
+        type: String,
+        trim: true,
+        default: 'booking-request',
+      },
     },
     /** Reference to specific site (for business customers with multiple sites) */
     siteId: {
@@ -425,6 +454,7 @@ quotationSchema.statics.IMMUTABLE_FIELDS = [
  */
 quotationSchema.statics.EDITABLE_FIELDS = [
   'customer',
+  'recipientSnapshot',
   'siteId',
   'equipment',
   'serviceType',

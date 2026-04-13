@@ -64,7 +64,8 @@ This is an enterprise-grade field service management application built with the 
 - 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
 - ✅ Quote submission flow uses `Submit Quote` action semantics
 - 📄 Real quotation PDF generation endpoint available at `GET /api/quotations/:id/pdf`
-- 📤 Quote delivery: `POST /api/quotations/:id/send` — quote is published to the customer's portal immediately on submit (pass `channels: []`); also pass channel names (`email`, `whatsapp`, `telegram`) to deliver a PDF copy via external channels (for customers without a platform account)
+- 📤 Quote delivery: `POST /api/quotations/:id/send` — quote can be sent to a prospect before any platform account exists; external delivery uses the linked customer details or a stored recipient snapshot from the booking request
+- 🧭 Prospect-first conversion policy: unaccepted quotations do not create `Customer` or `User` records; the platform account is created only when the public quote is accepted
 - 🧹 Stale-data purge: `DELETE /api/quotations/purge` — removes `expired`/`rejected` quotations and overdue `draft`/`sent` quotes past their `validUntil` date (superAdmin only, scoped to account)
 - 🔗 Public share link support for customer PDF access: `GET /api/quotations/share/:token/pdf`
 - 📊 Auto-calculated subtotal, VAT, and total during quotation creation
@@ -869,6 +870,7 @@ npm update
 
 - **[AUTH_GUIDE.md](AUTH_GUIDE.md)** - Complete authentication system documentation
 - **[LOGGING_GUIDE.md](LOGGING_GUIDE.md)** - Logging system and best practices
+- **[BUSINESSRULES.md](BUSINESSRULES.md)** - Consolidated business rules and workflow logic reference
 - **[PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md)** - Detailed codebase structure
 - **[FIELD_PERMISSIONS.md](FIELD_PERMISSIONS.md)** - Field-level permission rules
 - **[PROFILE_EDITING_GUIDE.md](PROFILE_EDITING_GUIDE.md)** - User profile editing guide

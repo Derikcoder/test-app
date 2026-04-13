@@ -401,7 +401,7 @@ The following are concrete build tasks identified during roadmap analysis. These
 
 The MVP is considered complete when:
 
-1. **One full cycle** passes cleanly from Service Call → Quote → Customer Registration → Quote Acceptance → Invoice → Payment → Review for **at least one combination** of each: service type, customer type, and agent type.
+1. **One full cycle** passes cleanly from Service Call → Quote → Prospect Acceptance/Conversion → Customer Portal → Invoice → Payment → Review for **at least one combination** of each: service type, customer type, and agent type.
 2. **All 38+ unit tests pass** with no regressions.
 3. **Zero high/critical npm audit vulnerabilities** in server and client.
 4. **All five customer profile types** render service history correctly.

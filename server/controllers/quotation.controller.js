@@ -1,12 +1,14 @@
 import Quotation from '../models/Quotation.model.js';
 import ServiceCall from '../models/ServiceCall.model.js';
 import Customer from '../models/Customer.model.js';
+import User from '../models/User.model.js';
 import ServiceCallEmailLock from '../models/ServiceCallEmailLock.model.js';
 import { resolveAutoMachineDataForQuote } from '../services/quotationAutoResolver.service.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import PDFDocument from 'pdfkit';
 import crypto from 'crypto';
-import { sendQuotationEmail } from '../utils/emailService.js';
+import { sendPasswordResetEmail, sendQuotationEmail } from '../utils/emailService.js';
+import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
 
 const buildTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) => {
   const model = String(machineModelNumber).toLowerCase();
@@ -86,6 +88,70 @@ const buildTelegramShareUrl = ({ quotationNumber, shareUrl }) => {
   return `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`;
 };
 
+const splitContactName = (name = '') => {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || 'Prospect',
+    lastName: parts.slice(1).join(' ') || 'Customer',
+  };
+};
+
+const buildRecipientSnapshotFromServiceCall = (serviceCall) => {
+  const contact = serviceCall?.bookingRequest?.contact || {};
+  const companyName = String(contact.companyName || '').trim();
+  const contactPerson = String(contact.contactPerson || '').trim();
+  const fallbackName = companyName || contactPerson || 'Prospect Customer';
+  const sourceCustomerType = String(contact.customerType || '').toLowerCase();
+
+  return {
+    name: fallbackName,
+    email: String(contact.contactEmail || '').trim().toLowerCase(),
+    phoneNumber: String(contact.contactPhone || '').trim(),
+    customerType: sourceCustomerType === 'business' ? 'singleBusiness' : 'residential',
+    source: 'booking-request',
+  };
+};
+
+const buildAddressFromBookingRequest = (serviceCall) => {
+  const administrativeAddress = serviceCall?.bookingRequest?.administrativeAddress || {};
+  return [
+    administrativeAddress.streetAddress,
+    administrativeAddress.suburb,
+    administrativeAddress.cityDistrict,
+    administrativeAddress.province,
+    administrativeAddress.postalCode,
+  ].filter(Boolean).join(', ') || 'Address pending';
+};
+
+const getCustomerId = async () => {
+  let customerId;
+  let attempts = 0;
+  do {
+    const nextCustomerSequence = await getNextSequenceValue('customer_id');
+    customerId = formatSequenceId('CUST', nextCustomerSequence);
+    attempts += 1;
+  } while (await Customer.findOne({ customerId }) && attempts < 5);
+
+  if (await Customer.findOne({ customerId })) {
+    throw new Error('Failed to generate a unique customer ID');
+  }
+
+  return customerId;
+};
+
+const buildUniqueUsername = async (email) => {
+  const emailPrefix = String(email || 'customer').split('@')[0].replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 20) || 'customer';
+
+  let candidate = emailPrefix;
+  let counter = 1;
+  while (await User.findOne({ userName: candidate })) {
+    counter += 1;
+    candidate = `${emailPrefix}${counter}`;
+  }
+
+  return candidate;
+};
+
 const generateQuotationPdfBuffer = (quotation) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -105,12 +171,17 @@ const generateQuotationPdfBuffer = (quotation) => {
 
     const customerName = quotation.customer?.businessName
       || `${quotation.customer?.contactFirstName || ''} ${quotation.customer?.contactLastName || ''}`.trim()
+      || quotation.recipientSnapshot?.name
       || 'Customer';
 
     doc.fontSize(12).text('Customer', { underline: true });
     doc.fontSize(11).text(customerName);
-    if (quotation.customer?.email) doc.text(`Email: ${quotation.customer.email}`);
-    if (quotation.customer?.phoneNumber) doc.text(`Phone: ${quotation.customer.phoneNumber}`);
+    if (quotation.customer?.email || quotation.recipientSnapshot?.email) {
+      doc.text(`Email: ${quotation.customer?.email || quotation.recipientSnapshot?.email}`);
+    }
+    if (quotation.customer?.phoneNumber || quotation.recipientSnapshot?.phoneNumber) {
+      doc.text(`Phone: ${quotation.customer?.phoneNumber || quotation.recipientSnapshot?.phoneNumber}`);
+    }
     doc.moveDown();
 
     doc.fontSize(12).text('Line Items', { underline: true });
@@ -477,19 +548,22 @@ export const createQuotationFromServiceCall = async (req, res) => {
       return res.status(404).json({ message: 'Service call not found' });
     }
 
-    if (!serviceCall.customer) {
-      return res.status(400).json({
-        message: 'Service call is not linked to a customer. Select a customer and use standard quote creation.',
+    let customerExists = null;
+    if (serviceCall.customer) {
+      customerExists = await Customer.findOne({
+        _id: serviceCall.customer,
+        createdBy: req.user._id,
       });
+
+      if (!customerExists) {
+        return res.status(404).json({ message: 'Customer not found for this service call' });
+      }
     }
 
-    const customerExists = await Customer.findOne({
-      _id: serviceCall.customer,
-      createdBy: req.user._id,
-    });
-
-    if (!customerExists) {
-      return res.status(404).json({ message: 'Customer not found for this service call' });
+    if (!serviceCall.customer && !serviceCall?.bookingRequest?.contact?.contactEmail) {
+      return res.status(400).json({
+        message: 'Prospect service calls require a booking contact email before creating a quotation.',
+      });
     }
 
     const initialServiceType = serviceType || serviceCall.serviceType || 'Scheduled Maintenance';
@@ -542,6 +616,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
 
     const quotation = await Quotation.create({
       customer: serviceCall.customer,
+      recipientSnapshot: serviceCall.customer ? undefined : buildRecipientSnapshotFromServiceCall(serviceCall),
       siteId: serviceCall.siteId,
       equipment: serviceCall.equipment,
       serviceType: resolvedServiceType,
@@ -578,7 +653,9 @@ export const createQuotationFromServiceCall = async (req, res) => {
       createdBy: req.user._id,
     });
 
-    await quotation.populate('customer', 'businessName contactFirstName contactLastName');
+    if (quotation.customer) {
+      await quotation.populate('customer', 'businessName contactFirstName contactLastName');
+    }
     if (quotation.equipment) {
       await quotation.populate('equipment', 'equipmentId equipmentType brand model');
     }
@@ -717,7 +794,9 @@ export const updateQuotation = async (req, res) => {
     }
 
     const updatedQuotation = await quotation.save();
-    await updatedQuotation.populate('customer', 'businessName contactFirstName contactLastName');
+    if (updatedQuotation.customer) {
+      await updatedQuotation.populate('customer', 'businessName contactFirstName contactLastName');
+    }
     if (updatedQuotation.equipment) {
       await updatedQuotation.populate('equipment', 'equipmentId equipmentType brand model');
     }
@@ -807,13 +886,19 @@ export const updateQuotationStatus = async (req, res) => {
 
     // Release email lock when quotation resolves (rejected, expired, or auto-converted)
     if (['rejected', 'expired', 'converted'].includes(updatedQuotation.status)) {
-      const custForLock = await Customer.findById(updatedQuotation.customer).select('email');
-      if (custForLock?.email) {
-        await ServiceCallEmailLock.deleteOne({ email: custForLock.email.toLowerCase() });
+      if (updatedQuotation.customer) {
+        const custForLock = await Customer.findById(updatedQuotation.customer).select('email');
+        if (custForLock?.email) {
+          await ServiceCallEmailLock.deleteOne({ email: custForLock.email.toLowerCase() });
+        }
+      } else if (updatedQuotation.recipientSnapshot?.email) {
+        await ServiceCallEmailLock.deleteOne({ email: updatedQuotation.recipientSnapshot.email.toLowerCase() });
       }
     }
 
-    await updatedQuotation.populate('customer', 'businessName contactFirstName contactLastName');
+    if (updatedQuotation.customer) {
+      await updatedQuotation.populate('customer', 'businessName contactFirstName contactLastName');
+    }
 
     if (createdJobcard) {
       await createdJobcard.populate('customer', 'businessName contactFirstName contactLastName');
@@ -876,11 +961,20 @@ export const sendQuotation = async (req, res) => {
     let whatsappUrl = '';
     let telegramUrl = '';
 
+    const recipientEmail = quotation.customer?.email || quotation.recipientSnapshot?.email || '';
+    const recipientName = quotation.customer?.businessName
+      || `${quotation.customer?.contactFirstName || ''} ${quotation.customer?.contactLastName || ''}`.trim()
+      || quotation.recipientSnapshot?.name
+      || 'Customer';
+    const recipientPhone = quotation.customer?.phoneNumber
+      || quotation.customer?.alternatePhone
+      || quotation.recipientSnapshot?.phoneNumber
+      || '';
+
     if (selectedChannels.includes('email')) {
       await sendQuotationEmail({
-        to: quotation.customer?.email,
-        customerName: quotation.customer?.businessName
-          || `${quotation.customer?.contactFirstName || ''} ${quotation.customer?.contactLastName || ''}`.trim(),
+        to: recipientEmail,
+        customerName: recipientName,
         quotationNumber: quotation.quotationNumber,
         shareUrl,
         pdfBuffer,
@@ -889,7 +983,7 @@ export const sendQuotation = async (req, res) => {
     }
 
     if (selectedChannels.includes('whatsapp')) {
-      const phone = normalizePhoneForWhatsApp(quotation.customer?.phoneNumber || quotation.customer?.alternatePhone || '');
+      const phone = normalizePhoneForWhatsApp(recipientPhone);
       if (phone) {
         const message = `Quotation ${quotation.quotationNumber}\nView PDF: ${shareUrl}`;
         whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -911,12 +1005,12 @@ export const sendQuotation = async (req, res) => {
     await quotation.save();
 
     // Upsert email lock — prevents duplicate service calls while quotation is pending
-    if (quotation.customer?.email) {
+    if (recipientEmail) {
       await ServiceCallEmailLock.findOneAndUpdate(
-        { email: quotation.customer.email.toLowerCase() },
+        { email: recipientEmail.toLowerCase() },
         {
-          email: quotation.customer.email.toLowerCase(),
-          customerId: quotation.customer._id ?? null,
+          email: recipientEmail.toLowerCase(),
+          customerId: quotation.customer?._id ?? null,
           quotationId: quotation._id,
           quotationNumber: quotation.quotationNumber,
           lockedAt: new Date(),
@@ -1178,7 +1272,13 @@ export const getPublicQuotationByToken = async (req, res) => {
             customerId: quotation.customer.customerId,
             email: quotation.customer.email,
           }
-        : null,
+        : quotation.recipientSnapshot
+          ? {
+              name: quotation.recipientSnapshot.name,
+              customerId: null,
+              email: quotation.recipientSnapshot.email,
+            }
+          : null,
       equipment: quotation.equipment || null,
     });
   } catch (error) {
@@ -1194,7 +1294,7 @@ export const acceptPublicQuotation = async (req, res) => {
   try {
     const { token } = req.params;
     const quotation = await Quotation.findOne({ shareToken: token })
-      .populate('customer', 'contactFirstName contactLastName customerId');
+      .populate('customer', 'contactFirstName contactLastName customerId email');
 
     if (!quotation) {
       return res.status(404).json({ message: 'Quotation not found or link is invalid' });
@@ -1217,6 +1317,96 @@ export const acceptPublicQuotation = async (req, res) => {
       });
     }
 
+    let linkedCustomer = quotation.customer;
+    let createdPortalUser = null;
+
+    if (!linkedCustomer) {
+      const linkedServiceCall = await ServiceCall.findOne({ quotation: quotation._id });
+      const recipientSnapshot = quotation.recipientSnapshot || {};
+      const recipientEmail = String(recipientSnapshot.email || linkedServiceCall?.bookingRequest?.contact?.contactEmail || '').trim().toLowerCase();
+
+      if (!recipientEmail) {
+        return res.status(409).json({
+          message: 'This quotation cannot be converted yet because no recipient email is available.',
+        });
+      }
+
+      linkedCustomer = await Customer.findOne({ email: recipientEmail, createdBy: quotation.createdBy });
+
+      if (!linkedCustomer) {
+        const derivedName = recipientSnapshot.name
+          || linkedServiceCall?.bookingRequest?.contact?.companyName
+          || linkedServiceCall?.bookingRequest?.contact?.contactPerson
+          || 'Prospect Customer';
+        const { firstName, lastName } = splitContactName(derivedName);
+        const customerType = recipientSnapshot.customerType || 'residential';
+        const customerId = await getCustomerId();
+        const phoneNumber = recipientSnapshot.phoneNumber
+          || linkedServiceCall?.bookingRequest?.contact?.contactPhone
+          || 'Phone pending';
+        const physicalAddress = buildAddressFromBookingRequest(linkedServiceCall);
+
+        linkedCustomer = await Customer.create({
+          customerType,
+          businessName: ['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(customerType)
+            ? derivedName
+            : undefined,
+          contactFirstName: firstName,
+          contactLastName: lastName,
+          email: recipientEmail,
+          phoneNumber,
+          customerId,
+          physicalAddress,
+          accountStatus: 'active',
+          sites: ['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(customerType)
+            ? [{ siteName: 'Primary Site', address: physicalAddress }]
+            : [],
+          createdBy: quotation.createdBy,
+        });
+      }
+
+      if (linkedServiceCall && !linkedServiceCall.customer) {
+        linkedServiceCall.customer = linkedCustomer._id;
+        await linkedServiceCall.save();
+      }
+
+      quotation.customer = linkedCustomer._id;
+
+      let linkedUser = await User.findOne({ customerProfile: linkedCustomer._id });
+      if (!linkedUser) {
+        const userName = await buildUniqueUsername(recipientEmail);
+        linkedUser = await User.create({
+          userName,
+          email: recipientEmail,
+          password: crypto.randomBytes(32).toString('hex'),
+          role: 'customer',
+          isSuperUser: false,
+          customerProfile: linkedCustomer._id,
+          businessName: linkedCustomer.businessName || `${linkedCustomer.contactFirstName} ${linkedCustomer.contactLastName}`.trim(),
+          phoneNumber: linkedCustomer.phoneNumber,
+          physicalAddress: linkedCustomer.physicalAddress || 'Address pending',
+        });
+
+        linkedCustomer.userAccount = linkedUser._id;
+        await linkedCustomer.save();
+
+        const resetToken = linkedUser.generatePasswordResetToken();
+        await linkedUser.save();
+
+        const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+        await sendPasswordResetEmail({
+          email: linkedUser.email,
+          resetUrl,
+          userName: linkedUser.userName,
+        });
+
+        createdPortalUser = {
+          email: linkedUser.email,
+          userName: linkedUser.userName,
+        };
+      }
+    }
+
     quotation.status = 'approved';
     quotation.approvedDate = new Date();
     quotation.acceptedVia = 'share_token';
@@ -1227,18 +1417,30 @@ export const acceptPublicQuotation = async (req, res) => {
     if (linkedServiceCall && !['completed', 'invoiced', 'cancelled'].includes(linkedServiceCall.status)) {
       linkedServiceCall.status = 'in-progress';
       if (!linkedServiceCall.startedDate) linkedServiceCall.startedDate = new Date();
+      if (!linkedServiceCall.customer && linkedCustomer?._id) {
+        linkedServiceCall.customer = linkedCustomer._id;
+      }
       await linkedServiceCall.save();
     }
 
-    const customerName = quotation.customer
-      ? `${quotation.customer.contactFirstName} ${quotation.customer.contactLastName}`.trim()
-      : 'Customer';
+    const lockEmail = linkedCustomer?.email || quotation.recipientSnapshot?.email;
+    if (lockEmail) {
+      await ServiceCallEmailLock.deleteOne({ email: lockEmail.toLowerCase() });
+    }
+
+    const customerName = linkedCustomer
+      ? `${linkedCustomer.contactFirstName} ${linkedCustomer.contactLastName}`.trim()
+      : quotation.recipientSnapshot?.name || 'Customer';
     logInfo(`✅ Quote accepted via share token: ${quotation.quotationNumber} by ${customerName}`);
 
     res.json({
-      message: 'Thank you! Your quotation has been accepted.',
+      message: createdPortalUser
+        ? 'Thank you! Your quotation has been accepted. A set-password email has been sent so you can access your customer portal.'
+        : 'Thank you! Your quotation has been accepted.',
       quotationNumber: quotation.quotationNumber,
       acceptedDate: quotation.approvedDate,
+      portalAccountCreated: Boolean(createdPortalUser),
+      portalUser: createdPortalUser,
     });
   } catch (error) {
     logError('Accept public quotation error:', error);
@@ -1276,8 +1478,9 @@ export const rejectPublicQuotation = async (req, res) => {
     await quotation.save();
 
     // Release email lock — customer declined via share link
-    if (quotation.customer?.email) {
-      await ServiceCallEmailLock.deleteOne({ email: quotation.customer.email.toLowerCase() });
+    const lockEmail = quotation.customer?.email || quotation.recipientSnapshot?.email;
+    if (lockEmail) {
+      await ServiceCallEmailLock.deleteOne({ email: lockEmail.toLowerCase() });
     }
 
     logInfo(`❌ Quote rejected via share token: ${quotation.quotationNumber}`);
