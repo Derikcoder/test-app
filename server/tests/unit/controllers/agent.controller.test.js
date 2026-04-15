@@ -41,7 +41,8 @@ describe('Agent Controller', () => {
     email: 'john@example.com',
     phoneNumber: '0800001234',
     employeeId: 'EMP-001',
-    skills: ['HVAC'],
+    category: 'HVAC and Refrigeration Solutions',
+    skills: ['Air Conditioning Systems'],
     specializations: ['HVAC_REFRIGERATION'],
     totalJobsAttended: 10,
     averageRating: 4.5,
@@ -75,6 +76,7 @@ describe('Agent Controller', () => {
     FieldServiceAgent.IMMUTABLE_FIELDS = ['firstName', 'lastName', 'employeeId', 'createdAt', '_id', 'createdBy'];
     FieldServiceAgent.EDITABLE_FIELDS = [
       'email', 'phoneNumber', 'skills', 'specializations', 'totalJobsAttended',
+      'jobsCompleted', 'jobsInProgress', 'quotesAwaitingApproval',
       'averageRating', 'ratingsCount', 'hourlyRate', 'status', 'availability',
       'currentLocation', 'assignedArea', 'selfDispatchSuspended',
       'selfDispatchSuspendedReason', 'vehicleNumber', 'notes',
@@ -149,8 +151,9 @@ describe('Agent Controller', () => {
       lastName: 'Smith',
       email: 'jane@example.com',
       phoneNumber: '0800009999',
+      category: 'Mechanical',
       employeeId: 'EMP-002',
-      skills: ['Plumbing'],
+      skills: ['Diesel Mechanic'],
     };
 
     test('creates agent with valid data', async () => {
@@ -214,6 +217,21 @@ describe('Agent Controller', () => {
       await createAgent(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('returns 400 when skills do not match category', async () => {
+      req.body = {
+        ...validBody,
+        category: 'Electrical',
+        skills: ['Automotive Mechanic'],
+      };
+
+      await createAgent(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Invalid skills for category') })
+      );
     });
   });
 
@@ -287,6 +305,25 @@ describe('Agent Controller', () => {
       await updateAgent(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('returns 400 when updated skills do not match category', async () => {
+      req.params.id = 'agent-1';
+      req.body = { category: 'Electronic', skills: ['House Wiring'] };
+
+      const agentInstance = {
+        ...mockAgent,
+        category: 'HVAC',
+        skills: ['Compressors'],
+      };
+      FieldServiceAgent.findOne = jest.fn().mockResolvedValue(agentInstance);
+
+      await updateAgent(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Invalid skills for category') })
+      );
     });
   });
 

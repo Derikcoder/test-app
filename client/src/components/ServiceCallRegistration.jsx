@@ -70,6 +70,7 @@ const ServiceCallRegistration = () => {
   invoicingHistory: '',
   dateOfLastService: '',
   dateOfPreferredServiceCall: '',
+  outageWindowApplicable: 'no',
   outageStart: '',
   outageEnd: '',
   preferredTimeWindow: '08:00 - 12:00',
@@ -142,6 +143,9 @@ const ServiceCallRegistration = () => {
   const { name, value, type, checked } = event.target;
   setFormData((prev) => ({
    ...prev,
+  ...(name === 'outageWindowApplicable' && value === 'no'
+   ? { outageStart: '', outageEnd: '' }
+   : {}),
    [name]: type === 'checkbox' ? checked : value,
   }));
  };
@@ -183,9 +187,16 @@ const ServiceCallRegistration = () => {
    if (!formData.progressStatus.trim()) return 'Progress status is required for existing customers.';
    if (!formData.dateOfPreferredServiceCall) return 'Preferred service call date is required.';
   }
-  if (!formData.outageStart || !formData.outageEnd) return 'Outage window is required.';
-  if (new Date(formData.outageStart) >= new Date(formData.outageEnd))
-   return 'Outage end time must be after outage start time.';
+  if (formData.outageWindowApplicable === 'yes' && (!formData.outageStart || !formData.outageEnd)) {
+   return 'Outage window start and end are required when outage window is marked applicable.';
+  }
+  if (
+   formData.outageWindowApplicable === 'yes'
+   && formData.outageStart
+   && formData.outageEnd
+   && new Date(formData.outageStart) >= new Date(formData.outageEnd)
+  )
+    return 'Outage end time must be after outage start time.';
   if (!formData.confirmAccuracy) return 'Please confirm the information is accurate.';
   return null;
  };
@@ -239,6 +250,11 @@ const ServiceCallRegistration = () => {
    formData.machineLocationSameAsAdmin === 'yes'
     ? formatAddress('admin')
     : formatAddress('machine');
+  const outageWindowIsApplicable = formData.outageWindowApplicable === 'yes';
+  const hasOutageWindow = outageWindowIsApplicable && Boolean(formData.outageStart && formData.outageEnd);
+  const outageWindowSummary = hasOutageWindow
+   ? `${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`
+   : 'Not applicable';
   const title = isBusiness
    ? `${formData.serviceType} - ${formData.companyName} (${formData.siteName})`
    : `${formData.serviceType} - Private Customer (${formData.contactPerson})`;
@@ -267,7 +283,8 @@ const ServiceCallRegistration = () => {
       `Preferred Service Call Date: ${formData.dateOfPreferredServiceCall}`,
       `Service Type: ${formData.serviceType}`,
       `Urgency: ${formData.urgency}`,
-      `Load Shedding Window: ${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`,
+      `Outage Window Applicable: ${outageWindowIsApplicable ? 'Yes' : 'No'}`,
+      `Load Shedding Window: ${outageWindowSummary}`,
       `Preferred Time Window: ${formData.preferredTimeWindow}`,
       `Notes: ${formData.notes || 'None'}`,
      ]
@@ -292,7 +309,8 @@ const ServiceCallRegistration = () => {
       `Preferred Service Call Date: ${formData.dateOfPreferredServiceCall}`,
       `Service Type: ${formData.serviceType}`,
       `Urgency: ${formData.urgency}`,
-      `Load Shedding Window: ${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`,
+      `Outage Window Applicable: ${outageWindowIsApplicable ? 'Yes' : 'No'}`,
+      `Load Shedding Window: ${outageWindowSummary}`,
       `Preferred Time Window: ${formData.preferredTimeWindow}`,
       `Notes: ${formData.notes || 'None'}`,
      ];
@@ -322,10 +340,12 @@ const ServiceCallRegistration = () => {
      machineLocationSameAsAdmin: formData.machineLocationSameAsAdmin === 'yes',
      machineLocationNotes: formData.machineLocationNotes,
     },
-    outageWindow: {
-     start: new Date(formData.outageStart).toISOString(),
-     end: new Date(formData.outageEnd).toISOString(),
-    },
+    outageWindow: hasOutageWindow
+     ? {
+        start: new Date(formData.outageStart).toISOString(),
+        end: new Date(formData.outageEnd).toISOString(),
+       }
+     : null,
     preferredDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
     dateOfLastService: formData.dateOfLastService
      ? new Date(formData.dateOfLastService).toISOString()
@@ -652,18 +672,95 @@ const ServiceCallRegistration = () => {
           <option value="first-service-call" className="text-black">First Service Call</option>
           <option value="existing-customer" className="text-black">Existing Customer</option>
          </select>
-         <input type="datetime-local" name="outageStart" value={formData.outageStart} onChange={handleInputChange} className="dark-field-input" required />
-         <input type="datetime-local" name="outageEnd" value={formData.outageEnd} onChange={handleInputChange} className="dark-field-input" required />
+         <select
+          name="outageWindowApplicable"
+          value={formData.outageWindowApplicable}
+          onChange={handleInputChange}
+          className="dark-field-input"
+         >
+          <option value="no" className="text-black">Outage Window Not Applicable</option>
+          <option value="yes" className="text-black">Outage Window Applicable</option>
+         </select>
         </div>
+        <p className="text-xs text-white/70">
+         Choose a service history type first. First service calls only need a preferred visit date, while existing customers also require the last serviced date.
+        </p>
+        {formData.outageWindowApplicable === 'yes' ? (
+         <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <label className="space-y-1">
+            <span className="dark-label">Outage Window Start (required when applicable)</span>
+            <input
+             type="datetime-local"
+             name="outageStart"
+             value={formData.outageStart}
+             onChange={handleInputChange}
+             className="dark-field-input"
+             required
+            />
+           </label>
+           <label className="space-y-1">
+            <span className="dark-label">Outage Window End (required when applicable)</span>
+            <input
+             type="datetime-local"
+             name="outageEnd"
+             value={formData.outageEnd}
+             onChange={handleInputChange}
+             className="dark-field-input"
+             required
+            />
+           </label>
+          </div>
+          <p className="text-xs text-white/70">
+           Outage window is enabled for this booking, so both start and end are required.
+          </p>
+         </>
+        ) : (
+         <p className="text-xs text-white/70">
+          Outage window is not applicable for this machine/site booking.
+         </p>
+        )}
 
         {formData.serviceHistoryType === 'first-service-call' ? (
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="date" min={minDate} name="dateOfPreferredServiceCall" value={formData.dateOfPreferredServiceCall} onChange={handleInputChange} className="dark-field-input" required />
+          <label className="space-y-1 md:col-span-2">
+           <span className="dark-label">Preferred First Site Visit Date (required)</span>
+           <input
+            type="date"
+            min={minDate}
+            name="dateOfPreferredServiceCall"
+            value={formData.dateOfPreferredServiceCall}
+            onChange={handleInputChange}
+            className="dark-field-input md:w-1/2"
+            required
+           />
+          </label>
          </div>
         ) : (
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="date" name="dateOfLastService" value={formData.dateOfLastService} onChange={handleInputChange} className="dark-field-input" required />
-          <input type="date" min={minDate} name="dateOfPreferredServiceCall" value={formData.dateOfPreferredServiceCall} onChange={handleInputChange} className="dark-field-input" required />
+          <label className="space-y-1">
+           <span className="dark-label">Date of Last Service (required for existing customers)</span>
+           <input
+            type="date"
+            name="dateOfLastService"
+            value={formData.dateOfLastService}
+            onChange={handleInputChange}
+            className="dark-field-input"
+            required
+           />
+          </label>
+          <label className="space-y-1">
+           <span className="dark-label">Preferred Next Service Call Date (required)</span>
+           <input
+            type="date"
+            min={minDate}
+            name="dateOfPreferredServiceCall"
+            value={formData.dateOfPreferredServiceCall}
+            onChange={handleInputChange}
+            className="dark-field-input"
+            required
+           />
+          </label>
           <p className="md:col-span-2 text-xs text-white/70">
            {lastServiceAutofillMeta
             ? `Date of Last Service was auto-filled from ${lastServiceAutofillMeta.callNumber}. You can adjust it if needed.`

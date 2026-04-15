@@ -45,6 +45,23 @@
 
 ### Recent Changes
 
+#### Session: April 15, 2026 — Field Agent Category-First Registration
+**Focus:** Align field agent creation with a category-first workflow and starter skill taxonomy for cleaner dispatch data
+
+- ✅ `FieldServiceAgents.jsx` now renders `Category` immediately before `Skills` in the create-agent form, matching the intended registration flow after vehicle details
+- ✅ Added shared taxonomy files on both frontend and backend so the same starter categories and skills are enforced consistently during registration and filtering
+- ✅ New starter categories now include: Mechanical, Electrical, Plumbing, General Maintenance, Fencing Solutions, CCTV and Security Solutions, HVAC and Refrigeration Solutions, and Appliance Repairs
+- ✅ Backend validation rejects mismatched skills for the selected category, keeping dispatch and reporting data clean
+- ✅ Agent controller test suite updated and verified green after the taxonomy alignment
+
+**Primary Files Updated:**
+- `client/src/components/FieldServiceAgents.jsx`
+- `client/src/constants/agentTaxonomy.js` (NEW)
+- `server/config/agentTaxonomy.js` (NEW)
+- `server/models/FieldServiceAgent.model.js`
+- `server/controllers/agent.controller.js`
+- `server/tests/unit/controllers/agent.controller.test.js`
+
 #### Session: April 13, 2026 — Prospect-First Quote Conversion Policy
 **Focus:** Prevent stale customer accounts by delaying customer/profile creation until a quotation is actually accepted
 

@@ -302,6 +302,9 @@ Source files:
 7. `BR-AGENT-007` Agents may be suspended from self-dispatch.
    Verification: `[TESTED]`
    Coverage: `[UNIT]` Test files: `server/tests/unit/controllers/agent.controller.test.js`.
+8. `BR-AGENT-008` Agent category is required at registration and must be one of the supported starter categories (Mechanical, Electrical, Plumbing, General Maintenance, Fencing Solutions, CCTV and Security Solutions, HVAC and Refrigeration Solutions, Appliance Repairs), while the system may also accept legacy mapped categories for older records.
+   Verification: `[TESTED]`
+   Coverage: `[UNIT]` Test files: `server/tests/unit/controllers/agent.controller.test.js`.
 
 ## 6. Customer Rules
 
@@ -469,6 +472,35 @@ Source files:
    Verification: `[TESTED]`
    Coverage: `[UNIT]` Test files: `server/tests/unit/controllers/serviceCall.controller.test.js`.
    contact details, address, service history, quotation history, invoicing history, and preferred schedule.
+
+### Service Call Date Selection Rules
+
+Status: `[PARTIAL]`
+Verification: `[UNTESTED]`
+Coverage: `[NONE]` Test files: none identified.
+
+Source files:
+- `client/src/components/ServiceCallRegistration.jsx`
+- `server/controllers/serviceCall.controller.js`
+
+1. `BR-SCALL-016` For `first-service-call`, the form requires a preferred service-call date and must not require a date-of-last-service.
+   Verification: `[UNTESTED]`
+   Coverage: `[NONE]` Test files: none identified.
+2. `BR-SCALL-017` For `existing-customer`, the form requires both date-of-last-service and preferred next service-call date.
+   Verification: `[UNTESTED]`
+   Coverage: `[NONE]` Test files: none identified.
+3. `BR-SCALL-018` Booking users must explicitly declare whether outage window is applicable for the booking.
+   Verification: `[UNTESTED]`
+   Coverage: `[NONE]` Test files: none identified.
+4. `BR-SCALL-019` If outage window is declared applicable, both start and end date-time values are required.
+   Verification: `[UNTESTED]`
+   Coverage: `[NONE]` Test files: none identified.
+5. `BR-SCALL-020` If outage window is declared applicable, outage window end must be strictly later than outage window start.
+   Verification: `[UNTESTED]`
+   Coverage: `[NONE]` Test files: none identified.
+6. `BR-SCALL-021` For `existing-customer`, date-of-last-service may be auto-filled from prior records by contact email, but remains editable by the booking user.
+   Verification: `[UNTESTED]`
+   Coverage: `[NONE]` Test files: none identified.
 
 ### Duplicate-Pending-Quote Guard
 
@@ -1128,6 +1160,7 @@ This appendix maps each rule ID to the current enforcing files and identified au
 | BR-AGENT-001 | Field Service Agent Rules | server/models/FieldServiceAgent.model.js, server/controllers/agent.controller.js, server/controllers/serviceCall.controller.js | [UNIT] | `server/tests/unit/controllers/agent.controller.test.js`. |
 | BR-AGENT-002 | Field Service Agent Rules | server/models/FieldServiceAgent.model.js, server/controllers/agent.controller.js, server/controllers/serviceCall.controller.js | [UNIT] | `server/tests/unit/controllers/agent.controller.test.js`. |
 | BR-AGENT-003 | Field Service Agent Rules | server/models/FieldServiceAgent.model.js, server/controllers/agent.controller.js, server/controllers/serviceCall.controller.js | [UNIT] | `server/tests/unit/controllers/agent.controller.test.js`. |
+| BR-AGENT-008 | Field Service Agent Rules | server/models/FieldServiceAgent.model.js, server/controllers/agent.controller.js, client/src/components/FieldServiceAgents.jsx | [UNIT] | `server/tests/unit/controllers/agent.controller.test.js`. |
 | BR-AGENT-004 | Field Service Agent Rules | server/models/FieldServiceAgent.model.js, server/controllers/agent.controller.js, server/controllers/serviceCall.controller.js | [UNIT] | `server/tests/unit/controllers/agent.controller.test.js`. |
 | BR-AGENT-005 | Field Service Agent Rules | server/models/FieldServiceAgent.model.js, server/controllers/agent.controller.js, server/controllers/serviceCall.controller.js | [UNIT] | `server/tests/unit/controllers/agent.controller.test.js`. |
 | BR-AGENT-006 | Field Service Agent Rules | server/models/FieldServiceAgent.model.js, server/controllers/agent.controller.js, server/controllers/serviceCall.controller.js | [UNIT] | `server/tests/unit/controllers/agent.controller.test.js`. |
@@ -1162,6 +1195,12 @@ This appendix maps each rule ID to the current enforcing files and identified au
 | BR-SCALL-013 | Duplicate-Pending-Quote Guard | server/controllers/serviceCall.controller.js, server/models/ServiceCallEmailLock.model.js, server/controllers/quotation.controller.js | [NONE] | none identified. |
 | BR-SCALL-014 | Service Call Update Rules | server/models/ServiceCall.model.js, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
 | BR-SCALL-015 | Service Call Update Rules | server/models/ServiceCall.model.js, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
+| BR-SCALL-016 | Service Call Date Selection Rules | client/src/components/ServiceCallRegistration.jsx, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
+| BR-SCALL-017 | Service Call Date Selection Rules | client/src/components/ServiceCallRegistration.jsx, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
+| BR-SCALL-018 | Service Call Date Selection Rules | client/src/components/ServiceCallRegistration.jsx, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
+| BR-SCALL-019 | Service Call Date Selection Rules | client/src/components/ServiceCallRegistration.jsx, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
+| BR-SCALL-020 | Service Call Date Selection Rules | client/src/components/ServiceCallRegistration.jsx, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
+| BR-SCALL-021 | Service Call Date Selection Rules | client/src/components/ServiceCallRegistration.jsx, server/controllers/serviceCall.controller.js | [NONE] | none identified. |
 | BR-DISP-001 | Self-Dispatch Rules | server/controllers/serviceCall.controller.js, server/controllers/agent.controller.js, server/models/FieldServiceAgent.model.js, FIELD_AGENT_SELF_DISPATCH_API_DESIGN.md | [UNIT] | `server/tests/unit/controllers/serviceCall.controller.test.js`, `server/tests/unit/controllers/agent.controller.test.js`. |
 | BR-DISP-002 | Self-Dispatch Rules | server/controllers/serviceCall.controller.js, server/controllers/agent.controller.js, server/models/FieldServiceAgent.model.js, FIELD_AGENT_SELF_DISPATCH_API_DESIGN.md | [UNIT] | `server/tests/unit/controllers/serviceCall.controller.test.js`, `server/tests/unit/controllers/agent.controller.test.js`. |
 | BR-DISP-003 | Self-Dispatch Rules | server/controllers/serviceCall.controller.js, server/controllers/agent.controller.js, server/models/FieldServiceAgent.model.js, FIELD_AGENT_SELF_DISPATCH_API_DESIGN.md | [UNIT] | `server/tests/unit/controllers/serviceCall.controller.test.js`, `server/tests/unit/controllers/agent.controller.test.js`. |

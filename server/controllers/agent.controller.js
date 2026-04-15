@@ -1,6 +1,33 @@
 import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
+import { AGENT_CATEGORIES, getAllowedSkillsForCategory } from '../config/agentTaxonomy.js';
+
+const normalizeSkills = (skills) => {
+  if (!Array.isArray(skills)) return [];
+  return skills.map((skill) => String(skill).trim()).filter(Boolean);
+};
+
+const validateCategorySkills = (category, skills) => {
+  if (!AGENT_CATEGORIES.includes(category)) {
+    return {
+      valid: false,
+      message: `Category must be one of: ${AGENT_CATEGORIES.join(', ')}`,
+    };
+  }
+
+  const allowedSkills = getAllowedSkillsForCategory(category);
+  const invalidSkills = skills.filter((skill) => !allowedSkills.includes(skill));
+
+  if (invalidSkills.length > 0) {
+    return {
+      valid: false,
+      message: `Invalid skills for category "${category}": ${invalidSkills.join(', ')}`,
+    };
+  }
+
+  return { valid: true };
+};
 
 // @desc    Get all field service agents
 // @route   GET /api/agents
@@ -62,6 +89,7 @@ export const createAgent = async (req, res) => {
       lastName,
       email,
       phoneNumber,
+      category,
       skills,
       status,
       assignedArea,
@@ -70,8 +98,14 @@ export const createAgent = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!firstName || !lastName || !email || !phoneNumber) {
+    if (!firstName || !lastName || !email || !phoneNumber || !category) {
       return res.status(400).json({ message: 'Please fill in all required fields' });
+    }
+
+    const normalizedSkills = normalizeSkills(skills);
+    const categoryValidation = validateCategorySkills(category, normalizedSkills);
+    if (!categoryValidation.valid) {
+      return res.status(400).json({ message: categoryValidation.message });
     }
 
     // Check if email already exists
@@ -101,7 +135,8 @@ export const createAgent = async (req, res) => {
       email,
       phoneNumber,
       employeeId,
-      skills,
+      category,
+      skills: normalizedSkills,
       status,
       assignedArea,
       vehicleNumber,
@@ -144,9 +179,17 @@ export const updateAgent = async (req, res) => {
     }
 
     // Update editable fields
+    const targetCategory = req.body.category ?? agent.category;
+    const targetSkills = req.body.skills !== undefined ? normalizeSkills(req.body.skills) : agent.skills;
+
+    const categoryValidation = validateCategorySkills(targetCategory, targetSkills);
+    if (!categoryValidation.valid) {
+      return res.status(400).json({ message: categoryValidation.message });
+    }
+
     FieldServiceAgent.EDITABLE_FIELDS.forEach(field => {
       if (req.body[field] !== undefined) {
-        agent[field] = req.body[field];
+        agent[field] = field === 'skills' ? targetSkills : req.body[field];
       }
     });
 

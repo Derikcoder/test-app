@@ -8,6 +8,7 @@
  */
 
 import mongoose from 'mongoose';
+import { AGENT_CATEGORIES, DEFAULT_AGENT_CATEGORY } from '../config/agentTaxonomy.js';
 
 /**
  * Field Service Agent Schema Definition
@@ -61,6 +62,14 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       trim: true,
       immutable: true, // Protected HR identifier
     },
+    /** Primary service category for dispatch and capability grouping */
+    category: {
+      type: String,
+      enum: AGENT_CATEGORIES,
+      required: [true, 'Category is required'],
+      default: DEFAULT_AGENT_CATEGORY,
+      trim: true,
+    },
     /** Array of agent's skills/certifications (e.g., ['Plumbing', 'HVAC']) */
     skills: {
       type: [String],
@@ -76,6 +85,24 @@ const fieldServiceAgentSchema = new mongoose.Schema(
     totalJobsAttended: {
       type: Number,
       min: [0, 'Total jobs cannot be negative'],
+      default: 0,
+    },
+    /** Total number of completed jobs */
+    jobsCompleted: {
+      type: Number,
+      min: [0, 'Jobs completed cannot be negative'],
+      default: 0,
+    },
+    /** Current number of jobs actively in progress */
+    jobsInProgress: {
+      type: Number,
+      min: [0, 'Jobs in progress cannot be negative'],
+      default: 0,
+    },
+    /** Current number of quotes awaiting customer approval */
+    quotesAwaitingApproval: {
+      type: Number,
+      min: [0, 'Quotes awaiting approval cannot be negative'],
       default: 0,
     },
     /** Average customer rating (0-5 stars) */
@@ -212,9 +239,13 @@ fieldServiceAgentSchema.statics.IMMUTABLE_FIELDS = [
 fieldServiceAgentSchema.statics.EDITABLE_FIELDS = [
   'email',
   'phoneNumber',
+  'category',
   'skills',
   'specializations',
   'totalJobsAttended',
+  'jobsCompleted',
+  'jobsInProgress',
+  'quotesAwaitingApproval',
   'averageRating',
   'ratingsCount',
   'hourlyRate',

@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
+import {
+ DEFAULT_AGENT_CATEGORY,
+ VISIBLE_AGENT_CATEGORIES,
+ getAllowedSkillsForCategory,
+} from '../constants/agentTaxonomy';
 
 const pageShellClass = 'min-h-screen bg-slate-950 pt-20 pb-8 px-3 sm:px-6 lg:px-8';
 const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
@@ -34,17 +39,42 @@ const FieldServiceAgents = () => {
  const [provisionSuccess, setProvisionSuccess] = useState('');
  const [resendLoadingId, setResendLoadingId] = useState(null);
  const [resendMessage, setResendMessage] = useState({ id: null, text: '', isError: false });
+ const [categoryFilter, setCategoryFilter] = useState('all');
+ const [skillFilter, setSkillFilter] = useState('all');
  const [formData, setFormData] = useState({
   firstName: '',
   lastName: '',
   email: '',
   phoneNumber: '',
-  skills: '',
+  category: DEFAULT_AGENT_CATEGORY,
+       skills: [],
   status: 'active',
   assignedArea: '',
   vehicleNumber: '',
   notes: ''
  });
+
+ const categorySkills = useMemo(
+       () => getAllowedSkillsForCategory(formData.category),
+       [formData.category]
+ );
+
+ const filterSkillOptions = useMemo(() => {
+       if (categoryFilter === 'all') {
+        return [...new Set(VISIBLE_AGENT_CATEGORIES.flatMap((category) => getAllowedSkillsForCategory(category)))];
+       }
+       return getAllowedSkillsForCategory(categoryFilter);
+ }, [categoryFilter]);
+
+ const filteredAgents = useMemo(
+       () =>
+        agents.filter((agent) => {
+              const categoryMatches = categoryFilter === 'all' || agent.category === categoryFilter;
+              const skillMatches = skillFilter === 'all' || (agent.skills || []).includes(skillFilter);
+              return categoryMatches && skillMatches;
+        }),
+       [agents, categoryFilter, skillFilter]
+ );
 
  useEffect(() => {
   fetchAgents();
@@ -64,7 +94,27 @@ const FieldServiceAgents = () => {
  };
 
  const handleInputChange = (e) => {
-  setFormData({ ...formData, [e.target.name]: e.target.value });
+       const { name, value } = e.target;
+
+       if (name === 'category') {
+        setFormData({ ...formData, category: value, skills: [] });
+        return;
+       }
+
+       setFormData({ ...formData, [name]: value });
+ };
+
+ const handleSkillToggle = (skill) => {
+       setFormData((prev) => {
+        const selectedSkills = prev.skills || [];
+        const isSelected = selectedSkills.includes(skill);
+        return {
+              ...prev,
+              skills: isSelected
+               ? selectedSkills.filter((item) => item !== skill)
+               : [...selectedSkills, skill],
+        };
+       });
  };
 
  const handleSubmit = async (e) => {
@@ -75,7 +125,7 @@ const FieldServiceAgents = () => {
   try {
    const dataToSubmit = {
     ...formData,
-    skills: formData.skills ? formData.skills.split(',').map(s => s.trim()) : []
+       skills: formData.skills || []
    };
 
    await api.post('/agents', dataToSubmit, {
@@ -88,7 +138,8 @@ const FieldServiceAgents = () => {
     lastName: '',
     email: '',
     phoneNumber: '',
-    skills: '',
+        category: DEFAULT_AGENT_CATEGORY,
+       skills: [],
     status: 'active',
     assignedArea: '',
     vehicleNumber: '',
@@ -257,7 +308,7 @@ const FieldServiceAgents = () => {
           className={inputClass}
          />
         </div>
-        <div className="glass-form-group">
+       <div className="glass-form-group">
          <label className="dark-label">Phone Number *</label>
          <input
           type="text"
@@ -268,7 +319,7 @@ const FieldServiceAgents = () => {
           className={inputClass}
          />
         </div>
-        <div className="glass-form-group">
+         <div className="glass-form-group">
          <label className="dark-label">Status</label>
          <select
           name="status"
@@ -301,16 +352,36 @@ const FieldServiceAgents = () => {
           className={inputClass}
          />
         </div>
-        <div className="md:col-span-2 glass-form-group">
-         <label className="dark-label">Skills (comma separated)</label>
-         <input
-          type="text"
-          name="skills"
-          value={formData.skills}
+        <div className="glass-form-group">
+         <label className="dark-label">Category *</label>
+         <select
+          name="category"
+          value={formData.category}
           onChange={handleInputChange}
-          placeholder="e.g., HVAC, Plumbing, Electrical"
+          required
           className={inputClass}
-         />
+         >
+          {VISIBLE_AGENT_CATEGORIES.map((category) => (
+           <option key={category} value={category} className="bg-slate-900">{category}</option>
+          ))}
+         </select>
+         <p className="mt-2 text-xs text-slate-400">Starter categories are loaded here, with the matching skill list shown below.</p>
+        </div>
+        <div className="md:col-span-2 glass-form-group">
+         <label className="dark-label">Skills (select all that apply)</label>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border border-slate-600 bg-slate-950 p-3 max-h-64 overflow-y-auto">
+          {categorySkills.map((skill) => (
+           <label key={skill} className="flex items-center gap-2 text-sm text-slate-200">
+            <input
+             type="checkbox"
+             checked={(formData.skills || []).includes(skill)}
+             onChange={() => handleSkillToggle(skill)}
+             className="form-checkbox-dark"
+            />
+            <span>{skill}</span>
+           </label>
+          ))}
+         </div>
         </div>
         <div className="md:col-span-2 glass-form-group">
          <label className="dark-label">Notes</label>
@@ -354,31 +425,61 @@ const FieldServiceAgents = () => {
        </div>
       ) : (
        <div className="overflow-x-auto">
+                            <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/70 flex flex-wrap gap-3">
+                             <select
+                                   value={categoryFilter}
+                                   onChange={(e) => {
+                                    setCategoryFilter(e.target.value);
+                                    setSkillFilter('all');
+                                   }}
+                                   className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                             >
+                                   <option value="all">All Categories</option>
+                                   {VISIBLE_AGENT_CATEGORIES.map((category) => (
+                                    <option key={category} value={category}>{category}</option>
+                                   ))}
+                             </select>
+                             <select
+                                   value={skillFilter}
+                                   onChange={(e) => setSkillFilter(e.target.value)}
+                                   className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                             >
+                                   <option value="all">All Skills</option>
+                                   {filterSkillOptions.map((skill) => (
+                                    <option key={skill} value={skill}>{skill}</option>
+                                   ))}
+                             </select>
+                            </div>
         <table className="w-full">
                  <thead className="bg-slate-900 border-b border-slate-700">
           <tr>
-                     <th className="th-cyan">Name</th>
                      <th className="th-cyan">Employee ID</th>
+                     <th className="th-cyan">Name</th>
+                     <th className="th-cyan">Category</th>
+                     <th className="th-cyan">Skills</th>
                      <th className="th-cyan">Contact</th>
                      <th className="th-cyan">Status</th>
                      <th className="th-cyan">Area</th>
+                     <th className="th-cyan">Jobs Completed</th>
+                     <th className="th-cyan">Jobs In Progress</th>
+                     <th className="th-cyan">Quotes Awaiting Approval</th>
+                     <th className="th-cyan">Average Service Rating</th>
                      <th className="px-6 py-3 text-right text-xs font-medium text-cyan-300 uppercase tracking-wide">Actions</th>
           </tr>
          </thead>
                  <tbody className="divide-y divide-slate-700">
-          {agents.map((agent) => (
+          {filteredAgents.map((agent) => (
            <tr 
             key={agent._id} 
             onClick={() => navigate(`/agents/${agent._id}`)}
                         className="hover:bg-slate-800 cursor-pointer transition"
            >
-            <td className="px-6 py-4 whitespace-nowrap">
-                         <div className="font-medium text-slate-100">{agent.firstName} {agent.lastName}</div>
-             {agent.skills?.length > 0 && (
-                            <div className="text-sm text-slate-400">{agent.skills.join(', ')}</div>
-             )}
-            </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">{agent.employeeId}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">{agent.employeeId}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                           <div className="font-medium text-slate-100">{agent.firstName} {agent.lastName}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.category || 'Uncategorized'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.skills?.length ? agent.skills.join(', ') : '-'}</td>
             <td className="px-6 py-4 whitespace-nowrap">
                          <div className="text-sm text-slate-100">{agent.email}</div>
                          <div className="text-sm text-slate-400">{agent.phoneNumber}</div>
@@ -398,6 +499,10 @@ const FieldServiceAgents = () => {
              </span>
             </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.assignedArea || '-'}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.jobsCompleted ?? agent.totalJobsAttended ?? 0}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.jobsInProgress ?? 0}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.quotesAwaitingApproval ?? 0}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{Number(agent.averageRating || 0).toFixed(2)}</td>
             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
              {agent.userAccount ? (
               <span className="inline-flex items-center gap-2 mr-3">
@@ -435,6 +540,11 @@ const FieldServiceAgents = () => {
           ))}
          </tbody>
         </table>
+       {!filteredAgents.length && (
+        <div className="p-6 text-center text-sm text-slate-400">
+         No agents match the selected category/skill filters.
+        </div>
+       )}
        </div>
       )}
      </div>
