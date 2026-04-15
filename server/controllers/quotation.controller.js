@@ -88,6 +88,20 @@ const buildTelegramShareUrl = ({ quotationNumber, shareUrl }) => {
   return `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`;
 };
 
+const buildAccessibleServiceCallFilter = (req, serviceCallId) => {
+  if (req.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile) {
+    return {
+      _id: serviceCallId,
+      assignedAgent: req.user.fieldServiceAgentProfile,
+    };
+  }
+
+  return {
+    _id: serviceCallId,
+    createdBy: req.user._id,
+  };
+};
+
 const splitContactName = (name = '') => {
   const parts = String(name).trim().split(/\s+/).filter(Boolean);
   return {
@@ -539,20 +553,21 @@ export const createQuotationFromServiceCall = async (req, res) => {
       notes,
     } = req.body;
 
-    const serviceCall = await ServiceCall.findOne({
-      _id: serviceCallId,
-      createdBy: req.user._id,
-    });
+    const serviceCall = await ServiceCall.findOne(buildAccessibleServiceCallFilter(req, serviceCallId));
 
     if (!serviceCall) {
       return res.status(404).json({ message: 'Service call not found' });
     }
 
+    const ownerContextUserId = serviceCall.createdBy || req.user._id;
+
     let customerExists = null;
     if (serviceCall.customer) {
       customerExists = await Customer.findOne({
         _id: serviceCall.customer,
-        createdBy: req.user._id,
+        createdBy: ownerContextUserId,
+      }) || await Customer.findOne({
+        _id: serviceCall.customer,
       });
 
       if (!customerExists) {
@@ -572,7 +587,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       siteId: serviceCall.siteId,
       serviceType: initialServiceType,
       bookingRequest: serviceCall.bookingRequest,
-      createdBy: req.user._id,
+      createdBy: ownerContextUserId,
     });
 
     const resolvedServiceType = autoResolution.templateSeed.serviceType || initialServiceType;
@@ -955,6 +970,7 @@ export const sendQuotation = async (req, res) => {
     }
 
     const shareUrl = `${baseUrl}/api/quotations/share/${quotation.shareToken}/pdf`;
+    const approvalUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/quotation-approval/${quotation.shareToken}`;
     const pdfBuffer = await generateQuotationPdfBuffer(quotation);
 
     let emailSent = false;
@@ -977,6 +993,7 @@ export const sendQuotation = async (req, res) => {
         customerName: recipientName,
         quotationNumber: quotation.quotationNumber,
         shareUrl,
+        approvalUrl,
         pdfBuffer,
       });
       emailSent = true;

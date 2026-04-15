@@ -81,7 +81,7 @@ const scoreEquipmentCandidate = ({ equipment, serviceType, siteId }) => {
  * 3) generic-fallback
  *
  * @param {Object} params - Resolver input
- * @param {string|ObjectId} params.customerId - Customer identifier
+ * @param {string|ObjectId} [params.customerId] - Optional customer identifier
  * @param {string|ObjectId} [params.siteId] - Optional site identifier
  * @param {string} [params.serviceType] - Requested service type
  * @param {Object} [params.bookingRequest] - Service call booking payload
@@ -95,29 +95,29 @@ export const resolveAutoMachineDataForQuote = async ({
   bookingRequest = null,
   createdBy = null,
 }) => {
-  if (!customerId) {
-    throw new Error('customerId is required for auto machine-data resolution');
+  let equipmentRecords = [];
+
+  if (customerId) {
+    const equipmentFilter = { customer: customerId };
+    if (siteId) equipmentFilter.siteId = siteId;
+    if (createdBy) equipmentFilter.createdBy = createdBy;
+
+    equipmentRecords = await Equipment.find(equipmentFilter)
+      .populate({
+        path: 'serviceHistory',
+        select: 'callNumber serviceType status completedDate createdAt',
+        match: {
+          ...(createdBy ? { createdBy } : {}),
+          status: { $in: ['completed', 'invoiced', 'in-progress', 'assigned', 'scheduled'] },
+        },
+        options: {
+          sort: { completedDate: -1, createdAt: -1 },
+          limit: 5,
+        },
+      })
+      .sort({ lastServiceDate: -1, updatedAt: -1, createdAt: -1 })
+      .lean();
   }
-
-  const equipmentFilter = { customer: customerId };
-  if (siteId) equipmentFilter.siteId = siteId;
-  if (createdBy) equipmentFilter.createdBy = createdBy;
-
-  const equipmentRecords = await Equipment.find(equipmentFilter)
-    .populate({
-      path: 'serviceHistory',
-      select: 'callNumber serviceType status completedDate createdAt',
-      match: {
-        ...(createdBy ? { createdBy } : {}),
-        status: { $in: ['completed', 'invoiced', 'in-progress', 'assigned', 'scheduled'] },
-      },
-      options: {
-        sort: { completedDate: -1, createdAt: -1 },
-        limit: 5,
-      },
-    })
-    .sort({ lastServiceDate: -1, updatedAt: -1, createdAt: -1 })
-    .lean();
 
   const equipmentCandidates = (equipmentRecords || []).map((equipment) => {
     const scoring = scoreEquipmentCandidate({ equipment, serviceType, siteId });

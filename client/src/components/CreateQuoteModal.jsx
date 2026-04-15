@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/axios';
 
 const TEMPLATE_OPTIONS = [
@@ -20,6 +20,8 @@ const AUTO_RESOLUTION_SOURCE_LABELS = {
   'booking-request': 'Service booking data',
   'generic-fallback': 'Generic fallback',
 };
+
+const EMPTY_SOURCE_DATA = Object.freeze({});
 
 const formatDate = (value) => {
   if (!value) return 'N/A';
@@ -118,7 +120,7 @@ const getMarkedUpUnitPrice = (unitCost) => {
 const CreateQuoteModal = ({
   token,
   isSuperUser = false,
-  sourceData = {},
+  sourceData = EMPTY_SOURCE_DATA,
   triggerLabel = 'Submit Quote',
   triggerClassName = 'glass-btn-primary font-semibold py-2 px-4',
   onCreated,
@@ -141,7 +143,12 @@ const CreateQuoteModal = ({
   const [shareChannels, setShareChannels] = useState({
     email: false,
     whatsapp: false,
-    telegram: true,
+    telegram: false,
+  });
+  const shareChannelsRef = useRef({
+    email: false,
+    whatsapp: false,
+    telegram: false,
   });
 
   const isServiceCallContext = Boolean(sourceData?.serviceCallId);
@@ -153,7 +160,7 @@ const CreateQuoteModal = ({
     () => sourceData?.lineItems?.length
       ? sourceData.lineItems
       : [{ partNumber: '', description: sourceData?.serviceType || 'Service Item', quantity: 1, unitPrice: 0 }],
-    [sourceData]
+    [sourceData?.lineItems, sourceData?.serviceType]
   );
 
   const [formData, setFormData] = useState({
@@ -198,6 +205,21 @@ const CreateQuoteModal = ({
     return prefilledCustomerLabel;
   }, [customers, formData.customerId, prefilledCustomerLabel]);
 
+  const lockedCustomerLabel = useMemo(() => {
+    if (editMode && existingQuotation) {
+      const existingCustomer = existingQuotation.customer;
+      const customerName = existingCustomer?.businessName
+        || `${existingCustomer?.contactFirstName || ''} ${existingCustomer?.contactLastName || ''}`.trim()
+        || existingQuotation.recipientSnapshot?.name
+        || existingQuotation.recipientSnapshot?.email
+        || prefilledCustomerLabel;
+
+      return customerName || 'Linked Quote Customer';
+    }
+
+    return selectedCustomerOptionLabel || prefilledCustomerLabel || 'Linked Service Call Customer';
+  }, [editMode, existingQuotation, prefilledCustomerLabel, selectedCustomerOptionLabel]);
+
   useEffect(() => {
     if (!isOpen || !token || isServiceCallContext) return;
 
@@ -235,7 +257,21 @@ const CreateQuoteModal = ({
       notes: sourceData.notes || prev.notes,
       lineItems: sourceData?.lineItems?.length ? sourceData.lineItems : prev.lineItems,
     }));
-  }, [sourceData]);
+  }, [
+    sourceData.customerId,
+    sourceData.siteId,
+    sourceData.equipmentId,
+    sourceData.serviceType,
+    sourceData.title,
+    sourceData.description,
+    sourceData.validUntil,
+    sourceData.partsFulfilmentMode,
+    sourceData.deliveryProvider,
+    sourceData.partsProcurementCost,
+    sourceData.thirdPartyDeliveryCost,
+    sourceData.notes,
+    sourceData.lineItems,
+  ]);
 
   const applySuggestedTemplate = () => {
     const suggested = selectedTemplate === 'auto'
@@ -404,7 +440,7 @@ const CreateQuoteModal = ({
   ]);
 
   const validate = () => {
-    if (!formData.customerId && !canUseServiceCallShortcut) return 'Please select a customer.';
+    if (!editMode && !formData.customerId && !canUseServiceCallShortcut) return 'Please select a customer.';
     if (!formData.serviceType.trim()) return 'Service type is required.';
     if (!formData.title.trim()) return 'Title is required.';
     if (!formData.lineItems.length) return 'At least one line item is required.';
@@ -517,18 +553,26 @@ const CreateQuoteModal = ({
         const newId = response.data?._id || '';
         setCreatedQuotationId(newId);
 
-        // Immediately mark as sent so the customer can view and accept it from
-        // their portal. No external channels → portal-only publish.
+        // Immediately publish the quotation after creation. If the user picked
+        // external channels (email/WhatsApp/Telegram), dispatch them now;
+        // otherwise this remains portal-only publication.
         if (newId) {
+          const selectedChannels = Object.entries(shareChannelsRef.current)
+            .filter(([, enabled]) => Boolean(enabled))
+            .map(([channel]) => channel);
+
           try {
             await api.post(
               `/quotations/${newId}/send`,
-              { channels: [] },
+              { channels: selectedChannels },
               { headers: { Authorization: `Bearer ${token}` } }
             );
+
+            if (selectedChannels.length) {
+              setSendSuccess(`Quote PDF prepared for: ${selectedChannels.join(', ')}.`);
+            }
           } catch {
-            // Non-fatal: quote was created but portal visibility may be delayed.
-            // Admin can still use "Share PDF" to publish it.
+            // Non-fatal: quote was created but external sharing may need retry.
           }
         }
 
@@ -545,10 +589,20 @@ const CreateQuoteModal = ({
     }
   };
 
+  const updateShareChannel = (channel, enabled) => {
+    const nextChannels = {
+      ...shareChannelsRef.current,
+      [channel]: enabled,
+    };
+
+    shareChannelsRef.current = nextChannels;
+    setShareChannels(nextChannels);
+  };
+
   const handleSendQuote = async () => {
     if (!createdQuotationId) return;
 
-    const selectedChannels = Object.entries(shareChannels)
+    const selectedChannels = Object.entries(shareChannelsRef.current)
       .filter(([, enabled]) => Boolean(enabled))
       .map(([channel]) => channel);
 
@@ -660,9 +714,9 @@ const CreateQuoteModal = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="glass-form-label text-white/90">Customer</label>
-                  {isServiceCallContext ? (
+                  {isServiceCallContext || editMode ? (
                     <input
-                      value={selectedCustomerOptionLabel || 'Linked Service Call Customer'}
+                      value={lockedCustomerLabel}
                       readOnly
                       className="dark-field-input"
                     />
@@ -782,10 +836,13 @@ const CreateQuoteModal = ({
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="glass-form-label text-white/80">Qty</label>
+                      <label className="glass-form-label text-white/80" htmlFor={`line-item-quantity-${index}`}>Qty</label>
                       <input
+                        id={`line-item-quantity-${index}`}
                         type="number"
-                        min="1"
+                        min="0.01"
+                        step="0.01"
+                        inputMode="decimal"
                         value={item.quantity}
                         onChange={(event) => updateLineItem(index, 'quantity', event.target.value)}
                         className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
@@ -1046,7 +1103,7 @@ const CreateQuoteModal = ({
                     <input
                       type="checkbox"
                       checked={Boolean(shareChannels.email)}
-                      onChange={(event) => setShareChannels((prev) => ({ ...prev, email: event.target.checked }))}
+                      onChange={(event) => updateShareChannel('email', event.target.checked)}
                       className="form-checkbox-dark"
                     />
                     Email
@@ -1055,7 +1112,7 @@ const CreateQuoteModal = ({
                     <input
                       type="checkbox"
                       checked={Boolean(shareChannels.whatsapp)}
-                      onChange={(event) => setShareChannels((prev) => ({ ...prev, whatsapp: event.target.checked }))}
+                      onChange={(event) => updateShareChannel('whatsapp', event.target.checked)}
                       className="form-checkbox-dark"
                     />
                     WhatsApp
@@ -1064,7 +1121,7 @@ const CreateQuoteModal = ({
                     <input
                       type="checkbox"
                       checked={Boolean(shareChannels.telegram)}
-                      onChange={(event) => setShareChannels((prev) => ({ ...prev, telegram: event.target.checked }))}
+                      onChange={(event) => updateShareChannel('telegram', event.target.checked)}
                       className="form-checkbox-dark"
                     />
                     Telegram

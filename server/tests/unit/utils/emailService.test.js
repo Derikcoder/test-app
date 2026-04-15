@@ -3,7 +3,7 @@
  * @description Unit tests for email service
  */
 
-import { sendPasswordResetEmail, sendAgentWelcomeEmail, createTransporter } from '../../../utils/emailService.js';
+import { sendPasswordResetEmail, sendAgentWelcomeEmail, sendQuotationEmail, createTransporter } from '../../../utils/emailService.js';
 import nodemailer from 'nodemailer';
 
 // Mock nodemailer
@@ -207,6 +207,23 @@ describe('Email Service', () => {
       await createTransporter();
 
       expect(nodemailer.createTestAccount).toHaveBeenCalled();
+    });
+  });
+
+  describe('sendQuotationEmail', () => {
+    test('should include the portal approval link when provided', async () => {
+      await sendQuotationEmail({
+        to: 'customer@example.com',
+        customerName: 'Bennie Henning',
+        quotationNumber: 'QT-000001',
+        shareUrl: 'http://localhost:5000/api/quotations/share/share-token/pdf',
+        approvalUrl: 'http://localhost:3000/quotation-approval/share-token',
+        pdfBuffer: Buffer.from('pdf'),
+      });
+
+      const mail = mockTransporter.sendMail.mock.calls[0][0];
+      expect(mail.html).toContain('quotation-approval/share-token');
+      expect(mail.text).toContain('quotation-approval/share-token');
     });
   });
 

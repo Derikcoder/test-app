@@ -332,15 +332,25 @@ export const sendEmail = async ({ to, subject, html, text }) => {
  * @param {string} options.customerName - Recipient display name
  * @param {string} options.quotationNumber - Quotation number
  * @param {string} options.shareUrl - Public share URL for PDF
+ * @param {string} [options.approvalUrl] - Public portal approval URL
  * @param {Buffer} options.pdfBuffer - Generated PDF bytes
  * @returns {Promise<Object>} Email send result
  */
-export const sendQuotationEmail = async ({ to, customerName, quotationNumber, shareUrl, pdfBuffer }) => {
+export const sendQuotationEmail = async ({ to, customerName, quotationNumber, shareUrl, approvalUrl, pdfBuffer }) => {
   if (!to) {
     throw new Error('Customer email is required to send quotation');
   }
 
   const transporter = await createTransporter();
+  const approvalHtml = approvalUrl
+    ? `
+      <p>You can review and respond to this quotation in the customer portal here:</p>
+      <p><a href="${approvalUrl}">${approvalUrl}</a></p>
+    `
+    : '';
+  const approvalText = approvalUrl
+    ? `\nPortal approval link: ${approvalUrl}\n`
+    : '';
 
   const mailOptions = {
     from: `${process.env.FROM_NAME || 'Appatunid'} <${process.env.FROM_EMAIL || 'noreply@appatunid.com'}>`,
@@ -351,9 +361,10 @@ export const sendQuotationEmail = async ({ to, customerName, quotationNumber, sh
       <p>Please find your quotation <strong>${quotationNumber}</strong> attached as a PDF.</p>
       <p>You can also view/download it from this secure link:</p>
       <p><a href="${shareUrl}">${shareUrl}</a></p>
+      ${approvalHtml}
       <p>Kind regards,<br/>Appatunid Team</p>
     `,
-    text: `Hello ${customerName || 'Customer'},\n\nYour quotation ${quotationNumber} is attached as a PDF.\nSecure link: ${shareUrl}\n\nKind regards,\nAppatunid Team`,
+    text: `Hello ${customerName || 'Customer'},\n\nYour quotation ${quotationNumber} is attached as a PDF.\nSecure link: ${shareUrl}${approvalText}\nKind regards,\nAppatunid Team`,
     attachments: [
       {
         filename: `${quotationNumber}.pdf`,

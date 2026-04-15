@@ -125,6 +125,16 @@ const ProfileRoute = () => {
 };
 
 /**
+ * Role-based service-call route — field agents should land directly in their
+ * own assigned-jobs workspace when clicking the service-calls icon.
+ */
+const ServiceCallsRoute = () => {
+  const { user } = useAuth();
+  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile />;
+  return <ServiceCalls />;
+};
+
+/**
  * Main Application Component
  * 
  * @component
@@ -249,7 +259,7 @@ function App() {
               path="/service-calls"
               element={
                 <ProtectedRoute>
-                  <ServiceCalls />
+                  <ServiceCallsRoute />
                 </ProtectedRoute>
               }
             />

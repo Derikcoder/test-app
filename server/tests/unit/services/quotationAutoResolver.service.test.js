@@ -144,9 +144,33 @@ describe('quotationAutoResolver.service', () => {
     expect(result.evaluatedEquipment).toEqual([]);
   });
 
-  test('throws when customerId is missing', async () => {
-    await expect(resolveAutoMachineDataForQuote({})).rejects.toThrow(
-      'customerId is required for auto machine-data resolution'
-    );
+  test('uses booking-request fallback when customerId is missing', async () => {
+    const result = await resolveAutoMachineDataForQuote({
+      serviceType: 'Scheduled Maintenance',
+      bookingRequest: {
+        generatorDetails: {
+          generatorMakeModel: 'Honda GX690',
+          siteName: 'Farm Shed',
+        },
+      },
+    });
+
+    expect(result.source).toBe('booking-request');
+    expect(result.templateSeed.machineModelNumber).toBe('Honda GX690');
+    expect(findSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns generic fallback when customerId is missing and no machine data exists', async () => {
+    const result = await resolveAutoMachineDataForQuote({
+      serviceType: '',
+      bookingRequest: null,
+      createdBy: 'user-1',
+    });
+
+    expect(result.source).toBe('generic-fallback');
+    expect(result.templateSeed.machineModelNumber).toBe('');
+    expect(result.templateSeed.serviceType).toBe('Scheduled Maintenance');
+    expect(result.confidence).toBe('low');
+    expect(findSpy).not.toHaveBeenCalled();
   });
 });

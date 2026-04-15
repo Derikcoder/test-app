@@ -54,6 +54,20 @@ const buildTelegramShareUrl = ({ documentNumber, shareUrl, documentLabel, approv
   return `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`;
 };
 
+const buildAccessibleServiceCallFilter = (req, serviceCallId) => {
+  if (req.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile) {
+    return {
+      _id: serviceCallId,
+      assignedAgent: req.user.fieldServiceAgentProfile,
+    };
+  }
+
+  return {
+    _id: serviceCallId,
+    createdBy: req.user._id,
+  };
+};
+
 const calculateInvoiceCosts = ({
   lineItems = [],
   partsFulfilmentMode,
@@ -387,7 +401,7 @@ export const getOverdueInvoicesSummary = async (req, res) => {
 
 export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
   try {
-    const serviceCall = await ServiceCall.findOne({ _id: req.params.serviceCallId, createdBy: req.user._id })
+    const serviceCall = await ServiceCall.findOne(buildAccessibleServiceCallFilter(req, req.params.serviceCallId))
       .populate('quotation')
       .populate('customer')
       .populate('equipment');
@@ -397,7 +411,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     }
 
     const existing = await populateInvoiceDocument(
-      Invoice.findOne({ serviceCall: serviceCall._id, documentType: 'proForma', createdBy: req.user._id })
+      Invoice.findOne({ serviceCall: serviceCall._id, documentType: 'proForma' })
     );
 
     if (existing) {
@@ -456,7 +470,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
     });
 
     await syncServiceCallInvoicePointers({ invoice, serviceCall, mode: 'proForma' });
-    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id, createdBy: req.user._id }));
+    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id }));
 
     logInfo(`✅ Pro-forma invoice draft created: ${invoice.invoiceNumber} for service call ${serviceCall.callNumber}`);
     res.status(201).json({ invoice: populated, created: true });
@@ -471,7 +485,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
 // @access  Private (JWT required)
 export const createFinalInvoiceFromServiceCall = async (req, res) => {
   try {
-    const serviceCall = await ServiceCall.findOne({ _id: req.params.serviceCallId, createdBy: req.user._id })
+    const serviceCall = await ServiceCall.findOne(buildAccessibleServiceCallFilter(req, req.params.serviceCallId))
       .populate('quotation')
       .populate('customer')
       .populate('equipment');
@@ -482,7 +496,7 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
 
     // Idempotency: return existing final invoice if one was already created
     const existing = await populateInvoiceDocument(
-      Invoice.findOne({ serviceCall: serviceCall._id, documentType: 'final', createdBy: req.user._id })
+      Invoice.findOne({ serviceCall: serviceCall._id, documentType: 'final' })
     );
     if (existing) {
       return res.json({ invoice: existing, created: false });
@@ -540,7 +554,7 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
     });
 
     await syncServiceCallInvoicePointers({ invoice, serviceCall, mode: 'final' });
-    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id, createdBy: req.user._id }));
+    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id }));
 
     logInfo(`✅ Final invoice created: ${invoice.invoiceNumber} for service call ${serviceCall.callNumber}`);
     res.status(201).json({ invoice: populated, created: true });
@@ -591,12 +605,13 @@ export const createInvoice = async (req, res) => {
       return res.status(400).json({ message: 'Service call, customer, and at least one line item are required' });
     }
 
-    const serviceCall = await ServiceCall.findOne({ _id: serviceCallId, createdBy: req.user._id });
+    const serviceCall = await ServiceCall.findOne(buildAccessibleServiceCallFilter(req, serviceCallId));
     if (!serviceCall) {
       return res.status(404).json({ message: 'Service call not found' });
     }
 
-    const customerExists = await Customer.findOne({ _id: customer, createdBy: req.user._id });
+    const customerExists = await Customer.findOne({ _id: customer, createdBy: serviceCall.createdBy || req.user._id })
+      || await Customer.findOne({ _id: customer });
     if (!customerExists) {
       return res.status(404).json({ message: 'Customer not found' });
     }
@@ -820,7 +835,7 @@ export const updateInvoiceWorkflowStatus = async (req, res) => {
     };
 
     const updated = await invoice.save();
-    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: updated._id, createdBy: req.user._id }));
+    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: updated._id }));
 
     logInfo(`✅ Invoice workflow updated: ${updated.invoiceNumber} → ${workflowStatus}`);
     res.json(populated);
@@ -837,7 +852,7 @@ export const finalizeInvoice = async (req, res) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    const serviceCall = await ServiceCall.findOne({ _id: invoice.serviceCall, createdBy: req.user._id });
+    const serviceCall = await ServiceCall.findOne(buildAccessibleServiceCallFilter(req, invoice.serviceCall));
     if (!serviceCall) {
       return res.status(404).json({ message: 'Linked service call not found' });
     }

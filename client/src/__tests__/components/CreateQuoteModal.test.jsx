@@ -12,6 +12,7 @@ vi.mock('../../api/axios', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
   },
 }));
 
@@ -35,6 +36,12 @@ describe('CreateQuoteModal', () => {
     vi.clearAllMocks();
     vi.mocked(api.get).mockResolvedValue({ data: [] });
     vi.mocked(api.post).mockResolvedValue({
+      data: {
+        _id: 'quote-1',
+        quotationNumber: 'QT-000001',
+      },
+    });
+    vi.mocked(api.put).mockResolvedValue({
       data: {
         _id: 'quote-1',
         quotationNumber: 'QT-000001',
@@ -99,6 +106,85 @@ describe('CreateQuoteModal', () => {
         expect.objectContaining({
           serviceType: 'Preventive Maintenance',
           title: 'Quotation for SC-000123',
+        }),
+        {
+          headers: { Authorization: 'Bearer test-token' },
+        }
+      );
+    });
+  });
+
+  it('should send the quote by email when email is selected before submit', async () => {
+    render(<CreateQuoteModal {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /create quote/i }));
+
+    const emailCheckbox = await screen.findByRole('checkbox', { name: /email/i });
+    fireEvent.click(emailCheckbox);
+
+    const submitButton = screen.getByRole('button', { name: /submit quote/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/quotations/quote-1/send',
+        { channels: ['email'] },
+        {
+          headers: { Authorization: 'Bearer test-token' },
+        }
+      );
+    });
+  });
+
+  it('should allow decimal quantities for partial-unit line items', async () => {
+    render(<CreateQuoteModal {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /create quote/i }));
+
+    const quantityInput = await screen.findByLabelText(/qty/i);
+
+    expect(quantityInput).toHaveAttribute('step', '0.01');
+    expect(quantityInput).toHaveAttribute('min', '0.01');
+
+    fireEvent.change(quantityInput, { target: { value: '1.5' } });
+    expect(quantityInput).toHaveValue(1.5);
+  });
+
+  it('should keep the original customer context locked when editing a quote', async () => {
+    render(
+      <CreateQuoteModal
+        token="test-token"
+        editMode
+        forceOpen
+        existingQuotation={{
+          _id: 'quote-1',
+          recipientSnapshot: {
+            name: 'Bennie Henning',
+            email: 'bennie@example.com',
+          },
+          customer: null,
+          serviceType: 'Preventive Maintenance',
+          title: 'Quotation for SC-000001',
+          description: 'Prospect quote',
+          lineItems: [{ description: 'Oil', quantity: 1.5, unitPrice: 75 }],
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(/bennie henning/i)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('option', { name: /select customer/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        '/quotations/quote-1',
+        expect.objectContaining({
+          title: 'Quotation for SC-000001',
+          serviceType: 'Preventive Maintenance',
         }),
         {
           headers: { Authorization: 'Bearer test-token' },

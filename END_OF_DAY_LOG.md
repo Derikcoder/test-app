@@ -39,6 +39,44 @@ Use this file as a daily progress journal.
 
 ## Entries
 
+## [2026-04-13] [18:10] [SAST]
+
+### What We Were Busy With
+- **Field service agent model rework in progress** — started restructuring the agent domain around explicit service categories and category-bound skills instead of a loose free-text skills model
+- Added shared agent taxonomy definitions on both backend and frontend to keep registration, validation, and filtering aligned
+- Extended the `FieldServiceAgent` model and controller flow to support category-driven validation plus additional operational metrics such as jobs completed, jobs in progress, quotes awaiting approval, and average rating
+- Reworked the `FieldServiceAgents.jsx` UI to support category selection, skill multi-select, category/skill filtering, and a more operations-oriented table view
+- Captured new business rules around agent category enforcement and service-call booking date/outage-window selection in `BUSINESSRULES.md`
+- Updated `ServiceCallRegistration.jsx` to make outage windows conditional, clarify first-service vs existing-customer date requirements, and avoid forcing outage data when not applicable
+
+### Why This Work Mattered
+- The old free-text agent model was too weak for reliable dispatch, filtering, reporting, and future self-dispatch logic
+- A canonical category/skills taxonomy gives us a stronger foundation for matching the right agent to the right job and reduces inconsistent data entry
+- Surfacing operational counters in the agent model moves us closer to a dispatch-ready workforce view instead of a basic contact list
+- Tightening service-call booking rules reduces bad intake data before it reaches scheduling and quotation workflows
+
+### Where We Intend Heading Next (Tomorrow)
+- Continue and stabilize the field service agent model rework until the backend schema, controller validation, frontend forms, and tests all agree on the same taxonomy
+- Verify naming consistency across categories currently used in model/controller/tests so the taxonomy is coherent end to end
+- Run and fix the affected test suites, then decide whether any documentation updates are needed in `AI_ASSISTANT_GUIDE.md`, `README.md`, and `PROJECT-STRUCTURE.md`
+
+### Next Session Starter Tasks
+- [ ] Review current agent taxonomy values for naming mismatches between frontend, backend, and tests
+- [ ] Run the agent controller/model tests and fix any failures caused by the category/skills refactor
+- [ ] Validate the `FieldServiceAgents` create/edit flow manually in the UI
+- [ ] Validate `ServiceCallRegistration` date and outage-window behavior manually and add missing tests if needed
+- [ ] Decide whether the new agent taxonomy should also drive dispatch eligibility and reporting views
+
+### Risks / Blockers
+- The agent taxonomy appears to be mid-transition; current category names in tests and implementation may not yet line up cleanly
+- Some of today’s changes are still unverified by test execution and manual UI validation
+- There are unrelated uncommitted `.continue/mcpServers/` template files in the working tree that should be treated carefully and not mixed into feature conclusions by accident
+
+### Commit / Branch Context
+- Branch: `main`
+- Last commit touched: Pending next commit
+- Working focus: field service agent model/taxonomy rework + service-call intake rule tightening
+
 ## [2026-04-09] [~17:00] [SAST]
 
 ### What We Were Busy With

@@ -3,7 +3,7 @@
  * @description Unit tests for prospect-first quotation acceptance flow.
  */
 
-import { acceptPublicQuotation } from '../../../controllers/quotation.controller.js';
+import { acceptPublicQuotation, createQuotationFromServiceCall } from '../../../controllers/quotation.controller.js';
 import Quotation from '../../../models/Quotation.model.js';
 import ServiceCall from '../../../models/ServiceCall.model.js';
 import Customer from '../../../models/Customer.model.js';
@@ -15,6 +15,16 @@ jest.mock('../../../models/ServiceCall.model.js');
 jest.mock('../../../models/Customer.model.js');
 jest.mock('../../../models/User.model.js');
 jest.mock('../../../models/ServiceCallEmailLock.model.js');
+jest.mock('../../../services/quotationAutoResolver.service.js', () => ({
+  resolveAutoMachineDataForQuote: jest.fn().mockResolvedValue({
+    source: 'generic-fallback',
+    confidence: 'medium',
+    templateSeed: {
+      serviceType: 'Preventive Maintenance',
+      machineModelNumber: 'Test Generator',
+    },
+  }),
+}));
 jest.mock('../../../middleware/logger.middleware.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
@@ -44,6 +54,96 @@ describe('Quotation Controller - Prospect Conversion', () => {
     };
 
     jest.clearAllMocks();
+  });
+
+  test('allows an assigned field agent to create a quotation from their service call', async () => {
+    req = {
+      params: { serviceCallId: 'call-123' },
+      body: {
+        serviceType: 'Preventive Maintenance',
+        title: 'Quotation for SC-000123',
+        description: 'Field agent quote',
+        lineItems: [{ description: 'Oil top-up', quantity: 1.5, unitPrice: 75 }],
+      },
+      user: {
+        _id: 'user-agent-1',
+        role: 'fieldServiceAgent',
+        fieldServiceAgentProfile: 'agent-profile-1',
+        isSuperUser: false,
+      },
+    };
+
+    const serviceCall = {
+      _id: 'call-123',
+      callNumber: 'SC-000123',
+      customer: 'cust-1',
+      siteId: 'site-1',
+      equipment: 'equip-1',
+      serviceType: 'Preventive Maintenance',
+      description: 'Generator service required',
+      status: 'assigned',
+      assignedAgent: 'agent-profile-1',
+      createdBy: 'owner-1',
+      save: jest.fn().mockResolvedValue(true),
+    };
+
+    const customer = {
+      _id: 'cust-1',
+      businessName: 'Bennie Henning',
+    };
+
+    const createdQuotation = {
+      _id: 'quote-123',
+      quotationNumber: 'QT-000123',
+      customer: 'cust-1',
+      equipment: 'equip-1',
+      populate: jest.fn().mockResolvedValue(true),
+      toObject: jest.fn().mockReturnValue({
+        _id: 'quote-123',
+        quotationNumber: 'QT-000123',
+      }),
+    };
+
+    ServiceCall.findOne = jest.fn().mockImplementation((query) => {
+      if (query?._id === 'call-123' && query?.assignedAgent === 'agent-profile-1') {
+        return Promise.resolve(serviceCall);
+      }
+
+      return Promise.resolve(null);
+    });
+
+    Customer.findOne = jest.fn().mockImplementation((query) => {
+      if (query?._id === 'cust-1' && query?.createdBy === 'owner-1') {
+        return Promise.resolve(customer);
+      }
+
+      return Promise.resolve(null);
+    });
+
+    Quotation.create = jest.fn().mockResolvedValue(createdQuotation);
+
+    await createQuotationFromServiceCall(req, res);
+
+    expect(ServiceCall.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: 'call-123',
+        assignedAgent: 'agent-profile-1',
+      })
+    );
+    expect(Customer.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: 'cust-1',
+        createdBy: 'owner-1',
+      })
+    );
+    expect(Quotation.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: 'cust-1',
+        createdBy: 'user-agent-1',
+      })
+    );
+    expect(serviceCall.status).toBe('awaiting-quote-approval');
+    expect(res.status).toHaveBeenCalledWith(201);
   });
 
   test('creates customer and customer user only when prospect quote is accepted', async () => {

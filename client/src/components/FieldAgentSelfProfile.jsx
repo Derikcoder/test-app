@@ -46,6 +46,36 @@ const FieldAgentSelfProfile = () => {
   }
  };
 
+ const handleViewQuotationPdf = async (quotation) => {
+  if (!quotation?._id && !quotation?.shareToken) {
+   setActionError('Quotation preview is not available yet.');
+   return;
+  }
+
+  try {
+   setActionError('');
+
+   if (quotation?.shareToken) {
+    window.open(
+     `${window.location.origin}/api/quotations/share/${quotation.shareToken}/pdf`,
+     '_blank',
+     'noopener,noreferrer'
+    );
+    return;
+   }
+
+   const response = await api.get(`/quotations/${quotation._id}/pdf`, {
+    headers: { Authorization: `Bearer ${user.token}` },
+    responseType: 'blob',
+   });
+
+   const fileUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+   window.open(fileUrl, '_blank', 'noopener,noreferrer');
+  } catch (err) {
+   setActionError(err?.response?.data?.message || 'Failed to open quotation PDF.');
+  }
+ };
+
  useEffect(() => {
   fetchAgentData();
  }, [user?.fieldServiceAgentProfile]);
@@ -108,7 +138,7 @@ const FieldAgentSelfProfile = () => {
    setActionSuccess('Job accepted successfully and added to your queue.');
    setSelfDispatchMeta(response.data.meta || null);
    await fetchAgentData();
-   setActiveTab('to-attend');
+   setActiveTab('accepted');
   } catch (err) {
    setActionError(err.response?.data?.message || 'Failed to accept the job. Please try again.');
    setSelfDispatchMeta(err.response?.data?.meta || null);
@@ -155,23 +185,55 @@ const FieldAgentSelfProfile = () => {
   }
  };
 
+ useEffect(() => {
+  if (!serviceCalls.length) return;
+
+  setActiveTab((current) => {
+   if (current !== 'all') return current;
+
+   if (serviceCalls.some((call) => call.status === 'awaiting-quote-approval')) {
+    return 'awaiting-acceptance';
+   }
+
+   if (serviceCalls.some((call) => call.status === 'assigned' || call.status === 'scheduled')) {
+    return 'accepted';
+   }
+
+   if (serviceCalls.some((call) => call.status === 'in-progress')) {
+    return 'in-progress';
+   }
+
+   if (serviceCalls.some((call) => call.status === 'completed' || call.status === 'invoiced')) {
+    return 'completed';
+   }
+
+   return current;
+  });
+ }, [serviceCalls]);
+
  // Calculate statistics
  const stats = {
   total: serviceCalls.length,
-  completed: serviceCalls.filter(call => call.status === 'completed').length,
-  inProgress: serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval').length,
-  toBeAttended: serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open').length,
+  awaitingAcceptance: serviceCalls.filter((call) => call.status === 'awaiting-quote-approval').length,
+  accepted: serviceCalls.filter((call) => call.status === 'assigned' || call.status === 'scheduled').length,
+  onHold: serviceCalls.filter((call) => call.status === 'on-hold').length,
+  inProgress: serviceCalls.filter((call) => call.status === 'in-progress').length,
+  completed: serviceCalls.filter((call) => call.status === 'completed' || call.status === 'invoiced').length,
   unassigned: eligibleUnassignedCalls.length,
  };
 
  const getFilteredCalls = () => {
   switch (activeTab) {
+   case 'awaiting-acceptance':
+    return serviceCalls.filter((call) => call.status === 'awaiting-quote-approval');
+   case 'accepted':
+    return serviceCalls.filter((call) => call.status === 'assigned' || call.status === 'scheduled');
+   case 'on-hold':
+    return serviceCalls.filter((call) => call.status === 'on-hold');
    case 'completed':
-    return serviceCalls.filter(call => call.status === 'completed');
+    return serviceCalls.filter((call) => call.status === 'completed' || call.status === 'invoiced');
    case 'in-progress':
-    return serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval');
-   case 'to-attend':
-    return serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open');
+    return serviceCalls.filter((call) => call.status === 'in-progress');
    case 'unassigned':
     return eligibleUnassignedCalls;
    default:
@@ -391,7 +453,7 @@ const FieldAgentSelfProfile = () => {
      </div>
 
      {/* Statistics Cards */}
-     <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+     <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
       <div className={statCardClass}>
        <div className="flex items-center justify-between">
         <div>
@@ -406,7 +468,73 @@ const FieldAgentSelfProfile = () => {
        </div>
       </div>
 
-      <div className={statCardClass}>
+      <button
+       type="button"
+       onClick={() => setActiveTab('awaiting-acceptance')}
+       className={`${statCardClass} text-left transition hover:border-amber-700 ${
+        activeTab === 'awaiting-acceptance' ? 'ring-2 ring-amber-500/70' : ''
+       }`}
+      >
+       <div className="flex items-center justify-between">
+        <div>
+         <p className="text-slate-400 text-sm font-medium">Awaiting Acceptance</p>
+         <p className="text-3xl font-bold text-amber-300 mt-2">{stats.awaitingAcceptance}</p>
+        </div>
+        <div className="w-12 h-12 bg-amber-950 rounded-lg flex items-center justify-center border border-amber-800">
+         <svg className="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+         </svg>
+        </div>
+       </div>
+      </button>
+
+      <button
+       type="button"
+       onClick={() => setActiveTab('accepted')}
+       className={`${statCardClass} text-left transition hover:border-cyan-700 ${
+        activeTab === 'accepted' ? 'ring-2 ring-cyan-500/70' : ''
+       }`}
+      >
+       <div className="flex items-center justify-between">
+        <div>
+         <p className="text-slate-400 text-sm font-medium">Accepted</p>
+         <p className="text-3xl font-bold text-cyan-300 mt-2">{stats.accepted}</p>
+        </div>
+        <div className="w-12 h-12 bg-cyan-950 rounded-lg flex items-center justify-center border border-cyan-800">
+         <svg className="w-6 h-6 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+         </svg>
+        </div>
+       </div>
+      </button>
+
+      <button
+       type="button"
+       onClick={() => setActiveTab('on-hold')}
+       className={`${statCardClass} text-left transition hover:border-orange-700 ${
+        activeTab === 'on-hold' ? 'ring-2 ring-orange-500/70' : ''
+       }`}
+      >
+       <div className="flex items-center justify-between">
+        <div>
+         <p className="text-slate-400 text-sm font-medium">On Hold</p>
+         <p className="text-3xl font-bold text-orange-300 mt-2">{stats.onHold}</p>
+        </div>
+        <div className="w-12 h-12 bg-orange-950 rounded-lg flex items-center justify-center border border-orange-800">
+         <svg className="w-6 h-6 text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6M5 19h14" />
+         </svg>
+        </div>
+       </div>
+      </button>
+
+      <button
+       type="button"
+       onClick={() => setActiveTab('in-progress')}
+       className={`${statCardClass} text-left transition hover:border-blue-700 ${
+        activeTab === 'in-progress' ? 'ring-2 ring-blue-500/70' : ''
+       }`}
+      >
        <div className="flex items-center justify-between">
         <div>
          <p className="text-slate-400 text-sm font-medium">In Progress</p>
@@ -414,61 +542,32 @@ const FieldAgentSelfProfile = () => {
         </div>
         <div className="w-12 h-12 bg-blue-950 rounded-lg flex items-center justify-center border border-blue-800">
          <svg className="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3" />
          </svg>
         </div>
        </div>
-      </div>
-
-      <div className={statCardClass}>
-       <div className="flex items-center justify-between">
-        <div>
-         <p className="text-slate-400 text-sm font-medium">To Be Attended</p>
-         <p className="text-3xl font-bold text-yellow-300 mt-2">{stats.toBeAttended}</p>
-        </div>
-        <div className="w-12 h-12 bg-amber-950 rounded-lg flex items-center justify-center border border-amber-800">
-         <svg className="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-         </svg>
-        </div>
-       </div>
-      </div>
-
-      <div className={statCardClass}>
-       <div className="flex items-center justify-between">
-        <div>
-         <p className="text-slate-400 text-sm font-medium">Completed</p>
-         <p className="text-3xl font-bold text-green-300 mt-2">{stats.completed}</p>
-        </div>
-        <div className="w-12 h-12 bg-emerald-950 rounded-lg flex items-center justify-center border border-emerald-800">
-         <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-         </svg>
-        </div>
-       </div>
-      </div>
+      </button>
 
       <button
        type="button"
-       onClick={() => setActiveTab('unassigned')}
-       className={`${statCardClass} text-left transition hover:border-amber-700 ${
-        activeTab === 'unassigned' ? 'ring-2 ring-amber-500/70' : ''
+       onClick={() => setActiveTab('completed')}
+       className={`${statCardClass} text-left transition hover:border-emerald-700 ${
+        activeTab === 'completed' ? 'ring-2 ring-emerald-500/70' : ''
        }`}
       >
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-slate-400 text-sm font-medium">Unassigned Jobs</p>
-         <p className="text-3xl font-bold text-orange-300 mt-2">{stats.unassigned}</p>
+         <p className="text-slate-400 text-sm font-medium">Completed</p>
+         <p className="text-3xl font-bold text-emerald-300 mt-2">{stats.completed}</p>
         </div>
-        <div className="w-12 h-12 bg-orange-950 rounded-lg flex items-center justify-center border border-orange-800">
-         <svg className="w-6 h-6 text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+        <div className="w-12 h-12 bg-emerald-950 rounded-lg flex items-center justify-center border border-emerald-800">
+         <svg className="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4" />
          </svg>
         </div>
        </div>
       </button>
      </div>
-
      {actionError && (
       <div className="mb-4 p-4 rounded-lg border border-red-700 bg-red-950 text-red-200">{actionError}</div>
      )}
@@ -485,7 +584,7 @@ const FieldAgentSelfProfile = () => {
      <div className={`${panelClass} overflow-hidden`}>
       <div className="px-5 sm:px-8 py-6 border-b border-slate-700 bg-slate-900/95">
        <h2 className="text-2xl font-bold text-slate-100">My Service Calls</h2>
-       <p className="mt-1 text-sm text-slate-400">Your assigned service call records</p>
+       <p className="mt-1 text-sm text-slate-400">Track awaiting acceptance, accepted, on-hold, in-progress, and completed jobs — with quick quotation access.</p>
 
        {/* Tabs */}
        <div className="mt-4 flex gap-2 border-b border-slate-700 overflow-x-auto">
@@ -500,14 +599,34 @@ const FieldAgentSelfProfile = () => {
          All ({stats.total})
         </button>
         <button
-         onClick={() => setActiveTab('to-attend')}
+         onClick={() => setActiveTab('awaiting-acceptance')}
          className={`px-4 py-2 font-medium transition -mb-px ${
-          activeTab === 'to-attend'
+          activeTab === 'awaiting-acceptance'
            ? tabActiveClass
            : tabInactiveClass
          }`}
         >
-         To Attend ({stats.toBeAttended})
+         Awaiting Acceptance ({stats.awaitingAcceptance})
+        </button>
+        <button
+         onClick={() => setActiveTab('accepted')}
+         className={`px-4 py-2 font-medium transition -mb-px ${
+          activeTab === 'accepted'
+           ? tabActiveClass
+           : tabInactiveClass
+         }`}
+        >
+         Accepted ({stats.accepted})
+        </button>
+        <button
+         onClick={() => setActiveTab('on-hold')}
+         className={`px-4 py-2 font-medium transition -mb-px ${
+          activeTab === 'on-hold'
+           ? tabActiveClass
+           : tabInactiveClass
+         }`}
+        >
+         On Hold ({stats.onHold})
         </button>
         <button
          onClick={() => setActiveTab('in-progress')}
@@ -755,6 +874,15 @@ const FieldAgentSelfProfile = () => {
                      onCreated={fetchAgentData}
                     />
                    )}
+                   {call.quotation && (
+                    <button
+                     type="button"
+                     onClick={() => handleViewQuotationPdf(call.quotation)}
+                     className="btn-action-cyan"
+                    >
+                     View Quote PDF
+                    </button>
+                   )}
                    {call.quotation && call.quotation.status === 'sent' && (
                     <button
                      type="button"
@@ -827,6 +955,15 @@ const FieldAgentSelfProfile = () => {
                      triggerClassName="btn-action-amber"
                      onCreated={fetchAgentData}
                     />
+                   )}
+                   {call.quotation && (
+                    <button
+                     type="button"
+                     onClick={() => handleViewQuotationPdf(call.quotation)}
+                     className="btn-action-cyan"
+                    >
+                     View Quote PDF
+                    </button>
                    )}
                    {call.quotation && call.quotation.status === 'sent' && (
                     <button
