@@ -19,8 +19,10 @@ import {
   getAvailableAgents,
 } from '../../../controllers/agent.controller.js';
 import FieldServiceAgent from '../../../models/FieldServiceAgent.model.js';
+import User from '../../../models/User.model.js';
 
 jest.mock('../../../models/FieldServiceAgent.model.js');
+jest.mock('../../../models/User.model.js');
 jest.mock('../../../utils/sequence.util.js', () => ({
   getNextSequenceValue: jest.fn().mockResolvedValue(1),
   formatSequenceId: jest.fn().mockReturnValue('AGT-000001'),
@@ -71,11 +73,13 @@ describe('Agent Controller', () => {
     };
 
     jest.clearAllMocks();
+    User.findOne = jest.fn().mockResolvedValue(null);
+    User.findById = jest.fn().mockResolvedValue(null);
 
     // Reset static properties
     FieldServiceAgent.IMMUTABLE_FIELDS = ['firstName', 'lastName', 'employeeId', 'createdAt', '_id', 'createdBy'];
     FieldServiceAgent.EDITABLE_FIELDS = [
-      'email', 'phoneNumber', 'skills', 'specializations', 'totalJobsAttended',
+      'email', 'backupEmail', 'phoneNumber', 'skills', 'specializations', 'totalJobsAttended',
       'jobsCompleted', 'jobsInProgress', 'quotesAwaitingApproval',
       'averageRating', 'ratingsCount', 'hourlyRate', 'status', 'availability',
       'currentLocation', 'assignedArea', 'selfDispatchSuspended',
@@ -219,6 +223,26 @@ describe('Agent Controller', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
 
+    test('accepts cross-sector skill mixes for multi-disciplinary agents', async () => {
+      req.body = {
+        ...validBody,
+        category: 'Multi-Disciplinary',
+        skills: ['Diesel Mechanic', 'Solar Power Systems'],
+      };
+      FieldServiceAgent.findOne = jest.fn().mockResolvedValue(null);
+      FieldServiceAgent.create = jest.fn().mockResolvedValue({
+        ...validBody,
+        _id: 'agent-multi',
+        category: 'Multi-Disciplinary',
+        skills: ['Diesel Mechanic', 'Solar Power Systems'],
+      });
+
+      await createAgent(req, res);
+
+      expect(FieldServiceAgent.create).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
     test('returns 400 when skills do not match category', async () => {
       req.body = {
         ...validBody,
@@ -305,6 +329,52 @@ describe('Agent Controller', () => {
       await updateAgent(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('syncs linked user email when agent email changes', async () => {
+      req.params.id = 'agent-1';
+      req.body = { email: 'newagent@example.com' };
+
+      const linkedUser = {
+        _id: 'user-linked',
+        email: 'john@example.com',
+        save: jest.fn().mockResolvedValue({ _id: 'user-linked', email: 'newagent@example.com' }),
+      };
+
+      const agentInstance = {
+        ...mockAgent,
+        email: 'john@example.com',
+        userAccount: 'user-linked',
+        save: jest.fn().mockResolvedValue({ ...mockAgent, email: 'newagent@example.com' }),
+      };
+
+      FieldServiceAgent.findOne = jest.fn().mockResolvedValue(agentInstance);
+      User.findOne = jest.fn().mockResolvedValue(null);
+      User.findById = jest.fn().mockResolvedValue(linkedUser);
+
+      await updateAgent(req, res);
+
+      expect(User.findById).toHaveBeenCalledWith('user-linked');
+      expect(linkedUser.email).toBe('newagent@example.com');
+      expect(linkedUser.save).toHaveBeenCalled();
+      expect(agentInstance.save).toHaveBeenCalled();
+    });
+
+    test('updates backup recovery email successfully', async () => {
+      req.params.id = 'agent-1';
+      req.body = { backupEmail: 'personal.recovery@example.com' };
+
+      const agentInstance = {
+        ...mockAgent,
+        backupEmail: '',
+        save: jest.fn().mockResolvedValue({ ...mockAgent, backupEmail: 'personal.recovery@example.com' }),
+      };
+      FieldServiceAgent.findOne = jest.fn().mockResolvedValue(agentInstance);
+
+      await updateAgent(req, res);
+
+      expect(agentInstance.backupEmail).toBe('personal.recovery@example.com');
+      expect(agentInstance.save).toHaveBeenCalled();
     });
 
     test('returns 400 when updated skills do not match category', async () => {

@@ -1,4 +1,5 @@
 import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
+import User from '../models/User.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
 import { AGENT_CATEGORIES, getAllowedSkillsForCategory } from '../config/agentTaxonomy.js';
@@ -7,6 +8,8 @@ const normalizeSkills = (skills) => {
   if (!Array.isArray(skills)) return [];
   return skills.map((skill) => String(skill).trim()).filter(Boolean);
 };
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
 const validateCategorySkills = (category, skills) => {
   if (!AGENT_CATEGORIES.includes(category)) {
@@ -88,6 +91,7 @@ export const createAgent = async (req, res) => {
       firstName,
       lastName,
       email,
+      backupEmail,
       phoneNumber,
       category,
       skills,
@@ -102,16 +106,27 @@ export const createAgent = async (req, res) => {
       return res.status(400).json({ message: 'Please fill in all required fields' });
     }
 
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedBackupEmail = backupEmail ? normalizeEmail(backupEmail) : '';
     const normalizedSkills = normalizeSkills(skills);
     const categoryValidation = validateCategorySkills(category, normalizedSkills);
     if (!categoryValidation.valid) {
       return res.status(400).json({ message: categoryValidation.message });
     }
 
+    if (normalizedBackupEmail && normalizedBackupEmail === normalizedEmail) {
+      return res.status(400).json({ message: 'Backup email must differ from the primary email' });
+    }
+
     // Check if email already exists
-    const agentExists = await FieldServiceAgent.findOne({ email });
+    const agentExists = await FieldServiceAgent.findOne({ email: normalizedEmail });
 
     if (agentExists) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    const userExists = await User.findOne({ email: normalizedEmail });
+    if (userExists) {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
@@ -132,8 +147,9 @@ export const createAgent = async (req, res) => {
     const agent = await FieldServiceAgent.create({
       firstName,
       lastName,
-      email,
+      email: normalizedEmail,
       phoneNumber,
+      backupEmail: normalizedBackupEmail,
       employeeId,
       category,
       skills: normalizedSkills,
@@ -181,15 +197,53 @@ export const updateAgent = async (req, res) => {
     // Update editable fields
     const targetCategory = req.body.category ?? agent.category;
     const targetSkills = req.body.skills !== undefined ? normalizeSkills(req.body.skills) : agent.skills;
+    const targetEmail = req.body.email !== undefined ? normalizeEmail(req.body.email) : agent.email;
+    const targetBackupEmail = req.body.backupEmail !== undefined
+      ? (req.body.backupEmail ? normalizeEmail(req.body.backupEmail) : '')
+      : (agent.backupEmail || '');
+
+    if (!targetEmail) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    if (targetBackupEmail && targetBackupEmail === targetEmail) {
+      return res.status(400).json({ message: 'Backup email must differ from the primary email' });
+    }
 
     const categoryValidation = validateCategorySkills(targetCategory, targetSkills);
     if (!categoryValidation.valid) {
       return res.status(400).json({ message: categoryValidation.message });
     }
 
+    if (targetEmail !== agent.email) {
+      const duplicateAgent = await FieldServiceAgent.findOne({ email: targetEmail });
+      if (duplicateAgent && String(duplicateAgent._id) !== String(agent._id)) {
+        return res.status(400).json({ message: 'Email already registered' });
+      }
+
+      const linkedUser = agent.userAccount ? await User.findById(agent.userAccount) : null;
+      const duplicateUser = await User.findOne({ email: targetEmail });
+      if (duplicateUser && (!linkedUser || String(duplicateUser._id) !== String(linkedUser._id))) {
+        return res.status(400).json({ message: 'Email already registered' });
+      }
+
+      if (linkedUser) {
+        linkedUser.email = targetEmail;
+        await linkedUser.save();
+      }
+    }
+
     FieldServiceAgent.EDITABLE_FIELDS.forEach(field => {
       if (req.body[field] !== undefined) {
-        agent[field] = field === 'skills' ? targetSkills : req.body[field];
+        if (field === 'skills') {
+          agent[field] = targetSkills;
+        } else if (field === 'email') {
+          agent[field] = targetEmail;
+        } else if (field === 'backupEmail') {
+          agent[field] = targetBackupEmail;
+        } else {
+          agent[field] = req.body[field];
+        }
       }
     });
 

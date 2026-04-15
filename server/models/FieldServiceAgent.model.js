@@ -54,6 +54,14 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       required: [true, 'Phone number is required'],
       trim: true,
     },
+    /** Optional personal/backup email for account recovery */
+    backupEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      default: '',
+      match: [/^$|^\S+@\S+\.\S+$/, 'Please enter a valid backup email'],
+    },
     /** Unique employee identifier - Cannot be changed */
     employeeId: {
       type: String,
@@ -238,6 +246,7 @@ fieldServiceAgentSchema.statics.IMMUTABLE_FIELDS = [
  */
 fieldServiceAgentSchema.statics.EDITABLE_FIELDS = [
   'email',
+  'backupEmail',
   'phoneNumber',
   'category',
   'skills',

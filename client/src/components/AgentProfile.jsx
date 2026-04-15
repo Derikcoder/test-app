@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
 import SiteInstructionModal from './SiteInstructionModal';
+import {
+ DEFAULT_AGENT_CATEGORY,
+ VISIBLE_AGENT_CATEGORIES,
+ getAllowedSkillsForCategory,
+} from '../constants/agentTaxonomy';
 
 const pageShellClass = 'min-h-screen bg-slate-950 pt-20 pb-8 px-3 sm:px-6 lg:px-8';
 const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
@@ -24,6 +29,7 @@ const AgentProfile = () => {
  const { user } = useAuth();
  const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
  const roleLabel = roleLabelMap[user?.role] || (isSuperAdmin ? 'Super Admin' : 'Platform User');
+ const canEditAgentProfile = isSuperAdmin || user?.role === 'businessAdministrator';
  const roleToneClass = isSuperAdmin
   ? 'border-fuchsia-700 bg-fuchsia-950 text-fuchsia-200'
   : 'border-cyan-700 bg-cyan-950 text-cyan-200';
@@ -40,6 +46,22 @@ const AgentProfile = () => {
  const [creatingInvoiceCallId, setCreatingInvoiceCallId] = useState(null);
  const [activeTab, setActiveTab] = useState('all');
  const [editingQuotation, setEditingQuotation] = useState(null);
+ const [showContactEditor, setShowContactEditor] = useState(false);
+ const [savingContact, setSavingContact] = useState(false);
+ const [contactForm, setContactForm] = useState({
+  email: '',
+  backupEmail: '',
+  phoneNumber: '',
+  assignedArea: '',
+  vehicleNumber: '',
+  category: DEFAULT_AGENT_CATEGORY,
+  skills: [],
+ });
+
+ const editableSkills = useMemo(
+  () => getAllowedSkillsForCategory(contactForm.category || DEFAULT_AGENT_CATEGORY),
+  [contactForm.category]
+ );
 
  const handleEditQuotation = async (quotationId) => {
   try {
@@ -65,6 +87,15 @@ const AgentProfile = () => {
     headers: { Authorization: `Bearer ${user.token}` }
    });
    setAgent(agentResponse.data);
+   setContactForm({
+    email: agentResponse.data.email || '',
+    backupEmail: agentResponse.data.backupEmail || '',
+    phoneNumber: agentResponse.data.phoneNumber || '',
+    assignedArea: agentResponse.data.assignedArea || '',
+    vehicleNumber: agentResponse.data.vehicleNumber || '',
+    category: agentResponse.data.category || DEFAULT_AGENT_CATEGORY,
+    skills: agentResponse.data.skills || [],
+   });
 
    // Fetch service calls for this agent
    const callsResponse = await api.get('/service-calls', {
@@ -157,6 +188,65 @@ const AgentProfile = () => {
    setActionError(err.response?.data?.message || 'Failed to create invoice.');
   } finally {
    setCreatingInvoiceCallId(null);
+  }
+ };
+
+ const handleContactInputChange = (event) => {
+  const { name, value } = event.target;
+
+  if (name === 'category') {
+   const allowedSkills = getAllowedSkillsForCategory(value);
+   setContactForm((prev) => ({
+    ...prev,
+    category: value,
+    skills: (prev.skills || []).filter((skill) => allowedSkills.includes(skill)),
+   }));
+   return;
+  }
+
+  setContactForm((prev) => ({ ...prev, [name]: value }));
+ };
+
+ const handleContactSkillToggle = (skill) => {
+  setContactForm((prev) => {
+   const selectedSkills = prev.skills || [];
+   return {
+    ...prev,
+    skills: selectedSkills.includes(skill)
+     ? selectedSkills.filter((item) => item !== skill)
+     : [...selectedSkills, skill],
+   };
+  });
+ };
+
+ const handleContactSave = async (event) => {
+  event.preventDefault();
+  setActionError('');
+  setActionSuccess('');
+  setSavingContact(true);
+
+  try {
+   await api.put(
+    `/agents/${id}`,
+    {
+     email: contactForm.email,
+     backupEmail: contactForm.backupEmail,
+     phoneNumber: contactForm.phoneNumber,
+     assignedArea: contactForm.assignedArea,
+     vehicleNumber: contactForm.vehicleNumber,
+     category: contactForm.category,
+     skills: contactForm.skills,
+    },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+
+   setActionSuccess('Agent profile updated successfully.');
+   setShowContactEditor(false);
+   await fetchAgentData();
+  } catch (err) {
+   setActionError(err.response?.data?.message || 'Failed to update agent profile.');
+  } finally {
+   setSavingContact(false);
   }
  };
 
@@ -379,12 +469,13 @@ const AgentProfile = () => {
         <div className="mt-2 flex flex-wrap gap-3 text-slate-300 text-sm">
           <span>📧 {agent.email}</span>
           <span>📱 {agent.phoneNumber}</span>
+          {agent.backupEmail ? <span>🛟 Backup: {agent.backupEmail}</span> : null}
          </div>
          {agent.assignedArea && (
       <p className="text-slate-300 mt-1 text-sm">📍 Area: {agent.assignedArea}</p>
          )}
         </div>
-        <div>
+        <div className="flex flex-col items-end gap-3">
          <span className={`px-4 py-2 text-sm font-semibold rounded-full ${
       agent.status === 'active' ? 'bg-emerald-950 text-emerald-200 border border-emerald-700' :
       agent.status === 'on-leave' ? 'bg-amber-950 text-amber-200 border border-amber-700' :
@@ -392,8 +483,76 @@ const AgentProfile = () => {
          }`}>
           {agent.status?.toUpperCase()}
          </span>
+         {canEditAgentProfile ? (
+          <button
+           type="button"
+           onClick={() => setShowContactEditor((prev) => !prev)}
+           className="rounded-lg border border-amber-700 bg-amber-950 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-900"
+          >
+           {showContactEditor ? 'Close Editor' : 'Edit Contact Profile'}
+          </button>
+         ) : null}
         </div>
        </div>
+       {showContactEditor && canEditAgentProfile ? (
+        <form onSubmit={handleContactSave} className="mt-6 rounded-xl border border-amber-800 bg-slate-950/80 p-4">
+         <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-200">Super Admin Profile Editor</h2>
+          <span className="text-xs text-slate-400">Correct HR capture mistakes and maintain contact, category, and skill data here.</span>
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="space-y-1">
+           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Primary Email</span>
+           <input type="email" name="email" value={contactForm.email} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" required />
+          </label>
+          <label className="space-y-1">
+           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Backup Recovery Email</span>
+           <input type="email" name="backupEmail" value={contactForm.backupEmail} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" placeholder="Optional personal recovery email" />
+          </label>
+          <label className="space-y-1">
+           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Phone Number</span>
+           <input type="text" name="phoneNumber" value={contactForm.phoneNumber} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" required />
+          </label>
+          <label className="space-y-1">
+           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Assigned Area</span>
+           <input type="text" name="assignedArea" value={contactForm.assignedArea} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" />
+          </label>
+          <label className="space-y-1">
+           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Primary Category</span>
+           <select name="category" value={contactForm.category} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100">
+            {VISIBLE_AGENT_CATEGORIES.map((category) => (
+             <option key={category} value={category}>{category}</option>
+            ))}
+           </select>
+          </label>
+          <label className="space-y-1">
+           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Vehicle Number</span>
+           <input type="text" name="vehicleNumber" value={contactForm.vehicleNumber} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" />
+          </label>
+          <div className="space-y-1 md:col-span-2">
+           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Skills</span>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3 max-h-56 overflow-y-auto">
+            {editableSkills.map((skill) => (
+             <label key={skill} className="flex items-center gap-2 text-sm text-slate-200">
+              <input
+               type="checkbox"
+               checked={(contactForm.skills || []).includes(skill)}
+               onChange={() => handleContactSkillToggle(skill)}
+               className="form-checkbox-dark"
+              />
+              <span>{skill}</span>
+             </label>
+            ))}
+           </div>
+           <p className="text-xs text-slate-400">Use Multi-Disciplinary for cross-sector agents who carry valuable skills across multiple categories.</p>
+          </div>
+         </div>
+         <div className="mt-4 flex justify-end gap-3">
+          <button type="button" onClick={() => setShowContactEditor(false)} className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700">Cancel</button>
+          <button type="submit" disabled={savingContact} className="rounded-lg border border-amber-700 bg-amber-950 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-900 disabled:opacity-60">{savingContact ? 'Saving...' : 'Save Contact Changes'}</button>
+         </div>
+        </form>
+       ) : null}
        {agent.skills?.length > 0 && (
         <div className="mt-4">
            <p className="text-slate-300 text-sm font-medium mb-2">Skills:</p>

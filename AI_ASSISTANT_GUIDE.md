@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** April 8, 2026  
+**Last Updated:** April 15, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -44,6 +44,28 @@
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: April 15, 2026 — Admin Agent Profile Correction + Cross-Sector Skills + Global Logout
+**Focus:** Remove back-office friction by letting admins correct field-agent profile mistakes directly in the app, while supporting evolving multi-category trade skillsets and guaranteed sign-out for field agents
+
+- ✅ Super Admin and Business Administrator can now edit a field agent's primary email, backup recovery email, phone, assigned area, vehicle number, category, and skills directly from the full agent profile view
+- ✅ Agent directory now supports inline edit entry so HR/admin staff can correct capture mistakes without needing a dev ticket
+- ✅ Optional `backupEmail` field added for personal recovery/contact fallback; backend enforces that it must differ from the primary login email
+- ✅ `Multi-Disciplinary` is now explicitly visible in the category selector to support cross-sector agents who carry valuable mixed skillsets across trades
+- ✅ Primary email changes now sync to the linked login account when one exists, with duplicate-email checks still enforced
+- ✅ Shared sidebar now includes a global Logout action, fixing the missing sign-out path for field service agents
+- ✅ Verified with 56/56 backend agent controller tests, 2/2 sidebar logout regression tests, and a clean frontend production build
+
+**Primary Files Updated:**
+- `client/src/components/AgentProfile.jsx`
+- `client/src/components/FieldServiceAgents.jsx`
+- `client/src/components/Sidebar.jsx`
+- `client/src/__tests__/components/Sidebar.test.jsx` (NEW)
+- `client/src/constants/agentTaxonomy.js`
+- `server/config/agentTaxonomy.js`
+- `server/controllers/agent.controller.js`
+- `server/models/FieldServiceAgent.model.js`
+- `server/tests/unit/controllers/agent.controller.test.js`
 
 #### Session: April 15, 2026 — Field Agent Category-First Registration
 **Focus:** Align field agent creation with a category-first workflow and starter skill taxonomy for cleaner dispatch data

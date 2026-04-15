@@ -27,9 +27,23 @@ const FieldServiceAgents = () => {
  const roleToneClass = isSuperAdmin
        ? 'border-fuchsia-700 bg-fuchsia-950 text-fuchsia-200'
        : 'border-cyan-700 bg-cyan-950 text-cyan-200';
+ const getEmptyFormData = () => ({
+  firstName: '',
+  lastName: '',
+  email: '',
+  backupEmail: '',
+  phoneNumber: '',
+  category: DEFAULT_AGENT_CATEGORY,
+  skills: [],
+  status: 'active',
+  assignedArea: '',
+  vehicleNumber: '',
+  notes: ''
+ });
  const [agents, setAgents] = useState([]);
  const [loading, setLoading] = useState(true);
  const [showForm, setShowForm] = useState(false);
+ const [editingAgentId, setEditingAgentId] = useState(null);
  const [error, setError] = useState('');
  const [success, setSuccess] = useState('');
  const [provisionModal, setProvisionModal] = useState(null); // agent object or null
@@ -41,18 +55,7 @@ const FieldServiceAgents = () => {
  const [resendMessage, setResendMessage] = useState({ id: null, text: '', isError: false });
  const [categoryFilter, setCategoryFilter] = useState('all');
  const [skillFilter, setSkillFilter] = useState('all');
- const [formData, setFormData] = useState({
-  firstName: '',
-  lastName: '',
-  email: '',
-  phoneNumber: '',
-  category: DEFAULT_AGENT_CATEGORY,
-       skills: [],
-  status: 'active',
-  assignedArea: '',
-  vehicleNumber: '',
-  notes: ''
- });
+ const [formData, setFormData] = useState(getEmptyFormData());
 
  const categorySkills = useMemo(
        () => getAllowedSkillsForCategory(formData.category),
@@ -117,6 +120,31 @@ const FieldServiceAgents = () => {
        });
  };
 
+ const resetFormState = () => {
+  setEditingAgentId(null);
+  setFormData(getEmptyFormData());
+ };
+
+ const handleEditAgent = (agent) => {
+  setEditingAgentId(agent._id);
+  setFormData({
+   firstName: agent.firstName || '',
+   lastName: agent.lastName || '',
+   email: agent.email || '',
+   backupEmail: agent.backupEmail || '',
+   phoneNumber: agent.phoneNumber || '',
+   category: agent.category || DEFAULT_AGENT_CATEGORY,
+   skills: agent.skills || [],
+   status: agent.status || 'active',
+   assignedArea: agent.assignedArea || '',
+   vehicleNumber: agent.vehicleNumber || '',
+   notes: agent.notes || '',
+  });
+  setError('');
+  setSuccess('');
+  setShowForm(true);
+ };
+
  const handleSubmit = async (e) => {
   e.preventDefault();
   setError('');
@@ -128,28 +156,23 @@ const FieldServiceAgents = () => {
        skills: formData.skills || []
    };
 
-   await api.post('/agents', dataToSubmit, {
-    headers: { Authorization: `Bearer ${user.token}` }
-   });
+   if (editingAgentId) {
+    await api.put(`/agents/${editingAgentId}`, dataToSubmit, {
+     headers: { Authorization: `Bearer ${user.token}` }
+    });
+   } else {
+    await api.post('/agents', dataToSubmit, {
+     headers: { Authorization: `Bearer ${user.token}` }
+    });
+   }
 
-   setSuccess('Agent created successfully!');
-   setFormData({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phoneNumber: '',
-        category: DEFAULT_AGENT_CATEGORY,
-       skills: [],
-    status: 'active',
-    assignedArea: '',
-    vehicleNumber: '',
-    notes: ''
-   });
+   setSuccess(editingAgentId ? 'Agent updated successfully!' : 'Agent created successfully!');
+   resetFormState();
    setShowForm(false);
-   fetchAgents();
+   await fetchAgents();
    setTimeout(() => setSuccess(''), 3000);
   } catch (err) {
-   setError(err.response?.data?.message || 'Failed to create agent');
+   setError(err.response?.data?.message || (editingAgentId ? 'Failed to update agent' : 'Failed to create agent'));
   }
  };
 
@@ -233,10 +256,18 @@ const FieldServiceAgents = () => {
              <p className="text-slate-400 mt-1">Manage your service team</p>
       </div>
       <button
-       onClick={() => setShowForm(!showForm)}
+       onClick={() => {
+        if (showForm) {
+         setShowForm(false);
+         resetFormState();
+         return;
+        }
+        resetFormState();
+        setShowForm(true);
+       }}
              className="px-6 py-3 flex items-center gap-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold"
       >
-       + Create Agent
+       {showForm ? 'Close Form' : '+ Create Agent'}
       </button>
      </div>
 
@@ -273,7 +304,7 @@ const FieldServiceAgents = () => {
      {/* Create Form */}
      {showForm && (
             <div className={`${panelClass} p-8 mb-8`}>
-             <h2 className="text-xl font-bold mb-6 text-slate-100">Add New Agent</h2>
+             <h2 className="text-xl font-bold mb-6 text-slate-100">{editingAgentId ? 'Edit Agent Details' : 'Add New Agent'}</h2>
        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="glass-form-group">
                  <label className="dark-label">First Name *</label>
@@ -307,6 +338,19 @@ const FieldServiceAgents = () => {
           required
           className={inputClass}
          />
+         <p className="mt-2 text-xs text-slate-400">This email can be updated later if the agent's address changes.</p>
+        </div>
+        <div className="glass-form-group">
+         <label className="dark-label">Backup Recovery Email</label>
+         <input
+          type="email"
+          name="backupEmail"
+          value={formData.backupEmail || ''}
+          onChange={handleInputChange}
+          placeholder="Optional personal recovery email"
+          className={inputClass}
+         />
+         <p className="mt-2 text-xs text-slate-400">Optional personal email for account recovery purposes. It should be different from the main login email.</p>
         </div>
        <div className="glass-form-group">
          <label className="dark-label">Phone Number *</label>
@@ -365,7 +409,7 @@ const FieldServiceAgents = () => {
            <option key={category} value={category} className="bg-slate-900">{category}</option>
           ))}
          </select>
-         <p className="mt-2 text-xs text-slate-400">Starter categories are loaded here, with the matching skill list shown below.</p>
+         <p className="mt-2 text-xs text-slate-400">Starter categories are loaded here, including Multi-Disciplinary for cross-sector agents with valuable mixed skillsets.</p>
         </div>
         <div className="md:col-span-2 glass-form-group">
          <label className="dark-label">Skills (select all that apply)</label>
@@ -396,7 +440,10 @@ const FieldServiceAgents = () => {
         <div className="md:col-span-2 flex justify-end gap-3">
          <button
           type="button"
-          onClick={() => setShowForm(false)}
+          onClick={() => {
+           setShowForm(false);
+           resetFormState();
+          }}
           className="px-6 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
          >
           Cancel
@@ -405,7 +452,7 @@ const FieldServiceAgents = () => {
           type="submit"
           className="px-6 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold"
          >
-          Create Agent
+          {editingAgentId ? 'Save Changes' : 'Create Agent'}
          </button>
         </div>
        </form>
@@ -482,6 +529,7 @@ const FieldServiceAgents = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.skills?.length ? agent.skills.join(', ') : '-'}</td>
             <td className="px-6 py-4 whitespace-nowrap">
                          <div className="text-sm text-slate-100">{agent.email}</div>
+                         {agent.backupEmail ? <div className="text-xs text-amber-300">Backup: {agent.backupEmail}</div> : null}
                          <div className="text-sm text-slate-400">{agent.phoneNumber}</div>
                            <div className="mt-1">
                             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${roleToneClass}`}>
@@ -504,6 +552,15 @@ const FieldServiceAgents = () => {
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.quotesAwaitingApproval ?? 0}</td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{Number(agent.averageRating || 0).toFixed(2)}</td>
             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+             <button
+              onClick={(e) => {
+               e.stopPropagation();
+               handleEditAgent(agent);
+              }}
+              className="mr-3 text-amber-300 hover:text-amber-200"
+             >
+              Edit
+             </button>
              {agent.userAccount ? (
               <span className="inline-flex items-center gap-2 mr-3">
                <span className="text-xs text-emerald-400 font-semibold">Login ✓</span>

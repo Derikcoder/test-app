@@ -1,15 +1,21 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   if (!user) return null;
 
   const toggleSidebar = () => setIsOpen(!isOpen);
+  const handleLogout = () => {
+    logout();
+    setIsOpen(false);
+    navigate('/login');
+  };
   const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
   const isCustomer = user?.role === 'customer';
   const isFieldAgent = user?.role === 'fieldServiceAgent';
@@ -210,6 +216,13 @@ const Sidebar = () => {
                 <p className="text-xs text-slate-400">{user.email}</p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-3 w-full rounded-lg border border-red-700 bg-red-950 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-900"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </aside>

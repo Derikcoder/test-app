@@ -93,7 +93,10 @@ export const AGENT_CATEGORY_SKILLS = {
   ...LEGACY_AGENT_CATEGORY_SKILLS,
 };
 
-export const VISIBLE_AGENT_CATEGORIES = Object.keys(STARTER_AGENT_CATEGORY_SKILLS);
+export const VISIBLE_AGENT_CATEGORIES = [
+  ...Object.keys(STARTER_AGENT_CATEGORY_SKILLS),
+  'Multi-Disciplinary',
+];
 export const AGENT_CATEGORIES = Object.keys(AGENT_CATEGORY_SKILLS);
 export const DEFAULT_AGENT_CATEGORY = 'Mechanical';
 
