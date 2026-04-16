@@ -9,6 +9,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
+import CustomerBillingPanel from './CustomerBillingPanel';
+import CustomerSelfServicePanel from './CustomerSelfServicePanel';
 import api from '../api/axios';
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -143,6 +145,8 @@ const FranchiseCustomer = () => {
  };
 
  const isOwnProfile = user?.role === 'customer' && String(user?.customerProfile) === id;
+ const backTarget = isOwnProfile ? '/service-calls' : '/customers';
+ const backLabel = isOwnProfile ? 'Back to Dashboard' : 'Back to Customers';
 
  const handleAcceptQuot = async (q) => {
   setQuotActionState((s) => ({ ...s, [q._id]: 'loading' }));
@@ -190,8 +194,8 @@ const FranchiseCustomer = () => {
     <div className="page-center px-4">
      <div className="glass-card p-8 text-center max-w-sm w-full">
       <p className="text-red-300 text-sm mb-4">{error || 'Customer not found'}</p>
-      <button onClick={() => navigate('/customers')} className="glass-btn-primary py-2 px-6 text-sm">
-       ← Back to Customers
+      <button onClick={() => navigate(backTarget)} className="glass-btn-primary py-2 px-6 text-sm">
+       ← {backLabel}
       </button>
      </div>
     </div>
@@ -213,9 +217,9 @@ const FranchiseCustomer = () => {
    <div className="glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 pt-20 pb-10 px-4 sm:px-6 lg:px-8">
     <div className="max-w-[1040px] mx-auto space-y-6">
 
-     <button onClick={() => navigate('/customers')}
+     <button onClick={() => navigate(backTarget)}
       className="flex items-center gap-1.5 text-white/50 hover:text-white text-sm transition-colors">
-      <span>←</span> Back to Customers
+      <span>←</span> {backLabel}
      </button>
 
      {/* Hero */}
@@ -333,6 +337,17 @@ const FranchiseCustomer = () => {
       </SectionCard>
      )}
 
+     <SectionCard title="Profile Management & Service Insights" icon="🛠️">
+      <CustomerSelfServicePanel
+       customerId={id}
+       customer={customer}
+       setCustomer={setCustomer}
+       serviceCalls={serviceCalls}
+       token={user?.token}
+       isOwnProfile={isOwnProfile}
+      />
+     </SectionCard>
+
      {/* Active Quotations */}
      <SectionCard title="Active Quotations" icon="📄">
       {quotsLoading ? (
@@ -415,6 +430,10 @@ const FranchiseCustomer = () => {
         })}
        </>
       )}
+     </SectionCard>
+
+     <SectionCard title="Invoices Paid & Receipts" icon="💳">
+      <CustomerBillingPanel customerId={id} token={user?.token} isOwnProfile={isOwnProfile} />
      </SectionCard>
 
      {/* Service History */}

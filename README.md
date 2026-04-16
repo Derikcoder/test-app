@@ -34,12 +34,16 @@ This is an enterprise-grade field service management application built with the 
 - 👤 Comprehensive user profiles with business information
 - 🛡️ Field-level permissions with immutable + write-once legal identifier policies
 - 🔒 Secure password hashing with bcrypt
+- 🚪 Customer onboarding journey with temporary secret access keys and login prefill after quote/pro-forma approval
 
 ### Customer Management
 - 📝 Customer intake with detailed information capture
 - 🗺️ Google Maps integration for location services
 - 📍 Address autocomplete and geolocation
 - 📊 Service request tracking per customer
+- 👤 Authenticated customer self-service profile editing for permitted personal/contact fields
+- 🛠️ Customer-managed machine and service-asset registration for future work readiness
+- 📚 Grouped portal history showing services rendered by category, field service agent, and latest customer review snapshot
 
 ### Field Agent Management
 - 👨‍🔧 Complete agent profile management (CRUD operations)
@@ -89,6 +93,9 @@ This is an enterprise-grade field service management application built with the 
 
 ### Invoice & Pro-Forma Workflow
 - 🧾 Pro-forma site instruction workflow lets field agents capture additional work, discovered problems, solutions, and deposit requirements on site
+- 💳 Authenticated customers can now see pending billing items inside their portal and submit deposit/outstanding-payment actions directly from the app
+- 🧾 Every successful payment now records receipt proof-of-payment metadata and surfaces recent receipts in the portal billing view
+- ⭐ Customers are prompted to rate and review the experience at quotation, pro-forma, and invoicing stages to monitor satisfaction shifts across the service journey
 - 📤 Strict invoice workflow validation: `draft` → `sent` → `approved`/`rejected` → `finalized` with lifecycle timestamps and payment tracking
 - 💾 Extended invoice schema with: `sentAt`, `approvedAt`, `rejectedAt`, `rejectedReason`, `finalizedAt`, `depositRequired`, `depositAmount`, `paymentReceived`
 - ✅ Email recipient validation required before invoice can transition to customer approval step

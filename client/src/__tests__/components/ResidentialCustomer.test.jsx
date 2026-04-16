@@ -1,0 +1,236 @@
+/**
+ * @file ResidentialCustomer.test.jsx
+ * @description Regression tests for authenticated customer invoice payment flow.
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import ResidentialCustomer from '../../components/ResidentialCustomer';
+import api from '../../api/axios';
+
+const mockNavigate = vi.fn();
+
+vi.mock('../../api/axios', () => ({
+  default: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    patch: vi.fn(),
+  },
+}));
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      _id: 'customer-user-1',
+      role: 'customer',
+      token: 'customer-token-1',
+      customerProfile: 'cust-123',
+    },
+  }),
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useParams: () => ({ id: 'cust-123' }),
+    useNavigate: () => mockNavigate,
+  };
+});
+
+describe('ResidentialCustomer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    vi.mocked(api.get).mockImplementation((url) => {
+      if (url === '/customers/cust-123') {
+        return Promise.resolve({
+          data: {
+            _id: 'cust-123',
+            customerId: 'CUST-001',
+            customerType: 'residential',
+            accountStatus: 'active',
+            contactFirstName: 'Jamie',
+            contactLastName: 'Customer',
+            email: 'jamie@example.com',
+            phoneNumber: '0821234567',
+            alternatePhone: '0827654321',
+            physicalAddress: '12 Main Street, Pretoria',
+            physicalAddressDetails: {
+              streetAddress: '12 Main Street',
+              suburb: 'Monument Park',
+              cityDistrict: 'Pretoria',
+              province: 'Gauteng',
+              postalCode: '0181',
+            },
+            notes: JSON.stringify({
+              machineCount: 2,
+              extraNotes: 'Customer prefers WhatsApp updates.',
+            }),
+            createdAt: '2026-04-01T08:00:00.000Z',
+            updatedAt: '2026-04-01T08:00:00.000Z',
+          },
+        });
+      }
+
+      if (url === '/service-calls') {
+        return Promise.resolve({ data: [
+          {
+            _id: 'call-1',
+            callNumber: 'SC-000001',
+            customer: 'cust-123',
+            serviceType: 'Electrical Repair',
+            status: 'completed',
+            createdAt: '2026-04-12T08:00:00.000Z',
+            assignedAgent: { firstName: 'Erik', lastName: 'Smit', employeeId: 'AGT-101' },
+            feedbackHistory: [
+              {
+                stage: 'invoice',
+                rating: 5,
+                feedback: 'Very happy with the turnaround time.',
+                submittedAt: '2026-04-12T09:00:00.000Z',
+              },
+            ],
+          },
+        ] });
+      }
+
+      if (url === '/quotations?customer=cust-123') {
+        return Promise.resolve({ data: [] });
+      }
+
+      if (url === '/invoices?customer=cust-123') {
+        return Promise.resolve({
+          data: [
+            {
+              _id: 'invoice-1',
+              invoiceNumber: 'INV-000901',
+              documentType: 'proForma',
+              workflowStatus: 'approved',
+              paymentStatus: 'unpaid',
+              totalAmount: 5750,
+              balance: 5750,
+              paidAmount: 0,
+              depositRequired: true,
+              depositAmount: 2500,
+              depositReason: 'Parts procurement deposit',
+              serviceCall: 'call-1',
+              createdAt: '2026-04-10T08:00:00.000Z',
+              dueDate: '2026-04-20T08:00:00.000Z',
+              receipts: [
+                {
+                  receiptNumber: 'RCT-000001',
+                  purpose: 'Deposit for electrical repair',
+                  amount: 2500,
+                  issuedAt: '2026-04-12T11:00:00.000Z',
+                },
+              ],
+            },
+          ],
+        });
+      }
+
+      return Promise.resolve({ data: [] });
+    });
+  });
+
+  it('shows the authenticated customer a pending pro-forma payment action', async () => {
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    expect(await screen.findByText(/pending billing & payments/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /pay deposit/i })).toBeInTheDocument();
+  });
+
+  it('shows the latest customer review and grouped service history context', async () => {
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    expect(await screen.findByText(/latest customer review/i)).toBeInTheDocument();
+    expect(await screen.findByText(/very happy with the turnaround time/i)).toBeInTheDocument();
+    expect(await screen.findByText(/electrical repair/i)).toBeInTheDocument();
+    expect(await screen.findByText(/erik smit/i)).toBeInTheDocument();
+  });
+
+  it('allows the customer to edit and save their own profile information', async () => {
+    vi.mocked(api.put).mockResolvedValueOnce({
+      data: {
+        _id: 'cust-123',
+        customerId: 'CUST-001',
+        customerType: 'residential',
+        accountStatus: 'active',
+        contactFirstName: 'Jamie',
+        contactLastName: 'Customer',
+        email: 'updated@example.com',
+        phoneNumber: '0820000000',
+        physicalAddress: '22 New Street, Pretoria',
+        createdAt: '2026-04-01T08:00:00.000Z',
+        updatedAt: '2026-04-16T08:00:00.000Z',
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    const editButton = await screen.findByRole('button', { name: /edit profile/i });
+    fireEvent.click(editButton);
+
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'updated@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^phone$/i), { target: { value: '0820000000' } });
+    fireEvent.click(screen.getByRole('button', { name: /save profile/i }));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        '/customers/cust-123',
+        expect.objectContaining({
+          email: 'updated@example.com',
+          phoneNumber: '0820000000',
+        }),
+        { headers: { Authorization: 'Bearer customer-token-1' } }
+      );
+    });
+  });
+
+  it('allows the customer to submit the required deposit from within the app', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      data: {
+        _id: 'invoice-1',
+        invoiceNumber: 'INV-000901',
+        paymentStatus: 'partial',
+        paidAmount: 2500,
+        balance: 3250,
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    const payButton = await screen.findByRole('button', { name: /pay deposit/i });
+    fireEvent.click(payButton);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/invoices/invoice-1/payment',
+        expect.objectContaining({
+          amount: 2500,
+          method: 'card',
+        }),
+        { headers: { Authorization: 'Bearer customer-token-1' } }
+      );
+    });
+  });
+});

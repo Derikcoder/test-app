@@ -1,10 +1,58 @@
 import ServiceCall from '../models/ServiceCall.model.js';
 import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
 import Customer from '../models/Customer.model.js';
+import Invoice from '../models/Invoice.model.js';
 import ServiceCallEmailLock from '../models/ServiceCallEmailLock.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
 const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
+
+const buildServiceCallAccessFilter = (req, serviceCallId) => {
+  if (req.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile) {
+    return {
+      _id: serviceCallId,
+      assignedAgent: req.user.fieldServiceAgentProfile,
+    };
+  }
+
+  if (req.user?.role === 'customer' && req.user?.customerProfile) {
+    return {
+      _id: serviceCallId,
+      customer: req.user.customerProfile,
+    };
+  }
+
+  return {
+    _id: serviceCallId,
+    createdBy: req.user._id,
+  };
+};
+
+const getOutstandingProFormaBlock = async (serviceCall) => {
+  if (!serviceCall?.proFormaInvoice || typeof Invoice.findOne !== 'function') {
+    return null;
+  }
+
+  const linkedProForma = await Invoice.findOne({ _id: serviceCall.proFormaInvoice });
+  if (!linkedProForma || linkedProForma.documentType !== 'proForma') {
+    return null;
+  }
+
+  if (linkedProForma.workflowStatus === 'awaitingApproval') {
+    return 'approval';
+  }
+
+  if (linkedProForma.depositRequired) {
+    const depositAmount = Number(linkedProForma.depositAmount || 0);
+    const paidAmount = Number(linkedProForma.paidAmount || 0);
+
+    if (paidAmount < depositAmount) {
+      return 'deposit';
+    }
+  }
+
+  return null;
+};
 
 const getStartOfDay = (date = new Date()) => {
   const value = new Date(date);
@@ -169,7 +217,11 @@ export const getMyAssignedServiceCalls = async (req, res) => {
 // @access  Private
 export const getServiceCalls = async (req, res) => {
   try {
-    const serviceCalls = await ServiceCall.find({ createdBy: req.user._id })
+    const filter = req.user?.role === 'customer' && req.user?.customerProfile
+      ? { customer: req.user.customerProfile }
+      : { createdBy: req.user._id };
+
+    const serviceCalls = await ServiceCall.find(filter)
       .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
       .populate('assignedAgent', 'firstName lastName employeeId')
       .populate({ path: 'quotation', select: 'quotationNumber title status totalAmount createdBy', populate: { path: 'createdBy', select: 'userName role' } })
@@ -188,10 +240,7 @@ export const getServiceCalls = async (req, res) => {
 // @access  Private
 export const getServiceCallById = async (req, res) => {
   try {
-    const serviceCall = await ServiceCall.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    })
+    const serviceCall = await ServiceCall.findOne(buildServiceCallAccessFilter(req, req.params.id))
       .populate('customer')
       .populate('assignedAgent')
       .populate('quotation')
@@ -350,13 +399,26 @@ export const updateServiceCall = async (req, res) => {
       return res.status(403).json({ message: 'Use the dedicated self-accept workflow for agent confirmation' });
     }
 
-    const serviceCall = await ServiceCall.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const serviceCall = await ServiceCall.findOne(buildServiceCallAccessFilter(req, req.params.id));
 
     if (!serviceCall) {
       return res.status(404).json({ message: 'Service call not found' });
+    }
+
+    if (req.body.status === 'completed') {
+      const outstandingBlock = await getOutstandingProFormaBlock(serviceCall);
+
+      if (outstandingBlock === 'approval') {
+        return res.status(409).json({
+          message: 'Customer approval is still required before this job can be completed.',
+        });
+      }
+
+      if (outstandingBlock === 'deposit') {
+        return res.status(409).json({
+          message: 'Deposit payment is still required before this job can be completed.',
+        });
+      }
     }
 
     // Check if trying to update immutable fields
@@ -716,50 +778,63 @@ export const uploadPhotos = async (req, res) => {
 // @access  Private
 export const submitRating = async (req, res) => {
   try {
-    const { rating, feedback } = req.body;
+    const { rating, feedback, stage = 'completedService' } = req.body;
+    const numericRating = Number(rating);
 
-    if (!rating || rating < 1 || rating > 5) {
+    if (!numericRating || numericRating < 1 || numericRating > 5) {
       return res.status(400).json({ message: 'Rating must be between 1 and 5' });
     }
 
-    const serviceCall = await ServiceCall.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const serviceCall = await ServiceCall.findOne(buildServiceCallAccessFilter(req, req.params.id));
 
     if (!serviceCall) {
       return res.status(404).json({ message: 'Service call not found' });
     }
 
-    if (serviceCall.status !== 'completed' && serviceCall.status !== 'invoiced') {
-      return res.status(409).json({ 
-        message: 'Can only rate completed or invoiced service calls' 
+    const stagedFeedbackAllowed = ['quotation', 'proForma', 'invoice', 'general'].includes(stage);
+    if (!stagedFeedbackAllowed && serviceCall.status !== 'completed' && serviceCall.status !== 'invoiced') {
+      return res.status(409).json({
+        message: 'Can only rate completed or invoiced service calls',
       });
     }
 
-    // Update service call with rating
-    serviceCall.rating = rating;
+    // Update service call with latest rating snapshot
+    serviceCall.rating = numericRating;
     serviceCall.customerFeedback = feedback || '';
     serviceCall.ratedDate = new Date();
+    serviceCall.feedbackHistory = [
+      ...(Array.isArray(serviceCall.feedbackHistory) ? serviceCall.feedbackHistory : []),
+      {
+        stage,
+        rating: numericRating,
+        feedback: feedback || '',
+        submittedAt: new Date(),
+      },
+    ];
 
-    const updatedServiceCall = await serviceCall.save();
+    const savedServiceCall = await serviceCall.save();
+    const updatedServiceCall = savedServiceCall && typeof savedServiceCall === 'object'
+      ? savedServiceCall
+      : serviceCall;
 
-    // Update agent rating if assigned
-    if (updatedServiceCall.assignedAgent) {
-      const FieldServiceAgent = await import('../models/FieldServiceAgent.model.js').then(m => m.default);
+    // Update agent rating only once actual service delivery or invoice-stage feedback is captured
+    if (updatedServiceCall.assignedAgent && ['invoice', 'completedService'].includes(stage)) {
+      const FieldServiceAgent = await import('../models/FieldServiceAgent.model.js').then((m) => m.default);
       const agent = await FieldServiceAgent.findById(updatedServiceCall.assignedAgent);
-      
+
       if (agent) {
-        agent.updateRating(rating);
+        agent.updateRating(numericRating);
         await agent.save();
         logInfo(`✅ Agent rating updated: ${agent.firstName} ${agent.lastName} - Average: ${agent.averageRating}`);
       }
     }
 
-    await updatedServiceCall.populate('customer', 'businessName contactFirstName contactLastName');
-    await updatedServiceCall.populate('assignedAgent', 'firstName lastName employeeId');
+    if (typeof updatedServiceCall.populate === 'function') {
+      await updatedServiceCall.populate('customer', 'businessName contactFirstName contactLastName');
+      await updatedServiceCall.populate('assignedAgent', 'firstName lastName employeeId');
+    }
 
-    logInfo(`✅ Rating submitted for service call ${updatedServiceCall.callNumber}: ${rating} stars`);
+    logInfo(`✅ Rating submitted for service call ${updatedServiceCall.callNumber}: ${numericRating} stars (${stage})`);
     res.json(updatedServiceCall);
   } catch (error) {
     logError('Submit rating error:', error);

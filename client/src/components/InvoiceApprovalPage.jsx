@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api/axios';
 
 const formatCurrency = (value) => new Intl.NumberFormat('en-ZA', {
@@ -41,6 +41,7 @@ const statusStyles = {
  */
 function InvoiceApprovalPage() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [documentData, setDocumentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -49,6 +50,8 @@ function InvoiceApprovalPage() {
   const [formState, setFormState] = useState({
     approvalReference: '',
     approvalNotes: '',
+    rating: '5',
+    feedback: '',
   });
 
   useEffect(() => {
@@ -66,6 +69,8 @@ function InvoiceApprovalPage() {
         setFormState({
           approvalReference: response.data.siteInstruction?.approvalReference || '',
           approvalNotes: response.data.siteInstruction?.approvalNotes || '',
+          rating: '5',
+          feedback: '',
         });
       } catch (loadError) {
         if (isCancelled) return;
@@ -94,6 +99,8 @@ function InvoiceApprovalPage() {
         decision,
         approvalReference: formState.approvalReference,
         approvalNotes: formState.approvalNotes,
+        rating: Number(formState.rating || 5),
+        feedback: formState.feedback || '',
       });
 
       setDecisionMessage(response.data.message);
@@ -113,6 +120,16 @@ function InvoiceApprovalPage() {
           },
         };
       });
+
+      if (decision === 'approved' && response.data?.portalUser?.email) {
+        navigate('/login', {
+          state: {
+            email: response.data.portalUser.email,
+            password: response.data.portalUser.temporaryAccessKey || '',
+            infoMessage: 'Your customer portal is ready. Use the temporary secret access key below as your password, then update it from your profile after login.',
+          },
+        });
+      }
     } catch (submitError) {
       setError(submitError.response?.data?.message || 'Unable to submit your decision.');
     } finally {
@@ -277,6 +294,30 @@ function InvoiceApprovalPage() {
               ) : null}
 
               <div className="mt-6 space-y-5">
+                <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-100">Service Experience Check-In</p>
+                  <p className="mt-2 text-sm text-cyan-50/80">Share how the process feels at this pro-forma stage so the team can realign quickly if needed.</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[150px_1fr]">
+                    <select
+                      value={formState.rating}
+                      onChange={(event) => setFormState((current) => ({ ...current, rating: event.target.value }))}
+                      disabled={!documentData.approvalAllowed || submitting}
+                      className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-yellow-300"
+                    >
+                      {[5, 4, 3, 2, 1].map((value) => (
+                        <option key={value} value={value}>{value} star{value !== 1 ? 's' : ''}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={formState.feedback}
+                      onChange={(event) => setFormState((current) => ({ ...current, feedback: event.target.value }))}
+                      disabled={!documentData.approvalAllowed || submitting}
+                      className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-yellow-300"
+                      placeholder="Optional comment on communication, confidence, or turnaround"
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-white/60" htmlFor="approvalReference">
                     Approval Reference

@@ -5,16 +5,21 @@
 
 import {
   finalizeInvoice,
+  getInvoices,
   getSharedInvoiceDetails,
+  recordPayment,
   sendInvoice,
   submitSharedInvoiceDecision,
+  upsertProFormaInvoiceFromServiceCall,
 } from '../../../controllers/invoice.controller.js';
 import Invoice from '../../../models/Invoice.model.js';
 import ServiceCall from '../../../models/ServiceCall.model.js';
+import User from '../../../models/User.model.js';
 import { sendInvoiceDocumentEmail } from '../../../utils/emailService.js';
 
 jest.mock('../../../models/Invoice.model.js');
 jest.mock('../../../models/ServiceCall.model.js');
+jest.mock('../../../models/User.model.js');
 jest.mock('../../../utils/emailService.js', () => ({
   sendInvoiceDocumentEmail: jest.fn(),
 }));
@@ -55,6 +60,74 @@ describe('Invoice Controller - Public Share Endpoints', () => {
     };
 
     jest.clearAllMocks();
+  });
+
+  describe('getInvoices', () => {
+    test('allows a logged-in customer to retrieve only their own invoices', async () => {
+      req.user = {
+        _id: 'customer-user-1',
+        role: 'customer',
+        customerProfile: 'cust-123',
+      };
+      req.query = { customer: 'someone-else' };
+
+      const customerInvoices = [{ _id: 'invoice-1', customer: 'cust-123', invoiceNumber: 'INV-000901' }];
+      Invoice.find = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue(buildPopulateQuery(customerInvoices)),
+      });
+
+      await getInvoices(req, res);
+
+      expect(Invoice.find).toHaveBeenCalledWith({ customer: 'cust-123' });
+      expect(res.json).toHaveBeenCalledWith(customerInvoices);
+    });
+  });
+
+  describe('upsertProFormaInvoiceFromServiceCall', () => {
+    test('creates a pro-forma draft with a populated due date for the service-call workflow', async () => {
+      req.params = { serviceCallId: 'call-123' };
+      req.user = { _id: 'owner-1', role: 'businessAdministrator' };
+
+      const serviceCall = {
+        _id: 'call-123',
+        callNumber: 'SC-000123',
+        title: 'Generator inspection',
+        description: 'Follow-up site instruction work',
+        serviceType: 'Emergency Repair',
+        scheduledDate: new Date('2026-04-16T10:00:00.000Z'),
+        customer: { _id: 'cust-123' },
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      const createdInvoice = {
+        _id: 'invoice-123',
+        invoiceNumber: 'INV-000123',
+      };
+
+      const serviceCallQuery = { populate: jest.fn() };
+      serviceCallQuery.populate
+        .mockReturnValueOnce(serviceCallQuery)
+        .mockReturnValueOnce(serviceCallQuery)
+        .mockReturnValueOnce(Promise.resolve(serviceCall));
+
+      ServiceCall.findOne = jest.fn().mockReturnValue(serviceCallQuery);
+      Invoice.findOne = jest.fn()
+        .mockReturnValueOnce(buildPopulateQuery(null))
+        .mockReturnValueOnce(buildPopulateQuery(createdInvoice));
+      Invoice.create = jest.fn().mockResolvedValue(createdInvoice);
+
+      await upsertProFormaInvoiceFromServiceCall(req, res);
+
+      expect(Invoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serviceCall: 'call-123',
+          customer: 'cust-123',
+          paymentTerms: 30,
+          dueDate: expect.any(Date),
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
   });
 
   describe('getSharedInvoiceDetails', () => {
@@ -198,11 +271,13 @@ describe('Invoice Controller - Public Share Endpoints', () => {
       );
 
       expect(invoice.save).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith({
-        message: 'Pro-forma approved successfully.',
-        workflowStatus: 'approved',
-        invoiceNumber: 'INV-000123',
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Pro-forma approved successfully.',
+          workflowStatus: 'approved',
+          invoiceNumber: 'INV-000123',
+        })
+      );
     });
 
     test('returns 400 when the decision is invalid', async () => {
@@ -273,6 +348,15 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
       };
+
+      User.findOne = jest.fn().mockResolvedValue({
+        _id: 'existing-user-1',
+        email: 'customer@example.com',
+        userName: 'existing_customer',
+        generatePasswordResetToken: jest.fn().mockReturnValue('existing-reset-token'),
+        save: jest.fn().mockResolvedValue(true),
+      });
+      User.create = jest.fn();
     });
 
     test('returns 400 for invalid channels', async () => {
@@ -429,6 +513,156 @@ describe('Invoice Controller - Public Share Endpoints', () => {
           message: 'Pro-Forma Site Instruction sent successfully',
           documentNumber: 'INV-000555',
           channels: ['email'],
+        })
+      );
+    });
+
+    test('includes customer onboarding access details when sending a pro-forma invite email', async () => {
+      const provisionedUser = {
+        _id: 'user-123',
+        email: 'customer@example.com',
+        userName: 'acme_customer',
+        generatePasswordResetToken: jest.fn().mockReturnValue('reset-token-123'),
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      const invoice = {
+        _id: 'invoice-id-123',
+        invoiceNumber: 'INV-000556',
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        workflowTransitions: [],
+        title: 'Additional Work Approval',
+        description: 'Approval required for additional generator work',
+        lineItems: [{ description: 'Additional labour', quantity: 1, unitPrice: 650, total: 650 }],
+        subtotal: 650,
+        vatRate: 15,
+        vatAmount: 97.5,
+        totalAmount: 747.5,
+        customer: {
+          _id: 'cust-123',
+          businessName: 'Acme Mining',
+          contactFirstName: 'John',
+          contactLastName: 'Doe',
+          email: 'customer@example.com',
+          phoneNumber: '0821234567',
+          save: jest.fn().mockResolvedValue(true),
+        },
+        siteInstruction: {},
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      req.body = { channels: ['email'] };
+      Invoice.findOne = jest.fn().mockReturnValue(buildPopulateQuery(invoice));
+      User.findOne = jest.fn().mockResolvedValue(null);
+      User.create = jest.fn().mockResolvedValue(provisionedUser);
+      sendInvoiceDocumentEmail.mockResolvedValue({ messageId: 'email-456' });
+
+      await sendInvoice(req, res);
+
+      expect(sendInvoiceDocumentEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'customer@example.com',
+          documentNumber: 'INV-000556',
+          userName: 'acme_customer',
+          temporaryAccessKey: expect.any(String),
+          loginUrl: expect.stringContaining('/login'),
+          resetUrl: expect.stringContaining('/reset-password/reset-token-123'),
+        })
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          portalUser: expect.objectContaining({
+            email: 'customer@example.com',
+            userName: 'acme_customer',
+            temporaryAccessKey: expect.any(String),
+          }),
+          loginUrl: expect.stringContaining('/login'),
+        })
+      );
+    });
+  });
+
+  describe('recordPayment', () => {
+    test('allows a logged-in customer to pay the required pro-forma deposit and releases the service call hold', async () => {
+      req = {
+        params: { id: 'invoice-id-900' },
+        body: {
+          amount: 2500,
+          method: 'card',
+          reference: 'PAY-900',
+        },
+        user: {
+          _id: 'customer-user-1',
+          role: 'customer',
+          customerProfile: 'cust-123',
+        },
+      };
+
+      res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      const invoice = {
+        _id: 'invoice-id-900',
+        invoiceNumber: 'INV-000900',
+        createdBy: 'owner-1',
+        customer: 'cust-123',
+        documentType: 'proForma',
+        workflowStatus: 'approved',
+        depositRequired: true,
+        depositAmount: 2500,
+        paidAmount: 0,
+        balance: 2500,
+        addPayment: jest.fn().mockImplementation(async ({ amount }) => {
+          invoice.paidAmount += amount;
+          invoice.balance -= amount;
+          return invoice;
+        }),
+      };
+
+      const releasedServiceCall = {
+        _id: 'service-call-900',
+        status: 'on-hold',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      Invoice.findOne = jest.fn()
+        .mockResolvedValueOnce(invoice)
+        .mockReturnValueOnce(buildPopulateQuery({
+          ...invoice,
+          paidAmount: 2500,
+          balance: 0,
+          paymentStatus: 'paid',
+        }));
+      ServiceCall.findOne = jest.fn().mockResolvedValue(releasedServiceCall);
+
+      await recordPayment(req, res);
+
+      expect(Invoice.findOne).toHaveBeenNthCalledWith(1, {
+        _id: 'invoice-id-900',
+        customer: 'cust-123',
+      });
+      expect(invoice.addPayment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 2500,
+          method: 'card',
+          reference: 'PAY-900',
+          recordedBy: 'customer-user-1',
+        })
+      );
+      expect(releasedServiceCall.status).toBe('in-progress');
+      expect(releasedServiceCall.save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoiceNumber: 'INV-000900',
+          paymentStatus: 'paid',
+          latestReceipt: expect.objectContaining({
+            amount: 2500,
+            purpose: expect.any(String),
+            receiptNumber: expect.any(String),
+          }),
         })
       );
     });

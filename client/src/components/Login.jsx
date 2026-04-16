@@ -7,8 +7,8 @@
  * Handles login form submission and JWT token storage.
  */
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { getPostLoginRedirect } from '../utils/authRedirect';
@@ -37,6 +37,7 @@ import { getPostLoginRedirect } from '../utils/authRedirect';
  */
 const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { login } = useAuth();
     const [formData, setFormData] = useState({
         email: '',
@@ -44,6 +45,19 @@ const Login = () => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [infoMessage, setInfoMessage] = useState('');
+
+    useEffect(() => {
+        const nextEmail = location.state?.email || '';
+        const nextPassword = location.state?.password || '';
+        const nextInfoMessage = location.state?.infoMessage || '';
+
+        if (nextEmail || nextPassword) {
+            setFormData({ email: nextEmail, password: nextPassword });
+        }
+
+        setInfoMessage(nextInfoMessage);
+    }, [location.state]);
 
  /**
   * Handle Input Changes
@@ -142,6 +156,18 @@ const Login = () => {
                 <section className="glass-form max-w-none p-7 sm:p-9">
                     <h2 className="glass-heading text-left">Sign In</h2>
                     <p className="glass-heading-secondary mb-6 text-left">Access your dashboard with enterprise-grade security.</p>
+
+                    {infoMessage && (
+                        <div className="mb-5 rounded-2xl border border-cyan-400/40 bg-cyan-500/15 p-4 text-sm text-cyan-50">
+                            <p className="font-semibold">Customer onboarding ready</p>
+                            <p className="mt-1 text-cyan-100/90">{infoMessage}</p>
+                            {location.state?.password ? (
+                                <p className="mt-2 font-mono text-base font-bold tracking-[0.2em] text-yellow-200">
+                                    {location.state.password}
+                                </p>
+                            ) : null}
+                        </div>
+                    )}
 
                     {error && (
                         <div className="glass-alert-error mb-5">

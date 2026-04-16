@@ -3,12 +3,13 @@
  * @description Unit tests for prospect-first quotation acceptance flow.
  */
 
-import { acceptPublicQuotation, createQuotationFromServiceCall } from '../../../controllers/quotation.controller.js';
+import { acceptPublicQuotation, createQuotationFromServiceCall, sendQuotation } from '../../../controllers/quotation.controller.js';
 import Quotation from '../../../models/Quotation.model.js';
 import ServiceCall from '../../../models/ServiceCall.model.js';
 import Customer from '../../../models/Customer.model.js';
 import User from '../../../models/User.model.js';
 import ServiceCallEmailLock from '../../../models/ServiceCallEmailLock.model.js';
+import { sendQuotationEmail } from '../../../utils/emailService.js';
 
 jest.mock('../../../models/Quotation.model.js');
 jest.mock('../../../models/ServiceCall.model.js');
@@ -32,6 +33,7 @@ jest.mock('../../../middleware/logger.middleware.js', () => ({
 jest.mock('../../../utils/emailService.js', () => ({
   sendQuotationEmail: jest.fn(),
   sendPasswordResetEmail: jest.fn().mockResolvedValue({ messageId: 'reset-1' }),
+  sendCustomerWelcomeEmail: jest.fn().mockResolvedValue({ messageId: 'welcome-1' }),
 }));
 jest.mock('../../../utils/sequence.util.js', () => ({
   getNextSequenceValue: jest.fn().mockResolvedValue(1),
@@ -146,6 +148,68 @@ describe('Quotation Controller - Prospect Conversion', () => {
     expect(res.status).toHaveBeenCalledWith(201);
   });
 
+  test('allows a business administrator to resend a field agent quotation linked to their service call', async () => {
+    req = {
+      params: { id: 'quote-123' },
+      body: { channels: ['email'] },
+      user: {
+        _id: 'owner-1',
+        role: 'businessAdministrator',
+      },
+      protocol: 'https',
+      get: jest.fn().mockReturnValue('localhost:5000'),
+    };
+
+    const quotation = {
+      _id: 'quote-123',
+      quotationNumber: 'QT-000123',
+      status: 'sent',
+      validUntil: new Date(Date.now() + 86_400_000),
+      shareToken: 'share-123',
+      shareTokenExpiresAt: new Date(Date.now() + 86_400_000),
+      recipientSnapshot: {
+        name: 'Bennie Henning',
+        email: 'bennie@example.com',
+        phoneNumber: '0821234567',
+      },
+      customer: null,
+      createdBy: 'user-agent-1',
+      save: jest.fn().mockResolvedValue(true),
+    };
+
+    Quotation.findOne = jest.fn().mockImplementation((query) => ({
+      populate: jest.fn().mockResolvedValue(
+        query?._id === 'quote-123' && !query?.createdBy ? quotation : null
+      ),
+    }));
+    Quotation.findById = jest.fn().mockReturnValue({
+      populate: jest.fn().mockResolvedValue(quotation),
+    });
+    ServiceCall.findOne = jest.fn().mockImplementation((query) => {
+      if (query?.quotation === 'quote-123' && query?.createdBy === 'owner-1') {
+        return Promise.resolve({ _id: 'call-123' });
+      }
+
+      return Promise.resolve(null);
+    });
+    ServiceCallEmailLock.findOneAndUpdate = jest.fn().mockResolvedValue({ _id: 'lock-1' });
+
+    await sendQuotation(req, res);
+
+    expect(sendQuotationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'bennie@example.com',
+        quotationNumber: 'QT-000123',
+      })
+    );
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Quotation sent successfully',
+        quotationNumber: 'QT-000123',
+      })
+    );
+  });
+
   test('creates customer and customer user only when prospect quote is accepted', async () => {
     const quotation = {
       _id: 'quote-1',
@@ -240,6 +304,12 @@ describe('Quotation Controller - Prospect Conversion', () => {
       expect.objectContaining({
         portalAccountCreated: true,
         quotationNumber: 'QT-000001',
+        portalUser: expect.objectContaining({
+          email: 'jane@example.com',
+          userName: 'jane',
+          temporaryAccessKey: expect.any(String),
+        }),
+        loginUrl: expect.stringContaining('/login'),
       })
     );
   });

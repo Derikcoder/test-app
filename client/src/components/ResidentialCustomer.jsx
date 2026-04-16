@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
+import CustomerBillingPanel from './CustomerBillingPanel';
+import CustomerSelfServicePanel from './CustomerSelfServicePanel';
 import api from '../api/axios';
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -72,6 +74,7 @@ const SectionCard = ({ title, icon, children, className = '' }) => (
 
 const CallHistoryRow = ({ call }) => {
  const statusStyle = CALL_STATUS_STYLES[call.status] ?? 'bg-white/10 text-white/60';
+ const callSummary = call.title || call.description || 'Service activity';
  return (
   <div className="flex items-start justify-between gap-4 py-3 border-b border-white/10 last:border-0">
    <div className="flex flex-col gap-1 min-w-0">
@@ -79,7 +82,7 @@ const CallHistoryRow = ({ call }) => {
      {call.callNumber ?? call._id.slice(-6).toUpperCase()}
     </span>
     <span className="text-xs text-white/50 truncate">
-     {call.serviceType ?? 'Service Call'}{call.urgency ? ` · ${call.urgency}` : ''}
+     {callSummary}{call.urgency ? ` · ${call.urgency}` : ''}
     </span>
     {call.serviceLocation && (
      <span className="text-xs text-white/40 truncate">{call.serviceLocation}</span>
@@ -195,6 +198,8 @@ const ResidentialCustomer = () => {
  }, [customer]);
 
  const isOwnProfile = user?.role === 'customer' && String(user?.customerProfile) === id;
+ const backTarget = isOwnProfile ? '/service-calls' : '/customers';
+ const backLabel = isOwnProfile ? 'Back to Dashboard' : 'Back to Customers';
 
  const handleAcceptQuot = async (q) => {
   setQuotActionState((s) => ({ ...s, [q._id]: 'loading' }));
@@ -244,8 +249,8 @@ const ResidentialCustomer = () => {
     <div className="page-center px-4">
      <div className="glass-card p-8 text-center max-w-sm w-full">
       <p className="text-red-300 text-sm mb-4">{error || 'Customer not found'}</p>
-      <button onClick={() => navigate('/customers')} className="glass-btn-primary py-2 px-6 text-sm">
-       ← Back to Customers
+      <button onClick={() => navigate(backTarget)} className="glass-btn-primary py-2 px-6 text-sm">
+       ← {backLabel}
       </button>
      </div>
     </div>
@@ -263,10 +268,10 @@ const ResidentialCustomer = () => {
 
      {/* ── Back nav ── */}
      <button
-      onClick={() => navigate('/customers')}
+      onClick={() => navigate(backTarget)}
       className="flex items-center gap-1.5 text-white/50 hover:text-white text-sm transition-colors"
      >
-      <span>←</span> Back to Customers
+      <span>←</span> {backLabel}
      </button>
 
      {/* ── Hero header ── */}
@@ -385,6 +390,17 @@ const ResidentialCustomer = () => {
       </SectionCard>
      )}
 
+     <SectionCard title="Profile Management & Service Insights" icon="🛠️">
+      <CustomerSelfServicePanel
+       customerId={id}
+       customer={customer}
+       setCustomer={setCustomer}
+       serviceCalls={serviceCalls}
+       token={user?.token}
+       isOwnProfile={isOwnProfile}
+      />
+     </SectionCard>
+
      {/* ── Active Quotations ── */}
      <SectionCard title="Active Quotations" icon="📄">
       {quotsLoading ? (
@@ -487,6 +503,10 @@ const ResidentialCustomer = () => {
         })}
        </>
       )}
+     </SectionCard>
+
+     <SectionCard title="Pending Billing & Payments" icon="💳">
+      <CustomerBillingPanel customerId={id} token={user?.token} isOwnProfile={isOwnProfile} />
      </SectionCard>
 
      {/* ── Service Call History ── */}

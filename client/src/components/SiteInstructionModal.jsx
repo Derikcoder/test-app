@@ -114,6 +114,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [portalInvite, setPortalInvite] = useState(null);
   const [shareChannels, setShareChannels] = useState({ email: true, whatsapp: true, telegram: false });
   const [formData, setFormData] = useState(buildFormState(null));
 
@@ -124,6 +125,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
     setLoading(true);
     setError('');
     setSuccess('');
+    setPortalInvite(null);
 
     try {
       const response = await api.post(
@@ -143,6 +145,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
     setIsOpen(false);
     setError('');
     setSuccess('');
+    setPortalInvite(null);
   };
 
   const updateField = (field, value) => {
@@ -247,6 +250,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
 
     setSending(true);
     setError('');
+    setPortalInvite(null);
     try {
       const response = await api.post(
         `/invoices/${formData.invoiceId}/send`,
@@ -262,6 +266,13 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
       }
 
       setSuccess(`${response.data?.message || 'Document sent successfully.'}`);
+      if (response.data?.portalUser) {
+        setPortalInvite({
+          ...response.data.portalUser,
+          loginUrl: response.data.loginUrl,
+          resetUrl: response.data.resetUrl,
+        });
+      }
       setFormData((prev) => ({ ...prev, workflowStatus: 'awaitingApproval' }));
     } catch (sendError) {
       setError(sendError?.response?.data?.message || 'Failed to send pro-forma for approval.');
@@ -349,6 +360,15 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
 
             {error ? <div className="mb-4 rounded-lg border border-red-700 bg-red-950 px-4 py-2 text-sm font-medium text-red-200">{error}</div> : null}
             {success ? <div className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950 px-4 py-2 text-sm font-medium text-emerald-200">{success}</div> : null}
+            {portalInvite ? (
+              <div className="mb-4 rounded-lg border border-cyan-700 bg-cyan-950/60 px-4 py-3 text-sm text-cyan-100">
+                <p className="font-semibold">Customer portal access issued</p>
+                <p className="mt-1">Username: <span className="font-semibold">{portalInvite.userName}</span></p>
+                <p className="mt-1">Secret Access Key: <span className="font-mono font-bold tracking-[0.2em] text-yellow-200">{portalInvite.temporaryAccessKey}</span></p>
+                {portalInvite.loginUrl ? <p className="mt-1 break-all">Login: {portalInvite.loginUrl}</p> : null}
+                {portalInvite.resetUrl ? <p className="mt-1 break-all">Set Password Link: {portalInvite.resetUrl}</p> : null}
+              </div>
+            ) : null}
 
             {loading ? (
               <div className="py-16 text-center text-slate-300">Loading pro-forma invoice...</div>

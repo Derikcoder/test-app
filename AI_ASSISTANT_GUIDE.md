@@ -45,6 +45,61 @@
 
 ### Recent Changes
 
+#### Session: April 16, 2026 — Customer Self-Service Portal + Receipts + Staged Reviews
+**Focus:** Mature the customer portal into a true self-service workspace with editable profile data, registered machines/assets, grouped service history, receipt proof-of-payment, and satisfaction tracking across the quote-to-invoice journey
+
+- ✅ Authenticated customers can now edit their own permitted profile details directly from their linked portal page
+- ✅ New shared `CustomerSelfServicePanel` lets customers maintain service-ready machines/assets and service preferences for future bookings
+- ✅ Customer profile pages now surface grouped history as `Service Category → Field Service Agent → list of jobs`
+- ✅ The latest submitted customer review is visible in the portal for quick service-quality context
+- ✅ Quotation approval, pro-forma approval, and billing stages now all prompt for staged rating/review capture so satisfaction can be monitored before and after service execution
+- ✅ Every successful payment event now generates receipt metadata as customer proof-of-payment and surfaces it in the billing panel
+- ✅ Verified end-to-end with targeted backend controller regressions, customer portal frontend regressions, and a clean production build
+
+**Primary Files Updated:**
+- `client/src/components/CustomerSelfServicePanel.jsx` (NEW)
+- `client/src/components/CustomerBillingPanel.jsx`
+- `client/src/components/QuotationApprovalPage.jsx`
+- `client/src/components/InvoiceApprovalPage.jsx`
+- `client/src/components/ResidentialCustomer.jsx`
+- `client/src/components/SingleBusinessCustomer.jsx`
+- `client/src/components/HeadOfficeCustomer.jsx`
+- `client/src/components/BranchCustomer.jsx`
+- `client/src/components/FranchiseCustomer.jsx`
+- `server/models/Customer.model.js`
+- `server/models/ServiceCall.model.js`
+- `server/models/Invoice.model.js`
+- `server/controllers/customer.controller.js`
+- `server/controllers/serviceCall.controller.js`
+- `server/controllers/quotation.controller.js`
+- `server/controllers/invoice.controller.js`
+
+#### Session: April 16, 2026 — Customer Onboarding Journey + In-Portal Billing
+**Focus:** Complete the prospect-to-portal experience so customers can move from quote/invoice approval straight into authenticated self-service billing
+
+- ✅ Customer provisioning now generates a temporary secret access key automatically instead of requiring manual password entry from admin staff
+- ✅ Quote and pro-forma approval pages now redirect newly onboarded customers straight to the login screen with their temporary access details prefilled
+- ✅ Customer login flow now displays onboarding guidance and preloaded credentials when arriving from approval/provisioning journeys
+- ✅ New shared `CustomerBillingPanel` lets authenticated customers view pending pro-forma/invoice balances and submit deposit or outstanding-payment actions from their own portal
+- ✅ All customer profile variants now surface the same billing/payment panel for a consistent self-service experience
+- ✅ `/profile` now redirects customer users to their linked customer portal page instead of the generic account screen
+- ✅ Verified with targeted portal regression suites and a clean frontend production build
+
+**Primary Files Updated:**
+- `client/src/App.jsx`
+- `client/src/components/CustomerBillingPanel.jsx` (NEW)
+- `client/src/components/Login.jsx`
+- `client/src/components/QuotationApprovalPage.jsx`
+- `client/src/components/InvoiceApprovalPage.jsx`
+- `client/src/components/ResidentialCustomer.jsx`
+- `client/src/components/SingleBusinessCustomer.jsx`
+- `client/src/components/HeadOfficeCustomer.jsx`
+- `client/src/components/BranchCustomer.jsx`
+- `client/src/components/FranchiseCustomer.jsx`
+- `server/controllers/auth.controller.js`
+- `server/controllers/quotation.controller.js`
+- `server/controllers/invoice.controller.js`
+
 #### Session: April 15, 2026 — Admin Agent Profile Correction + Cross-Sector Skills + Global Logout
 **Focus:** Remove back-office friction by letting admins correct field-agent profile mistakes directly in the app, while supporting evolving multi-category trade skillsets and guaranteed sign-out for field agents
 
