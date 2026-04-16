@@ -32,6 +32,7 @@ const FieldAgentSelfProfile = () => {
  const [acceptingCallId, setAcceptingCallId] = useState('');
  const [completingCallId, setCompletingCallId] = useState(null);
  const [creatingInvoiceCallId, setCreatingInvoiceCallId] = useState(null);
+ const [resendingQuotationId, setResendingQuotationId] = useState(null);
  const [activeTab, setActiveTab] = useState('all');
  const [editingQuotation, setEditingQuotation] = useState(null);
 
@@ -73,6 +74,29 @@ const FieldAgentSelfProfile = () => {
    window.open(fileUrl, '_blank', 'noopener,noreferrer');
   } catch (err) {
    setActionError(err?.response?.data?.message || 'Failed to open quotation PDF.');
+  }
+ };
+
+ const handleResendQuotation = async (quotationId) => {
+  if (!quotationId) return;
+
+  setActionError('');
+  setActionSuccess('');
+  setResendingQuotationId(quotationId);
+
+  try {
+   const response = await api.post(
+    `/quotations/${quotationId}/send`,
+    { channels: ['email'] },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+
+   setActionSuccess(response?.data?.message || 'Quotation resent successfully.');
+   await fetchAgentData();
+  } catch (err) {
+   setActionError(err?.response?.data?.message || 'Failed to resend quotation email.');
+  } finally {
+   setResendingQuotationId(null);
   }
  };
 
@@ -886,6 +910,20 @@ const FieldAgentSelfProfile = () => {
                    {call.quotation && call.quotation.status === 'sent' && (
                     <button
                      type="button"
+                     onClick={() => handleResendQuotation(call.quotation._id)}
+                     disabled={resendingQuotationId === call.quotation._id}
+                     className={`btn-action text-white ${
+                      resendingQuotationId === call.quotation._id
+                       ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                       : 'btn-action-emerald'
+                     }`}
+                    >
+                     {resendingQuotationId === call.quotation._id ? 'Resending...' : 'Resend Quote'}
+                    </button>
+                   )}
+                   {call.quotation && call.quotation.status === 'sent' && (
+                    <button
+                     type="button"
                      onClick={() => handleEditQuotation(call.quotation._id)}
                      className="btn-action-amber"
                     >
@@ -963,6 +1001,20 @@ const FieldAgentSelfProfile = () => {
                      className="btn-action-cyan"
                     >
                      View Quote PDF
+                    </button>
+                   )}
+                   {call.quotation && call.quotation.status === 'sent' && (
+                    <button
+                     type="button"
+                     onClick={() => handleResendQuotation(call.quotation._id)}
+                     disabled={resendingQuotationId === call.quotation._id}
+                     className={`btn-action text-white ${
+                      resendingQuotationId === call.quotation._id
+                       ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+                       : 'btn-action-emerald'
+                     }`}
+                    >
+                     {resendingQuotationId === call.quotation._id ? 'Resending...' : 'Resend Quote'}
                     </button>
                    )}
                    {call.quotation && call.quotation.status === 'sent' && (

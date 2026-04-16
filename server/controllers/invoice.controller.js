@@ -4,6 +4,7 @@ import Invoice from '../models/Invoice.model.js';
 import ServiceCall from '../models/ServiceCall.model.js';
 import Customer from '../models/Customer.model.js';
 import Quotation from '../models/Quotation.model.js';
+import User from '../models/User.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import { sendInvoiceDocumentEmail } from '../utils/emailService.js';
 
@@ -34,6 +35,73 @@ const getPublicAppUrl = (req) => {
   return `${req.protocol}://${req.get('host')}`;
 };
 
+const generateTemporaryAccessKey = () => String(crypto.randomInt(1000000, 10000000));
+
+const buildUniqueUsername = async (email) => {
+  const base = String(email || 'customer')
+    .split('@')[0]
+    .replace(/[^a-zA-Z0-9._-]/g, '')
+    .slice(0, 20) || 'customer';
+
+  let candidate = base;
+  let counter = 1;
+  while (await User.findOne({ userName: candidate })) {
+    counter += 1;
+    candidate = `${base}${counter}`;
+  }
+
+  return candidate;
+};
+
+const ensureCustomerPortalAccess = async (customer) => {
+  const customerEmail = String(customer?.email || '').trim().toLowerCase();
+  if (!customer?._id || !customerEmail) return null;
+
+  let linkedUser = await User.findOne({ customerProfile: customer._id });
+  const temporaryAccessKey = generateTemporaryAccessKey();
+
+  if (!linkedUser) {
+    const userName = await buildUniqueUsername(customerEmail);
+    linkedUser = await User.create({
+      userName,
+      email: customerEmail,
+      password: temporaryAccessKey,
+      role: 'customer',
+      isSuperUser: false,
+      customerProfile: customer._id,
+      businessName: customer.businessName || `${customer.contactFirstName || ''} ${customer.contactLastName || ''}`.trim() || 'Customer',
+      phoneNumber: customer.phoneNumber || customer.alternatePhone || 'Phone pending',
+      physicalAddress: customer.physicalAddress || 'Address pending',
+    });
+  } else {
+    linkedUser.email = customerEmail;
+    linkedUser.password = temporaryAccessKey;
+    linkedUser.role = 'customer';
+    linkedUser.isSuperUser = false;
+    linkedUser.customerProfile = linkedUser.customerProfile || customer._id;
+  }
+
+  const resetToken = linkedUser.generatePasswordResetToken();
+  await linkedUser.save();
+
+  if (!customer.userAccount || String(customer.userAccount) !== String(linkedUser._id)) {
+    customer.userAccount = linkedUser._id;
+    if (typeof customer.save === 'function') {
+      await customer.save();
+    } else {
+      await Customer.findByIdAndUpdate(customer._id, { userAccount: linkedUser._id });
+    }
+  }
+
+  return {
+    email: linkedUser.email,
+    userName: linkedUser.userName,
+    temporaryAccessKey,
+    loginUrl: `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`,
+    resetUrl: `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`,
+  };
+};
+
 const normalizePhoneForWhatsApp = (phone) => {
   if (!phone) return '';
   const cleaned = String(phone).replace(/[^\d+]/g, '');
@@ -55,17 +123,147 @@ const buildTelegramShareUrl = ({ documentNumber, shareUrl, documentLabel, approv
 };
 
 const buildAccessibleServiceCallFilter = (req, serviceCallId) => {
-  if (req.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile) {
+  if (req?.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile) {
     return {
       _id: serviceCallId,
       assignedAgent: req.user.fieldServiceAgentProfile,
     };
   }
 
-  return {
-    _id: serviceCallId,
-    createdBy: req.user._id,
-  };
+  if (req?.user?._id) {
+    return {
+      _id: serviceCallId,
+      createdBy: req.user._id,
+    };
+  }
+
+  return { _id: serviceCallId };
+};
+
+const buildAccessibleInvoiceFilter = (req, invoiceId) => {
+  const filter = invoiceId ? { _id: invoiceId } : {};
+
+  if (req.user?.role === 'customer' && req.user?.customerProfile) {
+    filter.customer = req.user.customerProfile;
+    return filter;
+  }
+
+  filter.createdBy = req.user._id;
+  return filter;
+};
+
+const getRequiredPaymentAmount = (invoice) => {
+  if (!invoice) return 0;
+
+  if (invoice.documentType === 'proForma' && invoice.depositRequired) {
+    return Number(invoice.depositAmount || 0);
+  }
+
+  return Number(invoice.totalAmount || 0);
+};
+
+const buildInvoiceDueDate = ({ issueDate = new Date(), paymentTerms = 30 } = {}) => {
+  const resolvedIssueDate = new Date(issueDate || new Date());
+  const resolvedPaymentTerms = Number.isFinite(Number(paymentTerms)) ? Number(paymentTerms) : 30;
+  const dueDate = new Date(resolvedIssueDate);
+  dueDate.setDate(dueDate.getDate() + resolvedPaymentTerms);
+  return dueDate;
+};
+
+const generateReceiptNumber = () => `RCT-${Date.now()}-${crypto.randomInt(100, 1000)}`;
+
+const buildReceiptPurpose = (invoice, amount) => {
+  const descriptor = invoice?.title || invoice?.description || invoice?.serviceType || 'service work';
+  const numericAmount = Number(amount || 0);
+  const depositOutstanding = invoice?.documentType === 'proForma'
+    && invoice?.depositRequired
+    && Number(invoice?.paidAmount || 0) < Number(invoice?.depositAmount || 0);
+
+  if (depositOutstanding) {
+    return `Deposit payment for ${descriptor}`;
+  }
+
+  if (numericAmount > 0 && numericAmount < Number(invoice?.balance || 0)) {
+    return `Partial payment for ${descriptor}`;
+  }
+
+  return `Settlement payment for ${descriptor}`;
+};
+
+const appendServiceCallStageFeedback = async (serviceCall, { stage = 'general', rating, feedback }) => {
+  const numericRating = Number(rating);
+  if (!serviceCall || !numericRating || numericRating < 1 || numericRating > 5) {
+    return;
+  }
+
+  serviceCall.rating = numericRating;
+  serviceCall.customerFeedback = feedback || serviceCall.customerFeedback || '';
+  serviceCall.ratedDate = new Date();
+  serviceCall.feedbackHistory = [
+    ...(Array.isArray(serviceCall.feedbackHistory) ? serviceCall.feedbackHistory : []),
+    {
+      stage,
+      rating: numericRating,
+      feedback: feedback || '',
+      submittedAt: new Date(),
+    },
+  ];
+
+  await serviceCall.save();
+};
+
+const syncServiceCallPaymentHold = async ({ invoice, req }) => {
+  if (!invoice || typeof ServiceCall.findOne !== 'function') return null;
+  if (invoice.documentType !== 'proForma') return null;
+
+  let serviceCall = null;
+
+  if (invoice.serviceCall) {
+    const serviceCallFilter = req?.user?.role === 'customer' && req.user?.customerProfile
+      ? { _id: invoice.serviceCall, customer: req.user.customerProfile }
+      : buildAccessibleServiceCallFilter(req, invoice.serviceCall);
+
+    serviceCall = await ServiceCall.findOne(serviceCallFilter);
+  }
+
+  if (!serviceCall && invoice._id) {
+    const fallbackFilter = req?.user?.role === 'customer' && req.user?.customerProfile
+      ? {
+          customer: req.user.customerProfile,
+          $or: [{ proFormaInvoice: invoice._id }, { invoice: invoice._id }],
+        }
+      : {
+          $or: [{ proFormaInvoice: invoice._id }, { invoice: invoice._id }],
+        };
+
+    if (invoice.createdBy || req?.user?._id) {
+      fallbackFilter.createdBy = invoice.createdBy || req.user._id;
+    }
+
+    serviceCall = await ServiceCall.findOne(fallbackFilter);
+  }
+
+  if (!serviceCall || invoice.workflowStatus !== 'approved') {
+    return serviceCall;
+  }
+
+  const requiredAmount = getRequiredPaymentAmount(invoice);
+  const paidAmount = Number(invoice.paidAmount || 0);
+
+  if (requiredAmount > 0 && paidAmount < requiredAmount) {
+    if (!['completed', 'invoiced', 'cancelled'].includes(serviceCall.status) && serviceCall.status !== 'on-hold') {
+      serviceCall.status = 'on-hold';
+      await serviceCall.save();
+    }
+    return serviceCall;
+  }
+
+  if (serviceCall.status === 'on-hold') {
+    serviceCall.status = 'in-progress';
+    await serviceCall.save();
+  }
+
+  return serviceCall;
 };
 
 const calculateInvoiceCosts = ({
@@ -310,9 +508,9 @@ const appendWorkflowTransition = ({ invoice, toStatus, changedBy, changedByRole 
 export const getInvoices = async (req, res) => {
   try {
     const { customer, paymentStatus, serviceCall, documentType, workflowStatus } = req.query;
-    const filter = { createdBy: req.user._id };
+    const filter = buildAccessibleInvoiceFilter(req);
 
-    if (customer) filter.customer = customer;
+    if (customer && !(req.user?.role === 'customer' && req.user?.customerProfile)) filter.customer = customer;
     if (paymentStatus) filter.paymentStatus = paymentStatus;
     if (serviceCall) filter.serviceCall = serviceCall;
     if (documentType) filter.documentType = documentType;
@@ -329,7 +527,7 @@ export const getInvoices = async (req, res) => {
 export const getInvoiceById = async (req, res) => {
   try {
     const invoice = await populateInvoiceDocument(
-      Invoice.findOne({ _id: req.params.id, createdBy: req.user._id }).populate('payments.recordedBy', 'userName email')
+      Invoice.findOne(buildAccessibleInvoiceFilter(req, req.params.id))
     );
 
     if (!invoice) {
@@ -353,7 +551,7 @@ export const getInvoicesByPaymentStatus = async (req, res) => {
     }
 
     const invoices = await populateInvoiceDocument(
-      Invoice.find({ paymentStatus: status, createdBy: req.user._id }).sort({ dueDate: 1 })
+      Invoice.find({ ...buildAccessibleInvoiceFilter(req), paymentStatus: status }).sort({ dueDate: 1 })
     );
     res.json(invoices);
   } catch (error) {
@@ -364,7 +562,7 @@ export const getInvoicesByPaymentStatus = async (req, res) => {
 
 export const getOverdueInvoicesSummary = async (req, res) => {
   try {
-    const overdueInvoices = await Invoice.find({ paymentStatus: 'overdue', createdBy: req.user._id })
+    const overdueInvoices = await Invoice.find({ ...buildAccessibleInvoiceFilter(req), paymentStatus: 'overdue' })
       .populate('customer', 'businessName contactFirstName contactLastName customerId contactPhone email');
 
     const totalOverdueAmount = overdueInvoices.reduce((sum, invoice) => sum + invoice.balance, 0);
@@ -429,6 +627,9 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
 
     const seed = mapQuotationToInvoiceSeed({ quotation: linkedQuotation, serviceCall });
     const costing = calculateInvoiceCosts(seed);
+    const issueDate = new Date();
+    const paymentTerms = 30;
+    const dueDate = buildInvoiceDueDate({ issueDate, paymentTerms });
 
     const invoice = await Invoice.create({
       serviceCall: serviceCall._id,
@@ -463,7 +664,9 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
       vatRate: costing.vatRate,
       vatAmount: costing.vatAmount,
       totalAmount: costing.totalAmount,
-      paymentTerms: 30,
+      issueDate,
+      dueDate,
+      paymentTerms,
       notes: seed.notes,
       terms: seed.terms,
       createdBy: req.user._id,
@@ -513,6 +716,9 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
 
     const seed = mapQuotationToInvoiceSeed({ quotation: linkedQuotation, serviceCall });
     const costing = calculateInvoiceCosts(seed);
+    const issueDate = new Date();
+    const paymentTerms = linkedQuotation?.paymentTerms || 30;
+    const dueDate = buildInvoiceDueDate({ issueDate, paymentTerms });
 
     const invoice = await Invoice.create({
       serviceCall: serviceCall._id,
@@ -547,7 +753,9 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
       vatRate: costing.vatRate,
       vatAmount: costing.vatAmount,
       totalAmount: costing.totalAmount,
-      paymentTerms: linkedQuotation?.paymentTerms || 30,
+      issueDate,
+      dueDate,
+      paymentTerms,
       notes: seed.notes,
       terms: seed.terms,
       createdBy: req.user._id,
@@ -579,6 +787,8 @@ export const createInvoice = async (req, res) => {
       workflowStatus,
       serviceType,
       serviceDate,
+      issueDate,
+      dueDate,
       paymentTerms,
       bankDetails,
       notes,
@@ -632,6 +842,10 @@ export const createInvoice = async (req, res) => {
       vatRate,
     });
 
+    const resolvedIssueDate = issueDate || new Date();
+    const resolvedPaymentTerms = paymentTerms || 30;
+    const resolvedDueDate = dueDate || buildInvoiceDueDate({ issueDate: resolvedIssueDate, paymentTerms: resolvedPaymentTerms });
+
     const invoice = await Invoice.create({
       serviceCall: serviceCallId,
       quotation,
@@ -644,6 +858,8 @@ export const createInvoice = async (req, res) => {
       workflowStatus: workflowStatus || (documentType === 'proForma' ? 'draft' : 'finalized'),
       serviceType: serviceType || serviceCall.serviceType,
       serviceDate: serviceDate || serviceCall.completedDate || new Date(),
+      issueDate: resolvedIssueDate,
+      dueDate: resolvedDueDate,
       lineItems: costing.normalizedLineItems,
       partsFulfilmentMode: costing.partsFulfilmentMode,
       deliveryProvider: costing.deliveryProvider,
@@ -665,7 +881,7 @@ export const createInvoice = async (req, res) => {
       vatRate: costing.vatRate,
       vatAmount: costing.vatAmount,
       totalAmount: costing.totalAmount,
-      paymentTerms: paymentTerms || 30,
+      paymentTerms: resolvedPaymentTerms,
       bankDetails,
       notes,
       terms,
@@ -695,7 +911,7 @@ export const recordPayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment amount and method are required' });
     }
 
-    const invoice = await Invoice.findOne({ _id: req.params.id, createdBy: req.user._id });
+    const invoice = await Invoice.findOne(buildAccessibleInvoiceFilter(req, req.params.id));
     if (!invoice) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
@@ -708,10 +924,41 @@ export const recordPayment = async (req, res) => {
       return res.status(400).json({ message: `Payment amount (${amount}) exceeds invoice balance (${invoice.balance})` });
     }
 
-    await invoice.addPayment({ amount, date: date || new Date(), method, reference, notes, recordedBy: req.user._id });
+    const paymentDate = date || new Date();
+    const balanceBefore = Number(invoice.balance || 0);
+    await invoice.addPayment({ amount, date: paymentDate, method, reference, notes, recordedBy: req.user._id });
+
+    const latestReceipt = {
+      receiptNumber: generateReceiptNumber(),
+      amount: Number(amount),
+      method,
+      reference: reference || '',
+      notes: notes || '',
+      purpose: buildReceiptPurpose(invoice, amount),
+      balanceBefore,
+      balanceAfter: Math.max(0, Number((balanceBefore - Number(amount)).toFixed(2))),
+      issuedAt: paymentDate,
+      recordedBy: req.user._id,
+    };
+
+    invoice.receipts = [...(Array.isArray(invoice.receipts) ? invoice.receipts : []), latestReceipt];
+    if (typeof invoice.save === 'function') {
+      await invoice.save();
+    }
+
+    await syncServiceCallPaymentHold({ invoice, req });
+
     const updatedInvoice = await populateInvoiceDocument(
-      Invoice.findOne({ _id: invoice._id, createdBy: req.user._id }).populate('payments.recordedBy', 'userName email')
+      Invoice.findOne(buildAccessibleInvoiceFilter(req, invoice._id))
     );
+
+    if (updatedInvoice) {
+      updatedInvoice.latestReceipt = latestReceipt;
+      const existingReceipts = Array.isArray(updatedInvoice.receipts) ? updatedInvoice.receipts : [];
+      updatedInvoice.receipts = existingReceipts.some((receipt) => receipt.receiptNumber === latestReceipt.receiptNumber)
+        ? existingReceipts
+        : [...existingReceipts, latestReceipt].slice(-10);
+    }
 
     logInfo(`✅ Payment recorded for invoice ${updatedInvoice.invoiceNumber}: ${amount} (${method})`);
     res.json(updatedInvoice);
@@ -835,6 +1082,7 @@ export const updateInvoiceWorkflowStatus = async (req, res) => {
     };
 
     const updated = await invoice.save();
+    await syncServiceCallPaymentHold({ invoice: updated, req });
     const populated = await populateInvoiceDocument(Invoice.findOne({ _id: updated._id }));
 
     logInfo(`✅ Invoice workflow updated: ${updated.invoiceNumber} → ${workflowStatus}`);
@@ -947,8 +1195,13 @@ export const sendInvoice = async (req, res) => {
     let emailSent = false;
     let whatsappUrl = '';
     let telegramUrl = '';
+    let portalInvite = null;
 
     if (selectedChannels.includes('email')) {
+      if (invoice.documentType === 'proForma') {
+        portalInvite = await ensureCustomerPortalAccess(invoice.customer);
+      }
+
       await sendInvoiceDocumentEmail({
         to: customerEmail,
         customerName: invoice.customer?.businessName || `${invoice.customer?.contactFirstName || ''} ${invoice.customer?.contactLastName || ''}`.trim(),
@@ -958,6 +1211,10 @@ export const sendInvoice = async (req, res) => {
         approvalUrl,
         pdfBuffer,
         approvalRequired: invoice.documentType === 'proForma',
+        userName: portalInvite?.userName,
+        temporaryAccessKey: portalInvite?.temporaryAccessKey,
+        loginUrl: portalInvite?.loginUrl,
+        resetUrl: portalInvite?.resetUrl,
       });
       emailSent = true;
     }
@@ -1003,7 +1260,25 @@ export const sendInvoice = async (req, res) => {
     await invoice.save();
 
     logInfo(`✅ ${documentLabel} sent: ${invoice.invoiceNumber} via ${selectedChannels.join(', ')}`);
-    res.json({ message: `${documentLabel} sent successfully`, documentNumber: invoice.invoiceNumber, emailSent, whatsappUrl, telegramUrl, shareUrl, approvalUrl, channels: selectedChannels });
+    res.json({
+      message: `${documentLabel} sent successfully`,
+      documentNumber: invoice.invoiceNumber,
+      emailSent,
+      whatsappUrl,
+      telegramUrl,
+      shareUrl,
+      approvalUrl,
+      channels: selectedChannels,
+      portalUser: portalInvite
+        ? {
+            email: portalInvite.email,
+            userName: portalInvite.userName,
+            temporaryAccessKey: portalInvite.temporaryAccessKey,
+          }
+        : null,
+      loginUrl: portalInvite?.loginUrl || '',
+      resetUrl: portalInvite?.resetUrl || '',
+    });
   } catch (error) {
     logError('Send invoice error:', error);
     res.status(500).json({ message: error.message });
@@ -1130,8 +1405,11 @@ export const getSharedInvoiceDetails = async (req, res) => {
 
 export const submitSharedInvoiceDecision = async (req, res) => {
   try {
-    const { decision, approvalReference, approvalNotes } = req.body || {};
-    const invoice = await Invoice.findOne({ shareToken: req.params.token });
+    const { decision, approvalReference, approvalNotes, rating, feedback } = req.body || {};
+    const invoiceQuery = Invoice.findOne({ shareToken: req.params.token });
+    const invoice = typeof invoiceQuery?.populate === 'function'
+      ? await invoiceQuery.populate('customer', 'businessName contactFirstName contactLastName customerId customerType email phoneNumber alternatePhone physicalAddress userAccount')
+      : await invoiceQuery;
 
     if (!invoice) {
       return res.status(404).json({ message: 'Invoice not found' });
@@ -1188,12 +1466,38 @@ export const submitSharedInvoiceDecision = async (req, res) => {
     }
 
     await invoice.save();
+    await syncServiceCallPaymentHold({ invoice, req });
 
-    res.json({
+    const relatedServiceCall = invoice.serviceCall
+      ? await ServiceCall.findOne({ _id: invoice.serviceCall })
+      : await ServiceCall.findOne({ $or: [{ proFormaInvoice: invoice._id }, { invoice: invoice._id }] });
+    await appendServiceCallStageFeedback(relatedServiceCall, {
+      stage: 'proForma',
+      rating,
+      feedback: feedback || approvalNotes || '',
+    });
+
+    const portalInvite = decision === 'approved'
+      ? await ensureCustomerPortalAccess(invoice.customer)
+      : null;
+
+    const responseBody = {
       message: decision === 'approved' ? 'Pro-forma approved successfully.' : 'Pro-forma rejected successfully.',
       workflowStatus: invoice.workflowStatus,
       invoiceNumber: invoice.invoiceNumber,
-    });
+    };
+
+    if (portalInvite) {
+      responseBody.portalUser = {
+        email: portalInvite.email,
+        userName: portalInvite.userName,
+        temporaryAccessKey: portalInvite.temporaryAccessKey,
+      };
+      responseBody.loginUrl = portalInvite.loginUrl;
+      responseBody.resetUrl = portalInvite.resetUrl;
+    }
+
+    res.json(responseBody);
   } catch (error) {
     logError('Submit shared invoice decision error:', error);
     res.status(500).json({ message: error.message });

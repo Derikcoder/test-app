@@ -1,8 +1,50 @@
 import Customer from '../models/Customer.model.js';
+import User from '../models/User.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
 
 const BUSINESS_TYPES = ['headOffice', 'branch', 'franchise', 'singleBusiness'];
+
+const buildReadableCustomerFilter = (req, customerId = null) => {
+  if (req.user?.role === 'customer' && req.user?.customerProfile) {
+    if (customerId && String(customerId) !== String(req.user.customerProfile)) {
+      return null;
+    }
+
+    return { _id: req.user.customerProfile };
+  }
+
+  const filter = { createdBy: req.user._id };
+  if (customerId) filter._id = customerId;
+  return filter;
+};
+
+const buildWritableCustomerFilter = (req, customerId = null) => {
+  if (req.user?.role === 'customer' && req.user?.customerProfile) {
+    if (customerId && String(customerId) !== String(req.user.customerProfile)) {
+      return null;
+    }
+
+    return { _id: req.user.customerProfile };
+  }
+
+  return {
+    _id: customerId,
+    createdBy: req.user._id,
+  };
+};
+
+const syncLinkedCustomerUser = async (customer) => {
+  if (!customer?._id) return;
+
+  const linkedUser = await User.findOne({ customerProfile: customer._id });
+  if (!linkedUser) return;
+
+  linkedUser.email = customer.email || linkedUser.email;
+  linkedUser.phoneNumber = customer.phoneNumber || linkedUser.phoneNumber;
+  linkedUser.physicalAddress = customer.physicalAddress || linkedUser.physicalAddress;
+  await linkedUser.save();
+};
 
 const formatAddress = (address = {}) => {
   if (!address || typeof address !== 'object') return '';
@@ -47,7 +89,8 @@ const normalizeSites = (sites = []) => {
 // @access  Private
 export const getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find({ createdBy: req.user._id }).sort({ createdAt: -1 });
+    const filter = buildReadableCustomerFilter(req);
+    const customers = await Customer.find(filter).sort({ createdAt: -1 });
     res.json(customers);
   } catch (error) {
     logError('Get customers error:', error);
@@ -60,10 +103,13 @@ export const getCustomers = async (req, res) => {
 // @access  Private
 export const getCustomerById = async (req, res) => {
   try {
-    const customer = await Customer.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const filter = buildReadableCustomerFilter(req, req.params.id);
+
+    if (!filter) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const customer = await Customer.findOne(filter);
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
@@ -99,7 +145,8 @@ export const createCustomer = async (req, res) => {
       sites,
       maintenanceManager,
       accountStatus,
-      notes
+      notes,
+      serviceAssets
     } = req.body;
 
     const normalizedPhysicalAddress = normalizeAddress(physicalAddressDetails, physicalAddress);
@@ -165,6 +212,7 @@ export const createCustomer = async (req, res) => {
       maintenanceManager,
       accountStatus,
       notes,
+      serviceAssets,
       createdBy: req.user._id
     });
 
@@ -184,10 +232,13 @@ export const createCustomer = async (req, res) => {
 // @access  Private
 export const updateCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const filter = buildWritableCustomerFilter(req, req.params.id);
+
+    if (!filter) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const customer = await Customer.findOne(filter);
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
@@ -195,24 +246,45 @@ export const updateCustomer = async (req, res) => {
 
     // Check if trying to update immutable fields
     const attemptedImmutableUpdates = Customer.IMMUTABLE_FIELDS.filter(
-      field => req.body[field] !== undefined && req.body[field] !== customer[field]
+      (field) => req.body[field] !== undefined && String(req.body[field]) !== String(customer[field])
     );
 
     if (attemptedImmutableUpdates.length > 0) {
       return res.status(403).json({
         message: 'Cannot update protected fields',
-        protectedFields: attemptedImmutableUpdates
+        protectedFields: attemptedImmutableUpdates,
       });
     }
 
+    if (req.body.physicalAddressDetails !== undefined || req.body.physicalAddress !== undefined) {
+      const normalizedPhysicalAddress = normalizeAddress(req.body.physicalAddressDetails, req.body.physicalAddress);
+      customer.physicalAddress = normalizedPhysicalAddress.formatted;
+      customer.physicalAddressDetails = normalizedPhysicalAddress.details;
+    }
+
+    if (req.body.billingAddressDetails !== undefined || req.body.billingAddress !== undefined) {
+      const normalizedBillingAddress = normalizeAddress(req.body.billingAddressDetails, req.body.billingAddress);
+      customer.billingAddress = normalizedBillingAddress.formatted;
+      customer.billingAddressDetails = normalizedBillingAddress.details;
+    }
+
+    if (req.body.sites !== undefined) {
+      customer.sites = normalizeSites(req.body.sites);
+    }
+
     // Update editable fields
-    Customer.EDITABLE_FIELDS.forEach(field => {
+    Customer.EDITABLE_FIELDS.forEach((field) => {
+      if (['physicalAddress', 'physicalAddressDetails', 'billingAddress', 'billingAddressDetails', 'sites'].includes(field)) {
+        return;
+      }
+
       if (req.body[field] !== undefined) {
         customer[field] = req.body[field];
       }
     });
 
     const updatedCustomer = await customer.save();
+    await syncLinkedCustomerUser(updatedCustomer);
     logInfo(`✅ Customer updated: ${updatedCustomer.customerId}`);
     res.json(updatedCustomer);
   } catch (error) {
@@ -249,10 +321,13 @@ export const deleteCustomer = async (req, res) => {
 // @access  Private
 export const getCustomerSites = async (req, res) => {
   try {
-    const customer = await Customer.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const filter = buildReadableCustomerFilter(req, req.params.id);
+
+    if (!filter) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const customer = await Customer.findOne(filter);
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
@@ -286,10 +361,13 @@ export const addCustomerSite = async (req, res) => {
       notes
     } = req.body;
 
-    const customer = await Customer.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const filter = buildWritableCustomerFilter(req, req.params.id);
+
+    if (!filter) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const customer = await Customer.findOne(filter);
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
@@ -335,10 +413,13 @@ export const addCustomerSite = async (req, res) => {
 // @access  Private
 export const updateCustomerSite = async (req, res) => {
   try {
-    const customer = await Customer.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const filter = buildWritableCustomerFilter(req, req.params.id);
+
+    if (!filter) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const customer = await Customer.findOne(filter);
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
@@ -382,10 +463,13 @@ export const updateCustomerSite = async (req, res) => {
 // @access  Private
 export const deleteCustomerSite = async (req, res) => {
   try {
-    const customer = await Customer.findOne({
-      _id: req.params.id,
-      createdBy: req.user._id
-    });
+    const filter = buildWritableCustomerFilter(req, req.params.id);
+
+    if (!filter) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    const customer = await Customer.findOne(filter);
 
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });

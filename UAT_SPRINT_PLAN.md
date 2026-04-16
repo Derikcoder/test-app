@@ -252,6 +252,91 @@ At the end of UAT-3, verify these Phase 4 prerequisites are confirmed:
 
 ---
 
+## Sprint UAT-5: Existing Customer, New Trade Category + Automatic Receipt Generation
+
+**Objective:** Validate the repeat-service journey for an existing customer, specifically Bennie Henning, when a new service request is booked in a different trade category (`electrical`) and fulfilled by a newly created Field Service Agent in that category. Confirm that every successful payment event generates a formal receipt as proof of payment.
+
+### Enterprise Testable Features
+
+| ID | Feature | Why It Matters | Priority |
+|----|---------|----------------|----------|
+| UAT-5.1 | Existing customer can be booked again without creating a duplicate customer profile | Protects data integrity and CRM accuracy | Critical |
+| UAT-5.2 | New electrical Field Service Agent profile can be created and provisioned for login | Confirms category-specific staffing workflow | Critical |
+| UAT-5.3 | Newly provisioned agent can log in and see only the correct role-scoped workspace | Verifies authorization and role isolation | Critical |
+| UAT-5.4 | Service call can be created for Bennie Henning under a different service category | Confirms multi-category support for repeat customers | Critical |
+| UAT-5.5 | Service call can be assigned to the new electrical agent and appears in that agent's queue | Validates dispatch and assignment routing | Critical |
+| UAT-5.6 | Agent can progress the job through quotation, approval, work execution, and invoicing | Confirms end-to-end operational workflow | Critical |
+| UAT-5.7 | Customer payment updates invoice/pro-forma balances accurately | Validates financial correctness | Critical |
+| UAT-5.8 | A receipt is generated automatically on every successful payment event (deposit, partial, or full) | Provides proof of payment and audit compliance | Critical |
+| UAT-5.9 | Receipt clearly states why the payment was made | Prevents ambiguity and supports customer trust | Critical |
+| UAT-5.10 | Receipt is available to both admin and customer as part of the payment trail | Supports support-team lookup and customer self-service | High |
+| UAT-5.11 | Settled invoices display zero outstanding balance after final payment | Confirms ledger closure | High |
+| UAT-5.12 | Historic generator-service work remains separate from new electrical-service work while staying under the same customer account | Protects cross-job traceability | High |
+
+### Expected Result Forecast
+
+| Step | Actor | Action | Expected System Result | Pass Metric |
+|------|-------|--------|------------------------|-------------|
+| 1 | SuperAdmin | Create a new Field Service Agent in the `electrical` category | Agent profile saves successfully with correct category/skills | Agent appears in directory with `electrical` classification |
+| 2 | SuperAdmin | Provision the new agent's login | Secure access credentials are generated and linked to the new agent profile | Success banner appears; linked login status visible |
+| 3 | SuperAdmin | Book a new service call for Bennie Henning | Existing customer record is reused; no duplicate customer profile created | One new service call, zero duplicate customer records |
+| 4 | SuperAdmin or dispatcher | Assign the new electrical service call to the new electrical agent | Assigned agent field updates correctly | Service call visible in agent's queue |
+| 5 | Electrical agent | Log in and open assigned work | Agent sees only authorized workload for their role | Assigned job visible under the expected tab |
+| 6 | Electrical agent | Create and send a quotation or pro-forma for the electrical work | Document is created with the new service context and linked to the same customer | Quote or pro-forma shows correct job reason, customer, and category |
+| 7 | Customer | Approve the quotation or settle the required deposit/outstanding balance | Workflow advances and payment status updates correctly | Status changes match the workflow rules |
+| 8 | System | Record the payment | Paid amount, balance, and settlement state update immediately | Payment totals and remaining balance are mathematically correct |
+| 9 | System | Generate a receipt automatically after successful payment | Receipt record is created with a unique receipt number and proof-of-payment details | Receipt is visible/downloadable and linked to the payment |
+| 10 | Customer/Admin | Review the receipt | Receipt clearly explains why payment was made and what it covers | Document includes service reason, invoice/pro-forma number, payment method, amount, and balance state |
+| 11 | System | Mark invoice as settled after full balance is paid | Outstanding balance drops to zero and settled state is shown consistently | Portal and admin view both display `settled` or `paid` |
+| 12 | Admin | Audit the customer history | Previous generator work and new electrical work remain distinct but both belong to Bennie Henning | Full traceability preserved across categories |
+
+### Receipt Minimum Acceptance Criteria
+
+Every receipt generated from a successful payment should include:
+
+- A unique, immutable receipt number
+- Payment date and time
+- Customer name and contact identity
+- Service reason / payment purpose (for example: deposit for electrical repair, final payment for generator maintenance, outstanding balance for site instruction work)
+- Service call reference
+- Invoice or pro-forma number
+- Payment amount, payment method, and transaction/reference number
+- Balance before payment and balance after payment
+- Settlement state (`partial`, `paid`, or `settled`)
+- Issuing business identity and support contact information
+- Linked audit metadata showing who recorded or triggered the payment
+
+### Failure Conditions to Test
+
+- No receipt should be created for failed, cancelled, or invalid payment attempts
+- Duplicate receipt generation must not occur for the same payment transaction
+- A receipt must not omit the payment reason or linked document reference
+- A customer must not be able to view another customer's receipt
+- A new electrical service booking must not overwrite or corrupt Bennie Henning's prior service history
+
+### TDD-First Validation Targets
+
+Before implementation is considered complete, these tests should exist and pass:
+
+- Backend unit test: successful payment returns receipt metadata
+- Backend unit test: receipt payload includes payment reason and linked document references
+- Backend unit test: full payment changes invoice to settled and receipt reflects zero balance outstanding
+- Backend unit test: partial payment generates receipt while preserving remaining balance
+- Frontend test: customer can see or download the receipt after payment is recorded
+- Frontend test: admin can review receipt details from the billing history trail
+- Negative test: invalid or declined payment does not create a receipt
+
+### UAT-5 Acceptance Criteria
+
+- [ ] Existing customer reuse is confirmed — no duplicate customer profile created for Bennie Henning
+- [ ] New electrical agent is created, provisioned, and can log in successfully
+- [ ] Electrical service call is assigned and visible to the correct agent only
+- [ ] Quote/pro-forma/invoice flow works for the new job category
+- [ ] Every successful payment generates one receipt automatically
+- [ ] Receipt explicitly states why the payment was made
+- [ ] Receipt contains enough detail to serve as valid proof of payment for customer support and audit review
+- [ ] Fully paid documents display the correct settled state across customer and admin views
+
 ## Build Order
 
 ```
@@ -275,7 +360,8 @@ Sprint UAT-0 (build)  →  Sprint UAT-1 (test)  →  Sprint UAT-2 (test)
 | UAT-2 | ⏸ Blocked | UAT-0 must complete first |
 | UAT-3 | ⏸ Blocked | UAT-1 + UAT-2 must pass |
 | UAT-4 | ⏸ Blocked | UAT-3 must complete |
+| UAT-5 | 📝 Planned | Receipt generation + cross-category repeat-service validation |
 
 ---
 
-*Last updated: 2026-02-26*
+*Last updated: 2026-04-16*

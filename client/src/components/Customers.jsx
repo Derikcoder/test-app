@@ -61,10 +61,11 @@ const Customers = () => {
  const [typeFilter, setTypeFilter] = useState('all');
 
  const [provisionModal, setProvisionModal] = useState(null); // customer object or null
- const [provisionForm, setProvisionForm] = useState({ userName: '', password: '' });
+ const [provisionForm, setProvisionForm] = useState({ userName: '' });
  const [provisionLoading, setProvisionLoading] = useState(false);
  const [provisionError, setProvisionError] = useState('');
  const [provisionSuccess, setProvisionSuccess] = useState('');
+ const [provisionAccessKey, setProvisionAccessKey] = useState('');
 
  useEffect(() => {
   fetchCustomers();
@@ -123,9 +124,10 @@ const Customers = () => {
   setProvisionModal(customer);
   const nameSlug = (customer.businessName || `${customer.contactFirstName}_${customer.contactLastName}`)
    .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-  setProvisionForm({ userName: nameSlug, password: '' });
+  setProvisionForm({ userName: nameSlug });
   setProvisionError('');
   setProvisionSuccess('');
+  setProvisionAccessKey('');
  };
 
  const handleProvisionSubmit = async (e) => {
@@ -134,18 +136,18 @@ const Customers = () => {
   setProvisionSuccess('');
   setProvisionLoading(true);
   try {
-   await api.post(
+   const response = await api.post(
     '/auth/admin/provision-user',
     {
      role: 'customer',
      profileId: provisionModal._id,
      userName: provisionForm.userName,
      email: provisionModal.email,
-     password: provisionForm.password,
     },
     { headers: { Authorization: `Bearer ${user.token}` } }
    );
-   setProvisionSuccess(`Login provisioned! Username: ${provisionForm.userName} | Email: ${provisionModal.email}`);
+   setProvisionSuccess(response.data?.message || `Login provisioned for ${provisionModal.email}`);
+   setProvisionAccessKey(response.data?.temporaryAccessKey || '');
    fetchCustomers();
   } catch (err) {
    setProvisionError(err.response?.data?.message || 'Failed to provision login');
@@ -342,7 +344,14 @@ const Customers = () => {
       <div className="mb-4 p-4 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-700 text-sm">
        <p className="font-semibold mb-1">Account created!</p>
        <p>{provisionSuccess}</p>
-       <p className="mt-2 text-emerald-300">Share these credentials securely with the customer.</p>
+       {provisionAccessKey ? (
+        <div className="mt-3 rounded-lg border border-emerald-600 bg-slate-950/60 p-3">
+         <p className="text-xs uppercase tracking-wide text-emerald-300">Secret Access Key</p>
+         <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-yellow-200">{provisionAccessKey}</p>
+         <p className="mt-2 text-emerald-300">Use this as the customer’s temporary password on the login screen.</p>
+        </div>
+       ) : null}
+       <p className="mt-2 text-emerald-300">The customer can sign in immediately and then change their password from their profile.</p>
       </div>
      ) : (
       <form onSubmit={handleProvisionSubmit} className="space-y-4">
@@ -365,19 +374,7 @@ const Customers = () => {
          className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
         />
        </div>
-       <div>
-        <label className="dark-label">Temporary Password *</label>
-        <input
-         type="text"
-         value={provisionForm.password}
-         onChange={(e) => setProvisionForm({ ...provisionForm, password: e.target.value })}
-         required
-         minLength={6}
-         placeholder="Min. 6 characters"
-         className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-        />
-        <p className="mt-1 text-xs text-slate-500">Shown in plain text so you can share it with the customer.</p>
-       </div>
+       <p className="text-xs text-slate-400 -mt-2">A temporary secret access key will be generated automatically and can be used as the customer’s first login password.</p>
        {provisionError && (
         <div className="p-3 rounded-lg bg-red-950 text-red-200 border border-red-700 text-sm">{provisionError}</div>
        )}
@@ -401,7 +398,21 @@ const Customers = () => {
      )}
 
      {provisionSuccess && (
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex justify-end gap-3">
+       {provisionAccessKey ? (
+        <button
+         onClick={() => navigate('/login', {
+          state: {
+           email: provisionModal.email,
+           password: provisionAccessKey,
+           infoMessage: 'Use this temporary secret access key to sign in, then update the password from the customer profile.',
+          },
+         })}
+         className="px-5 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold"
+        >
+         Open Login Screen
+        </button>
+       ) : null}
        <button
         onClick={() => setProvisionModal(null)}
         className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"

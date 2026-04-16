@@ -7,7 +7,7 @@ import { resolveAutoMachineDataForQuote } from '../services/quotationAutoResolve
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import PDFDocument from 'pdfkit';
 import crypto from 'crypto';
-import { sendPasswordResetEmail, sendQuotationEmail } from '../utils/emailService.js';
+import { sendCustomerWelcomeEmail, sendQuotationEmail } from '../utils/emailService.js';
 import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
 
 const buildTemplateLineItems = ({ machineModelNumber = '', serviceType = '' }) => {
@@ -86,6 +86,30 @@ const normalizePhoneForWhatsApp = (phone) => {
 const buildTelegramShareUrl = ({ quotationNumber, shareUrl }) => {
   const message = `Quotation ${quotationNumber}\nView PDF: ${shareUrl}`;
   return `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(message)}`;
+};
+
+const generateTemporaryAccessKey = () => String(crypto.randomInt(1000000, 10000000));
+
+const appendServiceCallFeedback = async (serviceCall, { stage = 'general', rating, feedback }) => {
+  const numericRating = Number(rating);
+  if (!serviceCall || !numericRating || numericRating < 1 || numericRating > 5) {
+    return;
+  }
+
+  serviceCall.rating = numericRating;
+  serviceCall.customerFeedback = feedback || serviceCall.customerFeedback || '';
+  serviceCall.ratedDate = new Date();
+  serviceCall.feedbackHistory = [
+    ...(Array.isArray(serviceCall.feedbackHistory) ? serviceCall.feedbackHistory : []),
+    {
+      stage,
+      rating: numericRating,
+      feedback: feedback || '',
+      submittedAt: new Date(),
+    },
+  ];
+
+  await serviceCall.save();
 };
 
 const buildAccessibleServiceCallFilter = (req, serviceCallId) => {
@@ -201,7 +225,7 @@ const generateQuotationPdfBuffer = (quotation) => {
     doc.fontSize(12).text('Line Items', { underline: true });
     doc.moveDown(0.5);
 
-    quotation.lineItems.forEach((item, idx) => {
+    (quotation.lineItems || []).forEach((item, idx) => {
       doc.fontSize(10).text(`${idx + 1}. ${item.description}`);
       doc.text(`   Qty: ${item.quantity} | Unit: R ${Number(item.unitPrice).toFixed(2)} | Total: R ${Number(item.total).toFixed(2)}`);
       if (item.partNumber) {
@@ -938,13 +962,29 @@ export const sendQuotation = async (req, res) => {
   try {
     const { channels } = req.body || {};
 
-    const quotation = await Quotation.findOne({
+    let quotation = await Quotation.findOne({
       _id: req.params.id,
       createdBy: req.user._id,
     }).populate('customer');
 
     if (!quotation) {
-      return res.status(404).json({ message: 'Quotation not found' });
+      const fallbackQuotation = await Quotation.findById(req.params.id).populate('customer');
+
+      if (!fallbackQuotation) {
+        return res.status(404).json({ message: 'Quotation not found' });
+      }
+
+      const linkedServiceCallQuery = req.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile
+        ? { quotation: fallbackQuotation._id, assignedAgent: req.user.fieldServiceAgentProfile }
+        : { quotation: fallbackQuotation._id, createdBy: req.user._id };
+
+      const linkedServiceCall = await ServiceCall.findOne(linkedServiceCallQuery);
+
+      if (!linkedServiceCall) {
+        return res.status(404).json({ message: 'Quotation not found' });
+      }
+
+      quotation = fallbackQuotation;
     }
 
     const allowedChannels = ['email', 'whatsapp', 'telegram'];
@@ -1310,8 +1350,9 @@ export const getPublicQuotationByToken = async (req, res) => {
 export const acceptPublicQuotation = async (req, res) => {
   try {
     const { token } = req.params;
+    const { rating, feedback } = req.body || {};
     const quotation = await Quotation.findOne({ shareToken: token })
-      .populate('customer', 'contactFirstName contactLastName customerId email');
+      .populate('customer', 'contactFirstName contactLastName customerId email userAccount customerType businessName phoneNumber physicalAddress');
 
     if (!quotation) {
       return res.status(404).json({ message: 'Quotation not found or link is invalid' });
@@ -1336,32 +1377,31 @@ export const acceptPublicQuotation = async (req, res) => {
 
     let linkedCustomer = quotation.customer;
     let createdPortalUser = null;
+    const linkedServiceCallDoc = await ServiceCall.findOne({ quotation: quotation._id });
+    const recipientSnapshot = quotation.recipientSnapshot || {};
+    const recipientEmail = String(recipientSnapshot.email || linkedServiceCallDoc?.bookingRequest?.contact?.contactEmail || linkedCustomer?.email || '').trim().toLowerCase();
+
+    if (!recipientEmail) {
+      return res.status(409).json({
+        message: 'This quotation cannot be converted yet because no recipient email is available.',
+      });
+    }
 
     if (!linkedCustomer) {
-      const linkedServiceCall = await ServiceCall.findOne({ quotation: quotation._id });
-      const recipientSnapshot = quotation.recipientSnapshot || {};
-      const recipientEmail = String(recipientSnapshot.email || linkedServiceCall?.bookingRequest?.contact?.contactEmail || '').trim().toLowerCase();
-
-      if (!recipientEmail) {
-        return res.status(409).json({
-          message: 'This quotation cannot be converted yet because no recipient email is available.',
-        });
-      }
-
       linkedCustomer = await Customer.findOne({ email: recipientEmail, createdBy: quotation.createdBy });
 
       if (!linkedCustomer) {
         const derivedName = recipientSnapshot.name
-          || linkedServiceCall?.bookingRequest?.contact?.companyName
-          || linkedServiceCall?.bookingRequest?.contact?.contactPerson
+          || linkedServiceCallDoc?.bookingRequest?.contact?.companyName
+          || linkedServiceCallDoc?.bookingRequest?.contact?.contactPerson
           || 'Prospect Customer';
         const { firstName, lastName } = splitContactName(derivedName);
         const customerType = recipientSnapshot.customerType || 'residential';
         const customerId = await getCustomerId();
         const phoneNumber = recipientSnapshot.phoneNumber
-          || linkedServiceCall?.bookingRequest?.contact?.contactPhone
+          || linkedServiceCallDoc?.bookingRequest?.contact?.contactPhone
           || 'Phone pending';
-        const physicalAddress = buildAddressFromBookingRequest(linkedServiceCall);
+        const physicalAddress = buildAddressFromBookingRequest(linkedServiceCallDoc);
 
         linkedCustomer = await Customer.create({
           customerType,
@@ -1381,26 +1421,29 @@ export const acceptPublicQuotation = async (req, res) => {
           createdBy: quotation.createdBy,
         });
       }
+    }
 
-      if (linkedServiceCall && !linkedServiceCall.customer) {
-        linkedServiceCall.customer = linkedCustomer._id;
-        await linkedServiceCall.save();
-      }
+    if (linkedServiceCallDoc && !linkedServiceCallDoc.customer && linkedCustomer?._id) {
+      linkedServiceCallDoc.customer = linkedCustomer._id;
+      await linkedServiceCallDoc.save();
+    }
 
+    if (linkedCustomer?._id) {
       quotation.customer = linkedCustomer._id;
 
       let linkedUser = await User.findOne({ customerProfile: linkedCustomer._id });
       if (!linkedUser) {
         const userName = await buildUniqueUsername(recipientEmail);
+        const temporaryAccessKey = generateTemporaryAccessKey();
         linkedUser = await User.create({
           userName,
           email: recipientEmail,
-          password: crypto.randomBytes(32).toString('hex'),
+          password: temporaryAccessKey,
           role: 'customer',
           isSuperUser: false,
           customerProfile: linkedCustomer._id,
           businessName: linkedCustomer.businessName || `${linkedCustomer.contactFirstName} ${linkedCustomer.contactLastName}`.trim(),
-          phoneNumber: linkedCustomer.phoneNumber,
+          phoneNumber: linkedCustomer.phoneNumber || 'Phone pending',
           physicalAddress: linkedCustomer.physicalAddress || 'Address pending',
         });
 
@@ -1411,15 +1454,20 @@ export const acceptPublicQuotation = async (req, res) => {
         await linkedUser.save();
 
         const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
-        await sendPasswordResetEmail({
-          email: linkedUser.email,
-          resetUrl,
+        const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`;
+        await sendCustomerWelcomeEmail({
+          to: linkedUser.email,
+          customerName: linkedCustomer.businessName || `${linkedCustomer.contactFirstName} ${linkedCustomer.contactLastName}`.trim(),
           userName: linkedUser.userName,
+          resetUrl,
+          temporaryAccessKey,
+          loginUrl,
         });
 
         createdPortalUser = {
           email: linkedUser.email,
           userName: linkedUser.userName,
+          temporaryAccessKey,
         };
       }
     }
@@ -1430,14 +1478,15 @@ export const acceptPublicQuotation = async (req, res) => {
     await quotation.save();
 
     // Advance the linked service call to in-progress when customer accepts
-    const linkedServiceCall = await ServiceCall.findOne({ quotation: quotation._id });
-    if (linkedServiceCall && !['completed', 'invoiced', 'cancelled'].includes(linkedServiceCall.status)) {
-      linkedServiceCall.status = 'in-progress';
-      if (!linkedServiceCall.startedDate) linkedServiceCall.startedDate = new Date();
-      if (!linkedServiceCall.customer && linkedCustomer?._id) {
-        linkedServiceCall.customer = linkedCustomer._id;
+    const serviceCallForProgress = linkedServiceCallDoc || await ServiceCall.findOne({ quotation: quotation._id });
+    if (serviceCallForProgress && !['completed', 'invoiced', 'cancelled'].includes(serviceCallForProgress.status)) {
+      serviceCallForProgress.status = 'in-progress';
+      if (!serviceCallForProgress.startedDate) serviceCallForProgress.startedDate = new Date();
+      if (!serviceCallForProgress.customer && linkedCustomer?._id) {
+        serviceCallForProgress.customer = linkedCustomer._id;
       }
-      await linkedServiceCall.save();
+      await serviceCallForProgress.save();
+      await appendServiceCallFeedback(serviceCallForProgress, { stage: 'quotation', rating, feedback });
     }
 
     const lockEmail = linkedCustomer?.email || quotation.recipientSnapshot?.email;
@@ -1450,14 +1499,17 @@ export const acceptPublicQuotation = async (req, res) => {
       : quotation.recipientSnapshot?.name || 'Customer';
     logInfo(`✅ Quote accepted via share token: ${quotation.quotationNumber} by ${customerName}`);
 
+    const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`;
+
     res.json({
       message: createdPortalUser
-        ? 'Thank you! Your quotation has been accepted. A set-password email has been sent so you can access your customer portal.'
+        ? 'Thank you! Your quotation has been accepted. Your customer portal is now ready — continue to the login screen using your temporary secret access key.'
         : 'Thank you! Your quotation has been accepted.',
       quotationNumber: quotation.quotationNumber,
       acceptedDate: quotation.approvedDate,
       portalAccountCreated: Boolean(createdPortalUser),
       portalUser: createdPortalUser,
+      loginUrl,
     });
   } catch (error) {
     logError('Accept public quotation error:', error);
@@ -1471,7 +1523,7 @@ export const acceptPublicQuotation = async (req, res) => {
 export const rejectPublicQuotation = async (req, res) => {
   try {
     const { token } = req.params;
-    const { reason } = req.body;
+    const { reason, rating, feedback } = req.body || {};
     const quotation = await Quotation.findOne({ shareToken: token })
       .populate('customer', 'contactFirstName contactLastName customerId email');
 
@@ -1493,6 +1545,9 @@ export const rejectPublicQuotation = async (req, res) => {
     quotation.rejectedDate = new Date();
     if (reason) quotation.rejectionReason = String(reason).trim().slice(0, 500);
     await quotation.save();
+
+    const linkedServiceCall = await ServiceCall.findOne({ quotation: quotation._id });
+    await appendServiceCallFeedback(linkedServiceCall, { stage: 'quotation', rating, feedback: feedback || reason || '' });
 
     // Release email lock — customer declined via share link
     const lockEmail = quotation.customer?.email || quotation.recipientSnapshot?.email;

@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api/axios';
 
 const formatCurrency = (value) =>
@@ -51,6 +51,7 @@ const statusLabel = {
  */
 function QuotationApprovalPage() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [quotation, setQuotation]           = useState(null);
   const [loading, setLoading]               = useState(true);
   const [submitting, setSubmitting]         = useState(false);
@@ -59,6 +60,10 @@ function QuotationApprovalPage() {
   const [decisionType, setDecisionType]     = useState(null); // 'accepted' | 'rejected'
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [reviewState, setReviewState] = useState({
+    rating: '5',
+    feedback: '',
+  });
 
   useEffect(() => {
     let isCancelled = false;
@@ -86,11 +91,24 @@ function QuotationApprovalPage() {
     try {
       setSubmitting(true);
       setError('');
-      const response = await api.patch(`/quotations/share/${token}/accept`);
+      const response = await api.patch(`/quotations/share/${token}/accept`, {
+        rating: Number(reviewState.rating || 5),
+        feedback: reviewState.feedback || '',
+      });
       setDecisionMessage(response.data.message);
       setDecisionType('accepted');
       setQuotation((q) => q ? { ...q, status: 'approved', approvedDate: new Date().toISOString() } : q);
       setShowRejectForm(false);
+
+      if (response.data?.portalAccountCreated && response.data?.portalUser?.email) {
+        navigate('/login', {
+          state: {
+            email: response.data.portalUser.email,
+            password: response.data.portalUser.temporaryAccessKey || '',
+            infoMessage: 'Your customer portal is ready. Use the temporary secret access key below as your password, then update it from your profile after login.',
+          },
+        });
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to accept the quotation.');
     } finally {
@@ -104,6 +122,8 @@ function QuotationApprovalPage() {
       setError('');
       const response = await api.patch(`/quotations/share/${token}/reject`, {
         reason: rejectionReason.trim() || undefined,
+        rating: Number(reviewState.rating || 5),
+        feedback: reviewState.feedback || '',
       });
       setDecisionMessage(response.data.message);
       setDecisionType('rejected');
@@ -299,6 +319,31 @@ function QuotationApprovalPage() {
                       If you have changed your mind, please contact us directly to request a revised quotation.
                     </p>
                   )}
+                </div>
+              )}
+
+              {canDecide && !decisionMessage && (
+                <div className="mt-8 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-100">Service Experience Check-In</p>
+                  <p className="mt-2 text-sm text-cyan-50/80">Tell us how you feel at the quotation stage so we can correct any concern early.</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[150px_1fr]">
+                    <select
+                      value={reviewState.rating}
+                      onChange={(e) => setReviewState((current) => ({ ...current, rating: e.target.value }))}
+                      className="rounded-xl border border-white/20 bg-slate-950/30 px-3 py-2 text-sm text-white focus:outline-none"
+                    >
+                      {[5, 4, 3, 2, 1].map((value) => (
+                        <option key={value} value={value}>{value} star{value !== 1 ? 's' : ''}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={reviewState.feedback}
+                      onChange={(e) => setReviewState((current) => ({ ...current, feedback: e.target.value }))}
+                      placeholder="Optional comment about clarity, pricing, or communication"
+                      className="rounded-xl border border-white/20 bg-slate-950/30 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                    />
+                  </div>
                 </div>
               )}
 

@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
+import CustomerBillingPanel from './CustomerBillingPanel';
+import CustomerSelfServicePanel from './CustomerSelfServicePanel';
 import api from '../api/axios';
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -146,6 +148,8 @@ const SingleBusinessCustomer = () => {
  };
 
  const isOwnProfile = user?.role === 'customer' && String(user?.customerProfile) === id;
+ const backTarget = isOwnProfile ? '/service-calls' : '/customers';
+ const backLabel = isOwnProfile ? 'Back to Dashboard' : 'Back to Customers';
 
  const handleAcceptQuot = async (q) => {
   setQuotActionState((s) => ({ ...s, [q._id]: 'loading' }));
@@ -194,8 +198,8 @@ const SingleBusinessCustomer = () => {
     <div className="page-center px-4">
      <div className="glass-card p-8 text-center max-w-sm w-full">
       <p className="text-red-300 text-sm mb-4">{error || 'Customer not found'}</p>
-      <button onClick={() => navigate('/customers')} className="glass-btn-primary py-2 px-6 text-sm">
-       ← Back to Customers
+      <button onClick={() => navigate(backTarget)} className="glass-btn-primary py-2 px-6 text-sm">
+       ← {backLabel}
       </button>
      </div>
     </div>
@@ -214,9 +218,9 @@ const SingleBusinessCustomer = () => {
     <div className="max-w-[1040px] mx-auto space-y-6">
 
      {/* Back nav */}
-     <button onClick={() => navigate('/customers')}
+     <button onClick={() => navigate(backTarget)}
       className="flex items-center gap-1.5 text-white/50 hover:text-white text-sm transition-colors">
-      <span>←</span> Back to Customers
+      <span>←</span> {backLabel}
      </button>
 
      {/* Hero header */}
@@ -344,6 +348,17 @@ const SingleBusinessCustomer = () => {
       </SectionCard>
      )}
 
+     <SectionCard title="Profile Management & Service Insights" icon="🛠️">
+      <CustomerSelfServicePanel
+       customerId={id}
+       customer={customer}
+       setCustomer={setCustomer}
+       serviceCalls={serviceCalls}
+       token={user?.token}
+       isOwnProfile={isOwnProfile}
+      />
+     </SectionCard>
+
      {/* Active Quotations */}
      <SectionCard title="Active Quotations" icon="📄">
       {quotsLoading ? (
@@ -442,6 +457,10 @@ const SingleBusinessCustomer = () => {
         })}
        </>
       )}
+     </SectionCard>
+
+     <SectionCard title="Invoices Paid & Receipts" icon="💳">
+      <CustomerBillingPanel customerId={id} token={user?.token} isOwnProfile={isOwnProfile} />
      </SectionCard>
 
      {/* Service Call History */}

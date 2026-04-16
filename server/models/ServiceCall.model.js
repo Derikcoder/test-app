@@ -216,6 +216,33 @@ const selfDispatchAuditSchema = new mongoose.Schema({
  * - Customer rating and feedback
  * - Links to quotation and invoice
  */
+const feedbackEntrySchema = new mongoose.Schema({
+  /** Communication stage where the review was captured */
+  stage: {
+    type: String,
+    enum: ['quotation', 'proForma', 'invoice', 'completedService', 'general'],
+    default: 'general',
+  },
+  /** Satisfaction score for the stage */
+  rating: {
+    type: Number,
+    min: [1, 'Rating must be at least 1'],
+    max: [5, 'Rating cannot exceed 5'],
+    required: [true, 'Feedback rating is required'],
+  },
+  /** Customer comments */
+  feedback: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  /** When the feedback was submitted */
+  submittedAt: {
+    type: Date,
+    default: Date.now,
+  },
+}, { _id: true });
+
 const serviceCallSchema = new mongoose.Schema(
   {
     /** Unique service call number - Auto-generated, immutable */
@@ -437,6 +464,11 @@ const serviceCallSchema = new mongoose.Schema(
     ratedDate: {
       type: Date,
     },
+    /** Historical feedback snapshots captured at quotation / pro-forma / invoice / completion stages */
+    feedbackHistory: {
+      type: [feedbackEntrySchema],
+      default: [],
+    },
     /** Reference to User who created this service call */
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -525,7 +557,8 @@ serviceCallSchema.statics.EDITABLE_FIELDS = [
   'customerSignature',
   'rating',
   'customerFeedback',
-  'ratedDate'
+  'ratedDate',
+  'feedbackHistory'
 ];
 
 const ServiceCall = mongoose.model('ServiceCall', serviceCallSchema);

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import FieldAgentSelfProfile from '../../components/FieldAgentSelfProfile';
 import api from '../../api/axios';
@@ -117,5 +117,32 @@ describe('FieldAgentSelfProfile', () => {
 
     expect(screen.getAllByText(/sc-000001/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /view quote pdf/i })).toBeInTheDocument();
+  });
+
+  it('allows the field agent to resend a pending quotation email', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      data: {
+        message: 'Quotation sent successfully',
+        quotationNumber: 'QT-000001',
+        channels: ['email'],
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <FieldAgentSelfProfile />
+      </BrowserRouter>
+    );
+
+    const resendButton = await screen.findByRole('button', { name: /resend quote/i });
+    fireEvent.click(resendButton);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/quotations/quote-1/send',
+        { channels: ['email'] },
+        { headers: { Authorization: 'Bearer token-123' } }
+      );
+    });
   });
 });

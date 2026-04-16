@@ -8,8 +8,12 @@ import {
   getEligibleUnassignedServiceCalls,
   getMyAssignedServiceCalls,
   selfAcceptServiceCall,
+  submitRating,
+  updateServiceCall,
+  getServiceCalls,
 } from '../../../controllers/serviceCall.controller.js';
 import ServiceCall from '../../../models/ServiceCall.model.js';
+import Invoice from '../../../models/Invoice.model.js';
 import FieldServiceAgent from '../../../models/FieldServiceAgent.model.js';
 import Customer from '../../../models/Customer.model.js';
 import ServiceCallEmailLock from '../../../models/ServiceCallEmailLock.model.js';
@@ -18,6 +22,7 @@ jest.mock('../../../models/ServiceCall.model.js');
 jest.mock('../../../models/FieldServiceAgent.model.js');
 jest.mock('../../../models/Customer.model.js');
 jest.mock('../../../models/ServiceCallEmailLock.model.js');
+jest.mock('../../../models/Invoice.model.js');
 jest.mock('../../../middleware/logger.middleware.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
@@ -238,6 +243,81 @@ describe('Service Call Controller - Self Dispatch', () => {
         weeklyParticipationDaysUsed: 0,
         remainingWeeklyParticipationDays: 5,
       },
+    });
+  });
+
+  describe('updateServiceCall - payment hold protection', () => {
+    test('blocks completion when a linked pro-forma deposit is still unpaid', async () => {
+      req.params.id = 'call-locked-1';
+      req.body = { status: 'completed' };
+      req.user = { _id: 'owner-1', role: 'businessAdministrator' };
+
+      const serviceCall = {
+        _id: 'call-locked-1',
+        callNumber: 'SC-LOCK-1',
+        status: 'in-progress',
+        proFormaInvoice: 'invoice-locked-1',
+      };
+
+      ServiceCall.findOne = jest.fn().mockResolvedValue(serviceCall);
+      Invoice.findOne = jest.fn().mockResolvedValue({
+        _id: 'invoice-locked-1',
+        documentType: 'proForma',
+        workflowStatus: 'approved',
+        depositRequired: true,
+        depositAmount: 1800,
+        paidAmount: 600,
+      });
+
+      await updateServiceCall(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Deposit payment is still required before this job can be completed.',
+      });
+    });
+  });
+
+  describe('submitRating - staged feedback', () => {
+    test('allows a customer to submit quotation-stage feedback before job completion', async () => {
+      req.params.id = 'call-quoted-1';
+      req.body = { rating: 4, feedback: 'So far the communication is clear.', stage: 'quotation' };
+      req.user = { _id: 'customer-user-1', role: 'customer', customerProfile: 'cust-123' };
+
+      const serviceCall = {
+        _id: 'call-quoted-1',
+        callNumber: 'SC-QUOTED-1',
+        customer: 'cust-123',
+        status: 'assigned',
+        feedbackHistory: [],
+        save: jest.fn().mockResolvedValue(true),
+        populate: jest.fn().mockResolvedValue(true),
+      };
+
+      ServiceCall.findOne = jest.fn().mockResolvedValue(serviceCall);
+
+      await submitRating(req, res);
+
+      expect(serviceCall.save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(serviceCall);
+    });
+  });
+
+  describe('getServiceCalls - customer access', () => {
+    test('returns service calls linked to the logged-in customer profile', async () => {
+      req.user = { _id: 'customer-user-1', role: 'customer', customerProfile: 'cust-123' };
+
+      const serviceCalls = [{ _id: 'call-1', customer: 'cust-123', callNumber: 'SC-000001' }];
+      const populateInvoice = { populate: jest.fn().mockReturnThis(), sort: jest.fn().mockResolvedValue(serviceCalls) };
+      const populateProForma = { populate: jest.fn().mockReturnValue(populateInvoice) };
+      const populateQuotation = { populate: jest.fn().mockReturnValue(populateProForma) };
+      const populateAgent = { populate: jest.fn().mockReturnValue(populateQuotation) };
+      ServiceCall.find = jest.fn().mockReturnValue(populateAgent);
+
+      await getServiceCalls(req, res);
+
+      expect(ServiceCall.find).toHaveBeenCalledWith({ customer: 'cust-123' });
+      expect(res.json).toHaveBeenCalledWith(serviceCalls);
     });
   });
 

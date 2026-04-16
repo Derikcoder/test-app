@@ -99,6 +99,47 @@ const siteSchema = new mongoose.Schema({
   },
 }, { _id: true }); // Enable _id for sites
 
+const serviceAssetSchema = new mongoose.Schema({
+  /** Customer-owned machine or serviceable asset label */
+  assetName: {
+    type: String,
+    required: [true, 'Asset name is required'],
+    trim: true,
+  },
+  /** Service category for the asset */
+  category: {
+    type: String,
+    trim: true,
+    default: 'general',
+  },
+  /** Brand/manufacturer */
+  brand: {
+    type: String,
+    trim: true,
+  },
+  /** Model or variant */
+  model: {
+    type: String,
+    trim: true,
+  },
+  /** Optional serial number */
+  serialNumber: {
+    type: String,
+    trim: true,
+  },
+  /** Optional notes for future service planning */
+  notes: {
+    type: String,
+    trim: true,
+  },
+  /** Asset lifecycle state */
+  status: {
+    type: String,
+    enum: ['active', 'archived'],
+    default: 'active',
+  },
+}, { _id: true });
+
 /**
  * Customer Schema Definition
  * 
@@ -242,6 +283,11 @@ const customerSchema = new mongoose.Schema(
       phone: { type: String, trim: true },
       email: { type: String, lowercase: true, trim: true },
     },
+    /** Customer-owned equipment / machines for future service planning */
+    serviceAssets: {
+      type: [serviceAssetSchema],
+      default: [],
+    },
     /** Current account status */
     accountStatus: {
       type: String,
@@ -305,6 +351,7 @@ customerSchema.statics.EDITABLE_FIELDS = [
   'registrationNumber',
   'sites',
   'maintenanceManager',
+  'serviceAssets',
   'accountStatus',
   'notes'
 ];

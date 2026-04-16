@@ -87,6 +87,68 @@ const paymentRecordSchema = new mongoose.Schema({
   },
 }, { _id: true, timestamps: true });
 
+const receiptRecordSchema = new mongoose.Schema({
+  /** Unique receipt identifier */
+  receiptNumber: {
+    type: String,
+    required: [true, 'Receipt number is required'],
+    trim: true,
+  },
+  /** Payment amount reflected on the receipt */
+  amount: {
+    type: Number,
+    required: [true, 'Receipt amount is required'],
+    min: [0, 'Receipt amount cannot be negative'],
+  },
+  /** Payment method */
+  method: {
+    type: String,
+    enum: ['cash', 'eft', 'card', 'credit', 'other'],
+    required: [true, 'Receipt payment method is required'],
+  },
+  /** Payment purpose / reason */
+  purpose: {
+    type: String,
+    required: [true, 'Receipt purpose is required'],
+    trim: true,
+  },
+  /** Optional external payment reference */
+  reference: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  /** Balance before payment was applied */
+  balanceBefore: {
+    type: Number,
+    min: [0, 'Balance before payment cannot be negative'],
+    default: 0,
+  },
+  /** Balance after payment was applied */
+  balanceAfter: {
+    type: Number,
+    min: [0, 'Balance after payment cannot be negative'],
+    default: 0,
+  },
+  /** Receipt issue timestamp */
+  issuedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  /** Notes displayed with the receipt */
+  notes: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  /** User who captured the payment */
+  recordedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+}, { _id: true, timestamps: true });
+
 const siteInstructionSchema = new mongoose.Schema({
   problemsFound: {
     type: String,
@@ -454,6 +516,11 @@ const invoiceSchema = new mongoose.Schema(
       type: [paymentRecordSchema],
       default: [],
     },
+    /** Generated payment receipts for proof-of-payment audit trail */
+    receipts: {
+      type: [receiptRecordSchema],
+      default: [],
+    },
     /** Date invoice was fully paid */
     paidDate: {
       type: Date,
@@ -584,6 +651,18 @@ invoiceSchema.pre('validate', async function (next) {
     const count = await mongoose.model('Invoice').countDocuments();
     this.invoiceNumber = `INV-${String(count + 1).padStart(6, '0')}`;
   }
+
+  if (!this.issueDate) {
+    this.issueDate = new Date();
+  }
+
+  if (!this.dueDate) {
+    const dueDate = new Date(this.issueDate);
+    const resolvedPaymentTerms = Number.isFinite(Number(this.paymentTerms)) ? Number(this.paymentTerms) : 30;
+    dueDate.setDate(dueDate.getDate() + resolvedPaymentTerms);
+    this.dueDate = dueDate;
+  }
+
   next();
 });
 
@@ -693,6 +772,7 @@ invoiceSchema.statics.EDITABLE_FIELDS = [
   'paidAmount',
   'balance',
   'payments',
+  'receipts',
   'paidDate',
   'paymentTerms',
   'depositRequired',

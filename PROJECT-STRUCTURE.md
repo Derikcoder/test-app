@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-04-13
+Last updated: 2026-04-16
 
 ---
 
@@ -142,7 +142,9 @@ main                 ← Production (stable, never touched directly)
 - `BranchCustomer.jsx`: Profile view for Branch accounts (child of Head Office).
 - `FranchiseCustomer.jsx`: Profile view for Franchise accounts (child of Head Office, independent billing).
 - `SingleBusinessCustomer.jsx`: Profile view for standalone SME customers.
-- `ResidentialCustomer.jsx`: Profile view for individual/residential customers. Fully built — hero header, contact card, address card, service locations, account details, conditional notes, and service call history with status badges.
+- `ResidentialCustomer.jsx`: Profile view for individual/residential customers. Fully built — hero header, contact card, address card, service locations, account details, conditional notes, grouped self-service insights, service call history with status badges, and the embedded customer billing panel for self-service payments.
+- `CustomerSelfServicePanel.jsx`: Shared customer portal workspace used across all customer profile variants. Handles editable self-service profile fields, registered machines/assets, latest review display, and grouped history by service category and assigned field agent.
+- `CustomerBillingPanel.jsx`: Shared authenticated billing widget used across all customer profile variants. Shows pending pro-forma/final invoice balances, receipt proof-of-payment records, customer-side deposit or outstanding-payment submission, and stage-based review prompts during billing.
 - `ServiceCalls.jsx`: Service calls list page and booking flow with first-service/existing-customer modes, scheduling, last-service auto-fill by contact email, lifecycle capture (`servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), plus superUser operations alerts for unassigned calls and assignment to field agents. Booking-request intake now supports prospect-first capture: a service call may remain unlinked to a `Customer` until a quotation is actually accepted.
 - `CreateQuoteModal.jsx`: Reusable quotation creation and editing modal, shared across superAdmin, businessAdministrator, and agent flows. Features: machine-model template loading, tiered unit-cost markup for parts line items, separated costing inputs (parts, labour, consumables, travel), function-based travel costing (`distanceTravelledKm × ratePerKm + timeTravelledCost`), call-out floor rule, first-site-visit 15-minute assessment inclusion, procurement/delivery profit capture, 14-day default validity with calendar override, optional PDF share (Email/WhatsApp/Telegram), and full edit mode (`editMode` prop) that pre-populates from an existing quotation and submits via PUT — stored prices used as-is (no markup re-applied on edit).
 - `UserProfile_old.jsx`, `UserProfile_backup2.jsx`: Local backups (not used in routing).
@@ -207,27 +209,27 @@ Each page now includes role and entity context chips in header, immediately belo
 ### Server Models (`server/models/`)
 - `User.model.js`: Multi-principal user schema (`superAdmin`, `businessAdministrator`, `fieldServiceAgent`, `customer`) with role/profile-link constraints and write-once registration policy support.
 - `FieldServiceAgent.model.js`: Field agent schema, employee details, and metadata.
-- `Customer.model.js`: Customer schema, contact information, sites, and account status. Under the prospect-first policy, customer records represent converted customers, not every quoted prospect.
+- `Customer.model.js`: Customer schema, contact information, sites, account status, and customer-managed `serviceAssets`. Under the prospect-first policy, customer records represent converted customers, not every quoted prospect.
 - `OnboardingPasskey.model.js`: One-time passkey lifecycle for delegated-role onboarding.
 - `PasskeyRenewalRequest.model.js`: Approval-driven passkey renewal requests.
 - `ProfileLinkAudit.model.js`: Audit log for attach/detach/reassign user-profile link corrections.
 - `RegistrationOverrideAudit.model.js`: Immutable legal-evidence snapshot audit for superAdmin registration identifier overrides.
 - `SequenceCounter.model.js`: Atomic sequential counter for system-generated IDs (Agent: `AGT-XXXXXX`, Customer: `CUST-XXXXXX`). Uses `findOneAndUpdate` with `$inc` + upsert for collision-safe incrementing.
-- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, and service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), with assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`). Service calls can now exist in a prospect-only state via `bookingRequest` without an immediate `customer` link.
+- `ServiceCall.model.js`: Service call schema — booking request, statuses, priority, parts used, service history/lifecycle fields (`serviceHistoryType`, `dateOfLastService`, `servicesInProgress`, `progressStatus`, `quotationHistory`, `invoicingHistory`), staged customer sentiment via `feedbackHistory`, and assignment workflow metadata (`assignedDate`, `agentAccepted`, `assignmentNotifiedAt`). Service calls can now exist in a prospect-only state via `bookingRequest` without an immediate `customer` link.
 - `Quotation.model.js`: Quotation schema — line items, totals, status, linked service call, structured travel fields (including travel time for call-out floor logic), first-site-visit assessment fields (`isFirstSiteVisit`, `includedAssessmentMinutes`, `chargeableLabourHours`), procurement/delivery analytics fields, and default 14-day validity. Supports prospect delivery via `recipientSnapshot` so a quote can be sent before a `Customer` or portal `User` exists.
-- `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking.
+- `Invoice.model.js`: Invoice schema — rendered from quotations, payment tracking, and receipt proof-of-payment metadata for each successful payment event.
 - `Equipment.model.js`: Equipment/asset tracking schema.
 - `Example.model.js`: Example/template entity schema.
 
 ### Server Controllers (`server/controllers/`)
 - `auth.controller.js`: Multi-principal registration/login, passkey generation/renewal, profile updates with write-once/legal-evidence policy, admin profile-link correction flows, and legal override audit query endpoint.
 - `agent.controller.js`: Field service agent CRUD. `employeeId` is now auto-generated (`AGT-000001` format) via `SequenceCounter`; no longer accepted from client input. Includes `getMyAgentProfile` — looks up the calling user's own agent record via `{ userAccount: req.user._id }` (no `createdBy` restriction) for fieldServiceAgent self-access.
-- `customer.controller.js`: Customer CRUD. `customerId` is now auto-generated (`CUST-000001` format) via `SequenceCounter`; no longer accepted from client input.
-- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff. Includes `getMyAssignedServiceCalls` — returns calls where `assignedAgent === req.user.fieldServiceAgentProfile` for field agent self-access. `getEligibleUnassignedServiceCalls` and `selfAcceptServiceCall` resolve `businessCreatedBy` from the agent record when the caller is a `fieldServiceAgent`, avoiding the `createdBy: req.user._id` mismatch.
+- `customer.controller.js`: Customer CRUD and self-service profile updates. `customerId` is now auto-generated (`CUST-000001` format) via `SequenceCounter`; no longer accepted from client input. Logged-in customers can update their own permitted portal fields and registered service assets via their linked `customerProfile`.
+- `serviceCall.controller.js`: Service call CRUD, status transitions, agent assignment, staged customer rating/review submission, create-time call number resolution fallback, and assignment metadata stamping for superUser queue handoff. Includes `getMyAssignedServiceCalls` — returns calls where `assignedAgent === req.user.fieldServiceAgentProfile` for field agent self-access. `getEligibleUnassignedServiceCalls` and `selfAcceptServiceCall` resolve `businessCreatedBy` from the agent record when the caller is a `fieldServiceAgent`, avoiding the `createdBy: req.user._id` mismatch.
 - `quotation.controller.js`: Quotation creation, line items, status management.
 - `quotation.controller.js`: Quotation creation, line items, status management, and create-time pricing calculation (subtotal/VAT/total).
 - `quotation.controller.js`: Quotation creation, line items, status management, separated pricing calculation (parts/labour/consumables/travel), service-call shortcut quote creation, server-side labour-rate protection for non-super users, function-based travel-cost calculation (`distanceTravelledKm × ratePerKm + timeTravelledCost`) with call-out floor condition support, first-site-visit included assessment logic, procurement/delivery profit capture, 14-day default validity fallback, PDF generation, quote delivery endpoints (optional Email/WhatsApp/Telegram), and auto-conversion of approved quotations into in-progress service jobcards.
-- `invoice.controller.js`: Invoice generation from quotations, pro-forma workflow, payment tracking, PDF sharing, and public customer approval/rejection endpoints.
+- `invoice.controller.js`: Invoice generation from quotations, pro-forma workflow, payment tracking, automatic receipt metadata generation, staged billing feedback capture, PDF sharing, and public customer approval/rejection endpoints.
 - `equipment.controller.js`: Equipment/asset CRUD.
 
 ### Server Routes (`server/routes/`)

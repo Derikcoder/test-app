@@ -13,6 +13,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { getPostLoginRedirect } from './utils/authRedirect';
 
 const Register = lazy(() => import('./components/Register'));
 const Login = lazy(() => import('./components/Login'));
@@ -120,7 +121,16 @@ const AdminRoute = ({ children }) => {
  */
 const ProfileRoute = () => {
   const { user } = useAuth();
+
   if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile />;
+
+  if (user?.role === 'customer') {
+    const redirectPath = getPostLoginRedirect(user);
+    if (redirectPath !== '/profile') {
+      return <Navigate to={redirectPath} replace />;
+    }
+  }
+
   return <UserProfile />;
 };
 

@@ -22,7 +22,11 @@ import Customer from '../models/Customer.model.js';
 import ProfileLinkAudit from '../models/ProfileLinkAudit.model.js';
 import RegistrationOverrideAudit from '../models/RegistrationOverrideAudit.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
-import { sendPasswordResetEmail, sendAgentWelcomeEmail } from '../utils/emailService.js';
+import {
+  sendPasswordResetEmail,
+  sendAgentWelcomeEmail,
+  sendCustomerWelcomeEmail,
+} from '../utils/emailService.js';
 
 const ROLE_TYPES = ['superAdmin', 'businessAdministrator', 'fieldServiceAgent', 'customer'];
 const PASSKEY_REQUIRED_ROLES = ['businessAdministrator', 'fieldServiceAgent'];
@@ -31,6 +35,7 @@ const PASSKEY_EXPIRY_MS = 60 * 1000;
 const RENEWAL_REQUEST_EXPIRY_MS = 15 * 60 * 1000;
 
 const generateOneTimePasskey = () => String(crypto.randomInt(1000000, 10000000));
+const getClientLoginUrl = () => `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`;
 
 const LINK_CONFIG = {
   fieldServiceAgent: {
@@ -1071,10 +1076,12 @@ export const adminProvisionUser = async (req, res) => {
       return res.status(400).json({ message: `A user with this ${field} already exists` });
     }
 
+    const temporaryAccessKey = role === 'customer' ? generateOneTimePasskey() : null;
+
     const newUser = await User.create({
       userName,
       email: normalizedEmail,
-      password: crypto.randomBytes(32).toString('hex'), // random unguessable — agent sets own password via welcome email
+      password: temporaryAccessKey || crypto.randomBytes(32).toString('hex'), // customer gets a one-time login key; other roles use secure set-password invite
       role,
       isSuperUser: false,
       ...profileLink,
@@ -1088,7 +1095,7 @@ export const adminProvisionUser = async (req, res) => {
       await Customer.findByIdAndUpdate(profileId, { userAccount: newUser._id });
     }
 
-    // Generate a one-time set-password token and email it to the agent
+    // Generate a one-time set-password token and email it to the provisioned user
     const resetToken = newUser.generatePasswordResetToken();
     await newUser.save();
 
@@ -1099,6 +1106,18 @@ export const adminProvisionUser = async (req, res) => {
         ? `${profile.firstName} ${profile.lastName}`
         : undefined;
       await sendAgentWelcomeEmail({ to: normalizedEmail, agentName, userName, resetUrl });
+    } else {
+      const customerName = profile.contactFirstName && profile.contactLastName
+        ? `${profile.contactFirstName} ${profile.contactLastName}`
+        : profile.businessName;
+      await sendCustomerWelcomeEmail({
+        to: normalizedEmail,
+        customerName,
+        userName,
+        resetUrl,
+        temporaryAccessKey,
+        loginUrl: getClientLoginUrl(),
+      });
     }
 
     logInfo('Admin provisioned user account', {
@@ -1115,6 +1134,8 @@ export const adminProvisionUser = async (req, res) => {
       userName: newUser.userName,
       email: newUser.email,
       role: newUser.role,
+      temporaryAccessKey,
+      loginUrl: role === 'customer' ? getClientLoginUrl() : null,
     });
   } catch (error) {
     logError('Admin provision user error:', error);

@@ -15,8 +15,10 @@ import {
   deleteCustomerSite,
 } from '../../../controllers/customer.controller.js';
 import Customer from '../../../models/Customer.model.js';
+import User from '../../../models/User.model.js';
 
 jest.mock('../../../models/Customer.model.js');
+jest.mock('../../../models/User.model.js');
 jest.mock('../../../utils/sequence.util.js', () => ({
   getNextSequenceValue: jest.fn().mockResolvedValue(1),
   formatSequenceId: jest.fn().mockReturnValue('CUST-000001'),
@@ -138,6 +140,17 @@ describe('Customer Controller', () => {
       expect(res.json).toHaveBeenCalledWith(mockBusinessCustomer);
     });
 
+    test('allows a customer user to fetch their own linked profile', async () => {
+      req.params.id = 'customer-2';
+      req.user = { _id: 'customer-user-1', role: 'customer', customerProfile: 'customer-2' };
+      Customer.findOne = jest.fn().mockResolvedValue(mockResidentialCustomer);
+
+      await getCustomerById(req, res);
+
+      expect(Customer.findOne).toHaveBeenCalledWith({ _id: 'customer-2' });
+      expect(res.json).toHaveBeenCalledWith(mockResidentialCustomer);
+    });
+
     test('returns 404 when customer not found', async () => {
       req.params.id = 'nonexistent';
       Customer.findOne = jest.fn().mockResolvedValue(null);
@@ -155,6 +168,47 @@ describe('Customer Controller', () => {
       await getCustomerById(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('updateCustomer', () => {
+    test('allows a logged-in customer to update their own editable profile fields', async () => {
+      req.params.id = 'customer-2';
+      req.user = { _id: 'customer-user-1', role: 'customer', customerProfile: 'customer-2' };
+      req.body = {
+        phoneNumber: '0821112222',
+        alternatePhone: '0823334444',
+        physicalAddress: '99 Updated Avenue, Pretoria',
+        email: 'updated@example.com',
+      };
+
+      const save = jest.fn().mockResolvedValue({
+        ...mockResidentialCustomer,
+        ...req.body,
+      });
+
+      Customer.findOne = jest.fn().mockResolvedValue({
+        ...mockResidentialCustomer,
+        save,
+      });
+
+      User.findOne = jest.fn().mockResolvedValue({
+        email: 'bob@example.com',
+        phoneNumber: '0800005678',
+        physicalAddress: '45 Oak Ave, Cape Town',
+        save: jest.fn().mockResolvedValue(true),
+      });
+
+      await updateCustomer(req, res);
+
+      expect(Customer.findOne).toHaveBeenCalledWith({ _id: 'customer-2' });
+      expect(save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phoneNumber: '0821112222',
+          email: 'updated@example.com',
+        })
+      );
     });
   });
 
