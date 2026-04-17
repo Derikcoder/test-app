@@ -35,6 +35,8 @@ This is an enterprise-grade field service management application built with the 
 - 🛡️ Field-level permissions with immutable + write-once legal identifier policies
 - 🔒 Secure password hashing with bcrypt
 - 🚪 Customer onboarding journey with temporary secret access keys and login prefill after quote/pro-forma approval
+- 🔑 Forgot-password recovery path for onboarded customers who lose or exhaust a temporary access key
+- 🧾 In-portal password update from the authenticated customer self-service profile
 
 ### Customer Management
 - 📝 Customer intake with detailed information capture
@@ -42,8 +44,11 @@ This is an enterprise-grade field service management application built with the 
 - 📍 Address autocomplete and geolocation
 - 📊 Service request tracking per customer
 - 👤 Authenticated customer self-service profile editing for permitted personal/contact fields
+- 🧭 Onboarding address normalization so street, suburb, city, province, and postal code remain cleanly mapped in the portal
 - 🛠️ Customer-managed machine and service-asset registration for future work readiness
+- 🏷️ Auto-detected machine/serviceable asset summaries from completed service history with name, brand, model, category, and service totals
 - 📚 Grouped portal history showing services rendered by category, field service agent, and latest customer review snapshot
+- 🔎 Machine-specific drill-down page listing all services rendered on a selected asset
 
 ### Field Agent Management
 - 👨‍🔧 Complete agent profile management (CRUD operations)

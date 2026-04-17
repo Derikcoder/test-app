@@ -60,8 +60,13 @@ const formatAddress = (address = {}) => {
   ].filter(Boolean).join(', ');
 };
 
+const hasAddressDetails = (address = {}) => Object.values(address || {}).some((value) => String(value || '').trim());
+
 const normalizeAddress = (addressDetails, fallback = '') => {
-  const normalized = addressDetails && typeof addressDetails === 'object' ? addressDetails : {};
+  const rawAddress = addressDetails && typeof addressDetails === 'object' ? addressDetails : {};
+  const normalized = Object.fromEntries(
+    Object.entries(rawAddress).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+  );
   const formatted = formatAddress(normalized);
 
   return {
@@ -258,14 +263,26 @@ export const updateCustomer = async (req, res) => {
 
     if (req.body.physicalAddressDetails !== undefined || req.body.physicalAddress !== undefined) {
       const normalizedPhysicalAddress = normalizeAddress(req.body.physicalAddressDetails, req.body.physicalAddress);
-      customer.physicalAddress = normalizedPhysicalAddress.formatted;
-      customer.physicalAddressDetails = normalizedPhysicalAddress.details;
+
+      if (normalizedPhysicalAddress.formatted) {
+        customer.physicalAddress = normalizedPhysicalAddress.formatted;
+      }
+
+      if (hasAddressDetails(normalizedPhysicalAddress.details)) {
+        customer.physicalAddressDetails = normalizedPhysicalAddress.details;
+      }
     }
 
     if (req.body.billingAddressDetails !== undefined || req.body.billingAddress !== undefined) {
       const normalizedBillingAddress = normalizeAddress(req.body.billingAddressDetails, req.body.billingAddress);
-      customer.billingAddress = normalizedBillingAddress.formatted;
-      customer.billingAddressDetails = normalizedBillingAddress.details;
+
+      if (normalizedBillingAddress.formatted) {
+        customer.billingAddress = normalizedBillingAddress.formatted;
+      }
+
+      if (hasAddressDetails(normalizedBillingAddress.details)) {
+        customer.billingAddressDetails = normalizedBillingAddress.details;
+      }
     }
 
     if (req.body.sites !== undefined) {

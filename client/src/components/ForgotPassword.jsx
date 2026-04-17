@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
 /**
@@ -35,8 +35,9 @@ import api from '../api/axios';
  */
 const ForgotPassword = () => {
  const navigate = useNavigate();
+ const location = useLocation();
  
- const [email, setEmail] = useState('');
+ const [email, setEmail] = useState(location.state?.email || '');
  const [message, setMessage] = useState('');
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false);
@@ -86,6 +87,9 @@ const ForgotPassword = () => {
     <h1 className="glass-heading">Forgot Password?</h1>
     <p className="glass-heading-secondary">
      Enter your email to receive a password reset link
+    </p>
+    <p className="mb-5 text-sm text-cyan-100/80">
+     Use this if your temporary customer access key was lost, expired, or already used.
     </p>
 
     {/* Success Message */}

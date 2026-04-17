@@ -150,10 +150,26 @@ const buildRecipientSnapshotFromServiceCall = (serviceCall) => {
   };
 };
 
-const buildAddressFromBookingRequest = (serviceCall) => {
+const buildAddressDetailsFromBookingRequest = (serviceCall) => {
   const administrativeAddress = serviceCall?.bookingRequest?.administrativeAddress || {};
+
+  return {
+    streetAddress: String(administrativeAddress.streetAddress || '').trim(),
+    complexName: String(administrativeAddress.complexName || '').trim(),
+    siteAddressDetail: String(administrativeAddress.siteAddressDetail || '').trim(),
+    suburb: String(administrativeAddress.suburb || '').trim(),
+    cityDistrict: String(administrativeAddress.cityDistrict || '').trim(),
+    province: String(administrativeAddress.province || '').trim(),
+    postalCode: String(administrativeAddress.postalCode || '').trim(),
+  };
+};
+
+const buildAddressFromBookingRequest = (serviceCall) => {
+  const administrativeAddress = buildAddressDetailsFromBookingRequest(serviceCall);
   return [
     administrativeAddress.streetAddress,
+    administrativeAddress.complexName,
+    administrativeAddress.siteAddressDetail,
     administrativeAddress.suburb,
     administrativeAddress.cityDistrict,
     administrativeAddress.province,
@@ -1402,6 +1418,7 @@ export const acceptPublicQuotation = async (req, res) => {
           || linkedServiceCallDoc?.bookingRequest?.contact?.contactPhone
           || 'Phone pending';
         const physicalAddress = buildAddressFromBookingRequest(linkedServiceCallDoc);
+        const physicalAddressDetails = buildAddressDetailsFromBookingRequest(linkedServiceCallDoc);
 
         linkedCustomer = await Customer.create({
           customerType,
@@ -1414,9 +1431,10 @@ export const acceptPublicQuotation = async (req, res) => {
           phoneNumber,
           customerId,
           physicalAddress,
+          physicalAddressDetails,
           accountStatus: 'active',
           sites: ['headOffice', 'branch', 'franchise', 'singleBusiness'].includes(customerType)
-            ? [{ siteName: 'Primary Site', address: physicalAddress }]
+            ? [{ siteName: 'Primary Site', address: physicalAddress, addressDetails: physicalAddressDetails }]
             : [],
           createdBy: quotation.createdBy,
         });

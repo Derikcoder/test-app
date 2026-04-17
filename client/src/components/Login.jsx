@@ -162,9 +162,14 @@ const Login = () => {
                             <p className="font-semibold">Customer onboarding ready</p>
                             <p className="mt-1 text-cyan-100/90">{infoMessage}</p>
                             {location.state?.password ? (
-                                <p className="mt-2 font-mono text-base font-bold tracking-[0.2em] text-yellow-200">
-                                    {location.state.password}
-                                </p>
+                                <>
+                                    <p className="mt-2 font-mono text-base font-bold tracking-[0.2em] text-yellow-200">
+                                        {location.state.password}
+                                    </p>
+                                    <p className="mt-2 text-cyan-100/90">
+                                        If you lose this temporary key, use Forgot Password with the same email to set a new permanent password.
+                                    </p>
+                                </>
                             ) : null}
                         </div>
                     )}
@@ -199,7 +204,9 @@ const Login = () => {
                                 <label htmlFor="password" className="glass-form-label mb-0">Password</label>
                                 <button
                                     type="button"
-                                    onClick={() => navigate('/forgot-password')}
+                                    onClick={() => navigate('/forgot-password', {
+                                        state: formData.email ? { email: formData.email } : undefined,
+                                    })}
                                     className="text-sm font-semibold transition-colors duration-200"
                                     style={{ color: 'var(--secondary)' }}
                                 >

@@ -105,7 +105,7 @@ function QuotationApprovalPage() {
           state: {
             email: response.data.portalUser.email,
             password: response.data.portalUser.temporaryAccessKey || '',
-            infoMessage: 'Your customer portal is ready. Use the temporary secret access key below as your password, then update it from your profile after login.',
+            infoMessage: 'Your customer portal is ready. Use the temporary secret access key below as your password. If you lose it or log out before changing it, use Forgot Password with the same email to set a new one.',
           },
         });
       }

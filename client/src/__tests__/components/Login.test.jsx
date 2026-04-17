@@ -18,13 +18,15 @@ vi.mock('../../api/axios', () => ({
   },
 }));
 
-// Mock useNavigate
+// Mock routing hooks
 const mockNavigate = vi.fn();
+const mockLocation = { state: null };
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useLocation: () => mockLocation,
   };
 });
 
@@ -43,6 +45,7 @@ describe('Login Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mockLocation.state = null;
   });
 
   describe('Rendering', () => {
@@ -212,6 +215,32 @@ describe('Login Component', () => {
   });
 
   describe('User Experience', () => {
+    it('should carry the typed email into forgot-password recovery', () => {
+      renderLogin();
+
+      const emailInput = screen.getByLabelText(/email/i);
+      fireEvent.change(emailInput, { target: { value: 'customer@example.com' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /forgot password\?/i }));
+
+      expect(mockNavigate).toHaveBeenCalledWith('/forgot-password', {
+        state: { email: 'customer@example.com' },
+      });
+    });
+
+    it('should explain the forgot-password fallback for temporary customer access keys', () => {
+      mockLocation.state = {
+        email: 'customer@example.com',
+        password: 'TEMP-123456',
+        infoMessage: 'Use your temporary access key to sign in.',
+      };
+
+      renderLogin();
+
+      expect(screen.getByRole('button', { name: /forgot password\?/i })).toBeInTheDocument();
+      expect(screen.getByText(/if you lose this temporary key, use forgot password/i)).toBeInTheDocument();
+    });
+
     it('should clear error message when user starts typing', async () => {
       const errorMessage = 'Invalid email or password';
       vi.mocked(api.post).mockRejectedValueOnce({
