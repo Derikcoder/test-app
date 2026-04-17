@@ -16,6 +16,10 @@ const CUSTOMER_TYPE_ROUTES = {
   franchise: 'franchise',
 };
 
+export function getCustomerRouteSegment(customerType) {
+  return CUSTOMER_TYPE_ROUTES[customerType] || null;
+}
+
 /**
  * Determine the post-login landing path for a user.
  *

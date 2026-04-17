@@ -20,6 +20,8 @@ vi.mock('../../api/axios', () => ({
   },
 }));
 
+const mockUpdateUser = vi.fn();
+
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
     user: {
@@ -27,7 +29,9 @@ vi.mock('../../context/AuthContext', () => ({
       role: 'customer',
       token: 'customer-token-1',
       customerProfile: 'cust-123',
+      email: 'jamie@example.com',
     },
+    updateUser: mockUpdateUser,
   }),
 }));
 
@@ -83,8 +87,17 @@ describe('ResidentialCustomer', () => {
             customer: 'cust-123',
             serviceType: 'Electrical Repair',
             status: 'completed',
+            title: 'Generator inspection and repair',
+            description: 'Performed full service on the standby generator.',
             createdAt: '2026-04-12T08:00:00.000Z',
             assignedAgent: { firstName: 'Erik', lastName: 'Smit', employeeId: 'AGT-101' },
+            bookingRequest: {
+              generatorDetails: {
+                siteName: 'Main Office Generator',
+                generatorMakeModel: 'Perkins',
+                machineModelNumber: '4008TAG2A',
+              },
+            },
             feedbackHistory: [
               {
                 stage: 'invoice',
@@ -160,6 +173,26 @@ describe('ResidentialCustomer', () => {
     expect(await screen.findByText(/erik smit/i)).toBeInTheDocument();
   });
 
+  it('surfaces serviced machine details in the customer asset panel and links to its history', async () => {
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    expect((await screen.findAllByText(/main office generator/i)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/perkins/i)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/4008tag2a/i)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/generator/i)).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /view 1 service/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringMatching(/\/customers\/residential\/cust-123\/assets\//),
+      expect.objectContaining({ state: expect.any(Object) })
+    );
+  });
+
   it('allows the customer to edit and save their own profile information', async () => {
     vi.mocked(api.put).mockResolvedValueOnce({
       data: {
@@ -200,6 +233,162 @@ describe('ResidentialCustomer', () => {
         { headers: { Authorization: 'Bearer customer-token-1' } }
       );
     });
+  });
+
+  it('splits a flat onboarding address into the correct editable fields', async () => {
+    vi.mocked(api.get).mockImplementation((url) => {
+      if (url === '/customers/cust-123') {
+        return Promise.resolve({
+          data: {
+            _id: 'cust-123',
+            customerId: 'CUST-001',
+            customerType: 'residential',
+            accountStatus: 'active',
+            contactFirstName: 'Jamie',
+            contactLastName: 'Customer',
+            email: 'jamie@example.com',
+            phoneNumber: '0821234567',
+            alternatePhone: '0827654321',
+            physicalAddress: '547 Makou Straat, Monument Park, Pretoria, Gauteng, 0182',
+            notes: '',
+            createdAt: '2026-04-01T08:00:00.000Z',
+            updatedAt: '2026-04-01T08:00:00.000Z',
+          },
+        });
+      }
+
+      if (url === '/service-calls') return Promise.resolve({ data: [] });
+      if (url === '/quotations?customer=cust-123') return Promise.resolve({ data: [] });
+      if (url === '/invoices?customer=cust-123') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /edit profile/i }));
+
+    expect(screen.getByLabelText(/street address/i)).toHaveValue('547 Makou Straat');
+    expect(screen.getByLabelText(/suburb/i)).toHaveValue('Monument Park');
+    expect(screen.getByLabelText(/city \/ district/i)).toHaveValue('Pretoria');
+    expect(screen.getByLabelText(/province/i)).toHaveValue('Gauteng');
+    expect(screen.getByLabelText(/postal code/i)).toHaveValue('0182');
+  });
+
+  it('preserves the onboarding address when the profile only has a flat physicalAddress value', async () => {
+    vi.mocked(api.get).mockImplementation((url) => {
+      if (url === '/customers/cust-123') {
+        return Promise.resolve({
+          data: {
+            _id: 'cust-123',
+            customerId: 'CUST-001',
+            customerType: 'residential',
+            accountStatus: 'active',
+            contactFirstName: 'Jamie',
+            contactLastName: 'Customer',
+            email: 'jamie@example.com',
+            phoneNumber: '0821234567',
+            alternatePhone: '0827654321',
+            physicalAddress: '12 Main Street, Pretoria',
+            notes: '',
+            createdAt: '2026-04-01T08:00:00.000Z',
+            updatedAt: '2026-04-01T08:00:00.000Z',
+          },
+        });
+      }
+
+      if (url === '/service-calls') return Promise.resolve({ data: [] });
+      if (url === '/quotations?customer=cust-123') return Promise.resolve({ data: [] });
+      if (url === '/invoices?customer=cust-123') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: [] });
+    });
+
+    vi.mocked(api.put).mockResolvedValueOnce({
+      data: {
+        _id: 'cust-123',
+        customerId: 'CUST-001',
+        customerType: 'residential',
+        accountStatus: 'active',
+        contactFirstName: 'Jamie',
+        contactLastName: 'Customer',
+        email: 'jamie@example.com',
+        phoneNumber: '0820000000',
+        physicalAddress: '12 Main Street, Pretoria',
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /edit profile/i }));
+    fireEvent.change(screen.getByLabelText(/^phone$/i), { target: { value: '0820000000' } });
+    fireEvent.click(screen.getByRole('button', { name: /save profile/i }));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        '/customers/cust-123',
+        expect.objectContaining({
+          physicalAddress: '12 Main Street, Pretoria',
+          phoneNumber: '0820000000',
+        }),
+        { headers: { Authorization: 'Bearer customer-token-1' } }
+      );
+    });
+  });
+
+  it('allows the customer to update their password from the service profile screen', async () => {
+    vi.mocked(api.put)
+      .mockResolvedValueOnce({
+        data: {
+          _id: 'cust-123',
+          customerId: 'CUST-001',
+          customerType: 'residential',
+          accountStatus: 'active',
+          contactFirstName: 'Jamie',
+          contactLastName: 'Customer',
+          email: 'jamie@example.com',
+          phoneNumber: '0821234567',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          token: 'customer-token-2',
+          email: 'jamie@example.com',
+          role: 'customer',
+          customerProfile: 'cust-123',
+        },
+      });
+
+    render(
+      <BrowserRouter>
+        <ResidentialCustomer />
+      </BrowserRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /edit profile/i }));
+
+    fireEvent.change(screen.getByLabelText(/^new password$/i), { target: { value: 'newsecure123' } });
+    fireEvent.change(screen.getByLabelText(/^confirm new password$/i), { target: { value: 'newsecure123' } });
+    fireEvent.click(screen.getByRole('button', { name: /save profile/i }));
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        '/auth/profile',
+        expect.objectContaining({
+          email: 'jamie@example.com',
+          password: 'newsecure123',
+        }),
+        { headers: { Authorization: 'Bearer customer-token-1' } }
+      );
+    });
+
+    expect(mockUpdateUser).toHaveBeenCalledWith(expect.objectContaining({ token: 'customer-token-2' }));
   });
 
   it('allows the customer to submit the required deposit from within the app', async () => {

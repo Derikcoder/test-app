@@ -32,6 +32,7 @@ const BranchCustomer = lazy(() => import('./components/BranchCustomer'));
 const FranchiseCustomer = lazy(() => import('./components/FranchiseCustomer'));
 const SingleBusinessCustomer = lazy(() => import('./components/SingleBusinessCustomer'));
 const ResidentialCustomer = lazy(() => import('./components/ResidentialCustomer'));
+const CustomerAssetHistoryPage = lazy(() => import('./components/CustomerAssetHistoryPage'));
 const ServiceCalls = lazy(() => import('./components/ServiceCalls'));
 const ServiceCallRegistration = lazy(() => import('./components/ServiceCallRegistration'));
 const Quotations = lazy(() => import('./components/Quotations'));
@@ -262,6 +263,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ResidentialCustomer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/:profileType/:id/assets/:assetKey"
+              element={
+                <ProtectedRoute>
+                  <CustomerAssetHistoryPage />
                 </ProtectedRoute>
               }
             />

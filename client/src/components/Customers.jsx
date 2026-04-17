@@ -351,7 +351,7 @@ const Customers = () => {
          <p className="mt-2 text-emerald-300">Use this as the customer’s temporary password on the login screen.</p>
         </div>
        ) : null}
-       <p className="mt-2 text-emerald-300">The customer can sign in immediately and then change their password from their profile.</p>
+       <p className="mt-2 text-emerald-300">If the customer logs out before setting a permanent password, they can recover access from the Forgot Password screen using the same email address.</p>
       </div>
      ) : (
       <form onSubmit={handleProvisionSubmit} className="space-y-4">
@@ -405,7 +405,7 @@ const Customers = () => {
           state: {
            email: provisionModal.email,
            password: provisionAccessKey,
-           infoMessage: 'Use this temporary secret access key to sign in, then update the password from the customer profile.',
+           infoMessage: 'Use this temporary secret access key to sign in. If it is lost or already used, choose Forgot Password to set a permanent password with this email address.',
           },
          })}
          className="px-5 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold"

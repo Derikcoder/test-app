@@ -4,6 +4,10 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { deriveCustomerAssets } from '../utils/customerAssets';
+import { getCustomerRouteSegment } from '../utils/authRedirect';
 import api from '../api/axios';
 
 const formatDate = (value) => {
@@ -42,24 +46,102 @@ const extractNotesText = (rawNotes) => {
   return String(rawNotes || '');
 };
 
-const buildInitialFormData = (customer) => ({
-  contactFirstName: customer?.contactFirstName || '',
-  contactLastName: customer?.contactLastName || '',
-  email: customer?.email || '',
-  phoneNumber: customer?.phoneNumber || '',
-  alternatePhone: customer?.alternatePhone || '',
-  streetAddress: customer?.physicalAddressDetails?.streetAddress || '',
-  complexName: customer?.physicalAddressDetails?.complexName || '',
-  siteAddressDetail: customer?.physicalAddressDetails?.siteAddressDetail || '',
-  suburb: customer?.physicalAddressDetails?.suburb || '',
-  cityDistrict: customer?.physicalAddressDetails?.cityDistrict || '',
-  province: customer?.physicalAddressDetails?.province || '',
-  postalCode: customer?.physicalAddressDetails?.postalCode || '',
-  notes: extractNotesText(customer?.notes),
-  serviceAssets: Array.isArray(customer?.serviceAssets) && customer.serviceAssets.length > 0
-    ? customer.serviceAssets.map((asset) => ({ ...EMPTY_ASSET, ...asset }))
-    : [{ ...EMPTY_ASSET }],
-});
+const hasAddressDetails = (address = {}) => Object.values(address || {}).some((value) => String(value || '').trim());
+
+const parseFlatAddress = (address = '') => {
+  const parsed = {
+    streetAddress: '',
+    complexName: '',
+    siteAddressDetail: '',
+    suburb: '',
+    cityDistrict: '',
+    province: '',
+    postalCode: '',
+  };
+
+  const rawParts = String(address)
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (rawParts.length === 0) return parsed;
+
+  const unlabeledParts = [];
+
+  rawParts.forEach((part) => {
+    if (/^complex\/industrial park\s*:/i.test(part)) {
+      parsed.complexName = part.replace(/^complex\/industrial park\s*:/i, '').trim();
+      return;
+    }
+
+    if (/^unit\/site detail\s*:/i.test(part)) {
+      parsed.siteAddressDetail = part.replace(/^unit\/site detail\s*:/i, '').trim();
+      return;
+    }
+
+    unlabeledParts.push(part);
+  });
+
+  if (unlabeledParts.length > 0) {
+    const maybePostal = unlabeledParts[unlabeledParts.length - 1];
+    if (/^(postal code\s*:)?\s*[A-Za-z0-9 -]{3,10}$/i.test(maybePostal) && /\d/.test(maybePostal)) {
+      parsed.postalCode = maybePostal.replace(/^postal code\s*:/i, '').trim();
+      unlabeledParts.pop();
+    }
+  }
+
+  if (unlabeledParts.length === 1) {
+    parsed.streetAddress = unlabeledParts[0];
+  } else if (unlabeledParts.length === 2) {
+    [parsed.streetAddress, parsed.cityDistrict] = unlabeledParts;
+  } else if (unlabeledParts.length === 3) {
+    [parsed.streetAddress, parsed.cityDistrict, parsed.province] = unlabeledParts;
+  } else if (unlabeledParts.length >= 4) {
+    parsed.province = unlabeledParts[unlabeledParts.length - 1] || '';
+    parsed.cityDistrict = unlabeledParts[unlabeledParts.length - 2] || '';
+    parsed.suburb = unlabeledParts[unlabeledParts.length - 3] || '';
+    parsed.streetAddress = unlabeledParts.slice(0, -3).join(', ');
+  }
+
+  return parsed;
+};
+
+const buildInitialFormData = (customer) => {
+  const existingDetails = customer?.physicalAddressDetails || {};
+  const parsedFallback = parseFlatAddress(customer?.physicalAddress || '');
+  const mergedDetails = hasAddressDetails(existingDetails)
+    ? {
+        streetAddress: existingDetails?.streetAddress || parsedFallback.streetAddress,
+        complexName: existingDetails?.complexName || parsedFallback.complexName,
+        siteAddressDetail: existingDetails?.siteAddressDetail || parsedFallback.siteAddressDetail,
+        suburb: existingDetails?.suburb || parsedFallback.suburb,
+        cityDistrict: existingDetails?.cityDistrict || parsedFallback.cityDistrict,
+        province: existingDetails?.province || parsedFallback.province,
+        postalCode: existingDetails?.postalCode || parsedFallback.postalCode,
+      }
+    : parsedFallback;
+
+  return {
+    contactFirstName: customer?.contactFirstName || '',
+    contactLastName: customer?.contactLastName || '',
+    email: customer?.email || '',
+    phoneNumber: customer?.phoneNumber || '',
+    alternatePhone: customer?.alternatePhone || '',
+    streetAddress: mergedDetails.streetAddress || '',
+    complexName: mergedDetails.complexName || '',
+    siteAddressDetail: mergedDetails.siteAddressDetail || '',
+    suburb: mergedDetails.suburb || '',
+    cityDistrict: mergedDetails.cityDistrict || '',
+    province: mergedDetails.province || '',
+    postalCode: mergedDetails.postalCode || '',
+    notes: extractNotesText(customer?.notes),
+    password: '',
+    confirmPassword: '',
+    serviceAssets: Array.isArray(customer?.serviceAssets) && customer.serviceAssets.length > 0
+      ? customer.serviceAssets.map((asset) => ({ ...EMPTY_ASSET, ...asset }))
+      : [{ ...EMPTY_ASSET }],
+  };
+};
 
 const getAgentLabel = (call) => {
   const first = call?.assignedAgent?.firstName || '';
@@ -80,7 +162,11 @@ const normalizeAssets = (assets = []) => assets
     status: asset.status || 'active',
   }));
 
+const getServiceCountLabel = (count) => (count === 1 ? 'View 1 service' : `View ${count} services`);
+
 const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCalls = [], token, isOwnProfile }) => {
+  const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -136,6 +222,23 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
     }, {});
   }, [serviceCalls]);
 
+  const assetInventory = useMemo(() => deriveCustomerAssets(customer, serviceCalls), [customer, serviceCalls]);
+  const customerProfileSegment = getCustomerRouteSegment(customer?.customerType);
+
+  const handleOpenAssetHistory = (asset) => {
+    if (!customerProfileSegment || !asset?.assetKey) return;
+
+    navigate(
+      `/customers/${customerProfileSegment}/${customerId}/assets/${encodeURIComponent(asset.assetKey)}`,
+      {
+        state: {
+          asset,
+          returnPath: `/customers/${customerProfileSegment}/${customerId}`,
+        },
+      }
+    );
+  };
+
   const updateField = (field, value) => {
     setFormData((current) => ({ ...current, [field]: value }));
   };
@@ -164,6 +267,23 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
   };
 
   const handleSave = async () => {
+    const trimmedPassword = formData.password.trim();
+    const trimmedConfirmPassword = formData.confirmPassword.trim();
+
+    if (trimmedPassword || trimmedConfirmPassword) {
+      if (trimmedPassword.length < 6) {
+        setSaveError('Password must be at least 6 characters.');
+        setSaveMessage('');
+        return;
+      }
+
+      if (trimmedPassword !== trimmedConfirmPassword) {
+        setSaveError('Passwords do not match.');
+        setSaveMessage('');
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       setSaveError('');
@@ -182,29 +302,35 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
         return formData.notes;
       })();
 
+      const nextPhysicalAddressDetails = {
+        streetAddress: formData.streetAddress.trim(),
+        complexName: formData.complexName.trim(),
+        siteAddressDetail: formData.siteAddressDetail.trim(),
+        suburb: formData.suburb.trim(),
+        cityDistrict: formData.cityDistrict.trim(),
+        province: formData.province.trim(),
+        postalCode: formData.postalCode.trim(),
+      };
+
+      const physicalAddress = [
+        nextPhysicalAddressDetails.streetAddress,
+        nextPhysicalAddressDetails.complexName,
+        nextPhysicalAddressDetails.siteAddressDetail,
+        nextPhysicalAddressDetails.suburb,
+        [nextPhysicalAddressDetails.cityDistrict, nextPhysicalAddressDetails.province].filter(Boolean).join(', '),
+        nextPhysicalAddressDetails.postalCode,
+      ].filter(Boolean).join(', ') || customer?.physicalAddress || '';
+
       const payload = {
         contactFirstName: formData.contactFirstName.trim(),
         contactLastName: formData.contactLastName.trim(),
         email: formData.email.trim().toLowerCase(),
         phoneNumber: formData.phoneNumber.trim(),
         alternatePhone: formData.alternatePhone.trim(),
-        physicalAddress: [
-          formData.streetAddress,
-          formData.complexName,
-          formData.siteAddressDetail,
-          formData.suburb,
-          [formData.cityDistrict, formData.province].filter(Boolean).join(', '),
-          formData.postalCode,
-        ].filter(Boolean).join(', '),
-        physicalAddressDetails: {
-          streetAddress: formData.streetAddress.trim(),
-          complexName: formData.complexName.trim(),
-          siteAddressDetail: formData.siteAddressDetail.trim(),
-          suburb: formData.suburb.trim(),
-          cityDistrict: formData.cityDistrict.trim(),
-          province: formData.province.trim(),
-          postalCode: formData.postalCode.trim(),
-        },
+        physicalAddress,
+        physicalAddressDetails: hasAddressDetails(nextPhysicalAddressDetails)
+          ? nextPhysicalAddressDetails
+          : (customer?.physicalAddressDetails || {}),
         notes: normalizedNotes,
         serviceAssets: normalizeAssets(formData.serviceAssets),
       };
@@ -215,8 +341,37 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      if (trimmedPassword) {
+        const authResponse = await api.put(
+          '/auth/profile',
+          {
+            email: payload.email,
+            phoneNumber: payload.phoneNumber,
+            physicalAddress,
+            password: trimmedPassword,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (typeof updateUser === 'function') {
+          updateUser(authResponse.data);
+        }
+      } else if (typeof updateUser === 'function' && user) {
+        updateUser({
+          ...user,
+          email: payload.email,
+          phoneNumber: payload.phoneNumber,
+          physicalAddress,
+        });
+      }
+
       setCustomer(response.data);
-      setSaveMessage('Profile updated successfully. Your service preferences are now up to date.');
+      setFormData(buildInitialFormData(response.data));
+      setSaveMessage(
+        trimmedPassword
+          ? 'Profile and password updated successfully.'
+          : 'Profile updated successfully. Your service preferences are now up to date.'
+      );
       setIsEditing(false);
     } catch (error) {
       setSaveError(error.response?.data?.message || 'Unable to save your profile right now.');
@@ -233,12 +388,15 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
             <div>
               <p className="text-sm font-semibold text-cyan-100">Manage your service profile</p>
               <p className="mt-1 text-xs text-cyan-50/80">
-                Update your contact details, address, and machines you want serviced in future.
+                Update your contact details, address, machines, and account password in one place.
               </p>
             </div>
             <button
               type="button"
               onClick={() => {
+                if (isEditing) {
+                  setFormData(buildInitialFormData(customer));
+                }
                 setIsEditing((current) => !current);
                 setSaveError('');
                 setSaveMessage('');
@@ -346,6 +504,25 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
             </div>
           </div>
 
+          <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4">
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-amber-100">Change Password</p>
+              <p className="mt-1 text-xs text-amber-50/80">
+                Leave these fields blank if you do not want to change your login password today.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="password">
+                New Password
+                <input id="password" type="password" value={formData.password} onChange={(e) => updateField('password', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="confirmPassword">
+                Confirm New Password
+                <input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={(e) => updateField('confirmPassword', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              </label>
+            </div>
+          </div>
+
           <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="notes">
             Service Notes / Preferences
             <textarea id="notes" rows={3} value={formData.notes} onChange={(e) => updateField('notes', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
@@ -361,13 +538,42 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
         <p className="text-sm font-semibold text-white/90">Machines and Serviceable Assets</p>
-        {Array.isArray(customer?.serviceAssets) && customer.serviceAssets.length > 0 ? (
+        <p className="mt-1 text-xs text-white/50">Registered assets plus machines detected from the services already rendered for this customer.</p>
+        {assetInventory.length > 0 ? (
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-            {customer.serviceAssets.map((asset) => (
-              <div key={asset._id || `${asset.assetName}-${asset.model}`} className="rounded-xl border border-white/10 bg-slate-950/30 p-3">
-                <p className="text-sm font-semibold text-white/90">{asset.assetName}</p>
-                <p className="mt-1 text-xs text-white/60">{asset.category || 'general'}{asset.brand ? ` · ${asset.brand}` : ''}{asset.model ? ` · ${asset.model}` : ''}</p>
-                {asset.notes ? <p className="mt-2 text-xs text-white/50">{asset.notes}</p> : null}
+            {assetInventory.map((asset) => (
+              <div key={asset.assetKey} className="rounded-xl border border-white/10 bg-slate-950/30 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white/90">{asset.assetName || 'Serviced Machine'}</p>
+                    <p className="mt-1 text-xs text-white/50">{asset.notes || 'Machine record from your customer profile and completed service history.'}</p>
+                  </div>
+                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-100">
+                    {asset.status || 'active'}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-1 text-xs text-white/75">
+                  <p><span className="font-semibold text-white/90">Name:</span> {asset.assetName || '—'}</p>
+                  <p><span className="font-semibold text-white/90">Brand:</span> {asset.brand || '—'}</p>
+                  <p><span className="font-semibold text-white/90">Model:</span> {asset.model || '—'}</p>
+                  <p><span className="font-semibold text-white/90">Category:</span> {asset.category || 'General'}</p>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Total Services</p>
+                    <p className="text-lg font-extrabold text-white">{asset.serviceCount || 0}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAssetHistory(asset)}
+                    disabled={!asset.serviceCount}
+                    className="rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-900/70 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {asset.serviceCount ? getServiceCountLabel(asset.serviceCount) : 'No services yet'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -45,6 +45,32 @@
 
 ### Recent Changes
 
+#### Session: April 17, 2026 — Customer Recovery + Address Normalization + Machine History Drill-Down
+**Focus:** Finish the customer portal self-service loop so onboarded customers can safely recover access, update their password inside the portal, see cleanly mapped onboarding address fields, and view serviced machine history directly from their profile
+
+- ✅ Customer login and onboarding messaging now explicitly supports Forgot Password recovery when a temporary access key is lost or expires
+- ✅ Shared customer self-service panel now supports in-profile password updates for logged-in customers
+- ✅ Legacy flat onboarding addresses are now parsed into Street / Suburb / City / Province / Postal Code instead of collapsing into one field
+- ✅ Residential customer profile saves now preserve valid onboarding addresses instead of failing when structured address details were previously missing
+- ✅ Machines and Serviceable Assets now auto-surface serviced generator/machine records from completed service history, even when they were not manually captured beforehand
+- ✅ New machine history route lets the customer click Total Services and open a drill-down page listing all services rendered on that specific machine
+- ✅ Verified with targeted customer portal and backend controller regressions plus a clean frontend production build
+
+**Primary Files Updated:**
+- `client/src/components/CustomerSelfServicePanel.jsx`
+- `client/src/components/CustomerAssetHistoryPage.jsx` (NEW)
+- `client/src/components/Login.jsx`
+- `client/src/components/ForgotPassword.jsx`
+- `client/src/components/Customers.jsx`
+- `client/src/components/QuotationApprovalPage.jsx`
+- `client/src/components/InvoiceApprovalPage.jsx`
+- `client/src/utils/authRedirect.js`
+- `client/src/utils/customerAssets.js` (NEW)
+- `server/controllers/customer.controller.js`
+- `server/controllers/quotation.controller.js`
+- `client/src/__tests__/components/ResidentialCustomer.test.jsx`
+- `server/tests/unit/controllers/customer.controller.test.js`
+
 #### Session: April 16, 2026 — Customer Self-Service Portal + Receipts + Staged Reviews
 **Focus:** Mature the customer portal into a true self-service workspace with editable profile data, registered machines/assets, grouped service history, receipt proof-of-payment, and satisfaction tracking across the quote-to-invoice journey
 

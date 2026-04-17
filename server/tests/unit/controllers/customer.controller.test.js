@@ -364,6 +364,34 @@ describe('Customer Controller', () => {
       expect(res.json).toHaveBeenCalled();
     });
 
+    test('preserves the existing residential physical address when legacy onboarding data has no structured address fields', async () => {
+      req.params.id = 'customer-2';
+      req.user = { _id: 'customer-user-1', role: 'customer', customerProfile: 'customer-2' };
+      req.body = {
+        phoneNumber: '0821112222',
+        physicalAddressDetails: {},
+      };
+
+      const customerInstance = {
+        ...mockResidentialCustomer,
+        physicalAddressDetails: {},
+        save: jest.fn().mockImplementation(async function saveCustomer() {
+          return this;
+        }),
+      };
+
+      Customer.findOne = jest.fn().mockResolvedValue(customerInstance);
+      User.findOne = jest.fn().mockResolvedValue(null);
+
+      await updateCustomer(req, res);
+
+      expect(customerInstance.physicalAddress).toBe('45 Oak Ave, Cape Town');
+      expect(customerInstance.save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        physicalAddress: '45 Oak Ave, Cape Town',
+      }));
+    });
+
     test('returns 404 when customer not found', async () => {
       req.params.id = 'nonexistent';
       req.body = { email: 'new@example.com' };
