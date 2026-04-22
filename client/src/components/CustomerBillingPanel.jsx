@@ -108,6 +108,25 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
     }));
   };
 
+  const downloadReceipt = async (invoice) => {
+    try {
+      const res = await api.get(`/invoices/${invoice._id}/receipt/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `POP-${invoice.invoiceNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError('Unable to download receipt. Please try again.');
+    }
+  };
+
   const getOutstandingBalance = (invoice) => {
     const explicitBalance = Number(invoice?.balance);
     if (Number.isFinite(explicitBalance) && explicitBalance >= 0) {
@@ -251,7 +270,16 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                   ) : null}
                   {Array.isArray(invoice.receipts) && invoice.receipts.length > 0 ? (
                     <div className="mt-3 rounded-lg border border-emerald-400/20 bg-emerald-500/10 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Receipts</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">Receipts</p>
+                        <button
+                          type="button"
+                          onClick={() => downloadReceipt(invoice)}
+                          className="rounded-md border border-emerald-600/50 bg-emerald-900/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-200 hover:bg-emerald-800/70 transition-colors"
+                        >
+                          Download POP
+                        </button>
+                      </div>
                       <div className="mt-2 space-y-1">
                         {invoice.receipts.slice().reverse().slice(0, 3).map((receipt) => (
                           <div key={receipt.receiptNumber} className="text-xs text-emerald-50/90">

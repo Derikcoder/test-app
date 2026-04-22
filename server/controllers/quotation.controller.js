@@ -705,7 +705,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       terms,
       notes,
       autoResolutionSnapshot: autoResolution,
-      createdBy: req.user._id,
+      createdBy: ownerContextUserId,
     });
 
     if (quotation.customer) {

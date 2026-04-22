@@ -4,6 +4,7 @@
  */
 
 import {
+  createFinalInvoiceFromServiceCall,
   finalizeInvoice,
   getInvoices,
   getSharedInvoiceDetails,
@@ -13,11 +14,13 @@ import {
   upsertProFormaInvoiceFromServiceCall,
 } from '../../../controllers/invoice.controller.js';
 import Invoice from '../../../models/Invoice.model.js';
+import Quotation from '../../../models/Quotation.model.js';
 import ServiceCall from '../../../models/ServiceCall.model.js';
 import User from '../../../models/User.model.js';
 import { sendInvoiceDocumentEmail } from '../../../utils/emailService.js';
 
 jest.mock('../../../models/Invoice.model.js');
+jest.mock('../../../models/Quotation.model.js');
 jest.mock('../../../models/ServiceCall.model.js');
 jest.mock('../../../models/User.model.js');
 jest.mock('../../../utils/emailService.js', () => ({
@@ -122,8 +125,121 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         expect.objectContaining({
           serviceCall: 'call-123',
           customer: 'cust-123',
+          createdBy: 'owner-1',
           paymentTerms: 30,
           dueDate: expect.any(Date),
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    test('preserves owner context when an assigned agent creates a pro-forma from an admin-owned call', async () => {
+      req.params = { serviceCallId: 'call-200' };
+      req.user = { _id: 'agent-user-1', role: 'fieldServiceAgent', fieldServiceAgentProfile: 'agent-profile-1' };
+
+      const linkedQuotation = {
+        _id: 'quote-200',
+        createdBy: 'owner-1',
+        customer: 'cust-200',
+      };
+
+      const serviceCall = {
+        _id: 'call-200',
+        callNumber: 'SC-000200',
+        title: 'Generator inspection',
+        description: 'Agent follow-up visit',
+        serviceType: 'Mechanical',
+        scheduledDate: new Date('2026-04-16T10:00:00.000Z'),
+        customer: { _id: 'cust-200' },
+        quotation: linkedQuotation,
+        createdBy: 'owner-1',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      const createdInvoice = {
+        _id: 'invoice-200',
+        invoiceNumber: 'INV-000200',
+      };
+
+      const serviceCallQuery = { populate: jest.fn() };
+      serviceCallQuery.populate
+        .mockReturnValueOnce(serviceCallQuery)
+        .mockReturnValueOnce(serviceCallQuery)
+        .mockReturnValueOnce(Promise.resolve(serviceCall));
+
+      ServiceCall.findOne = jest.fn().mockReturnValue(serviceCallQuery);
+      Quotation.findOne = jest.fn().mockResolvedValue(linkedQuotation);
+      Invoice.findOne = jest.fn()
+        .mockReturnValueOnce(buildPopulateQuery(null))
+        .mockReturnValueOnce(buildPopulateQuery(createdInvoice));
+      Invoice.create = jest.fn().mockResolvedValue(createdInvoice);
+
+      await upsertProFormaInvoiceFromServiceCall(req, res);
+
+      expect(Quotation.findOne).toHaveBeenCalledWith({ _id: 'quote-200', createdBy: 'owner-1' });
+      expect(Invoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serviceCall: 'call-200',
+          customer: 'cust-200',
+          createdBy: 'owner-1',
+        })
+      );
+    });
+  });
+
+  describe('createFinalInvoiceFromServiceCall', () => {
+    test('preserves owner context when an assigned agent creates a final invoice from an admin-owned call', async () => {
+      req.params = { serviceCallId: 'call-300' };
+      req.user = { _id: 'agent-user-1', role: 'fieldServiceAgent', fieldServiceAgentProfile: 'agent-profile-1' };
+
+      const linkedQuotation = {
+        _id: 'quote-300',
+        createdBy: 'owner-1',
+        customer: 'cust-300',
+        serviceType: 'Mechanical',
+      };
+
+      const serviceCall = {
+        _id: 'call-300',
+        callNumber: 'SC-000300',
+        title: 'Generator overhaul',
+        description: 'Final invoice test',
+        serviceType: 'Mechanical',
+        completedDate: new Date('2026-04-16T10:00:00.000Z'),
+        customer: { _id: 'cust-300' },
+        quotation: linkedQuotation,
+        createdBy: 'owner-1',
+        equipment: null,
+        siteId: null,
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      const createdInvoice = {
+        _id: 'invoice-300',
+        invoiceNumber: 'INV-000300',
+      };
+
+      const serviceCallQuery = { populate: jest.fn() };
+      serviceCallQuery.populate
+        .mockReturnValueOnce(serviceCallQuery)
+        .mockReturnValueOnce(serviceCallQuery)
+        .mockReturnValueOnce(Promise.resolve(serviceCall));
+
+      ServiceCall.findOne = jest.fn().mockReturnValue(serviceCallQuery);
+      Quotation.findOne = jest.fn().mockResolvedValue(linkedQuotation);
+      Invoice.findOne = jest.fn()
+        .mockReturnValueOnce(buildPopulateQuery(null))
+        .mockReturnValueOnce(buildPopulateQuery(createdInvoice));
+      Invoice.create = jest.fn().mockResolvedValue(createdInvoice);
+
+      await createFinalInvoiceFromServiceCall(req, res);
+
+      expect(Quotation.findOne).toHaveBeenCalledWith({ _id: 'quote-300', createdBy: 'owner-1' });
+      expect(Invoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serviceCall: 'call-300',
+          customer: 'cust-300',
+          createdBy: 'owner-1',
         })
       );
       expect(res.status).toHaveBeenCalledWith(201);

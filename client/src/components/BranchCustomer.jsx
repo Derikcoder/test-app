@@ -146,7 +146,7 @@ const BranchCustomer = () => {
  };
 
  const isOwnProfile = user?.role === 'customer' && String(user?.customerProfile) === id;
- const backTarget = isOwnProfile ? '/service-calls' : '/customers';
+ const backTarget = isOwnProfile ? '/profile' : '/customers';
  const backLabel = isOwnProfile ? 'Back to Dashboard' : 'Back to Customers';
 
  const handleAcceptQuot = async (q) => {

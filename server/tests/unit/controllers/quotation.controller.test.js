@@ -141,7 +141,7 @@ describe('Quotation Controller - Prospect Conversion', () => {
     expect(Quotation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         customer: 'cust-1',
-        createdBy: 'user-agent-1',
+        createdBy: 'owner-1',
       })
     );
     expect(serviceCall.status).toBe('awaiting-quote-approval');

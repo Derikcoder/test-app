@@ -27,6 +27,7 @@ import {
   deleteInvoice,
   generateInvoicePDF,
   generateSharedInvoicePDF,
+  generateReceiptPDF,
   getSharedInvoiceDetails,
   submitSharedInvoiceDecision,
 } from '../controllers/invoice.controller.js';
@@ -145,6 +146,13 @@ router.post('/:id/payment', protect, recordPayment);
  * @access  Private (JWT required)
  */
 router.get('/:id/pdf', protect, generateInvoicePDF);
+
+/**
+ * @route   GET /api/invoices/:id/receipt/pdf
+ * @desc    Generate proof of payment / receipt PDF for a paid invoice
+ * @access  Private (JWT required — customers can access their own invoices)
+ */
+router.get('/:id/receipt/pdf', protect, generateReceiptPDF);
 
 /**
  * @route   DELETE /api/invoices/:id

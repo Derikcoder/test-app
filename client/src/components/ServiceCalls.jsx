@@ -27,6 +27,7 @@ const ServiceCalls = () => {
  const [markingCompleteId, setMarkingCompleteId] = useState('');
  const [creatingInvoiceId, setCreatingInvoiceId] = useState('');
  const [invoiceSuccessMap, setInvoiceSuccessMap] = useState({});
+ const [expandedCallId, setExpandedCallId] = useState('');
 
  const fetchServiceCalls = async () => {
   try {
@@ -202,6 +203,56 @@ const ServiceCalls = () => {
   });
  };
 
+ const getProgressSummary = (call) => {
+  if (call.status === 'on-hold') {
+   return 'Work is paused. Review payment or approval blockers below.';
+  }
+
+  if (call.status === 'awaiting-quote-approval') {
+   return 'Quotation sent. Awaiting customer approval before field work can proceed.';
+  }
+
+  if (call.status === 'in-progress') {
+   return 'Field work is active. Review agent notes, billing state, and timestamps below.';
+  }
+
+  if (call.status === 'completed') {
+   return 'Field work is complete. Final invoicing can proceed.';
+  }
+
+  if (call.status === 'invoiced') {
+   return 'Work is complete and invoiced.';
+  }
+
+  return 'Review the current job state and linked documents below.';
+ };
+
+ const getBlockerItems = (call) => {
+  const blockers = [];
+
+  if (call.status === 'on-hold') {
+   blockers.push('Job is explicitly marked on hold.');
+  }
+
+  if (call.proFormaInvoice && call.proFormaInvoice.paymentStatus !== 'paid') {
+   blockers.push(
+    `Pro-forma ${call.proFormaInvoice.invoiceNumber || 'invoice'} is ${call.proFormaInvoice.paymentStatus || call.proFormaInvoice.workflowStatus || 'pending'}.`
+   );
+  }
+
+  if (call.quotation && call.quotation.status && !['approved', 'converted'].includes(call.quotation.status)) {
+   blockers.push(
+    `Quotation ${call.quotation.quotationNumber || ''} is ${call.quotation.status}.`
+   );
+  }
+
+  if (!call.startedDate && call.status === 'in-progress') {
+   blockers.push('No recorded start timestamp yet.');
+  }
+
+  return blockers;
+ };
+
  const StatusBadge = ({ status }) => {
   const colorMap = {
    pending: 'bg-yellow-500/25 text-yellow-200 border-yellow-400/40',
@@ -235,6 +286,8 @@ const ServiceCalls = () => {
    {call.title && <p className="text-sm text-white/80">{call.title}</p>}
    <div className="text-xs text-white/55 space-y-0.5">
     {call.scheduledDate && <p>Scheduled: {formatDate(call.scheduledDate)}</p>}
+    {call.startedDate && <p>Started: {formatDate(call.startedDate)}</p>}
+    {call.completedDate && <p>Completed: {formatDate(call.completedDate)}</p>}
     {call.serviceLocation && <p>Location: {call.serviceLocation}</p>}
     {call.assignedAgent && (
      <p>
@@ -245,6 +298,77 @@ const ServiceCalls = () => {
      </p>
     )}
    </div>
+   {!showAssignControls && isAdmin && (
+    <button
+     type="button"
+     onClick={() => setExpandedCallId((prev) => (prev === call._id ? '' : call._id))}
+     className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+    >
+     {expandedCallId === call._id ? 'Hide Progress' : 'View Progress'}
+    </button>
+   )}
+   {expandedCallId === call._id && (
+    <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-4">
+     <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">Job Progress</p>
+      <p className="mt-2 text-sm text-white/80">{getProgressSummary(call)}</p>
+     </div>
+
+     <div className="grid gap-3 sm:grid-cols-2">
+      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Timeline</p>
+       <div className="mt-2 space-y-1 text-xs text-white/75">
+        <p>Scheduled: {formatDate(call.scheduledDate)}</p>
+        <p>Started: {formatDate(call.startedDate)}</p>
+        <p>Completed: {formatDate(call.completedDate)}</p>
+        <p>Invoiced: {formatDate(call.invoicedDate)}</p>
+       </div>
+      </div>
+      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Linked Documents</p>
+       <div className="mt-2 space-y-1 text-xs text-white/75">
+        <p>Quotation: {call.quotation?.quotationNumber || 'None linked'}{call.quotation?.status ? ` · ${call.quotation.status}` : ''}</p>
+        <p>Pro-forma: {call.proFormaInvoice?.invoiceNumber || 'None linked'}{call.proFormaInvoice?.paymentStatus ? ` · ${call.proFormaInvoice.paymentStatus}` : call.proFormaInvoice?.workflowStatus ? ` · ${call.proFormaInvoice.workflowStatus}` : ''}</p>
+        <p>Final Invoice: {call.invoice?.invoiceNumber || invoiceSuccessMap[call._id] || 'None linked'}{call.invoice?.paymentStatus ? ` · ${call.invoice.paymentStatus}` : ''}</p>
+       </div>
+      </div>
+     </div>
+
+     {getBlockerItems(call).length > 0 && (
+      <div className="rounded-lg border border-amber-300/20 bg-amber-500/10 p-3">
+       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200">Potential Hold-Ups</p>
+       <div className="mt-2 space-y-1 text-xs text-amber-100/90">
+        {getBlockerItems(call).map((item) => (
+         <p key={item}>{item}</p>
+        ))}
+       </div>
+      </div>
+     )}
+
+     {(call.notes || call.agentNotes || call.internalNotes) && (
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+       {call.notes && (
+        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Customer Notes</p>
+         <p className="mt-2 text-xs text-white/80 whitespace-pre-wrap">{call.notes}</p>
+        </div>
+       )}
+       {call.agentNotes && (
+        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Agent Notes</p>
+         <p className="mt-2 text-xs text-white/80 whitespace-pre-wrap">{call.agentNotes}</p>
+        </div>
+       )}
+       {call.internalNotes && (
+        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Internal Notes</p>
+         <p className="mt-2 text-xs text-white/80 whitespace-pre-wrap">{call.internalNotes}</p>
+        </div>
+       )}
+      </div>
+     )}
+    </div>
+   )}
    {showAssignControls && (
     <div className="pt-2 flex items-center gap-2 flex-wrap">
      <select

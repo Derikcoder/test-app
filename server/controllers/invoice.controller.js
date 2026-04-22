@@ -616,8 +616,9 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
       return res.json({ invoice: existing, created: false });
     }
 
+    const ownerContextUserId = serviceCall.createdBy || serviceCall.quotation?.createdBy || req.user._id;
     const linkedQuotation = serviceCall.quotation?._id
-      ? await Quotation.findOne({ _id: serviceCall.quotation._id, createdBy: req.user._id })
+      ? await Quotation.findOne({ _id: serviceCall.quotation._id, createdBy: ownerContextUserId }) || serviceCall.quotation
       : null;
     const resolvedCustomer = serviceCall.customer?._id || linkedQuotation?.customer;
 
@@ -669,7 +670,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
       paymentTerms,
       notes: seed.notes,
       terms: seed.terms,
-      createdBy: req.user._id,
+      createdBy: ownerContextUserId,
     });
 
     await syncServiceCallInvoicePointers({ invoice, serviceCall, mode: 'proForma' });
@@ -705,8 +706,9 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
       return res.json({ invoice: existing, created: false });
     }
 
+    const ownerContextUserId = serviceCall.createdBy || serviceCall.quotation?.createdBy || req.user._id;
     const linkedQuotation = serviceCall.quotation?._id
-      ? await Quotation.findOne({ _id: serviceCall.quotation._id, createdBy: req.user._id })
+      ? await Quotation.findOne({ _id: serviceCall.quotation._id, createdBy: ownerContextUserId }) || serviceCall.quotation
       : null;
     const resolvedCustomer = serviceCall.customer?._id || linkedQuotation?.customer;
 
@@ -758,7 +760,7 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
       paymentTerms,
       notes: seed.notes,
       terms: seed.terms,
-      createdBy: req.user._id,
+      createdBy: ownerContextUserId,
     });
 
     await syncServiceCallInvoicePointers({ invoice, serviceCall, mode: 'final' });
@@ -820,7 +822,9 @@ export const createInvoice = async (req, res) => {
       return res.status(404).json({ message: 'Service call not found' });
     }
 
-    const customerExists = await Customer.findOne({ _id: customer, createdBy: serviceCall.createdBy || req.user._id })
+    const ownerContextUserId = serviceCall.createdBy || req.user._id;
+
+    const customerExists = await Customer.findOne({ _id: customer, createdBy: ownerContextUserId })
       || await Customer.findOne({ _id: customer });
     if (!customerExists) {
       return res.status(404).json({ message: 'Customer not found' });
@@ -889,11 +893,11 @@ export const createInvoice = async (req, res) => {
       depositAmount: Number(depositAmount || 0),
       depositReason: depositReason || '',
       siteInstruction: siteInstruction || {},
-      createdBy: req.user._id,
+      createdBy: ownerContextUserId,
     });
 
     await syncServiceCallInvoicePointers({ invoice, serviceCall, mode: invoice.documentType === 'proForma' ? 'proForma' : 'final' });
-    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id, createdBy: req.user._id }));
+    const populated = await populateInvoiceDocument(Invoice.findOne({ _id: invoice._id, createdBy: ownerContextUserId }));
 
     logInfo(`✅ Invoice created: ${invoice.invoiceNumber} for service call ${serviceCall.callNumber}`);
     res.status(201).json(populated);
@@ -901,6 +905,141 @@ export const createInvoice = async (req, res) => {
     logError('Create invoice error:', error);
     res.status(500).json({ message: error.message });
   }
+};
+
+/**
+ * Auto-creates a final invoice after a proForma's required payment is fully received.
+ * Runs as a non-fatal side-effect inside recordPayment.
+ */
+const autoCreateFinalInvoiceAfterProFormaPayment = async ({ invoice }) => {
+  try {
+    const serviceCall = await ServiceCall.findById(invoice.serviceCall)
+      .populate('quotation')
+      .populate('customer')
+      .populate('equipment');
+    if (!serviceCall) return;
+
+    const existingFinal = await Invoice.findOne({ serviceCall: serviceCall._id, documentType: 'final' });
+    if (existingFinal) return;
+
+    const ownerContextUserId = invoice.createdBy || serviceCall.createdBy;
+    const linkedQuotation = serviceCall.quotation?._id
+      ? await Quotation.findOne({ _id: serviceCall.quotation._id, createdBy: ownerContextUserId }) || serviceCall.quotation
+      : null;
+    const resolvedCustomer = serviceCall.customer?._id || linkedQuotation?.customer;
+    if (!resolvedCustomer) return;
+
+    const seed = mapQuotationToInvoiceSeed({ quotation: linkedQuotation, serviceCall });
+    const costing = calculateInvoiceCosts(seed);
+    const issueDate = new Date();
+    const paymentTerms = linkedQuotation?.paymentTerms || 30;
+    const dueDate = buildInvoiceDueDate({ issueDate, paymentTerms });
+
+    const finalInvoice = await Invoice.create({
+      serviceCall: serviceCall._id,
+      quotation: linkedQuotation?._id,
+      customer: resolvedCustomer,
+      siteId: serviceCall.siteId || linkedQuotation?.siteId,
+      equipment: serviceCall.equipment?._id || linkedQuotation?.equipment,
+      title: seed.title,
+      description: seed.description,
+      documentType: 'final',
+      workflowStatus: 'finalized',
+      serviceType: linkedQuotation?.serviceType || serviceCall.serviceType,
+      serviceDate: serviceCall.completedDate || serviceCall.scheduledDate || new Date(),
+      lineItems: costing.normalizedLineItems,
+      partsFulfilmentMode: costing.partsFulfilmentMode,
+      deliveryProvider: costing.deliveryProvider,
+      partsProcurementCost: costing.partsProcurementCost,
+      thirdPartyDeliveryCost: costing.thirdPartyDeliveryCost,
+      estimatedPartsProfit: costing.estimatedPartsProfit,
+      laborHours: costing.laborHours,
+      laborRate: costing.laborRate,
+      laborCost: costing.laborCost,
+      partsCost: costing.partsCost,
+      distanceTravelledKm: costing.distanceTravelledKm,
+      travelRatePerKm: costing.travelRatePerKm,
+      travelTimeMinutes: costing.travelTimeMinutes,
+      timeTravelledCost: costing.timeTravelledCost,
+      travelCost: costing.travelCost,
+      consumablesRate: costing.consumablesRate,
+      consumablesCost: costing.consumablesCost,
+      subtotal: costing.subtotal,
+      vatRate: costing.vatRate,
+      vatAmount: costing.vatAmount,
+      totalAmount: costing.totalAmount,
+      issueDate,
+      dueDate,
+      paymentTerms,
+      notes: seed.notes,
+      terms: seed.terms,
+      createdBy: ownerContextUserId,
+    });
+
+    // Update service call invoice pointer without changing its status (work may still be in progress)
+    serviceCall.invoice = finalInvoice._id;
+    serviceCall.invoicedDate = new Date();
+    await serviceCall.save();
+
+    logInfo(`✅ Auto-created final invoice ${finalInvoice.invoiceNumber} after proForma payment for SC ${serviceCall.callNumber}`);
+  } catch (err) {
+    logError('Auto-create final invoice from proForma payment failed (non-fatal):', err);
+  }
+};
+
+const generateReceiptPdfBuffer = (invoice) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const chunks = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const customerName = invoice.customer?.businessName
+      || `${invoice.customer?.contactFirstName || ''} ${invoice.customer?.contactLastName || ''}`.trim()
+      || 'Customer';
+
+    doc.fontSize(18).text('Appatunid — Proof of Payment', { align: 'left' });
+    doc.moveDown(0.5);
+    doc.fontSize(11).text(`Invoice Reference: ${invoice.invoiceNumber}`);
+    doc.text(`Document Type: ${invoice.documentType === 'proForma' ? 'Pro-Forma Site Instruction' : 'Final Invoice'}`);
+    doc.text(`Service: ${invoice.serviceType || invoice.title || 'N/A'}`);
+    doc.moveDown(0.5);
+    doc.fontSize(12).text('Customer', { underline: true });
+    doc.fontSize(11).text(customerName);
+    if (invoice.customer?.email) doc.text(`Email: ${invoice.customer.email}`);
+    if (invoice.customer?.phoneNumber) doc.text(`Phone: ${invoice.customer.phoneNumber}`);
+    doc.moveDown();
+
+    doc.fontSize(12).text('Invoice Summary', { underline: true });
+    doc.fontSize(11).text(`Total Amount: R ${Number(invoice.totalAmount || 0).toFixed(2)}`);
+    doc.text(`Amount Paid: R ${Number(invoice.paidAmount || 0).toFixed(2)}`);
+    doc.text(`Outstanding Balance: R ${Number(invoice.balance || 0).toFixed(2)}`);
+    doc.moveDown();
+
+    const receipts = Array.isArray(invoice.receipts) ? invoice.receipts : [];
+    doc.fontSize(12).text('Payment Receipts', { underline: true });
+    doc.moveDown(0.3);
+
+    if (receipts.length === 0) {
+      doc.fontSize(10).text('No payment receipts recorded.');
+    } else {
+      receipts.forEach((receipt, idx) => {
+        doc.fontSize(11).text(`${idx + 1}. ${receipt.receiptNumber}`);
+        doc.fontSize(10).text(`   Amount Paid: R ${Number(receipt.amount || 0).toFixed(2)}`);
+        doc.text(`   Payment Method: ${receipt.method || 'N/A'}`);
+        doc.text(`   Date: ${receipt.issuedAt ? new Date(receipt.issuedAt).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}`);
+        if (receipt.reference) doc.text(`   Transaction Reference: ${receipt.reference}`);
+        if (receipt.purpose) doc.text(`   Purpose: ${receipt.purpose}`);
+        doc.moveDown(0.5);
+      });
+    }
+
+    doc.moveDown();
+    doc.fontSize(9).text('This document serves as official proof of payment. Please retain for your records.', { oblique: true });
+    doc.end();
+  });
 };
 
 export const recordPayment = async (req, res) => {
@@ -944,6 +1083,25 @@ export const recordPayment = async (req, res) => {
     invoice.receipts = [...(Array.isArray(invoice.receipts) ? invoice.receipts : []), latestReceipt];
     if (typeof invoice.save === 'function') {
       await invoice.save();
+    }
+
+    // Auto-advance workflow and trigger final invoice creation when proForma required payment is fully received
+    if (invoice.documentType === 'proForma' && invoice.paymentStatus === 'paid') {
+      if (invoice.workflowStatus === 'awaitingApproval') {
+        appendWorkflowTransition({
+          invoice,
+          toStatus: 'approved',
+          changedBy: req.user?._id,
+          changedByRole: req.user?.role === 'customer' ? 'customer' : 'system',
+          channel: 'other',
+          note: 'Automatically approved — full required payment received',
+        });
+        invoice.workflowStatus = 'approved';
+        await invoice.save();
+      }
+      if (invoice.serviceCall) {
+        await autoCreateFinalInvoiceAfterProFormaPayment({ invoice });
+      }
     }
 
     await syncServiceCallPaymentHold({ invoice, req });
@@ -1347,6 +1505,29 @@ export const generateSharedInvoicePDF = async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     logError('Generate shared invoice PDF error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const generateReceiptPDF = async (req, res) => {
+  try {
+    const invoice = await populateInvoiceDocument(
+      Invoice.findOne(buildAccessibleInvoiceFilter(req, req.params.id))
+    );
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    if (!Array.isArray(invoice.receipts) || invoice.receipts.length === 0) {
+      return res.status(404).json({ message: 'No payment receipts found for this invoice' });
+    }
+
+    const pdfBuffer = await generateReceiptPdfBuffer(invoice);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="POP-${invoice.invoiceNumber}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    logError('Generate receipt PDF error:', error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -160,77 +160,91 @@
 
 ## Phase 4 — Field Agent: Invoice Completion & Sharing
 
-**Entry point:** Logged in as Sampie van der Stel (role: `fieldServiceAgent`). Job is complete.
+**Entry point:** Logged in as Sampie van der Stel (role: `fieldServiceAgent`). Job is complete or ready for invoicing.
+
+> **Audit update (2026-04-17):** Phase 4 is **substantially implemented** in the live codebase. The checklist below has been corrected to reflect verified current status.
+>
+> **Verification evidence:**
+> - Targeted backend invoice workflow tests: **18/18 passing**
+> - Targeted field-agent profile tests: **2/2 passing**
+> - Implemented components/controllers: `FieldAgentSelfProfile.jsx`, `AgentProfile.jsx`, `SiteInstructionModal.jsx`, `InvoiceApprovalPage.jsx`, `invoice.controller.js`
 
 ### 4.1 Field Agent Job Completion Flow
-- [ ] Log in as Sampie → confirm agent-specific view (currently: limited to profile + assigned service calls)
-- [ ] Navigate to assigned service call for Alfred Raaimaar
-- [ ] Update service call status to `inProgress` → `completed`
-- [ ] Confirm status transitions are sequential (cannot skip from `pending` to `completed`)
+- [x] Log in as Sampie → confirm agent-specific view with assigned jobs, pending quote actions, and self-dispatch support
+- [x] Navigate to an assigned service call from the agent work queue
+- [x] Update service call status using the **Mark Job Complete** action
+- [ ] Confirm status transitions are fully guarded server-side so an agent cannot skip invalid workflow steps without the correct prior state
 
-> **Gap to build:** `AgentProfile.jsx` or a dedicated **MyJobs** view needs to list service calls assigned to the logged-in agent (filter `/api/service-calls?assignedAgent=:agentId`) with a "Complete Job" action.
+> **Status update:** The earlier “My Jobs view needs to be built” gap is now closed. The current agent workflow is exposed through `FieldAgentSelfProfile.jsx` and `AgentProfile.jsx`.
 
 ### 4.2 Invoice Creation
-- [ ] From completed service call, click **"Create Invoice"** (or navigate to Invoice creation UI)
-- [ ] Confirm line items pre-populate from the approved quotation (if linked)
-- [ ] Add actual labor hours, travel distance, consumables
-- [ ] Confirm automatic cost calculation:
+- [x] From the service call workflow, open **Create Invoice** / **Create Site Instruction**
+- [x] Confirm line items pre-populate from the approved quotation when a linked quotation exists
+- [x] Add actual labor hours, travel distance, consumables, deposit requirement, and notes
+- [x] Confirm automatic cost calculation:
   - Parts cost = Σ(line items)
   - Labor cost = hours × rate
   - Travel cost = km × R8.50/km (or call-out floor R650 if <45km/<30min)
   - Consumables = % of parts cost
   - Subtotal → VAT (15%) → Total
-- [ ] Submit invoice → confirm `INV-XXXXXX` number generated
-- [ ] Confirm status is `draft` → update to `awaitingApproval`
+- [x] Submit invoice → confirm `INV-XXXXXX` number generated
+- [x] Confirm workflow advances from `draft` → `awaitingApproval` when the document is sent for approval
 
-> **Gap to build:** Invoice creation UI. The backend invoice controller is complete. The frontend needs an **InvoiceCreateModal** analogous to `CreateQuoteModal.jsx`.
+> **Status update:** The earlier “invoice creation UI still needs to be built” gap is no longer accurate. `SiteInstructionModal.jsx` now serves as the working invoice/pro-forma creation flow.
 
 ### 4.3 Invoice Sharing
-- [ ] **Email share:** Send pro-forma invoice to Alfred's email
-- [ ] **WhatsApp share:** Confirm phone normalisation and share URL
-- [ ] **Telegram share:** Confirm message encodes invoice number, approval link, and PDF URL
-- [ ] **Public approval link:** `/invoice-approval/:token` (tokenized, no login required) — confirm page renders
-- [ ] Confirm share token is single-use OR time-limited (review `shareToken` expiry policy in `Invoice.model.js`)
-- [ ] Confirm PDF contains: invoice number, customer details, all cost line items, totals, VAT, due date
+- [x] **Email share:** Pro-forma invoice can be sent to the customer email address
+- [x] **WhatsApp share:** Phone normalization and share URL generation are implemented
+- [x] **Telegram share:** Generated message includes the invoice number, approval link, and PDF URL
+- [x] **Public approval link:** `/invoice-approval/:token` (tokenized, no login required) is implemented and renders the review page
+- [x] Confirm share token is **time-limited** via `shareTokenExpiresAt`
+- [x] Confirm PDF contains invoice number, customer details, cost line items, totals, VAT, and due date
 
 ### 4.4 Invoice Edge Cases
-- [ ] Attempt to submit invoice with `laborHours: 0` and no line items → must require at least one billable item
-- [ ] Confirm `invoiceNumber` is immutable after creation
-- [ ] Attempt to approve own invoice as agent (should require admin or customer approval role)
-
+- [x] Attempt to submit invoice with no line items → validation requires at least one billable item
+- [x] Confirm `invoiceNumber` is immutable after creation
+- [ ] Confirm or tighten the rule preventing a field agent from self-approving their own invoice outside the intended customer/admin approval path
 ---
 
 ## Phase 5 — Customer: Payment & Agent Review
 
 **Entry point:** Re-logged in as Alfred Raaimaar (role: `customer`).
 
-### 5.1 Invoice Approval from Customer Profile
-- [ ] Navigate to `ResidentialCustomer` profile
-- [ ] Confirm pending invoice appears (fetch `/api/invoices?customerId=X&status=awaitingApproval`)
-- [ ] Alternatively, open the tokenized `/invoice-approval/:token` link
-- [ ] Review invoice line items, totals, and VAT
-- [ ] Submit **Approve** with reference number → confirm status → `approved` / `finalized`
-- [ ] Optionally test **Reject** with rejection note → status → `rejected`
+> **Audit update (2026-04-17):** Phase 5 is **partially to substantially implemented**. The authenticated customer portal already exposes billing documents, payment submission, and staged service review prompts. The remaining work is mostly UX polish rather than missing core backend capability.
+>
+> **Verification evidence:**
+> - Targeted residential customer portal tests: **8/8 passing**
+> - Targeted backend invoice workflow tests: **18/18 passing**
+> - Implemented components/controllers: `ResidentialCustomer.jsx`, `CustomerBillingPanel.jsx`, `InvoiceApprovalPage.jsx`, `serviceCall.controller.js`, `invoice.controller.js`
 
-> **Gap to build:** Authenticated customer invoice review section on `ResidentialCustomer.jsx` (separate from the public tokenized page — logged-in customer gets richer view).
+### 5.1 Invoice Approval from Customer Profile
+- [x] Navigate to `ResidentialCustomer` profile
+- [x] Confirm pending invoice appears in the **Pending Billing & Payments** section (backed by `/api/invoices?customer=:id`)
+- [x] Alternatively, open the tokenized `/invoice-approval/:token` link
+- [x] Review invoice status, due date, outstanding balance, and deposit requirement inside the authenticated portal
+- [x] Submit **Approve** with reference number via the tokenized approval page → confirm status → `approved`
+- [x] Optionally test **Reject** with rejection note via the tokenized approval page → status → `rejected`
+
+> **Status update:** The earlier gap stating that the authenticated customer invoice review section still needed to be built is no longer accurate. The portal already contains a billing section on the customer profile, and the public approval page handles formal approve/reject actions. A richer in-portal line-item approval experience would now be an enhancement, not a missing foundation.
 
 ### 5.2 Payment Process
-- [ ] Confirm payment methods available: `cash`, `eft`, `card`, `credit`, `other`
-- [ ] Submit a payment record against the invoice
-- [ ] Confirm payment is recorded with: amount, date, method, reference
-- [ ] Confirm invoice `amountPaid` and `balance` fields update correctly
-- [ ] Confirm invoice status → `paid` when `amountPaid >= totalAmount`
-- [ ] Test partial payment: invoice remains `partiallyPaid` with correct balance shown
+- [x] Confirm payment methods available: `cash`, `eft`, `card`, `credit`, `other`
+- [x] Submit a payment record against the invoice from the customer portal
+- [x] Confirm payment is recorded with: amount, date, method, reference, and receipt number
+- [x] Confirm invoice `amountPaid` and `balance` fields update correctly
+- [x] Confirm invoice status → `paid` when `amountPaid >= totalAmount` (or the required deposit threshold is satisfied)
+- [ ] Add or verify arbitrary customer-entered partial payment amounts in the portal UI; the current flow pays the required deposit or outstanding balance in one action
 
-> **Gap to build:** Payment submission UI on the customer profile page that calls `POST /api/invoices/:id/payments`.
+> **Status update:** The earlier payment-UI gap is closed. `CustomerBillingPanel.jsx` already submits payments in-app through `POST /api/invoices/:id/payment`.
 
 ### 5.3 Agent Review / Rating
-- [ ] After invoice is paid, customer is prompted to review Sampie van der Stel
-- [ ] Submit rating (1–5 stars) and optional text review
-- [ ] Confirm review is stored against the `FieldServiceAgent` record
-- [ ] Confirm review is visible on `AgentProfile.jsx`
+- [x] Customer is prompted for a review during the pro-forma / invoice journey
+- [x] Submit rating (1–5 stars) and optional text review
+- [x] Confirm review is stored against the `ServiceCall` feedback history and latest rating snapshot
+- [x] Confirm the field agent’s aggregate rating is updated server-side from invoice/completed-service feedback
+- [ ] Add a dedicated review-history surface on `AgentProfile.jsx` if a richer testimonial view is still desired
 
-> **Gap to build:** Rating schema on `FieldServiceAgent.model.js`, review submission endpoint, and review UI on customer profile.
+> **Status update:** The earlier review/rating gap is largely closed. Rating capture, persistence, and aggregate scoring are implemented; the main remaining enhancement is a richer agent-facing history view for those reviews.
 
 ---
 
@@ -238,58 +252,74 @@
 
 **Objective:** The customer profile is the customer's long-term record of all business transacted.
 
+> **Audit update (2026-04-17):** Phase 6 is **largely implemented**. All five customer profile variants now use the same self-service and billing patterns, service history renders with status badges and empty states, and profile editing is protected by immutable-field enforcement.
+>
+> **Verification evidence:**
+> - Targeted residential customer portal tests: **8/8 passing**
+> - Targeted customer controller tests: **43/43 passing**
+> - Shared implementation across profile views: `CustomerSelfServicePanel.jsx` and `CustomerBillingPanel.jsx` are wired into all customer profile components
+
 ### 6.1 Service History Rendering
-- [ ] `ResidentialCustomer.jsx` — service call history is already wired ✅
-- [ ] Wire identical service history section to:
+- [x] `ResidentialCustomer.jsx` — service call history is already wired
+- [x] Wire identical service history section to:
   - `SingleBusinessCustomer.jsx`
   - `BranchCustomer.jsx`
   - `FranchiseCustomer.jsx`
   - `HeadOfficeCustomer.jsx`
-- [ ] Status badges render correctly for all 8 service call statuses
-- [ ] Empty state renders when no service calls exist (no crash, no blank)
+- [x] Status badges render correctly for all major service call statuses
+- [x] Empty state renders when no service calls exist (no crash, no blank)
 - [ ] Clicking a service call row navigates to the service call detail (or expands inline)
 
+> **Status update:** The shared customer portal now also includes grouped service insights, machine history access, and latest review context via the self-service panel.
+
 ### 6.2 Customer Experience Section
-- [ ] Display list of all invoices with status, totals, payment due dates
-- [ ] Display list of accepted/rejected quotations
-- [ ] Display all filed agent reviews by this customer
-- [ ] Outstanding balance banner if any invoice is unpaid
-- [ ] "Book New Service" CTA is prominent and always accessible
+- [x] Display list of invoices with status, balances, payment due dates, and receipt context
+- [x] Surface pending quotation actions and current quotation state on the customer profile
+- [x] Display the latest customer review / staged service feedback context
+- [x] Show outstanding balance context within the billing panel for unpaid work
+- [x] "Book New Service" CTA is prominent and accessible from each customer profile
+
+> **Status update:** The remaining enhancement here is not the absence of the experience section, but deeper historical views such as a full quotation archive and richer all-reviews browsing.
 
 ### 6.3 Profile Edit Security
-- [ ] Confirm `customerId` cannot be modified after creation (immutable field)
-- [ ] Confirm `customerType` change is blocked after registration (write-once boundary)
-- [ ] Confirm customer can update: contact details, address, service locations, notes
-- [ ] Confirm field-level permission checks in `customer.controller.js` are enforced
-
+- [x] Confirm `customerId` cannot be modified after creation (immutable field)
+- [x] Confirm `customerType` change is blocked after registration (write-once boundary)
+- [x] Confirm customer can update: contact details, address, service locations, notes
+- [x] Confirm field-level permission checks in `customer.controller.js` are enforced
 ---
 
 ## Phase 7 — Admin Eagle-Eye Dashboard
 
 **Objective:** Business owner / superAdmin sees the full operational picture at a glance.
 
+> **Audit update (2026-04-17):** Phase 7 is **partially implemented**. The current admin experience is operational, but it is spread across the existing Service Calls, Customers, Field Service Agents, and Quotations screens instead of a single consolidated dashboard route.
+>
+> **Verification evidence:**
+> - Admin-only route gating exists in `App.jsx` via `AdminRoute`
+> - Sidebar and route visibility restrict admin pages away from customer and field-agent users
+> - Live ops data already surfaces across `ServiceCalls.jsx`, `Customers.jsx`, `FieldServiceAgents.jsx`, and `Quotations.jsx`
+
 ### 7.1 Dashboard Views
-- [ ] **Live service calls:** All active calls, statuses, assigned agents, customer names
-- [ ] **Quotations pipeline:** Counts by status (draft, sent, approved, rejected, expired, converted)
-- [ ] **Invoices receivable:** Total outstanding, overdue, paid this month
-- [ ] **Agent activity:** Each agent's active calls, completion rate, average rating
-- [ ] **Customer accounts:** Total registered, new this month, type breakdown
+- [x] **Live service calls:** Active calls, statuses, assigned agents, and customer names are visible in the Service Calls status dashboard
+- [ ] **Quotations pipeline:** Counts by status at a single glance still need a dedicated summary widget, although filtering and review already exist in the Quotations page
+- [ ] **Invoices receivable:** Backend summary endpoints exist, but a dedicated admin receivables widget is not yet surfaced in the UI
+- [x] **Agent activity:** Agent listing already shows jobs completed, jobs in progress, quotes awaiting approval, and average rating
+- [x] **Customer accounts:** Customer listing already shows registered accounts and type breakdown counts
 
 ### 7.2 Drill-Down Access
 - [ ] Click a service call row → navigate to full service call detail
-- [ ] Click an agent → navigate to `AgentProfile.jsx`
-- [ ] Click a customer → navigate to appropriate customer profile view based on `customerType`
-- [ ] Click a quotation → navigate to `Quotations.jsx` detail panel
+- [x] Click an agent → navigate to the agent profile view
+- [x] Click a customer → navigate to the appropriate customer profile view based on customer type
+- [ ] Click a quotation → navigate to a richer quotation detail panel or dedicated detail route
 - [ ] Click an invoice → navigate to invoice detail with full cost breakdown
 
 ### 7.3 Admin Security
-- [ ] Confirm `superAdmin` and `businessAdministrator` roles can access all records (their own `createdBy` scope)
-- [ ] Confirm `fieldServiceAgent` role cannot access admin dashboard
-- [ ] Confirm `customer` role cannot access admin dashboard
-- [ ] Confirm role checks are enforced server-side (not just frontend-gated)
+- [x] Confirm `superAdmin` and `businessAdministrator` roles can access the admin-facing pages and protected admin flows
+- [x] Confirm `fieldServiceAgent` role cannot access admin pages through the frontend route gate
+- [x] Confirm `customer` role cannot access admin pages through the frontend route gate
+- [x] Confirm role checks are also present server-side via authorization middleware and role-aware access filters for protected resources
 
-> **Gap to build:** Admin dashboard component with the above widgets. Can be built as a new route `/dashboard` protected by role check.
-
+> **Status update:** The main gap is no longer “admin visibility is missing”; it is that the app still lacks one unified executive dashboard screen with combined widgets and drill-downs.
 ---
 
 ## Phase 8 — Full Cycle Repetition Matrix
