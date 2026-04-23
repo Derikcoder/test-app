@@ -116,7 +116,7 @@ const ResetPassword = () => {
 
  return (
   <div className="page-center px-4 sm:px-6 lg:px-8">
-   <div className="glass-form ">
+  <div className="card card-glass glass-form ">
     {/* Heading */}
     <h1 className="glass-heading">Reset Password</h1>
     <p className="glass-heading-secondary">

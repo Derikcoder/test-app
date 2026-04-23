@@ -7,6 +7,81 @@ import { logError, logInfo } from '../middleware/logger.middleware.js';
 
 const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
 
+const formatStructuredAddress = (address) => {
+  if (!address || typeof address !== 'object') {
+    return '';
+  }
+
+  return [
+    address.streetAddress,
+    address.complexName ? `Complex/Industrial Park: ${address.complexName}` : null,
+    address.siteAddressDetail ? `Unit/Site Detail: ${address.siteAddressDetail}` : null,
+    address.suburb,
+    address.cityDistrict,
+    address.province,
+    address.postalCode ? `Postal Code: ${address.postalCode}` : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
+    .trim();
+};
+
+const resolveServiceLocationDetails = (serviceCallLike = {}) => {
+  const directLocation = String(
+    serviceCallLike?.serviceLocation
+    || serviceCallLike?.location
+    || ''
+  ).trim();
+
+  if (directLocation) {
+    return {
+      value: directLocation,
+      source: 'explicit-service-location',
+    };
+  }
+
+  const bookingRequest = serviceCallLike?.bookingRequest || {};
+  const machineAddress = formatStructuredAddress(bookingRequest.machineAddress);
+  if (machineAddress) {
+    return {
+      value: machineAddress,
+      source: 'booking-machine-address',
+    };
+  }
+
+  const administrativeAddress = formatStructuredAddress(bookingRequest.administrativeAddress);
+  if (administrativeAddress) {
+    return {
+      value: administrativeAddress,
+      source: 'booking-administrative-address',
+    };
+  }
+
+  return {
+    value: '',
+    source: 'none',
+  };
+};
+
+const withResolvedServiceLocation = (serviceCall) => {
+  if (!serviceCall) {
+    return serviceCall;
+  }
+
+  const value = typeof serviceCall.toObject === 'function'
+    ? serviceCall.toObject()
+    : serviceCall;
+  const resolvedLocation = resolveServiceLocationDetails(value);
+
+  return {
+    ...value,
+    resolvedServiceLocation: resolvedLocation.value,
+    resolvedServiceLocationSource: resolvedLocation.source,
+  };
+};
+
+const withResolvedServiceLocations = (serviceCalls = []) => serviceCalls.map((call) => withResolvedServiceLocation(call));
+
 const buildServiceCallAccessFilter = (req, serviceCallId) => {
   if (req.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile) {
     return {
@@ -205,7 +280,7 @@ export const getMyAssignedServiceCalls = async (req, res) => {
       .populate('proFormaInvoice', 'invoiceNumber documentType workflowStatus totalAmount depositRequired depositAmount')
       .populate('invoice', 'invoiceNumber documentType workflowStatus totalAmount paymentStatus')
       .sort({ createdAt: -1 });
-    res.json(serviceCalls);
+    res.json(withResolvedServiceLocations(serviceCalls));
   } catch (error) {
     logError('Get my assigned service calls error:', error);
     res.status(500).json({ message: error.message });
@@ -228,7 +303,21 @@ export const getServiceCalls = async (req, res) => {
       .populate('proFormaInvoice', 'invoiceNumber documentType workflowStatus totalAmount depositRequired depositAmount')
       .populate('invoice', 'invoiceNumber documentType workflowStatus totalAmount paymentStatus')
       .sort({ createdAt: -1 });
-    res.json(serviceCalls);
+
+    // Self-heal: any in-progress call that has a fully-paid final invoice should be invoiced.
+    // Catches cases where recordPayment ran before the status-sync logic was deployed.
+    const reconcilePromises = serviceCalls
+      .filter((sc) => sc.status === 'in-progress' && sc.invoice?.paymentStatus === 'paid' && sc.invoice?.documentType === 'final')
+      .map((sc) => {
+        sc.status = 'invoiced';
+        sc.invoicedDate = sc.invoicedDate || new Date();
+        sc.completedDate = sc.completedDate || new Date();
+        logInfo(`♻️  Reconciled service call ${sc.callNumber} → invoiced (paid final invoice detected on fetch)`);
+        return sc.save();
+      });
+    if (reconcilePromises.length > 0) await Promise.all(reconcilePromises);
+
+    res.json(withResolvedServiceLocations(serviceCalls));
   } catch (error) {
     logError('Get service calls error:', error);
     res.status(500).json({ message: error.message });
@@ -251,7 +340,7 @@ export const getServiceCallById = async (req, res) => {
       return res.status(404).json({ message: 'Service call not found' });
     }
 
-    res.json(serviceCall);
+    res.json(withResolvedServiceLocation(serviceCall));
   } catch (error) {
     logError('Get service call error:', error);
     res.status(500).json({ message: error.message });
@@ -360,6 +449,8 @@ export const createServiceCall = async (req, res) => {
       }
     }
 
+    const resolvedLocation = resolveServiceLocationDetails({ serviceLocation, bookingRequest });
+
     const serviceCall = await ServiceCall.create({
       callNumber: resolvedCallNumber,
       customer: resolvedCustomer,
@@ -371,7 +462,7 @@ export const createServiceCall = async (req, res) => {
       serviceType,
       scheduledDate,
       estimatedDuration,
-      serviceLocation,
+      serviceLocation: resolvedLocation.value,
       notes,
       internalNotes,
       bookingRequest,
@@ -383,7 +474,7 @@ export const createServiceCall = async (req, res) => {
     await serviceCall.populate('assignedAgent', 'firstName lastName employeeId');
 
     logInfo(`✅ Service call created: ${serviceCall.callNumber}`);
-    res.status(201).json(serviceCall);
+    res.status(201).json(withResolvedServiceLocation(serviceCall));
   } catch (error) {
     logError('Create service call error:', error);
     res.status(500).json({ message: error.message });
@@ -464,12 +555,17 @@ export const updateServiceCall = async (req, res) => {
       serviceCall.completedDate = new Date();
     }
 
+    // Keep service location aligned with booking addresses when no explicit location is provided.
+    if (!String(serviceCall.serviceLocation || '').trim()) {
+      serviceCall.serviceLocation = resolveServiceLocationDetails(serviceCall).value;
+    }
+
     const updatedServiceCall = await serviceCall.save();
     await updatedServiceCall.populate('customer', 'businessName contactFirstName contactLastName');
     await updatedServiceCall.populate('assignedAgent', 'firstName lastName employeeId');
 
     logInfo(`✅ Service call updated: ${updatedServiceCall.callNumber}`);
-    res.json(updatedServiceCall);
+    res.json(withResolvedServiceLocation(updatedServiceCall));
   } catch (error) {
     logError('Update service call error:', error);
     res.status(500).json({ message: error.message });
@@ -515,7 +611,7 @@ export const getEligibleUnassignedServiceCalls = async (req, res) => {
       .populate('customer', 'businessName contactFirstName contactLastName customerId phoneNumber alternatePhone')
       .sort({ createdAt: -1 });
 
-    res.json({ jobs, meta: eligibility.meta });
+    res.json({ jobs: withResolvedServiceLocations(jobs), meta: eligibility.meta });
   } catch (error) {
     logError('Get eligible unassigned service calls error:', error);
     res.status(500).json({ message: error.message, jobs: [] });
@@ -647,7 +743,7 @@ export const selfAcceptServiceCall = async (req, res) => {
     logInfo(`✅ Service call self-accepted: ${updatedServiceCall.callNumber} by ${eligibility.agent.employeeId}`);
     res.json({
       message: 'Service call self-accepted successfully',
-      serviceCall: updatedServiceCall,
+      serviceCall: withResolvedServiceLocation(updatedServiceCall),
       meta: eligibility.meta,
     });
   } catch (error) {
@@ -723,7 +819,7 @@ export const addParts = async (req, res) => {
     await updatedServiceCall.populate('assignedAgent', 'firstName lastName employeeId');
 
     logInfo(`✅ Parts added to service call ${updatedServiceCall.callNumber}`);
-    res.json(updatedServiceCall);
+    res.json(withResolvedServiceLocation(updatedServiceCall));
   } catch (error) {
     logError('Add parts error:', error);
     res.status(500).json({ message: error.message });
@@ -766,7 +862,7 @@ export const uploadPhotos = async (req, res) => {
     await updatedServiceCall.populate('assignedAgent', 'firstName lastName employeeId');
 
     logInfo(`✅ ${photoType} photos uploaded for service call ${updatedServiceCall.callNumber}`);
-    res.json(updatedServiceCall);
+    res.json(withResolvedServiceLocation(updatedServiceCall));
   } catch (error) {
     logError('Upload photos error:', error);
     res.status(500).json({ message: error.message });
@@ -835,7 +931,7 @@ export const submitRating = async (req, res) => {
     }
 
     logInfo(`✅ Rating submitted for service call ${updatedServiceCall.callNumber}: ${numericRating} stars (${stage})`);
-    res.json(updatedServiceCall);
+    res.json(withResolvedServiceLocation(updatedServiceCall));
   } catch (error) {
     logError('Submit rating error:', error);
     res.status(500).json({ message: error.message });
@@ -857,7 +953,7 @@ export const getServiceCallsByStatus = async (req, res) => {
       .populate('assignedAgent', 'firstName lastName employeeId')
       .sort({ createdAt: -1 });
 
-    res.json(serviceCalls);
+    res.json(withResolvedServiceLocations(serviceCalls));
   } catch (error) {
     logError('Get service calls by status error:', error);
     res.status(500).json({ message: error.message });
@@ -879,7 +975,7 @@ export const getServiceCallsByAgent = async (req, res) => {
       .populate('assignedAgent', 'firstName lastName employeeId')
       .sort({ createdAt: -1 });
 
-    res.json(serviceCalls);
+    res.json(withResolvedServiceLocations(serviceCalls));
   } catch (error) {
     logError('Get service calls by agent error:', error);
     res.status(500).json({ message: error.message });

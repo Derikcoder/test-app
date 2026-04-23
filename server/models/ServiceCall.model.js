@@ -96,6 +96,10 @@ const bookingRequestSchema = new mongoose.Schema({
   contact: bookingContactSchema,
   administrativeAddress: addressSchema,
   machineAddress: addressSchema,
+  serviceCategory: {
+    type: String,
+    trim: true,
+  },
   generatorDetails: generatorBookingSchema,
   outageWindow: {
     start: {

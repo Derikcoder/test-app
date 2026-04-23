@@ -131,7 +131,7 @@ const Login = () => {
     return (
         <div className="glass-bg-particles min-h-screen bg-fixed auth-surface px-4 py-8 sm:px-6 lg:px-8">
             <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-[1.15fr_1fr]">
-                <section className="auth-aside-card">
+                <section className="card card-glass auth-aside-card">
                     <p className="auth-kicker">Appatunid Enterprise Suite</p>
                     <h1 className="auth-aside-title">Service Intelligence for Every Role</h1>
                     <p className="auth-aside-copy">
@@ -153,7 +153,7 @@ const Login = () => {
                     </div>
                 </section>
 
-                <section className="glass-form max-w-none p-7 sm:p-9">
+                <section className="card card-glass glass-form max-w-none p-7 sm:p-9">
                     <h2 className="glass-heading text-left">Sign In</h2>
                     <p className="glass-heading-secondary mb-6 text-left">Access your dashboard with enterprise-grade security.</p>
 

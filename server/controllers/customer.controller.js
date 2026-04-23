@@ -1,5 +1,6 @@
 import Customer from '../models/Customer.model.js';
 import User from '../models/User.model.js';
+import ServiceCall from '../models/ServiceCall.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
 
@@ -89,6 +90,66 @@ const normalizeSites = (sites = []) => {
   });
 };
 
+const getAddressDetailsFromBookingRequest = (bookingRequest = {}) => {
+  const machineAddress = bookingRequest?.machineAddress || {};
+  if (hasAddressDetails(machineAddress)) {
+    return machineAddress;
+  }
+
+  const administrativeAddress = bookingRequest?.administrativeAddress || {};
+  if (hasAddressDetails(administrativeAddress)) {
+    return administrativeAddress;
+  }
+
+  return {};
+};
+
+const backfillCustomerAddressFromLatestServiceCall = async (customer) => {
+  if (!customer?._id || typeof ServiceCall.findOne !== 'function') {
+    return customer;
+  }
+
+  const hasPhysicalAddress = Boolean(String(customer.physicalAddress || '').trim());
+  const hasPhysicalAddressDetails = hasAddressDetails(customer.physicalAddressDetails || {});
+
+  if (hasPhysicalAddress && hasPhysicalAddressDetails) {
+    return customer;
+  }
+
+  const latestServiceCall = await ServiceCall.findOne({ customer: customer._id })
+    .select('serviceLocation bookingRequest')
+    .sort({ createdAt: -1 });
+
+  if (!latestServiceCall) {
+    return customer;
+  }
+
+  const derivedAddressDetails = getAddressDetailsFromBookingRequest(latestServiceCall.bookingRequest || {});
+  const derivedAddress = formatAddress(derivedAddressDetails) || String(latestServiceCall.serviceLocation || '').trim();
+
+  if (!derivedAddress) {
+    return customer;
+  }
+
+  let changed = false;
+  if (!hasPhysicalAddress) {
+    customer.physicalAddress = derivedAddress;
+    changed = true;
+  }
+
+  if (!hasPhysicalAddressDetails && hasAddressDetails(derivedAddressDetails)) {
+    customer.physicalAddressDetails = derivedAddressDetails;
+    changed = true;
+  }
+
+  if (changed && typeof customer.save === 'function') {
+    await customer.save();
+    await syncLinkedCustomerUser(customer);
+  }
+
+  return customer;
+};
+
 // @desc    Get all customers
 // @route   GET /api/customers
 // @access  Private
@@ -119,6 +180,8 @@ export const getCustomerById = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
     }
+
+    await backfillCustomerAddressFromLatestServiceCall(customer);
 
     res.json(customer);
   } catch (error) {

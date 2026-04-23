@@ -253,7 +253,7 @@ const AgentProfile = () => {
  // Calculate statistics
  const stats = {
   total: serviceCalls.length,
-  completed: serviceCalls.filter(call => call.status === 'completed').length,
+  completed: serviceCalls.filter(call => call.status === 'completed' || call.status === 'invoiced').length,
   inProgress: serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval').length,
   toBeAttended: serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open').length,
   unassigned: eligibleUnassignedCalls.length,
@@ -263,7 +263,7 @@ const AgentProfile = () => {
  const getFilteredCalls = () => {
   switch (activeTab) {
    case 'completed':
-    return serviceCalls.filter(call => call.status === 'completed');
+    return serviceCalls.filter(call => call.status === 'completed' || call.status === 'invoiced');
    case 'in-progress':
     return serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval');
    case 'to-attend':
@@ -319,6 +319,19 @@ const AgentProfile = () => {
    address.province,
    address.postalCode ? `Postal Code: ${address.postalCode}` : null,
   ].filter(Boolean).join(', ') || 'N/A';
+ };
+
+ const getLocationSourceLabel = (source) => {
+  switch (source) {
+   case 'explicit-service-location':
+    return 'Explicit Location';
+   case 'booking-machine-address':
+    return 'Machine Address';
+   case 'booking-administrative-address':
+    return 'Customer Address';
+   default:
+    return '';
+  }
  };
 
  const getCustomerLabel = (call) => {
@@ -487,7 +500,7 @@ const AgentProfile = () => {
           <button
            type="button"
            onClick={() => setShowContactEditor((prev) => !prev)}
-           className="rounded-lg border border-amber-700 bg-amber-950 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-900"
+           className="quick-action-btn quick-action-btn-warning"
           >
            {showContactEditor ? 'Close Editor' : 'Edit Contact Profile'}
           </button>
@@ -547,9 +560,9 @@ const AgentProfile = () => {
            <p className="text-xs text-slate-400">Use Multi-Disciplinary for cross-sector agents who carry valuable skills across multiple categories.</p>
           </div>
          </div>
-         <div className="mt-4 flex justify-end gap-3">
-          <button type="button" onClick={() => setShowContactEditor(false)} className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700">Cancel</button>
-          <button type="submit" disabled={savingContact} className="rounded-lg border border-amber-700 bg-amber-950 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-900 disabled:opacity-60">{savingContact ? 'Saving...' : 'Save Contact Changes'}</button>
+         <div className="mt-4 quick-actions-wrap justify-end">
+          <button type="button" onClick={() => setShowContactEditor(false)} className="quick-action-btn quick-action-btn-secondary">Cancel</button>
+          <button type="submit" disabled={savingContact} className="quick-action-btn quick-action-btn-warning disabled:opacity-60">{savingContact ? 'Saving...' : 'Save Contact Changes'}</button>
          </div>
         </form>
        ) : null}
@@ -879,10 +892,15 @@ const AgentProfile = () => {
                 </span>
                </div>
               ) : null}
-              {(call.serviceLocation || call.location) && (
+              {(call.resolvedServiceLocation || call.serviceLocation || call.location) && (
                <div className="col-span-2">
                 <span className="text-white/60">Location:</span>
-                <span className="ml-2 text-slate-100">{call.serviceLocation || call.location}</span>
+                <span className="ml-2 text-slate-100">{call.resolvedServiceLocation || call.serviceLocation || call.location}</span>
+                {getLocationSourceLabel(call.resolvedServiceLocationSource) && (
+                 <span className="ml-2 inline-flex items-center rounded-full border border-cyan-800 bg-cyan-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-200">
+                  {getLocationSourceLabel(call.resolvedServiceLocationSource)}
+                 </span>
+                )}
                </div>
               )}
               {call.quotation && ['sent', 'approved'].includes(call.quotation.status) && (
@@ -903,7 +921,7 @@ const AgentProfile = () => {
               )}
               <div className="col-span-2 pt-1">
                {hasPhone ? (
-                <div className="flex flex-wrap gap-2 items-center">
+                <div className="quick-actions-wrap">
                  <a
                   href={`https://wa.me/${whatsappPhone}`}
                   target="_blank"
@@ -997,7 +1015,7 @@ const AgentProfile = () => {
                   )}
                 </div>
                ) : (
-                <div className="flex flex-wrap gap-2 items-center">
+                <div className="quick-actions-wrap">
                  <p className="text-xs text-slate-400">No valid customer phone number available for call actions.</p>
                  {(!call.quotation || !['sent', 'approved', 'converted'].includes(call.quotation.status)) && (
                   <CreateQuoteModal
@@ -1034,7 +1052,7 @@ const AgentProfile = () => {
                    className={`btn-action text-white ${
                     completingCallId === call._id
                      ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'border-green-700 bg-green-950 hover:bg-green-900'
+                     : 'btn-action-green'
                    }`}
                   >
                    {completingCallId === call._id ? 'Completing...' : 'Mark Job Complete'}
@@ -1048,7 +1066,7 @@ const AgentProfile = () => {
                    className={`btn-action text-white ${
                     creatingInvoiceCallId === call._id
                      ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'border-emerald-600 bg-emerald-950 hover:bg-emerald-900'
+                     : 'btn-action-emerald'
                    }`}
                   >
                    {creatingInvoiceCallId === call._id ? 'Creating Invoice...' : 'Create Invoice'}
@@ -1062,7 +1080,7 @@ const AgentProfile = () => {
                    className={`btn-action text-white ${
                     acceptingCallId === call._id
                      ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'border-orange-700 bg-orange-950 hover:bg-orange-900'
+                     : 'btn-action-orange'
                    }`}
                   >
                    {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}

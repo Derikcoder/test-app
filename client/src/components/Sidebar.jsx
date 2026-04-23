@@ -77,49 +77,84 @@ const Sidebar = () => {
 
   const isActive = (path) => location.pathname === path;
 
-  const adminOnlyPaths = ['/agents', '/customers', '/quotations'];
   const agentAllowedPaths = ['/profile', '/service-calls'];
+  const customerMenuItems = [
+    {
+      name: 'Dashboard',
+      path: '/customer/dashboard',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+    },
+    {
+      name: 'Profile',
+      path: '/customer/profile',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+    },
+    {
+      name: 'Billing',
+      path: '/customer/billing',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a5 5 0 00-10 0v2m-2 0h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2z" />
+        </svg>
+      ),
+    },
+    {
+      name: 'Services',
+      path: '/customer/services',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      ),
+    },
+  ];
 
   const menuItems = allMenuItems.filter((item) => {
-    if (isCustomer) return item.path === '/profile';
+    if (isCustomer) return false;
     if (isFieldAgent) return agentAllowedPaths.includes(item.path);
     return true;
   });
 
+  const renderedMenuItems = isCustomer ? customerMenuItems : menuItems;
+
   return (
     <>
       {/* Menu Toggle Button - Anchored to the same centered content wrapper */}
-      <div className="fixed top-4 inset-x-0 z-50 pointer-events-none">
+      <div className="fixed top-4 inset-x-0 z-[60] pointer-events-none">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <button
-            onClick={toggleSidebar}
-            className="glass-btn-primary pointer-events-auto p-3 shadow-lg transition-all duration-300"
-            aria-label="Toggle menu"
-          >
-            {isOpen ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
+          {!isOpen ? (
+            <button
+              onClick={toggleSidebar}
+              className="pointer-events-auto inline-flex items-center justify-center rounded-lg border border-white/30 bg-gradient-to-r from-blue-700 to-blue-900 p-3 text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
+              aria-label="Toggle menu"
+            >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-            )}
-          </button>
+            </button>
+          ) : null}
         </div>
       </div>
 
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
+          className="fixed inset-0 bg-black/55 z-40 transition-opacity duration-300"
           onClick={toggleSidebar}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`glass-pane fixed top-0 left-0 h-full w-80 shadow-2xl z-40 transform transition-transform duration-300 ease-in-out backdrop-blur-xl bg-white/10 border border-white/20 ${
+        className={`glass-pane fixed top-0 left-0 h-full w-80 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out backdrop-blur-xl bg-white/10 border border-white/20 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -156,7 +191,7 @@ const Sidebar = () => {
           {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto p-4">
             <ul className="space-y-2">
-              {menuItems.map((item) => (
+              {renderedMenuItems.map((item) => (
                 <li key={item.path}>
                   <Link
                     to={item.path}

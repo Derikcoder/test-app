@@ -2,7 +2,15 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-04-16
+Last updated: 2026-04-23
+
+## 🆕 Latest Update (2026-04-23)
+
+- Added dedicated customer workspace routing via `/customer/:section` and default redirect `/customer -> /customer/dashboard`.
+- Added new `client/src/components/CustomerPortal.jsx` to centralize customer dashboard, profile, billing, and services flows.
+- Updated `ServiceCallRegistration.jsx` to support existing-customer portal booking mode (repeat/new booking paths) and grouped customer linkage (`headOffice`, `branch`, `franchise`, `singleBusiness`, `residential`).
+- Added focused portal booking regression coverage in `client/src/__tests__/components/ServiceCallRegistration.portalBooking.test.jsx`.
+- Added project execution aid `MVP_PHASE8_12_SCENARIO_CHEAT_SHEET.md` for full-cycle scenario tracking.
 
 ---
 

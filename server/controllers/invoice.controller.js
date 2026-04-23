@@ -339,11 +339,116 @@ const calculateInvoiceCosts = ({
   };
 };
 
+const calculateAmountDelta = (invoiceValue, quotationValue) => {
+  const invoiceAmount = Number(invoiceValue || 0);
+  const quotationAmount = Number(quotationValue || 0);
+  const delta = Number((invoiceAmount - quotationAmount).toFixed(2));
+
+  return {
+    invoiceAmount,
+    quotationAmount,
+    delta,
+    changed: Math.abs(delta) > 0.009,
+  };
+};
+
+const buildInvoiceVarianceSummary = (invoice) => {
+  const quotation = invoice?.quotation;
+  if (!quotation || typeof quotation !== 'object' || Array.isArray(quotation)) {
+    return null;
+  }
+
+  const componentComparisons = [
+    { key: 'partsCost', label: 'Parts', invoiceValue: invoice.partsCost, quotationValue: quotation.partsCost },
+    { key: 'laborCost', label: 'Labor', invoiceValue: invoice.laborCost, quotationValue: quotation.labourCost },
+    { key: 'travelCost', label: 'Travel', invoiceValue: invoice.travelCost, quotationValue: quotation.travellingCost },
+    { key: 'consumablesCost', label: 'Consumables', invoiceValue: invoice.consumablesCost, quotationValue: quotation.consumablesCost },
+    {
+      key: 'partsProcurementCost',
+      label: 'Parts Procurement Cost',
+      invoiceValue: invoice.partsProcurementCost,
+      quotationValue: quotation.partsProcurementCost,
+    },
+    {
+      key: 'thirdPartyDeliveryCost',
+      label: 'Third-Party Delivery Cost',
+      invoiceValue: invoice.thirdPartyDeliveryCost,
+      quotationValue: quotation.thirdPartyDeliveryCost,
+    },
+    {
+      key: 'estimatedPartsProfit',
+      label: 'Estimated Parts Profit',
+      invoiceValue: invoice.estimatedPartsProfit,
+      quotationValue: quotation.estimatedPartsProfit,
+    },
+  ]
+    .map((entry) => {
+      const comparison = calculateAmountDelta(entry.invoiceValue, entry.quotationValue);
+      return {
+        key: entry.key,
+        label: entry.label,
+        quotationAmount: comparison.quotationAmount,
+        invoiceAmount: comparison.invoiceAmount,
+        delta: comparison.delta,
+      };
+    })
+    .filter((entry) => Math.abs(entry.delta) > 0.009);
+
+  const subtotalComparison = calculateAmountDelta(invoice.subtotal, quotation.subtotal);
+  const vatComparison = calculateAmountDelta(invoice.vatAmount, quotation.vatAmount);
+  const totalComparison = calculateAmountDelta(invoice.totalAmount, quotation.totalAmount);
+
+  return {
+    quotationNumber: quotation.quotationNumber || null,
+    quotationStatus: quotation.status || null,
+    direction: totalComparison.delta > 0 ? 'increase' : totalComparison.delta < 0 ? 'decrease' : 'no-change',
+    changed: totalComparison.changed,
+    subtotal: {
+      quotationAmount: subtotalComparison.quotationAmount,
+      invoiceAmount: subtotalComparison.invoiceAmount,
+      delta: subtotalComparison.delta,
+    },
+    vat: {
+      quotationAmount: vatComparison.quotationAmount,
+      invoiceAmount: vatComparison.invoiceAmount,
+      delta: vatComparison.delta,
+    },
+    total: {
+      quotationAmount: totalComparison.quotationAmount,
+      invoiceAmount: totalComparison.invoiceAmount,
+      delta: totalComparison.delta,
+      absoluteDelta: Number(Math.abs(totalComparison.delta).toFixed(2)),
+    },
+    lineItemCount: {
+      quotation: Array.isArray(quotation.lineItems) ? quotation.lineItems.length : 0,
+      invoice: Array.isArray(invoice.lineItems) ? invoice.lineItems.length : 0,
+      delta: (Array.isArray(invoice.lineItems) ? invoice.lineItems.length : 0) - (Array.isArray(quotation.lineItems) ? quotation.lineItems.length : 0),
+    },
+    drivers: componentComparisons,
+  };
+};
+
+const enrichInvoiceWithVarianceSummary = (invoice) => {
+  if (!invoice) return invoice;
+  const serialized = typeof invoice.toObject === 'function' ? invoice.toObject() : invoice;
+  return {
+    ...serialized,
+    varianceFromQuotation: buildInvoiceVarianceSummary(serialized),
+  };
+};
+
+const enrichInvoicesWithVarianceSummary = (invoices = []) => {
+  return invoices.map((invoice) => enrichInvoiceWithVarianceSummary(invoice));
+};
+
 const populateInvoiceDocument = async (invoiceQuery) => {
   return invoiceQuery
     .populate('customer', 'businessName contactFirstName contactLastName customerId customerType email phoneNumber alternatePhone')
     .populate('serviceCall', 'callNumber title status completedDate scheduledDate quotation')
-    .populate('quotation', 'quotationNumber title status totalAmount')
+    .populate(
+      'quotation',
+      'quotationNumber title status totalAmount subtotal vatAmount partsCost labourCost travellingCost consumablesCost partsProcurementCost thirdPartyDeliveryCost estimatedPartsProfit lineItems'
+    )
     .populate('equipment', 'equipmentId equipmentType brand model');
 };
 
@@ -517,7 +622,7 @@ export const getInvoices = async (req, res) => {
     if (workflowStatus) filter.workflowStatus = workflowStatus;
 
     const invoices = await populateInvoiceDocument(Invoice.find(filter).sort({ createdAt: -1 }));
-    res.json(invoices);
+    res.json(enrichInvoicesWithVarianceSummary(invoices));
   } catch (error) {
     logError('Get invoices error:', error);
     res.status(500).json({ message: error.message });
@@ -534,7 +639,7 @@ export const getInvoiceById = async (req, res) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    res.json(invoice);
+    res.json(enrichInvoiceWithVarianceSummary(invoice));
   } catch (error) {
     logError('Get invoice by ID error:', error);
     res.status(500).json({ message: error.message });
@@ -553,7 +658,7 @@ export const getInvoicesByPaymentStatus = async (req, res) => {
     const invoices = await populateInvoiceDocument(
       Invoice.find({ ...buildAccessibleInvoiceFilter(req), paymentStatus: status }).sort({ dueDate: 1 })
     );
-    res.json(invoices);
+    res.json(enrichInvoicesWithVarianceSummary(invoices));
   } catch (error) {
     logError('Get invoices by payment status error:', error);
     res.status(500).json({ message: error.message });
@@ -976,8 +1081,10 @@ const autoCreateFinalInvoiceAfterProFormaPayment = async ({ invoice }) => {
       createdBy: ownerContextUserId,
     });
 
-    // Update service call invoice pointer without changing its status (work may still be in progress)
+    // Final invoice issued — job is complete and invoiced
     serviceCall.invoice = finalInvoice._id;
+    serviceCall.status = 'invoiced';
+    serviceCall.completedDate = serviceCall.completedDate || new Date();
     serviceCall.invoicedDate = new Date();
     await serviceCall.save();
 
@@ -1105,6 +1212,19 @@ export const recordPayment = async (req, res) => {
     }
 
     await syncServiceCallPaymentHold({ invoice, req });
+
+    // When a final invoice is fully paid, advance the linked service call to 'invoiced'
+    if (invoice.documentType === 'final' && invoice.paymentStatus === 'paid' && invoice.serviceCall) {
+      const linkedCall = await ServiceCall.findById(invoice.serviceCall);
+      if (linkedCall && !['invoiced', 'completed', 'cancelled'].includes(linkedCall.status)) {
+        linkedCall.status = 'invoiced';
+        linkedCall.completedDate = linkedCall.completedDate || new Date();
+        linkedCall.invoicedDate = new Date();
+        linkedCall.invoice = invoice._id;
+        await linkedCall.save();
+        logInfo(`✅ Service call ${linkedCall.callNumber} advanced to invoiced after final invoice payment`);
+      }
+    }
 
     const updatedInvoice = await populateInvoiceDocument(
       Invoice.findOne(buildAccessibleInvoiceFilter(req, invoice._id))

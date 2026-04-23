@@ -311,6 +311,19 @@ const FieldAgentSelfProfile = () => {
   ].filter(Boolean).join(', ') || 'N/A';
  };
 
+  const getLocationSourceLabel = (source) => {
+   switch (source) {
+    case 'explicit-service-location':
+     return 'Explicit Location';
+    case 'booking-machine-address':
+     return 'Machine Address';
+    case 'booking-administrative-address':
+     return 'Customer Address';
+    default:
+     return '';
+   }
+  };
+
  const getCustomerLabel = (call) => {
   if (call.customer?.businessName) return call.customer.businessName;
   if (call.bookingRequest?.contact?.companyName) return call.bookingRequest.contact.companyName;
@@ -841,10 +854,15 @@ const FieldAgentSelfProfile = () => {
                   </span>
                  </div>
                 ) : null}
-                {(call.serviceLocation || call.location) && (
+                {(call.resolvedServiceLocation || call.serviceLocation || call.location) && (
                  <div className="col-span-2">
                   <span className="text-white/60">Location:</span>
-                  <span className="ml-2 text-slate-100">{call.serviceLocation || call.location}</span>
+                  <span className="ml-2 text-slate-100">{call.resolvedServiceLocation || call.serviceLocation || call.location}</span>
+                  {getLocationSourceLabel(call.resolvedServiceLocationSource) && (
+                   <span className="ml-2 inline-flex items-center rounded-full border border-cyan-800 bg-cyan-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-200">
+                    {getLocationSourceLabel(call.resolvedServiceLocationSource)}
+                   </span>
+                  )}
                  </div>
                 )}
                 {call.quotation && ['sent', 'approved'].includes(call.quotation.status) && (

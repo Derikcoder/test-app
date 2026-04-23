@@ -23,6 +23,12 @@ const formatDate = (value) => {
   });
 };
 
+const formatVarianceDirection = (direction) => {
+  if (direction === 'increase') return 'Increased vs approved quote';
+  if (direction === 'decrease') return 'Decreased vs approved quote';
+  return 'No amount change vs approved quote';
+};
+
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'card', label: 'Card' },
   { value: 'eft', label: 'EFT' },
@@ -38,6 +44,7 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
   const [successMessage, setSuccessMessage] = useState('');
   const [paymentDrafts, setPaymentDrafts] = useState({});
   const [reviewDrafts, setReviewDrafts] = useState({});
+  const [expandedVarianceInvoiceId, setExpandedVarianceInvoiceId] = useState(null);
 
   useEffect(() => {
     if (!customerId || !token) {
@@ -248,13 +255,22 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
           const paymentAmount = getPaymentAmount(invoice);
           const outstandingBalance = getOutstandingBalance(invoice);
           const isSettled = outstandingBalance <= 0;
+          const variance = invoice?.varianceFromQuotation;
+          const hasVarianceData = Boolean(variance && variance.quotationNumber);
+          const isVarianceExpanded = expandedVarianceInvoiceId === invoice._id;
 
           return (
             <div key={invoice._id} className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-white/90">{invoice.invoiceNumber}</span>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedVarianceInvoiceId((prev) => (prev === invoice._id ? null : invoice._id))}
+                      className="text-sm font-semibold text-white/90 underline decoration-cyan-300/60 underline-offset-4 hover:text-cyan-200"
+                    >
+                      {invoice.invoiceNumber}
+                    </button>
                     <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
                       {invoice.documentType === 'proForma' ? 'Pro-Forma' : 'Invoice'}
                     </span>
@@ -297,49 +313,104 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                 </div>
               </div>
 
+              {isVarianceExpanded ? (
+                <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100">Amount History</p>
+                  {hasVarianceData ? (
+                    <>
+                      <p className="mt-1 text-xs text-violet-50/90">
+                        Compared against approved quote {variance.quotationNumber}.
+                      </p>
+                      <p className="mt-1 text-xs text-violet-200">
+                        {formatVarianceDirection(variance.direction)}: <span className="font-semibold">{formatCurrency(variance.total?.delta || 0)}</span>
+                      </p>
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <div className="rounded-lg border border-violet-300/20 bg-violet-900/20 p-2">
+                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">Subtotal Delta</p>
+                          <p className="text-xs font-semibold text-violet-50">{formatCurrency(variance.subtotal?.delta || 0)}</p>
+                        </div>
+                        <div className="rounded-lg border border-violet-300/20 bg-violet-900/20 p-2">
+                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">VAT Delta</p>
+                          <p className="text-xs font-semibold text-violet-50">{formatCurrency(variance.vat?.delta || 0)}</p>
+                        </div>
+                        <div className="rounded-lg border border-violet-300/20 bg-violet-900/20 p-2">
+                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">Total Delta</p>
+                          <p className="text-xs font-semibold text-violet-50">{formatCurrency(variance.total?.delta || 0)}</p>
+                        </div>
+                      </div>
+
+                      {Array.isArray(variance.drivers) && variance.drivers.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">Variance Drivers</p>
+                          <div className="mt-2 space-y-1">
+                            {variance.drivers.map((driver) => (
+                              <p key={driver.key} className="text-xs text-violet-50/90">
+                                {driver.label}: {formatCurrency(driver.delta)}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-xs text-violet-50/80">No component-level cost shifts were detected. Final amount aligns with the approved quote.</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="mt-1 text-xs text-violet-50/85">
+                      No linked approved quotation was found for this document, so a variance breakdown is not available.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
               {isOwnProfile ? (
                 <>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <label className="flex flex-col gap-1 text-xs text-white/60">
-                      Payment Method
-                      <select
-                        value={draft.method}
-                        onChange={(e) => updateDraft(invoice._id, 'method', e.target.value)}
-                        className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none"
-                      >
-                        {PAYMENT_METHOD_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </label>
+                  {!isSettled ? (
+                    <>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <label className="flex flex-col gap-1 text-xs text-white/60">
+                          Payment Method
+                          <select
+                            value={draft.method}
+                            onChange={(e) => updateDraft(invoice._id, 'method', e.target.value)}
+                            className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none"
+                          >
+                            {PAYMENT_METHOD_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </label>
 
-                    <label className="flex flex-col gap-1 text-xs text-white/60 md:col-span-2">
-                      Reference / Transaction ID
-                      <input
-                        type="text"
-                        value={draft.reference}
-                        onChange={(e) => updateDraft(invoice._id, 'reference', e.target.value)}
-                        placeholder="Optional"
-                        className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none"
-                      />
-                    </label>
-                  </div>
+                        <label className="flex flex-col gap-1 text-xs text-white/60 md:col-span-2">
+                          Reference / Transaction ID
+                          <input
+                            type="text"
+                            value={draft.reference}
+                            onChange={(e) => updateDraft(invoice._id, 'reference', e.target.value)}
+                            placeholder="Optional"
+                            className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none"
+                          />
+                        </label>
+                      </div>
 
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-white/50">
-                      Payment amount to submit now: <span className="font-semibold text-white/80">{formatCurrency(paymentAmount)}</span>
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handlePayment(invoice)}
-                      disabled={draft.processing || isSettled}
-                      className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${draft.processing || isSettled
-                        ? 'cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-400'
-                        : 'border border-emerald-700 bg-emerald-950 text-emerald-100 hover:bg-emerald-900'}`}
-                    >
-                      {draft.processing ? 'Processing...' : getActionLabel(invoice)}
-                    </button>
-                  </div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs text-white/50">
+                          Payment amount to submit now: <span className="font-semibold text-white/80">{formatCurrency(paymentAmount)}</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handlePayment(invoice)}
+                          disabled={draft.processing}
+                          className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${draft.processing
+                            ? 'cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-400'
+                            : 'border border-emerald-700 bg-emerald-950 text-emerald-100 hover:bg-emerald-900'}`}
+                        >
+                          {draft.processing ? 'Processing...' : getActionLabel(invoice)}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-emerald-200">Invoice settled. No payment action required.</p>
+                  )}
 
                   {invoice.serviceCall ? (
                     <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3">

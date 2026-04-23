@@ -13,7 +13,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { getPostLoginRedirect } from './utils/authRedirect';
 
 const Register = lazy(() => import('./components/Register'));
 const Login = lazy(() => import('./components/Login'));
@@ -33,6 +32,7 @@ const FranchiseCustomer = lazy(() => import('./components/FranchiseCustomer'));
 const SingleBusinessCustomer = lazy(() => import('./components/SingleBusinessCustomer'));
 const ResidentialCustomer = lazy(() => import('./components/ResidentialCustomer'));
 const CustomerAssetHistoryPage = lazy(() => import('./components/CustomerAssetHistoryPage'));
+const CustomerPortal = lazy(() => import('./components/CustomerPortal'));
 const ServiceCalls = lazy(() => import('./components/ServiceCalls'));
 const ServiceCallRegistration = lazy(() => import('./components/ServiceCallRegistration'));
 const Quotations = lazy(() => import('./components/Quotations'));
@@ -126,10 +126,7 @@ const ProfileRoute = () => {
   if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile />;
 
   if (user?.role === 'customer') {
-    const redirectPath = getPostLoginRedirect(user);
-    if (redirectPath !== '/profile') {
-      return <Navigate to={redirectPath} replace />;
-    }
+    return <Navigate to="/customer/dashboard" replace />;
   }
 
   return <UserProfile />;
@@ -275,6 +272,18 @@ function App() {
               }
             />
             <Route
+              path="/customer/:section"
+              element={
+                <ProtectedRoute>
+                  <CustomerPortal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customer"
+              element={<Navigate to="/customer/dashboard" replace />}
+            />
+            <Route
               path="/service-calls"
               element={
                 <ProtectedRoute>
@@ -286,9 +295,9 @@ function App() {
             <Route
               path="/service-call-registration"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <ServiceCallRegistration />
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
 

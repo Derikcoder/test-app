@@ -54,7 +54,7 @@ body {
   }
 
   .auth-aside-card {
-    @apply glass-pane p-7 sm:p-10;
+    @apply card card-glass p-7 sm:p-10;
     background: linear-gradient(155deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.08));
     border-color: rgba(255, 255, 255, 0.22);
   }
@@ -91,18 +91,105 @@ body {
     color: #ffffff;
   }
 
+  /* ============================================================
+     CARD SYSTEM (DRY)
+     Base: .card
+     Modifiers: .card-glass, .card-inset
+     ============================================================ */
+
+  .card {
+    @apply relative flex flex-col rounded-xl border;
+  }
+
+  .card-glass {
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  }
+
+  .card-inset {
+    background: rgba(2, 8, 23, 0.35);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  /*
+   * Auth contrast tuning
+   * Scoped overrides to improve readability on the login/register gradient surfaces
+   * without changing the brand palette.
+   */
+  .auth-surface .glass-form {
+    background: linear-gradient(165deg, rgba(8, 26, 120, 0.82), rgba(14, 38, 150, 0.68));
+    border-color: rgba(163, 191, 255, 0.42);
+    box-shadow: 0 14px 36px rgba(3, 17, 84, 0.45);
+  }
+
+  .auth-surface .glass-heading {
+    background: linear-gradient(135deg, #f5f8ff 0%, #dbe7ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .auth-surface .glass-heading-secondary {
+    color: rgba(226, 236, 255, 0.88);
+    opacity: 1;
+  }
+
+  .auth-surface .glass-form-label {
+    color: rgba(235, 242, 255, 0.95);
+    text-shadow: none;
+  }
+
+  .auth-surface .glass-form-input {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(163, 191, 255, 0.42);
+    color: #f8fbff;
+  }
+
+  .auth-surface .glass-form-input::placeholder {
+    color: rgba(226, 236, 255, 0.72);
+    opacity: 1;
+  }
+
+  .auth-surface .glass-form-input:focus {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 251, 40, 0.9);
+    box-shadow: 0 0 0 1px rgba(255, 251, 40, 0.3), 0 0 20px rgba(255, 251, 40, 0.24);
+  }
+
+  .auth-surface .glass-divider {
+    color: rgba(226, 236, 255, 0.65);
+  }
+
+  .auth-surface .glass-divider::before,
+  .auth-surface .glass-divider::after {
+    background: linear-gradient(90deg, rgba(226, 236, 255, 0.04), rgba(226, 236, 255, 0.45), rgba(226, 236, 255, 0.04));
+  }
+
+  .auth-surface .glass-divider-text {
+    color: rgba(226, 236, 255, 0.82);
+  }
+
+  .auth-surface .glass-btn-outline {
+    background: rgba(255, 255, 255, 0.1);
+    color: #eaf1ff;
+    border-color: rgba(163, 191, 255, 0.65);
+  }
+
+  .auth-surface .glass-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 251, 40, 0.75);
+    color: #fffde6;
+  }
+
   /**
    * Glass Pane Base
    * Core glassmorphism style for containers and cards
    */
   .glass-pane {
-    @apply relative;
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px) saturate(180%);
-    -webkit-backdrop-filter: blur(10px) saturate(180%);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    @apply card card-glass;
   }
 
   /**
@@ -110,7 +197,7 @@ body {
    * Full form wrapper with enhanced glassmorphism
    */
   .glass-form {
-    @apply glass-pane p-8 w-full max-w-md shadow-2xl;
+    @apply card card-glass p-8 w-full max-w-md shadow-2xl;
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(15px) saturate(200%);
     -webkit-backdrop-filter: blur(15px) saturate(200%);
@@ -338,7 +425,7 @@ body {
    * Content card with glassmorphic styling
    */
   .glass-card {
-    @apply glass-pane p-6;
+    @apply card card-glass p-6;
     background: rgba(255, 255, 255, 0.08);
     transition: all 0.3s ease;
   }
@@ -353,7 +440,7 @@ body {
    * Alert/notification boxes
    */
   .glass-alert {
-    @apply glass-pane p-4 rounded-lg mb-4 flex items-start;
+    @apply card card-glass p-4 rounded-lg mb-4 flex items-start;
     background: rgba(255, 255, 255, 0.1);
   }
 
@@ -373,6 +460,18 @@ body {
     @apply glass-alert;
     border-left: 4px solid var(--primary);
     background: rgba(5, 25, 140, 0.1);
+  }
+
+  /**
+   * count-badge — high-contrast count pill using --secondary yellow.
+   * Use on any section/card header where a numeric count must be legible
+   * against a glassmorphism background.
+   * Pattern: <span className="count-badge">{n}</span>
+   */
+  .count-badge {
+    @apply inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold;
+    background: var(--secondary);
+    color: var(--primary);
   }
 }
 
@@ -438,6 +537,129 @@ body {
     @apply glass-bg-particles min-h-screen bg-fixed bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 pt-20 pb-12 px-4;
   }
 
+  /**
+   * Service booking hero card — aligned to customer dashboard shell.
+   */
+  .service-booking-hero {
+    @apply rounded-2xl border border-white/15 bg-slate-950/45 p-6 shadow-xl backdrop-blur-sm;
+  }
+
+  .service-booking-kicker {
+    @apply text-xs font-bold uppercase tracking-[0.18em] text-cyan-200;
+  }
+
+  .service-booking-crumb {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-900/50 px-3 py-1 text-[11px] text-white/85;
+  }
+
+  .service-booking-chip {
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .service-booking-chip-entity {
+    @apply border-amber-400/60 bg-amber-500/20 text-amber-200;
+  }
+
+  .service-booking-chip-role {
+    @apply border-cyan-400/60 bg-cyan-500/20 text-cyan-200;
+  }
+
+  .service-booking-chip-admin {
+    @apply border-fuchsia-400/60 bg-fuchsia-500/20 text-fuchsia-200;
+  }
+
+  .service-booking-chip-prefill {
+    @apply border-emerald-400/60 bg-emerald-500/20 text-emerald-200;
+  }
+
+  .service-booking-metric {
+    @apply rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2;
+  }
+
+  .service-booking-metric-label {
+    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-white/60;
+  }
+
+  .service-booking-metric-value {
+    @apply mt-1 text-sm font-semibold text-cyan-100;
+  }
+
+  .service-booking-form {
+    @apply p-6 sm:p-8 space-y-6;
+  }
+
+  .service-booking-form > section {
+    @apply section-transition rounded-2xl border border-white/15 bg-slate-950/35 p-5 shadow-lg backdrop-blur-sm;
+  }
+
+  .service-booking-actions {
+    @apply grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3;
+  }
+
+  .service-booking-action {
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition;
+  }
+
+  .service-booking-action-primary {
+    @apply border-cyan-400/50 bg-cyan-950/55 text-cyan-100 hover:border-cyan-300/60 hover:bg-cyan-900/70;
+  }
+
+  .service-booking-action-secondary {
+    @apply border-white/25 bg-slate-900/55 text-white/90 hover:border-white/40 hover:bg-slate-900/80;
+  }
+
+  .service-booking-action-quote {
+    @apply border-amber-400/55 bg-amber-950/50 text-amber-100 hover:border-amber-300/70 hover:bg-amber-900/70;
+  }
+
+  .quick-actions-grid {
+    @apply grid grid-cols-1 gap-2 sm:grid-cols-2;
+  }
+
+  .quick-actions-wrap {
+    @apply flex flex-wrap gap-2 items-center;
+  }
+
+  .quick-action-btn {
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition;
+  }
+
+  .quick-action-btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .quick-action-btn-primary {
+    @apply border-cyan-400/50 bg-cyan-950/55 text-cyan-100 hover:border-cyan-300/60 hover:bg-cyan-900/70;
+  }
+
+  .quick-action-btn-secondary {
+    @apply border-white/25 bg-slate-900/55 text-white/90 hover:border-white/40 hover:bg-slate-900/80;
+  }
+
+  .quick-action-btn-success {
+    @apply border-emerald-400/45 bg-emerald-950/55 text-emerald-100 hover:border-emerald-300/60 hover:bg-emerald-900/75;
+  }
+
+  .quick-action-btn-info {
+    @apply border-blue-400/45 bg-blue-950/55 text-blue-100 hover:border-blue-300/60 hover:bg-blue-900/75;
+  }
+
+  .quick-action-btn-warning {
+    @apply border-amber-400/50 bg-amber-950/55 text-amber-100 hover:border-amber-300/60 hover:bg-amber-900/75;
+  }
+
+  .quick-action-btn-danger {
+    @apply border-red-400/45 bg-red-950/55 text-red-100 hover:border-red-300/60 hover:bg-red-900/75;
+  }
+
+  .quick-action-link-danger {
+    @apply text-xs font-semibold text-red-400 transition-colors hover:text-red-300;
+  }
+
+  .quick-action-link {
+    @apply text-xs text-white/60 transition-colors hover:text-white/85;
+  }
+
   /* ============================================================
      SUB-CARDS & PANELS
      ============================================================ */
@@ -447,7 +669,7 @@ body {
    * rounded-2xl border border-white/15 bg-slate-950/25 p-4
    */
   .sub-card {
-    @apply rounded-2xl border border-white/15 bg-slate-950/25 p-4;
+    @apply card card-inset rounded-2xl p-4;
   }
 
   /**
@@ -538,6 +760,13 @@ body {
   }
 
   /**
+   * Section transition animation for route-like panel switches.
+   */
+  .section-transition {
+    animation: sectionFadeIn 260ms ease-out both;
+  }
+
+  /**
    * Table header cell — yellow variant
    * px-6 py-3 text-left text-xs font-medium text-yellow-300 uppercase tracking-wider
    */
@@ -551,6 +780,17 @@ body {
    */
   .th-cyan {
     @apply px-6 py-3 text-left text-xs font-medium text-cyan-300 uppercase tracking-wide;
+  }
+}
+
+@keyframes sectionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -614,8 +854,10 @@ body {
   .glass-btn-outline,
   .glass-form-input,
   .glass-form-select,
-  .glass-card {
+  .glass-card,
+  .section-transition {
     transition: none;
+    animation: none;
   }
 }
 

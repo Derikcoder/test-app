@@ -118,7 +118,7 @@ const Register = () => {
  return (
   <div className="glass-bg-particles min-h-screen bg-fixed auth-surface py-8 px-4 sm:px-6 lg:px-8">
    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[1.25fr_1fr]">
-    <section className="auth-aside-card">
+    <section className="card card-glass auth-aside-card">
      <p className="auth-kicker">Identity & Access Provisioning</p>
      <h1 className="auth-aside-title">Create a Production-Grade Account</h1>
      <p className="auth-aside-copy">
@@ -131,7 +131,7 @@ const Register = () => {
      </ul>
     </section>
 
-    <section className="glass-form max-w-none p-7 sm:p-9">
+    <section className="card card-glass glass-form max-w-none p-7 sm:p-9">
     <h2 className="glass-heading text-left">Register Account</h2>
     <p className="glass-heading-secondary mb-6 text-left">Set role, verify identity, and activate access.</p>
 
@@ -147,7 +147,7 @@ const Register = () => {
 
     <form onSubmit={handleSubmit} className="space-y-5">
      {/* Role Section */}
-     <div className="glass-card">
+    <div className="card card-glass glass-card">
       <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--primary)' }}>Account Role</h3>
       <p className="text-sm mb-4 opacity-75" style={{ color: 'var(--primary)' }}>
        Choose the principal role first. Required fields below will adapt automatically.
@@ -180,7 +180,7 @@ const Register = () => {
      </div>
 
      {/* User Information Section */}
-     <div className="glass-card">
+    <div className="card card-glass glass-card">
       <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>User Credentials</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
        <div className="glass-form-group">
@@ -236,7 +236,7 @@ const Register = () => {
 
        {/* Delegated Access Section */}
        {requiresPasskey && (
-        <div className="glass-card">
+        <div className="card card-glass glass-card">
          <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Delegated Access Verification</h3>
          <div className="grid grid-cols-1 gap-4">
         <div className="glass-form-group mb-0">
@@ -257,7 +257,7 @@ const Register = () => {
 
        {/* Profile Linking Section */}
        {(requiresFieldAgentProfile || requiresCustomerProfile) && (
-        <div className="glass-card">
+        <div className="card card-glass glass-card">
          <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Operational Profile Link</h3>
          <div className="grid grid-cols-1 gap-4">
         {requiresFieldAgentProfile && (
@@ -294,7 +294,7 @@ const Register = () => {
 
        {/* Business Information Section */}
        {requiresBusinessInfo && (
-       <div className="glass-card">
+      <div className="card card-glass glass-card">
         <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Business Information</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
        <div className="md:col-span-2 glass-form-group">
@@ -360,7 +360,7 @@ const Register = () => {
 
      {/* Address Information Section */}
       {requiresBusinessInfo && (
-      <div className="glass-card">
+      <div className="card card-glass glass-card">
       <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Address Information</h3>
       <div className="grid grid-cols-1 gap-4">
        <div className="glass-form-group">

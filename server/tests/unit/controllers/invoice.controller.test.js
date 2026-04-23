@@ -82,7 +82,16 @@ describe('Invoice Controller - Public Share Endpoints', () => {
       await getInvoices(req, res);
 
       expect(Invoice.find).toHaveBeenCalledWith({ customer: 'cust-123' });
-      expect(res.json).toHaveBeenCalledWith(customerInvoices);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            _id: 'invoice-1',
+            customer: 'cust-123',
+            invoiceNumber: 'INV-000901',
+            varianceFromQuotation: null,
+          }),
+        ])
+      );
     });
   });
 

@@ -73,11 +73,22 @@ Rounded     = 12px border-radius              // Smooth corners
 
 ### Cards & Containers
 
+**Library Rule (DRY):** Use one base `.card` class for all container cards.
+- `.card` is the structural base and is always `display: flex` with `flex-direction: column`.
+- Use modifiers for visual variants (`.card-glass`, `.card-inset`, etc.).
+- Legacy aliases (`.glass-card`, `.glass-form`, `.auth-aside-card`, `.sub-card`) are compatibility shims and should be phased toward `.card + modifier` usage.
+
 ```jsx
-// Glass Card
-<div className="glass-card">
+// Base + modifier (preferred)
+<div className="card card-glass">
   <h3>Section Title</h3>
   <p>Card content here</p>
+</div>
+
+// Inset variant
+<div className="card card-inset">
+  <h4>Nested panel</h4>
+  <p>Inset content</p>
 </div>
 ```
 

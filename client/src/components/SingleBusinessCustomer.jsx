@@ -21,6 +21,20 @@ const formatDate = (iso) =>
   ? new Date(iso).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })
   : '—';
 
+const formatStructuredAddress = (address = {}) => {
+ if (!address || typeof address !== 'object') return '';
+
+ return [
+  address.streetAddress,
+  address.complexName ? `Complex/Industrial Park: ${address.complexName}` : null,
+  address.siteAddressDetail ? `Unit/Site Detail: ${address.siteAddressDetail}` : null,
+  address.suburb,
+  address.cityDistrict,
+  address.province,
+  address.postalCode ? `Postal Code: ${address.postalCode}` : null,
+ ].filter(Boolean).join(', ');
+};
+
 const ACCOUNT_STATUS_STYLES = {
  active:    'bg-green-500/20 text-green-300 border border-green-400/40',
  inactive:  'bg-yellow-500/20 text-yellow-300 border border-yellow-400/40',
@@ -36,6 +50,19 @@ const CALL_STATUS_STYLES = {
  completed:      'bg-green-500/20 text-green-300',
  invoiced:       'bg-teal-500/20 text-teal-300',
  cancelled:      'bg-red-500/20 text-red-300',
+};
+
+const getLocationSourceLabel = (source) => {
+ switch (source) {
+  case 'explicit-service-location':
+   return 'Explicit Location';
+  case 'booking-machine-address':
+   return 'Machine Address';
+  case 'booking-administrative-address':
+   return 'Customer Address';
+  default:
+   return '';
+ }
 };
 
 /* ─── sub-components ──────────────────────────────────────── */
@@ -71,8 +98,15 @@ const CallHistoryRow = ({ call }) => {
     <span className="text-xs text-white/50 truncate">
      {call.serviceType ?? 'Service Call'}{call.urgency ? ` · ${call.urgency}` : ''}
     </span>
-    {call.serviceLocation && (
-     <span className="text-xs text-white/40 truncate">{call.serviceLocation}</span>
+    {(call.resolvedServiceLocation || call.serviceLocation) && (
+     <span className="text-xs text-white/40 truncate">
+      {call.resolvedServiceLocation || call.serviceLocation}
+      {getLocationSourceLabel(call.resolvedServiceLocationSource) && (
+       <span className="ml-2 inline-flex items-center rounded-full border border-cyan-800 bg-cyan-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-200">
+      {getLocationSourceLabel(call.resolvedServiceLocationSource)}
+       </span>
+      )}
+     </span>
     )}
    </div>
    <div className="flex flex-col items-end gap-1 shrink-0">
@@ -208,8 +242,19 @@ const SingleBusinessCustomer = () => {
  }
 
  const statusStyle = ACCOUNT_STATUS_STYLES[customer.accountStatus] ?? 'bg-white/10 text-white/60';
- const physLines   = addressLines(customer.physicalAddressDetails);
+ const physLines = addressLines(customer.physicalAddressDetails).length > 0
+  ? addressLines(customer.physicalAddressDetails)
+  : (customer?.physicalAddress ? [customer.physicalAddress] : []);
  const billLines   = addressLines(customer.billingAddressDetails);
+ const latestServiceCall = serviceCalls[0] || null;
+ const fallbackBookingLocation = formatStructuredAddress(latestServiceCall?.bookingRequest?.administrativeAddress || {});
+ const fallbackServiceLocation = String(
+  latestServiceCall?.resolvedServiceLocation
+  || latestServiceCall?.serviceLocation
+  || formatStructuredAddress(latestServiceCall?.bookingRequest?.machineAddress || {})
+  || fallbackBookingLocation
+  || ''
+ ).trim();
 
  return (
   <>
@@ -308,6 +353,14 @@ const SingleBusinessCustomer = () => {
         </div>
        </SectionCard>
       )}
+
+      <SectionCard title="Service Locations" icon="🗺️">
+       <InfoRow label="Booking Location" value={fallbackBookingLocation || null} />
+       <InfoRow label="Service Location" value={fallbackServiceLocation || null} />
+       {!fallbackBookingLocation && !fallbackServiceLocation && (
+        <span className="text-sm text-white/40">No location preferences recorded</span>
+       )}
+      </SectionCard>
 
       {/* Maintenance Manager */}
       {(customer.maintenanceManager?.name || customer.maintenanceManager?.email) && (

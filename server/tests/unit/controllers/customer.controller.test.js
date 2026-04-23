@@ -16,9 +16,11 @@ import {
 } from '../../../controllers/customer.controller.js';
 import Customer from '../../../models/Customer.model.js';
 import User from '../../../models/User.model.js';
+import ServiceCall from '../../../models/ServiceCall.model.js';
 
 jest.mock('../../../models/Customer.model.js');
 jest.mock('../../../models/User.model.js');
+jest.mock('../../../models/ServiceCall.model.js');
 jest.mock('../../../utils/sequence.util.js', () => ({
   getNextSequenceValue: jest.fn().mockResolvedValue(1),
   formatSequenceId: jest.fn().mockReturnValue('CUST-000001'),
@@ -90,6 +92,11 @@ describe('Customer Controller', () => {
     };
 
     jest.clearAllMocks();
+    ServiceCall.findOne = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        sort: jest.fn().mockResolvedValue(null),
+      }),
+    });
 
     Customer.IMMUTABLE_FIELDS = ['businessName', 'customerId', 'customerType', 'createdAt', '_id', 'createdBy'];
     Customer.EDITABLE_FIELDS = [
@@ -168,6 +175,44 @@ describe('Customer Controller', () => {
       await getCustomerById(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    test('backfills missing residential address from latest linked service call booking data', async () => {
+      req.params.id = 'customer-2';
+      const save = jest.fn().mockResolvedValue(true);
+      const customerWithMissingAddress = {
+        ...mockResidentialCustomer,
+        physicalAddress: '',
+        physicalAddressDetails: {},
+        save,
+      };
+
+      Customer.findOne = jest.fn().mockResolvedValue(customerWithMissingAddress);
+      ServiceCall.findOne = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockResolvedValue({
+            bookingRequest: {
+              administrativeAddress: {
+                streetAddress: '12 Test Street',
+                suburb: 'Northcliff',
+                cityDistrict: 'Johannesburg',
+                province: 'Gauteng',
+                postalCode: '2195',
+              },
+            },
+            serviceLocation: '',
+          }),
+        }),
+      });
+      User.findOne = jest.fn().mockResolvedValue(null);
+
+      await getCustomerById(req, res);
+
+      expect(save).toHaveBeenCalled();
+      expect(customerWithMissingAddress.physicalAddress).toContain('12 Test Street');
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        physicalAddress: expect.stringContaining('12 Test Street'),
+      }));
     });
   });
 

@@ -33,6 +33,20 @@ const formatDate = (iso) =>
     })
   : '—';
 
+const formatStructuredAddress = (address = {}) => {
+ if (!address || typeof address !== 'object') return '';
+
+ return [
+  address.streetAddress,
+  address.complexName ? `Complex/Industrial Park: ${address.complexName}` : null,
+  address.siteAddressDetail ? `Unit/Site Detail: ${address.siteAddressDetail}` : null,
+  address.suburb,
+  address.cityDistrict,
+  address.province,
+  address.postalCode ? `Postal Code: ${address.postalCode}` : null,
+ ].filter(Boolean).join(', ');
+};
+
 const ACCOUNT_STATUS_STYLES = {
  active:    'bg-green-500/20 text-green-300 border border-green-400/40',
  inactive:  'bg-yellow-500/20 text-yellow-300 border border-yellow-400/40',
@@ -48,6 +62,19 @@ const CALL_STATUS_STYLES = {
  completed: 'bg-green-500/20 text-green-300',
  invoiced:  'bg-teal-500/20 text-teal-300',
  cancelled: 'bg-red-500/20 text-red-300',
+};
+
+const getLocationSourceLabel = (source) => {
+ switch (source) {
+  case 'explicit-service-location':
+   return 'Explicit Location';
+  case 'booking-machine-address':
+   return 'Machine Address';
+  case 'booking-administrative-address':
+   return 'Customer Address';
+  default:
+   return '';
+ }
 };
 
 /* ─── sub-components ──────────────────────────────────────── */
@@ -84,8 +111,15 @@ const CallHistoryRow = ({ call }) => {
     <span className="text-xs text-white/50 truncate">
      {callSummary}{call.urgency ? ` · ${call.urgency}` : ''}
     </span>
-    {call.serviceLocation && (
-     <span className="text-xs text-white/40 truncate">{call.serviceLocation}</span>
+    {(call.resolvedServiceLocation || call.serviceLocation) && (
+     <span className="text-xs text-white/40 truncate">
+      {call.resolvedServiceLocation || call.serviceLocation}
+      {getLocationSourceLabel(call.resolvedServiceLocationSource) && (
+       <span className="ml-2 inline-flex items-center rounded-full border border-cyan-800 bg-cyan-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-200">
+      {getLocationSourceLabel(call.resolvedServiceLocationSource)}
+       </span>
+      )}
+     </span>
     )}
    </div>
    <div className="flex flex-col items-end gap-1 shrink-0">
@@ -185,7 +219,9 @@ const ResidentialCustomer = () => {
  }, [customer]);
 
  const addressLines = useMemo(() => {
-  if (!customer?.physicalAddressDetails) return [];
+  if (!customer?.physicalAddressDetails) {
+   return customer?.physicalAddress ? [customer.physicalAddress] : [];
+  }
   const d = customer.physicalAddressDetails;
   return [
    d.streetAddress,
@@ -196,6 +232,21 @@ const ResidentialCustomer = () => {
    d.postalCode ? `Postal Code: ${d.postalCode}` : '',
   ].filter(Boolean);
  }, [customer]);
+
+ const latestServiceCall = useMemo(() => serviceCalls[0] || null, [serviceCalls]);
+
+ const fallbackBookingLocation = useMemo(
+  () => formatStructuredAddress(latestServiceCall?.bookingRequest?.administrativeAddress || {}),
+  [latestServiceCall]
+ );
+
+ const fallbackServiceLocation = useMemo(() => {
+  const explicit = String(latestServiceCall?.resolvedServiceLocation || latestServiceCall?.serviceLocation || '').trim();
+  if (explicit) return explicit;
+
+  const machineAddress = formatStructuredAddress(latestServiceCall?.bookingRequest?.machineAddress || {});
+  return machineAddress || fallbackBookingLocation || '';
+ }, [latestServiceCall, fallbackBookingLocation]);
 
  const isOwnProfile = user?.role === 'customer' && String(user?.customerProfile) === id;
  const backTarget = isOwnProfile ? '/profile' : '/customers';
@@ -359,10 +410,10 @@ const ResidentialCustomer = () => {
 
       {/* Service Location Preferences */}
       <SectionCard title="Service Locations" icon="🗺️">
-       <InfoRow label="Booking Location" value={notes.bookingLocation || null} />
-       <InfoRow label="Service Location" value={notes.serviceLocation || null} />
+        <InfoRow label="Booking Location" value={notes.bookingLocation || fallbackBookingLocation || null} />
+        <InfoRow label="Service Location" value={notes.serviceLocation || fallbackServiceLocation || null} />
        <InfoRow label="Location Relationship" value={notes.locationRelationship || null} />
-       {!notes.bookingLocation && !notes.serviceLocation && (
+        {!notes.bookingLocation && !notes.serviceLocation && !fallbackBookingLocation && !fallbackServiceLocation && (
         <span className="text-sm text-white/40">No location preferences recorded</span>
        )}
       </SectionCard>

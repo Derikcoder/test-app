@@ -30,15 +30,8 @@ export function getCustomerRouteSegment(customerType) {
  * @returns {string} React Router path to navigate to
  */
 export function getPostLoginRedirect(userData) {
-  if (
-    userData?.role === 'customer' &&
-    userData?.customerProfile &&
-    userData?.customerType
-  ) {
-    const segment = CUSTOMER_TYPE_ROUTES[userData.customerType];
-    if (segment) {
-      return `/customers/${segment}/${userData.customerProfile}`;
-    }
+  if (userData?.role === 'customer') {
+    return '/customer/dashboard';
   }
   return '/profile';
 }

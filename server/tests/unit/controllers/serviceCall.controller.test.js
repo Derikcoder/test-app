@@ -122,7 +122,7 @@ describe('Service Call Controller - Self Dispatch', () => {
     await getEligibleUnassignedServiceCalls(req, res);
 
     expect(res.json).toHaveBeenCalledWith({
-      jobs: [{ _id: 'call-1', callNumber: 'SC-000001', assignedAgent: null }],
+      jobs: [expect.objectContaining({ _id: 'call-1', callNumber: 'SC-000001', assignedAgent: null })],
       meta: {
         acceptedTodayCount: 0,
         remainingDailySelfAccepts: 2,
@@ -196,7 +196,7 @@ describe('Service Call Controller - Self Dispatch', () => {
     expect(ServiceCall.findOneAndUpdate).toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({
       message: 'Service call self-accepted successfully',
-      serviceCall: populatedCall,
+      serviceCall: expect.objectContaining(populatedCall),
       meta: {
         acceptedTodayCount: 0,
         remainingDailySelfAccepts: 2,
@@ -299,7 +299,10 @@ describe('Service Call Controller - Self Dispatch', () => {
       await submitRating(req, res);
 
       expect(serviceCall.save).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith(serviceCall);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        _id: 'call-quoted-1',
+        callNumber: 'SC-QUOTED-1',
+      }));
     });
   });
 
@@ -317,7 +320,9 @@ describe('Service Call Controller - Self Dispatch', () => {
       await getServiceCalls(req, res);
 
       expect(ServiceCall.find).toHaveBeenCalledWith({ customer: 'cust-123' });
-      expect(res.json).toHaveBeenCalledWith(serviceCalls);
+      expect(res.json).toHaveBeenCalledWith([
+        expect.objectContaining(serviceCalls[0]),
+      ]);
     });
   });
 
@@ -341,7 +346,9 @@ describe('Service Call Controller - Self Dispatch', () => {
       await getMyAssignedServiceCalls(req, res);
 
       expect(ServiceCall.find).toHaveBeenCalledWith({ assignedAgent: 'agent-profile-1' });
-      expect(res.json).toHaveBeenCalledWith([mockCall]);
+      expect(res.json).toHaveBeenCalledWith([
+        expect.objectContaining(mockCall),
+      ]);
     });
 
     test('returns 400 when user has no linked agent profile', async () => {
@@ -387,7 +394,9 @@ describe('Service Call Controller - Self Dispatch', () => {
       await getEligibleUnassignedServiceCalls(req, res);
 
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ jobs: [{ _id: 'call-1', assignedAgent: null }] })
+        expect.objectContaining({
+          jobs: [expect.objectContaining({ _id: 'call-1', assignedAgent: null })],
+        })
       );
     });
 
@@ -437,7 +446,10 @@ describe('Service Call Controller - Self Dispatch', () => {
 
       expect(ServiceCall.findOneAndUpdate).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Service call self-accepted successfully', serviceCall: populated })
+        expect.objectContaining({
+          message: 'Service call self-accepted successfully',
+          serviceCall: expect.objectContaining(populated),
+        })
       );
     });
 

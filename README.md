@@ -49,6 +49,8 @@ This is an enterprise-grade field service management application built with the 
 - 🏷️ Auto-detected machine/serviceable asset summaries from completed service history with name, brand, model, category, and service totals
 - 📚 Grouped portal history showing services rendered by category, field service agent, and latest customer review snapshot
 - 🔎 Machine-specific drill-down page listing all services rendered on a selected asset
+- 🧭 Dedicated customer workspace sections under `/customer/:section` with dashboard-first navigation
+- 🗂️ Booking entry points in customer portal now pass context-aware state for existing-customer repeat/new service flows
 
 ### Field Agent Management
 - 👨‍🔧 Complete agent profile management (CRUD operations)
@@ -68,6 +70,9 @@ This is an enterprise-grade field service management application built with the 
 - 🧾 Quotation and invoicing history capture in structured booking request
 - 🚨 SuperUser operations queue for unassigned call alerts and assignment to field agents
 - 🧩 Reusable quote creation component available from agent profile and service calls views
+- 🧠 Existing-customer portal bookings derive grouped structure and parent-account linkage (`headOfficeId`) from registered customer profile data
+- ✅ Assignment-status buckets now prevent terminal `completed` and `invoiced` calls from leaking into awaiting-acceptance views
+- 📍 Service call responses include normalized resolved service-location metadata for consistent customer/agent display context
 
 ### Quotation Management
 - 🧾 Reusable Create Quote modal for both superAdmin and customer-oriented flows
@@ -109,6 +114,7 @@ This is an enterprise-grade field service management application built with the 
 - 📄 Public PDF access available at `GET /api/invoices/share/:token/pdf`
 - ✅ Public customer approval/rejection endpoint available at `POST /api/invoices/share/:token/decision`
 - 🌐 Customer-facing approval route available at `/invoice-approval/:token`
+- 📊 Invoice responses include quotation variance summaries to expose billed-vs-quoted movement for customer-facing billing review
 
 ### Role-Aware Visual System
 - 🎯 Unified color legend in sidebar footer for instant entity recognition across all pages
@@ -170,6 +176,7 @@ test-app/
 │   │   │   ├── Sidebar.jsx         # Navigation sidebar
 │   │   │   ├── Login.jsx           # Login screen
 │   │   │   ├── Register.jsx        # Registration screen
+│   │   │   ├── CustomerPortal.jsx  # Authenticated customer workspace (dashboard/profile/billing/services)
 │   │   │   ├── UserProfile.jsx     # User profile management
 │   │   │   ├── FieldServiceAgents.jsx  # Agent CRUD operations
 │   │   │   ├── AgentProfile.jsx    # Agent details & statistics

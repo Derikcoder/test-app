@@ -74,13 +74,33 @@ const ServiceCalls = () => {
   return 'Unlinked customer';
  };
 
+   const getLocationSourceLabel = (source) => {
+    switch (source) {
+     case 'explicit-service-location':
+      return 'Explicit Location';
+     case 'booking-machine-address':
+      return 'Machine Address';
+     case 'booking-administrative-address':
+      return 'Customer Address';
+     default:
+      return '';
+    }
+   };
+
  // --- Status bucket useMemos ---
  const unassignedCalls = useMemo(
   () => serviceCalls.filter((call) => !call.assignedAgent || call.status === 'pending'),
   [serviceCalls]
  );
  const awaitingAcceptanceCalls = useMemo(
-  () => serviceCalls.filter((call) => call.assignedAgent && call.agentAccepted === false),
+  () =>
+   serviceCalls.filter(
+    (call) =>
+     call.assignedAgent &&
+     call.agentAccepted === false &&
+     call.status !== 'completed' &&
+     call.status !== 'invoiced'
+   ),
   [serviceCalls]
  );
  const acceptedNotAttendedCalls = useMemo(
@@ -288,7 +308,16 @@ const ServiceCalls = () => {
     {call.scheduledDate && <p>Scheduled: {formatDate(call.scheduledDate)}</p>}
     {call.startedDate && <p>Started: {formatDate(call.startedDate)}</p>}
     {call.completedDate && <p>Completed: {formatDate(call.completedDate)}</p>}
-    {call.serviceLocation && <p>Location: {call.serviceLocation}</p>}
+    {(call.resolvedServiceLocation || call.serviceLocation) && (
+     <p>
+      Location: {call.resolvedServiceLocation || call.serviceLocation}
+      {getLocationSourceLabel(call.resolvedServiceLocationSource) && (
+       <span className="ml-2 inline-flex items-center rounded-full border border-cyan-800 bg-cyan-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-200">
+      {getLocationSourceLabel(call.resolvedServiceLocationSource)}
+       </span>
+      )}
+     </p>
+    )}
     {call.assignedAgent && (
      <p>
       Agent:{' '}
@@ -370,7 +399,7 @@ const ServiceCalls = () => {
     </div>
    )}
    {showAssignControls && (
-    <div className="pt-2 flex items-center gap-2 flex-wrap">
+    <div className="pt-2 quick-actions-wrap">
      <select
       value={selectedAssignments[call._id] || ''}
       onChange={(e) => handleAssignmentSelect(call._id, e.target.value)}
@@ -387,7 +416,7 @@ const ServiceCalls = () => {
       type="button"
       disabled={assigningCallId === call._id}
       onClick={() => assignCallToAgent(call)}
-      className="rounded-lg bg-blue-500/30 hover:bg-blue-500/40 border border-blue-300/30 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 transition"
+      className="quick-action-btn quick-action-btn-sm quick-action-btn-info disabled:opacity-50"
      >
       {assigningCallId === call._id ? 'Assigning...' : 'Assign'}
      </button>
@@ -402,7 +431,7 @@ const ServiceCalls = () => {
        type="button"
        disabled={markingCompleteId === call._id}
        onClick={() => handleMarkComplete(call)}
-       className="rounded-lg bg-emerald-500/25 hover:bg-emerald-500/35 border border-emerald-300/30 px-4 py-1.5 text-xs font-semibold text-emerald-200 disabled:opacity-50 transition"
+      className="quick-action-btn quick-action-btn-sm quick-action-btn-success disabled:opacity-50"
       >
        {markingCompleteId === call._id ? 'Marking complete…' : '✓ Mark as Complete'}
       </button>
@@ -414,7 +443,7 @@ const ServiceCalls = () => {
        type="button"
        disabled={creatingInvoiceId === call._id}
        onClick={() => handleCreateInvoice(call)}
-       className="rounded-lg bg-teal-500/25 hover:bg-teal-500/35 border border-teal-300/30 px-4 py-1.5 text-xs font-semibold text-teal-200 disabled:opacity-50 transition"
+      className="quick-action-btn quick-action-btn-sm quick-action-btn-info disabled:opacity-50"
       >
        {creatingInvoiceId === call._id ? 'Creating invoice…' : '+ Create Invoice'}
       </button>
@@ -440,25 +469,25 @@ const ServiceCalls = () => {
       <button
        type="button"
        onClick={() => setPendingDeleteId(call._id)}
-       className="text-xs text-red-400 hover:text-red-300 font-semibold transition-colors self-start"
+      className="quick-action-link-danger self-start"
       >
        Delete call
       </button>
      ) : (
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="quick-actions-wrap">
        <span className="text-xs text-white/70">Remove this service call?</span>
        <button
         type="button"
         disabled={deletingCallId === call._id}
         onClick={() => handleDeleteCall(call)}
-        className="rounded-lg bg-red-500/30 hover:bg-red-500/40 border border-red-300/30 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition"
+        className="quick-action-btn quick-action-btn-sm quick-action-btn-danger disabled:opacity-50"
        >
         {deletingCallId === call._id ? 'Deleting...' : 'Yes, delete'}
        </button>
        <button
         type="button"
         onClick={() => setPendingDeleteId('')}
-        className="text-xs text-white/50 hover:text-white/80 transition-colors"
+        className="quick-action-link"
        >
         Cancel
        </button>
@@ -469,15 +498,11 @@ const ServiceCalls = () => {
   </div>
  );
 
- const Section = ({ title, calls, colorClass, showAssignControls = false, emptyMsg }) => (
-  <div className="glass-card rounded-2xl shadow-xl p-6">
+ const Section = ({ title, calls, showAssignControls = false, emptyMsg }) => (
+  <div className="card card-glass glass-card rounded-2xl shadow-xl p-6">
    <div className="flex items-center justify-between mb-4">
     <h2 className="glass-heading text-lg">{title}</h2>
-    <span
-     className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${colorClass}`}
-    >
-     {calls.length}
-    </span>
+    <span className="count-badge">{calls.length}</span>
    </div>
    {calls.length === 0 ? (
     <p className="text-sm text-white/50">{emptyMsg || 'No calls in this category.'}</p>
@@ -517,18 +542,18 @@ const ServiceCalls = () => {
        <h1 className="glass-heading text-3xl">Service Calls</h1>
        <p className="text-white/70 mt-1">Status dashboard — {serviceCalls.length} total calls</p>
       </div>
-      <div className="flex gap-3 flex-wrap">
+      <div className="quick-actions-grid w-full sm:w-auto">
        <button
         type="button"
         onClick={() => navigate('/service-call-registration')}
-        className="glass-btn-primary font-semibold py-2.5 px-5"
+        className="quick-action-btn quick-action-btn-primary"
        >
         + Book Service
        </button>
        <button
         type="button"
         onClick={() => { fetchServiceCalls(); fetchAgents(); }}
-        className="glass-btn-outline font-semibold py-2.5 px-5"
+        className="quick-action-btn quick-action-btn-secondary"
        >
         Refresh
        </button>
@@ -568,7 +593,6 @@ const ServiceCalls = () => {
      <Section
       title="Unassigned"
       calls={unassignedCalls}
-      colorClass="border-yellow-400/40 bg-yellow-500/20 text-yellow-200"
       showAssignControls
       emptyMsg="No unassigned calls — great!"
      />
@@ -576,35 +600,30 @@ const ServiceCalls = () => {
      <Section
       title="Assigned — Awaiting Agent Acceptance"
       calls={awaitingAcceptanceCalls}
-      colorClass="border-blue-400/40 bg-blue-500/20 text-blue-200"
       emptyMsg="No calls awaiting agent acceptance."
      />
 
      <Section
       title="Accepted — Not Yet Attended"
       calls={acceptedNotAttendedCalls}
-      colorClass="border-cyan-400/40 bg-cyan-500/20 text-cyan-200"
       emptyMsg="No accepted calls pending attendance."
      />
 
      <Section
       title="Attended — Quotation Submitted, Awaiting Approval"
       calls={awaitingQuoteApprovalCalls}
-      colorClass="border-orange-400/40 bg-orange-500/20 text-orange-200"
       emptyMsg="No calls awaiting quote approval."
      />
 
      <Section
       title="Quotation Accepted — Job In Progress"
       calls={inProgressCalls}
-      colorClass="border-indigo-400/40 bg-indigo-500/20 text-indigo-200"
       emptyMsg="No jobs currently in progress."
      />
 
      <Section
       title="Completed / Invoiced"
       calls={completedCalls}
-      colorClass="border-emerald-400/40 bg-emerald-500/20 text-emerald-200"
       emptyMsg="No completed calls yet."
      />
 

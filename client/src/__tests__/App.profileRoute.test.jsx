@@ -27,8 +27,8 @@ vi.mock('../components/FieldAgentSelfProfile', () => ({
   default: () => <div>FieldAgentSelfProfilePage</div>,
 }));
 
-vi.mock('../components/ResidentialCustomer', () => ({
-  default: () => <div>ResidentialCustomerPage</div>,
+vi.mock('../components/CustomerPortal', () => ({
+  default: () => <div>CustomerPortalPage</div>,
 }));
 
 describe('App profile route', () => {
@@ -40,7 +40,7 @@ describe('App profile route', () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText('ResidentialCustomerPage')).toBeInTheDocument();
+      expect(screen.getByText('CustomerPortalPage')).toBeInTheDocument();
     });
 
     expect(screen.queryByText('UserProfilePage')).not.toBeInTheDocument();

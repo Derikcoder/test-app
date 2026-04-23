@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** April 15, 2026  
+**Last Updated:** April 23, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -44,6 +44,48 @@
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: April 23, 2026 — Customer Portal Navigation + Existing-Customer Booking + Location/Invoice Intelligence
+**Focus:** Consolidate customer self-service routing, remove duplicate booking capture for existing customers, and strengthen service-call/invoice traceability across customer and field-agent views.
+
+- ✅ Added dedicated customer workspace routing in `App.jsx` with `/customer/:section` and customer-safe redirects from `/profile` and `/customer`
+- ✅ Added new `CustomerPortal.jsx` sectioned workspace (Dashboard, Profile, Billing, Services) with sticky booking entry points
+- ✅ Opened `/service-call-registration` to authenticated users (not admin-only) so customer-initiated bookings flow through protected routing
+- ✅ Refactored `ServiceCallRegistration.jsx` with category-aware booking catalog, portal booking mode, repeat-service prefill, and grouped customer handling (`headOffice`, `branch`, `franchise`, `singleBusiness`, `residential`)
+- ✅ Added branch/franchise parent-account linking for portal bookings so grouped entities inherit `headOfficeId` without manual re-selection
+- ✅ Added portal booking regression tests (`ServiceCallRegistration.portalBooking.test.jsx`) covering branch and franchise grouped-customer payload behavior
+- ✅ Updated customer profile route regression test to assert current customer portal redirect behavior (`CustomerPortalPage`)
+- ✅ Added resolved service-location normalization in backend service call controller responses and surfaced source labels in agent/customer UIs
+- ✅ Fixed assignment-status overlap in `ServiceCalls.jsx` by excluding terminal `completed`/`invoiced` calls from the awaiting-acceptance bucket
+- ✅ Expanded invoice responses with quotation variance summaries and exposed customer-facing amount history details in `CustomerBillingPanel.jsx`
+- ✅ Added customer address backfill from latest service call booking request for incomplete residential/customer address records
+- ✅ Added scenario planning artifact `MVP_PHASE8_12_SCENARIO_CHEAT_SHEET.md` to drive full-cycle matrix validation
+- ✅ Verified frontend quality gates: `npm run build` passes and full client test suite passes (105/105)
+
+**Primary Files Updated:**
+- `client/src/App.jsx`
+- `client/src/components/CustomerPortal.jsx` (NEW)
+- `client/src/components/ServiceCallRegistration.jsx`
+- `client/src/components/ServiceCalls.jsx`
+- `client/src/components/Sidebar.jsx`
+- `client/src/components/CustomerBillingPanel.jsx`
+- `client/src/components/AgentProfile.jsx`
+- `client/src/components/FieldAgentSelfProfile.jsx`
+- `client/src/components/HeadOfficeCustomer.jsx`
+- `client/src/components/BranchCustomer.jsx`
+- `client/src/components/FranchiseCustomer.jsx`
+- `client/src/components/SingleBusinessCustomer.jsx`
+- `client/src/components/ResidentialCustomer.jsx`
+- `client/src/__tests__/components/ServiceCallRegistration.portalBooking.test.jsx` (NEW)
+- `client/src/__tests__/App.profileRoute.test.jsx`
+- `server/controllers/serviceCall.controller.js`
+- `server/controllers/invoice.controller.js`
+- `server/controllers/customer.controller.js`
+- `server/models/ServiceCall.model.js`
+- `server/tests/unit/controllers/serviceCall.controller.test.js`
+- `server/tests/unit/controllers/invoice.controller.test.js`
+- `server/tests/unit/controllers/customer.controller.test.js`
+- `MVP_PHASE8_12_SCENARIO_CHEAT_SHEET.md` (NEW)
 
 #### Session: April 17, 2026 — Customer Recovery + Address Normalization + Machine History Drill-Down
 **Focus:** Finish the customer portal self-service loop so onboarded customers can safely recover access, update their password inside the portal, see cleanly mapped onboarding address fields, and view serviced machine history directly from their profile
