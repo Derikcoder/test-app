@@ -2,6 +2,13 @@
 
 A comprehensive full-stack MERN application for managing field service operations, including customer intake, agent management, service call tracking, and Google Maps integration.
 
+
+## 🧪 Backend Testing Standard
+
+All backend unit tests follow the #Jestering pattern (GIVEN/WHEN/THEN, factory-based mocks, anti-pattern checklist). See TESTING_GUIDE.md for details and the quick reference card.
+
+---
+
 ## 📋 Table of Contents
 
 - [Overview](#overview)

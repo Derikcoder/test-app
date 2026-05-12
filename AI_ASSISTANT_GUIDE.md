@@ -41,6 +41,18 @@
 
 ---
 
+
+## 🧪 Backend Testing Framework Update (April 2026)
+
+**All backend unit tests now follow the #Jestering pattern:**
+- GIVEN/WHEN/THEN structure for every test
+- Reusable mock factories for all entities and Express objects
+- Mocks only at system boundaries (DB, API, email, files)
+- Explicit anti-pattern checklist enforced
+- See TESTING_GUIDE.md for full details and the quick reference card
+
+---
+
 ## 📋 Quick Context
 
 ### Recent Changes

@@ -14,6 +14,14 @@ const addressSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  /** Group name for grouping branches (e.g., "Arrie Nel") */
+  groupName: {
+    type: String,
+    trim: true,
+    default: '',
+    index: true,
+    description: 'Business group or pharmacy group this customer belongs to',
+  },
   complexName: {
     type: String,
     trim: true,

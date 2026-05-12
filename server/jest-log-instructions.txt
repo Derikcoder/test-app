@@ -1,0 +1,13 @@
+To log all Jest test results and errors to a file for analysis:
+
+1. Run your tests with:
+   npm run test:server -- --json --outputFile=jest.output.json
+
+2. The file server/jest.output.json will contain all test results, errors, and stack traces in JSON format.
+
+3. You can analyze this file for error patterns, undefined variables, and recurring issues.
+
+4. For easier viewing, use a JSON viewer or tools like jq:
+   jq . server/jest.output.json | less
+
+5. To automate error pattern analysis, I can provide scripts to parse this file and summarize root causes.

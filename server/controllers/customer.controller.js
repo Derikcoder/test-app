@@ -214,7 +214,8 @@ export const createCustomer = async (req, res) => {
       maintenanceManager,
       accountStatus,
       notes,
-      serviceAssets
+      serviceAssets,
+      groupName = ''
     } = req.body;
 
     const normalizedPhysicalAddress = normalizeAddress(physicalAddressDetails, physicalAddress);
@@ -281,6 +282,7 @@ export const createCustomer = async (req, res) => {
       accountStatus,
       notes,
       serviceAssets,
+      groupName,
       createdBy: req.user._id
     });
 
@@ -515,22 +517,26 @@ export const updateCustomerSite = async (req, res) => {
       return res.status(404).json({ message: 'Site not found' });
     }
 
-    // Update site fields
-    const updateableFields = ['siteName', 'contactPerson', 'contactPhone', 'contactEmail', 'serviceTypes', 'status', 'notes'];
-    updateableFields.forEach(field => {
+    // Update editable fields
+    Customer.EDITABLE_FIELDS.forEach((field) => {
+      if ([
+        'physicalAddress',
+        'physicalAddressDetails',
+        'billingAddress',
+        'billingAddressDetails',
+        'sites'
+      ].includes(field)) {
+        return;
+      }
+
       if (req.body[field] !== undefined) {
-        site[field] = req.body[field];
+        customer[field] = req.body[field];
       }
     });
-
-    if (req.body.address !== undefined || req.body.addressDetails !== undefined) {
-      const normalizedAddress = normalizeAddress(req.body.addressDetails, req.body.address ?? site.address);
-      site.address = normalizedAddress.formatted;
-      site.addressDetails = normalizedAddress.details;
+    // Allow groupName update
+    if (req.body.groupName !== undefined) {
+      customer.groupName = req.body.groupName;
     }
-
-    const updatedCustomer = await customer.save();
-    logInfo(`✅ Site updated for customer ${customer.customerId}: ${site.siteName}`);
     res.json(site);
   } catch (error) {
     logError('Update customer site error:', error);

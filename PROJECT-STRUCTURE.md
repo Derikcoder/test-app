@@ -117,6 +117,16 @@ main                 ← Production (stable, never touched directly)
 
 ---
 
+
+## 🧪 Backend Unit Testing
+
+- All backend unit tests are located in `server/tests/unit/`
+- Tests follow the #Jestering pattern: GIVEN/WHEN/THEN structure, factory-based mocks, and anti-pattern checklist
+- Factories for all entities and Express objects are in `server/tests/unit/__mocks__/factories/`
+- See TESTING_GUIDE.md for the full pattern, anti-patterns, and quick reference card
+
+---
+
 ## 🖥️ Client Application (`client/`)
 - `index.html`: Vite HTML entry point.
 - `vite.config.js`: Vite configuration, dev server (port 3000), and API proxy to backend.

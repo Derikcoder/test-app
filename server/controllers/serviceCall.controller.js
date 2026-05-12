@@ -366,8 +366,17 @@ export const createServiceCall = async (req, res) => {
       serviceLocation,
       notes,
       internalNotes,
-      bookingRequest
+      bookingRequest,
+      groupName: reqGroupName
     } = req.body;
+    // Determine groupName: prefer explicit, else derive from customer
+    let resolvedGroupName = reqGroupName;
+    if (!resolvedGroupName && customer) {
+      const customerDoc = await Customer.findById(customer).select('groupName');
+      if (customerDoc && customerDoc.groupName) {
+        resolvedGroupName = customerDoc.groupName;
+      }
+    }
 
     const normalizedPriority = priority ? String(priority).toLowerCase() : undefined;
 
@@ -466,6 +475,7 @@ export const createServiceCall = async (req, res) => {
       notes,
       internalNotes,
       bookingRequest,
+      groupName: resolvedGroupName,
       createdBy: req.user._id
     });
 
@@ -485,6 +495,10 @@ export const createServiceCall = async (req, res) => {
 // @route   PUT /api/service-calls/:id
 // @access  Private
 export const updateServiceCall = async (req, res) => {
+      // Allow groupName update
+      if (req.body.groupName !== undefined) {
+        serviceCall.groupName = req.body.groupName;
+      }
   try {
     if (req.body.agentAccepted === true) {
       return res.status(403).json({ message: 'Use the dedicated self-accept workflow for agent confirmation' });

@@ -287,6 +287,13 @@ const serviceCallSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Equipment',
     },
+    /** Group name for grouping branches (e.g., "Arrie Nel") */
+    groupName: {
+      type: String,
+      trim: true,
+      default: '',
+      description: 'Business group or pharmacy group this service call belongs to',
+    },
     /** Reference to FieldServiceAgent assigned to this call */
     assignedAgent: {
       type: mongoose.Schema.Types.ObjectId,

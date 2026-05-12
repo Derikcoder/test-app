@@ -1,5 +1,15 @@
 # Unit Testing Implementation Summary
 
+
+## 🧪 Backend Testing Pattern: #Jestering
+
+- All backend unit tests use the #Jestering pattern: GIVEN/WHEN/THEN structure, factory-based mocks, and anti-pattern checklist
+- Factories are required for all entity and Express mocks
+- Anti-patterns (over-mocking, testing implementation details, shared state) are forbidden
+- See TESTING_GUIDE.md for the full pattern, anti-patterns, and quick reference card
+
+---
+
 ## 🎯 Overview
 
 Complete unit testing infrastructure has been implemented for the WKD Field Service Management application. This document summarizes what was created and how to use it.

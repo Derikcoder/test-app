@@ -1,16 +1,11 @@
-/**
- * @file jest.config.js
- * @description Jest configuration for server-side unit and integration tests
- */
-
 export default {
   testEnvironment: 'node',
   moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^(.{1,2}/.*)\\.js$': '$1',
   },
-  transform: {
-    '^.+\\.js$': ['babel-jest', { configFile: './babel.config.cjs' }],
-  },
+  // Ensure all .js files (including middleware) are transformed by Babel
+  // ESM support: treat .js and .mjs as ESM, no Babel transform needed
+  transformIgnorePatterns: ['<rootDir>/node_modules/(?!.*)'],
   collectCoverageFrom: [
     'controllers/**/*.js',
     'middleware/**/*.js',
@@ -26,9 +21,10 @@ export default {
       statements: 60,
     },
   },
-  testMatch: ['**/tests/**/*.test.js'],
-  moduleFileExtensions: ['js'],
+  testMatch: ['**/tests/**/*.test.js', '**/tests/**/*.test.mjs'],
+  moduleFileExtensions: ['js', 'mjs'],
   testTimeout: 10000,
   collectCoverage: false,
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.cjs'],
+  // ESM is enabled via "type": "module" in package.json
 };

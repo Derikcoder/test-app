@@ -12,13 +12,27 @@
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "build:client": "npm run build --prefix client",
-    "test:server": "npm test --prefix server",
+    "test:server": "npm --prefix ./server run test --",
+    "test:server:json": "npm --prefix ./server run test -- --json --outputFile=jest.output.json .",
+    "test:server:debug": "npm --prefix ./server run test -- --runInBand",
     "test:client": "npm test --prefix client",
     "test": "npm run test:server && npm run test:client",
     "test:coverage": "npm run test:coverage --prefix server && npm run test:coverage --prefix client",
     "shutdown": "bash ./shutdown.sh"
   },
-  "keywords": ["react", "express", "mongodb", "tailwind", "mern"],
+  "keywords": [
+    "react",
+    "express",
+    "mongodb",
+    "tailwind",
+    "mern"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^30.3.0"
+  },
+  "dependencies": {
+    "glob": "^13.0.6"
+  }
 }

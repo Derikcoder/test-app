@@ -26,7 +26,9 @@ Source: package.json
 	"dev:server": "npm run dev --prefix server",
 	"dev:client": "npm run dev --prefix client",
 	"build:client": "npm run build --prefix client",
-	"test:server": "npm test --prefix server",
+	"test:server": "npm --prefix ./server run test --",
+	"test:server:json": "npm --prefix ./server run test -- --json --outputFile=jest.output.json .",
+	"test:server:debug": "npm --prefix ./server run test -- --runInBand",
 	"test:client": "npm test --prefix client",
 	"test": "npm run test:server && npm run test:client",
 	"test:coverage": "npm run test:coverage --prefix server && npm run test:coverage --prefix client",
@@ -43,7 +45,9 @@ Source: package.json
 | dev:server | npm run dev --prefix server |
 | dev:client | npm run dev --prefix client |
 | build:client | npm run build --prefix client |
-| test:server | npm test --prefix server |
+| test:server | npm --prefix ./server run test -- |
+| test:server:json | npm --prefix ./server run test -- --json --outputFile=jest.output.json . |
+| test:server:debug | npm --prefix ./server run test -- --runInBand |
 | test:client | npm test --prefix client |
 | test | npm run test:server && npm run test:client |
 | test:coverage | npm run test:coverage --prefix server && npm run test:coverage --prefix client |
