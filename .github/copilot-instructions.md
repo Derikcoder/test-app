@@ -1,3 +1,35 @@
+# Jestering Test Principles
+
+## #Jestering Quick Reference Card
+
+```markdown
+┌─────────────────────────────────────────┐
+│           #JESTERING CHEAT SHEET        │
+├─────────────────────────────────────────┤
+│ GIVEN  → Setup mocks and data          │
+│ WHEN   → Execute the action            │
+│ THEN   → Verify behavior               │
+├─────────────────────────────────────────┤
+│ ✅ MOCK: DB, API, email, files         │
+│ ❌ DON'T MOCK: logic, validators       │
+├─────────────────────────────────────────┤
+│ createMock[Entity]() → factory         │
+│ jest.clearAllMocks() → beforeEach      │
+│ mockResolvedValue() → async mocks      │
+├─────────────────────────────────────────┤
+│ "customer approves pro-forma" ✅       │
+│ "should approve" ❌                    │
+└─────────────────────────────────────────┘
+```
+
+## Jestering Principles
+- GIVEN/WHEN/THEN structure for every test
+- Use reusable mock factories for all entities and Express objects
+- Mocks only at system boundaries (DB, API, email, files)
+- Descriptive, action-focused test names
+- Explicit anti-pattern checklist (over-mocking, testing implementation details, shared state, magic strings)
+- Factories ensure consistency, realism, and maintainability
+- See TESTING_GUIDE.md for full details and examples
 # GitHub Copilot Instructions
 
 ## AI Assistant Protocol

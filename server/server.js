@@ -29,6 +29,8 @@ import serviceCallRoutes from './routes/serviceCall.routes.js';
 import equipmentRoutes from './routes/equipment.routes.js';
 import quotationRoutes from './routes/quotation.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
+import emailRoutes from './routes/email.routes.js';
+import userRoutes from './routes/user.routes.js';
 import serviceCallEmailLockRoutes from './routes/serviceCallEmailLock.routes.js';
 import { requestLogger, errorLogger, logInfo, logError } from './middleware/logger.middleware.js';
 
@@ -141,6 +143,12 @@ app.use('/api/quotations', quotationRoutes);
 
 // Invoice and payment management
 app.use('/api/invoices', invoiceRoutes);
+
+// Generic email routes
+app.use('/api/email', emailRoutes);
+
+// User management routes
+app.use('/api/users', userRoutes);
 
 // Email lock management (prevents duplicate service calls for pending quotations)
 app.use('/api/service-call-locks', serviceCallEmailLockRoutes);

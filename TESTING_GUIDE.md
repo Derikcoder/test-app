@@ -1,6 +1,31 @@
 # Unit Testing Guide
 
+## #Jestering Quick Reference Card
+
+```markdown
+┌─────────────────────────────────────────┐
+│           #JESTERING CHEAT SHEET        │
+├─────────────────────────────────────────┤
+│ GIVEN  → Setup mocks and data          │
+│ WHEN   → Execute the action            │
+│ THEN   → Verify behavior               │
+├─────────────────────────────────────────┤
+│ ✅ MOCK: DB, API, email, files         │
+│ ❌ DON'T MOCK: logic, validators       │
+├─────────────────────────────────────────┤
+│ createMock[Entity]() → factory         │
+│ jest.clearAllMocks() → beforeEach      │
+│ mockResolvedValue() → async mocks      │
+├─────────────────────────────────────────┤
+│ "customer approves pro-forma" ✅       │
+│ "should approve" ❌                    │
+└─────────────────────────────────────────┘
+```
+
+
+
 ## 📋 Table of Contents
+  - [Jestering Pattern & Principles](#jestering-pattern--principles)
 
 - [Overview](#overview)
 - [Testing Setup](#testing-setup)
@@ -13,7 +38,56 @@
 
 ---
 
-## 🎯 Overview
+
+## #Jestering Pattern & Principles
+
+### What is #Jestering?
+The #Jestering test framework enforces:
+- **GIVEN/WHEN/THEN** structure for every test (readable AAA)
+- Use of reusable mock factories (`createMock[Entity]()`) for all entities and Express objects
+- Realistic, complete test data in all mocks
+- Mocks only at system boundaries (database, APIs, email, file system)
+- Descriptive, action-focused test names
+- Explicit anti-pattern checklist (see below)
+
+### Factory Usage
+- All entity and Express mocks must be created via `server/tests/unit/__mocks__/factories/`
+- Example: `const mockUser = createMockUser({ email: 'customer@example.com' })`
+- Factories ensure consistency, realism, and maintainability
+
+### Anti-Pattern Checklist
+- ❌ Over-mocking (e.g., `jest.mock('everything')`)
+- ❌ Testing implementation details (e.g., `expect(helperFunction).toHaveBeenCalled()`)
+- ❌ Fragile selectors (avoid checking exact call order unless required)
+- ❌ Shared state between tests (always reset in `beforeEach`)
+- ❌ Magic strings without explanation
+
+### Example Jestering Test
+```javascript
+test('customer approves pro-forma', async () => {
+  // GIVEN
+  const req = createMockRequest({ params: { token: 'share-token-123' }, body: { decision: 'approved' } });
+  const res = createMockResponse();
+  const mockInvoice = mockStates.awaitingApproval();
+  Invoice.findOne.mockResolvedValue(mockInvoice);
+
+  // WHEN
+  await submitSharedInvoiceDecision(req, res);
+
+  // THEN
+  expect(mockInvoice.workflowStatus).toBe('approved');
+  expect(res.json).toHaveBeenCalledWith(
+    expect.objectContaining({ message: expect.stringContaining('approved') })
+  );
+});
+```
+
+> **Always:**
+> - Use factories for all mocks
+> - Structure tests as GIVEN/WHEN/THEN
+> - Reset mocks in `beforeEach`
+> - Use realistic data
+> - Avoid anti-patterns above
 
 This project uses **Jest** for backend testing and **Vitest** with **React Testing Library** for frontend testing. The test suite provides comprehensive coverage for:
 
@@ -111,11 +185,11 @@ client/src/__tests__/
     └── axios.test.js                # Axios configuration tests
 ```
 
-### Test File Naming Convention
 
-- Server: `*.test.js`
+### Test File Naming Convention
+- Server: `*.test.mjs` (ESM, Jestering pattern)
 - Client: `*.test.jsx` (for components), `*.test.js` (for utilities)
-- Pattern: `[filename].test.[js|jsx]`
+- Pattern: `[filename].test.[mjs|js|jsx]`
 
 ---
 
@@ -186,8 +260,8 @@ npm test
 ```json
 {
   "scripts": {
-    "test:server": "cd server && npm test",
-    "test:client": "cd client && npm test",
+    "test:server": "npm --prefix ./server run test --",
+    "test:client": "npm --prefix ./client run test --",
     "test": "npm run test:server && npm run test:client"
   }
 }
@@ -224,52 +298,47 @@ npm run test:coverage
 open coverage/index.html
 ```
 
-### Coverage Thresholds
 
-**Server (`jest.config.js`):**
-- Branches: 60%
-- Functions: 60%
-- Lines: 60%
-- Statements: 60%
-
-**Client:**
-- Target: 70%+ overall coverage
-
----
-
-## ✍️ Writing New Tests
-
-### Server Test Template
-
+### Server Test Template (Jestering)
 ```javascript
 /**
- * @file [filename].test.js
- * @description Unit tests for [module name]
+ * @file [filename].test.mjs
+ * @description Unit tests for [module name] (Jestering pattern)
  */
+import { jest } from '@jest/globals';
+import { createMockRequest, createMockResponse } from '../__mocks__/factories/express.factory.js';
+import { createMock[Entity] } from '../__mocks__/factories/[entity].factory.js';
 
-import { functionToTest } from '../../../path/to/module.js';
-import Model from '../../../models/Model.js';
+// Mock dependencies at module boundaries
+await jest.unstable_mockModule('../../../models/[Entity].model.js', () => ({ __esModule: true, default: {} }));
 
-// Mock dependencies
-jest.mock('../../../models/Model.js');
+const controller = await import('../../../controllers/[controller].js');
+const functionToTest = controller.functionToTest;
+const Entity = (await import('../../../models/[Entity].model.js')).default;
 
-describe('[Module Name]', () => {
-  let req, res, next;
-
+    test('should [expected behavior]', async () => {
   beforeEach(() => {
-    // Setup test data
-    req = { body: {}, params: {}, user: null };
-    res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-    next = jest.fn();
     jest.clearAllMocks();
   });
 
-  afterEach(() => {
-    // Cleanup if needed
-  });
+  test('[user action] [does something]', async () => {
+    // GIVEN
+    const req = createMockRequest({ /* overrides */ });
+    const res = createMockResponse();
+    const mockEntity = createMock[Entity]({ /* overrides */ });
+    Entity.findOne = jest.fn().mockResolvedValue(mockEntity);
 
-  describe('[Function Name]', () => {
-    test('should [expected behavior]', async () => {
+    // WHEN
+    await functionToTest(req, res);
+
+    // THEN
+    expect(Entity.findOne).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ /* expected data */ })
+    );
+  });
+});
+```
       // Arrange
       const mockData = { /* test data */ };
       Model.findOne = jest.fn().mockResolvedValue(mockData);
