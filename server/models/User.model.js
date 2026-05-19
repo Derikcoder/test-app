@@ -142,6 +142,15 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    /**
+     * Tracks whether the user has explicitly established a permanent password.
+     * Admin-provisioned first-login accounts start false and must transition to true
+     * once the user completes reset-password or profile password-change flows.
+     */
+    hasCompletedPasswordSetup: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt fields

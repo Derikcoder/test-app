@@ -907,8 +907,24 @@ npm update
 - **[CLEANUP_SEQUENCE_AGENT_PLAN.md](CLEANUP_SEQUENCE_AGENT_PLAN.md)** - Cleanup order-of-operations with agent delegation
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
 - **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
+- **[entities/README.md](entities/README.md)** - UAT entities workspace guide (personas, templates, invoice breakdown normalization)
 
 ## 📋 Recent Updates
+
+### May 12, 2026 — UAT Persona Expansion + Structured Invoice Schema Alignment
+
+- ✅ Expanded customer persona specifications in the UAT entities workspace for:
+   - Residential single-customer profile behavior
+   - Single-branch business profile behavior
+   - Multi-branch single-ownership company workflow (branch bookings, HQ oversight)
+   - Franchise multi-owner workflow (branch-owned billing, HQ service adequacy and lag monitoring)
+- ✅ Formalized canonical invoiced-details structure and consumables sliding-scale guidance in `entities/templates/invoice.invoiced-details.template.txt`.
+- ✅ Aligned invoice artifacts:
+   - Updated `invoice.schema.v1.json` to structured sundry/fixed/totals model
+   - Updated `invoice.schema.v1.1.json` normalized equivalent
+   - Updated `invoice.v1-to-v1.1.keymap.json` mappings
+   - Updated `invoiceSample.json` to current v1 structure
+   - Added `invoiceSample.v1.1.json` normalized sample
 
 ### April 2, 2026 — Remote Sync Readiness + Customer Onboarding Fix
 

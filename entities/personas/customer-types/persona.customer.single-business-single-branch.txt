@@ -1,0 +1,322 @@
+PERSONA SUMMARY
+- Persona ID: CUST-002
+- Persona Name: Single Business Customer (Single Branch)
+- Persona Type: Customer
+- Classification: Single branch business, independent or standalone
+- Objective: Manage service needs for one business site, track equipment maintenance, control costs, ensure business continuity
+- Profile Source: Wentzel Optometrist Inc (Invoice 1109)
+
+CUSTOMER BUSINESS PROFILE
+- Business Name: Wentzel Optometrist Inc
+- Business Type: Optometry/Eye Care Service Provider
+- VAT Registration Number: 4670322363
+- Tax ID: (as required)
+- Business Site Address: 407 Friesland lane, Lynnwood, Pretoria, 0081
+- Contact Number: 012 348 1177
+- Primary Contact: (Operations Manager or Site Manager)
+- Service Categories Used: Mechanical (generator backup power), occasionally Electrical, Plumbing, HVAC for facility support
+- Primary Concern: Equipment reliability (business continuity), predictable maintenance costs, vendor accountability, regulatory compliance (VAT invoicing, asset tracking)
+
+BUSINESS PROFILE PAGE FEATURES & UAT REQUIREMENTS
+
+=== 1. EQUIPMENT & MAINTENANCE SCHEDULE ===
+Profile section: "My Equipment & Maintenance"
+- Display list of critical business assets requiring regular service
+- For each asset:
+  * Equipment name and type (e.g., "Diesel Generator 15KVA", "HVAC Unit")
+  * Equipment manufacturer and model
+  * Serial number (for warranty/compliance tracking)
+  * Current status (operational, scheduled maintenance, under repair)
+  * Last service date and agent who serviced it
+  * Next scheduled maintenance date (if applicable)
+  * Service history link (shows all past services on this equipment)
+- Validation Points:
+  * Equipment list is specific to this business site
+  * Maintenance dates are tracked separately per asset
+  * Service history for each asset is complete and accurate
+  * Upcoming maintenance alerts are generated before due dates
+
+=== 2. SERVICE HISTORY BY ASSET & CATEGORY ===
+Profile section: "My Service History"
+- Two view modes:
+  a) By Asset: All services grouped by equipment (e.g., "Generator 15KVA" → [Service 1, Service 2, ...])
+  b) By Category: All services grouped by service type (e.g., "Mechanical" → [Service 1, Service 2, ...])
+- For each service entry:
+  * Service date and duration (hours on-site)
+  * Service category and type (maintenance, repair, emergency)
+  * Agent name and specialty
+  * Work description (from service call notes)
+  * Downtime impact (if any): "Equipment was offline for X hours"
+  * Final cost and payment status
+- Validation Points:
+  * Service dates match invoice dates
+  * Equipment asset is correctly linked to each service
+  * Service category matches agent specialty
+  * Cost figures match finalized invoices
+  * Downtime is tracked and reported accurately
+
+=== 3. QUOTES, INVOICES & FINANCIAL STATEMENT ===
+Profile section: "My Quotes, Invoices & Statement"
+- Three subsections (same as residential, but with business context):
+  a) Pending Quotes: Services requested but not yet quoted
+     - Shows: Service request date, equipment/category, agent assigned, time elapsed
+     - Validation: Critical services have SLA flags (e.g., "Generator repair – 24-hour response expected")
+  b) Outstanding Quotes: Quotes provided, awaiting business approval
+     - Shows: Quote date, equipment, agent, quote amount, quote expiry date, approval required indicator
+     - Validation: Business authority checks (approver role may be required for quotes above threshold)
+  c) Invoice History: Completed services with invoices
+     - Shows: Invoice date, invoice number, equipment/category, agent, amount, VAT breakdown, payment date
+     - Grouped by month or financial quarter
+     - Validation: All invoices have VAT included/excluded clearly marked
+- Financial Statement:
+  * Total spent YTD (year-to-date)
+  * Total spent by equipment (to track asset lifecycle costs)
+  * Total spent by category (to identify high-cost service areas)
+  * Total pending quotes (sum of outstanding quote amounts)
+  * Average cost per service by category
+  * Cost trend (YTD vs. prior year, if data available)
+  * Payment compliance (on-time payment % for business credit purposes)
+  * VAT total (separate line for tax reconciliation)
+
+=== 4. SERVICE PROVIDER RELATIONSHIPS & PERFORMANCE ===
+Profile section: "My Service Providers & Performance"
+- Display list of agents/contractors business has worked with, ranked by frequency
+- For each provider:
+  * Agent/contractor name and specialty
+  * Total services completed for this site
+  * Overall rating (star average from business reviews)
+  * Most recent review and rating
+  * Last service date
+  * Response time average (if available, e.g., "avg 4 hours from call to arrival")
+  * Equipment specialization (e.g., "Generator specialist", "HVAC certified")
+  * Contract/preferred vendor status (if business has formal agreement)
+  * Action buttons: "Update Review", "View Performance History", "Contact"
+- Validation Points:
+  * Frequency counts match service history
+  * Ratings are from business-authorized reviewers only
+  * Response times are calculated from service call log timestamps
+  * Preferred vendor status is accurately maintained
+
+=== 5. BUSINESS REVIEW WORKFLOW ===
+Interaction: Business manager/approver reviews service provider after service completion
+- Pre-conditions:
+  * Service is marked "Completed" and invoice is finalized
+  * Approver role has been assigned to the business contact
+  * At least 1 business day has elapsed since service completion
+- Review Modal/Page:
+  1. Information display:
+     - Equipment serviced, service date, final invoice amount
+     - Service notes (work performed)
+  2. Rating section:
+     - Star rating (1-5, with optional half-stars)
+     - Category ratings (optional, e.g., Timeliness, Quality, Communication)
+  3. Comment section:
+     - Text area for detailed feedback (max 500 chars)
+     - Examples: "Excellent response to emergency call, professional work"
+  4. Compliance & follow-up:
+     - Checkbox: "Would you recommend this provider for future services?" (Y/N)
+     - Checkbox: "Should this provider be added to preferred vendor list?" (Y/N)
+  5. Submit & Workflow:
+     - On Submit: Review is saved, timestamp recorded, agent rating recalculated
+     - Confirmation: "Review submitted. Provider rating updated."
+- Validation Points:
+  * Only authorized business contacts can submit reviews
+  * One review per service (updates do not duplicate)
+  * Review text is sanitized
+  * Agent rating updates immediately
+  * Preferred vendor flag propagates to vendor management system (if exists)
+
+=== 6. COMPLIANCE & REGULATORY TRACKING ===
+Profile section: "Compliance & Warranties" (optional, for business readiness)
+- Checkpoints:
+  * Equipment warranties (expiry dates)
+  * Service contract terms (if formal maintenance contracts exist)
+  * Regulatory compliance (e.g., generator load-testing certificates, electrical compliance)
+  * VAT invoice completeness (all invoices have VAT registration details)
+- Alerts for:
+  * Warranty expiry approaching
+  * Overdue compliance certifications
+  * Missing invoice documentation
+- Validation Points:
+  * Warranty dates are tracked and enforced
+  * Compliance documents are linked to equipment and services
+
+=== 7. DATA STRUCTURE FOR TESTING ===
+Expected Business Profile Data Shape:
+{
+  "customer_id": "CUST-002",
+  "customer_name": "Wentzel Optometrist Inc",
+  "vat_registration_number": "4670322363",
+  "business_address": "407 Friesland lane, Lynnwood, Pretoria, 0081",
+  "contact_person": "Ms. van der Merwe",
+  "contact_number": "012 348 1177",
+  "contact_email": "operations@wentzel-optometrist.co.za",
+  "equipment": [
+    {
+      "equipment_id": "EQ-001",
+      "equipment_name": "Diesel Generator 15KVA",
+      "equipment_type": "Backup Power / Generator",
+      "manufacturer": "Yangdong",
+      "model": "YND485D",
+      "serial_number": "GEN-15-2022-001",
+      "kva_rating": "15 KVA",
+      "fuel_type": "Diesel",
+      "status": "Operational",
+      "last_service_date": "2026-04-29",
+      "last_service_agent": "David Mechanic",
+      "next_scheduled_maintenance": "2026-10-29",
+      "maintenance_interval_months": 6
+    }
+  ],
+  "service_history_by_asset": {
+    "EQ-001": [
+      { "service_call_id": "SC-001", "date": "2026-04-29", "category": "mechanical", "agent_name": "David Mechanic", "service_type": "repair", "description": "Alternator replacement and load testing", "downtime_hours": 4, "cost": 24390.30, "status": "completed" }
+    ]
+  },
+  "service_history_by_category": {
+    "mechanical": [
+      { "service_call_id": "SC-001", "date": "2026-04-29", "equipment": "Generator 15KVA", "agent_name": "David Mechanic", "cost": 24390.30, "status": "completed" }
+    ]
+  },
+  "pending_quotes": [],
+  "outstanding_quotes": [],
+  "invoice_history": [
+    { "invoice_id": "INV-1109", "service_call_id": "SC-001", "equipment": "Generator 15KVA", "category": "mechanical", "agent_name": "David Mechanic", "amount_excl_vat": 21208.96, "vat_amount": 3181.34, "amount_incl_vat": 24390.30, "vat_rate": 15, "paid_date": "2026-05-05" }
+  ],
+  "statement": {
+    "total_ytd": 24390.30,
+    "total_by_equipment": { "EQ-001": 24390.30 },
+    "total_by_category": { "mechanical": 24390.30 },
+    "total_pending_quotes": 0,
+    "average_cost_by_category": { "mechanical": 24390.30 },
+    "cost_trend_ytd_vs_prior_year": "YTD: R24,390.30 (2026) vs. R18,500.00 (2025) [31% increase]",
+    "payment_compliance": "100% on-time",
+    "total_vat_paid": 3181.34
+  },
+  "service_providers": [
+    { "agent_id": "AG-005", "agent_name": "David Mechanic", "specialty": "mechanical", "services_completed": 1, "equipment_specialization": "Generator Repair & Maintenance", "overall_rating": 5.0, "response_time_avg_hours": 24, "last_service_date": "2026-04-29", "preferred_vendor_status": "pending_approval", "latest_review": { "rating": 5.0, "timeliness": 5, "quality": 5, "communication": 5, "text": "Excellent response to emergency alternator failure. Professional diagnostics and efficient repair. Highly recommended.", "recommend_for_future": true, "consider_preferred_vendor": true, "review_date": "2026-04-30" } }
+  ],
+  "compliance": {
+    "equipment_warranties": [
+      { "equipment_id": "EQ-001", "warranty_type": "Parts & Labor", "expiry_date": "2027-04-29", "status": "active" }
+    ],
+    "compliance_certifications": [
+      { "cert_type": "Generator Load Test", "equipment_id": "EQ-001", "issue_date": "2026-04-29", "next_due_date": "2027-04-29", "status": "current" }
+    ]
+  }
+}
+
+UAT TEST SCENARIOS
+
+Scenario 1: View Equipment List with Maintenance Schedule
+- Log in as business manager for Wentzel Optometrist
+- Navigate to Profile > Equipment & Maintenance
+- Verify: Generator 15KVA is listed with correct manufacturer (Yangdong), model (YND485D), serial number
+- Verify: Status shows "Operational"
+- Verify: Last service date is 2026-04-29, last service agent is "David Mechanic"
+- Verify: Next scheduled maintenance is 2026-10-29 (6 months from last service)
+- Click on equipment to view full service history
+- Verify: Service history shows alternator replacement on 2026-04-29, 4 hours downtime, agent David Mechanic
+
+Scenario 2: View Service History by Asset
+- Log in as business manager
+- Navigate to Profile > Service History > By Asset view
+- Verify: Generator 15KVA equipment is listed as a category
+- Expand Generator section
+- Verify: Shows 1 service (alternator replacement, 2026-04-29, R24,390.30 including VAT)
+- Verify: Service notes describe alternator replacement work
+
+Scenario 3: View Service History by Category
+- Log in as business manager
+- Navigate to Profile > Service History > By Category view
+- Verify: Mechanical category is listed
+- Expand Mechanical section
+- Verify: Shows 1 service (Generator 15KVA, 2026-04-29, David Mechanic, R24,390.30)
+- Verify: Both views show identical cost data but organized differently
+
+Scenario 4: Check Financial Statement with VAT Detail
+- Log in as business manager
+- Navigate to Profile > Quotes, Invoices & Statement
+- Verify: Invoice history shows INV-1109 with:
+  * Amount excl. VAT: R21,208.96
+  * VAT (15%): R3,181.34
+  * Amount incl. VAT: R24,390.30
+- Verify: Statement shows:
+  * Total YTD: R24,390.30
+  * Total by Equipment: Generator 15KVA = R24,390.30
+  * Total by Category: Mechanical = R24,390.30
+  * Payment Compliance: 100% on-time
+  * Total VAT Paid: R3,181.34 (for tax reconciliation)
+- Verify: Cost trend shows comparison with prior year (e.g., 31% increase)
+
+Scenario 5: Review Service Provider as Business Manager
+- Log in as business manager
+- Navigate to Profile > Service Providers & Performance
+- Verify: David Mechanic is listed as sole provider, 1 service completed
+- Verify: Last service date is 2026-04-29
+- Verify: Response time average shows (or "24 hours from call to arrival")
+- Verify: Equipment specialization shows "Generator Repair & Maintenance"
+- Verify: Preferred vendor status shows "not yet assigned"
+- Click "Update Review" on David Mechanic
+- Modal opens with service details: Equipment (Generator 15KVA), date (2026-04-29), amount (R24,390.30)
+- Verify: Modal shows both overall rating and category ratings (Timeliness, Quality, Communication)
+- Select 5 stars for overall, 5 stars for each category
+- Check boxes: "Recommend for future services" (Y), "Add to preferred vendor list" (Y)
+- Enter text: "Excellent response to emergency. Professional, efficient, thorough work."
+- Click "Submit"
+- Verify: Review is saved; David's overall rating updates to 5.0
+- Verify: Response time is calculated and displayed (e.g., "< 1 hour response")
+- Verify: Preferred vendor status changes to "pending_approval" or "approved"
+
+Scenario 6: Check Compliance & Warranties
+- Log in as business manager
+- Navigate to Profile > Compliance & Warranties
+- Verify: Generator warranty is listed:
+  * Type: Parts & Labor
+  * Equipment: Generator 15KVA
+  * Expiry: 2027-04-29
+  * Status: Active
+- Verify: Load test certification is listed:
+  * Type: Generator Load Test
+  * Issue date: 2026-04-29
+  * Next due: 2027-04-29
+  * Status: Current
+- No alerts should be shown (all dates are in future)
+- Simulate warranty expiry date 30 days in future: Verify alert appears
+
+Scenario 7: Equipment Maintenance Schedule Proactive Alerts
+- Next scheduled maintenance for Generator is 2026-10-29
+- Simulate system reaching 2026-10-20 (10 days before maintenance)
+- Log in as business manager
+- Verify: Maintenance alert appears on dashboard or equipment page
+- Alert text: "Generator 15KVA is due for scheduled maintenance in 9 days"
+- Verify: Alert includes suggested actions: "Schedule maintenance" button
+
+Scenario 8: Cost Trend Analysis Over Year
+- Multiple years of invoice data available
+- Log in as business manager
+- Navigate to Profile > Statement > Cost Trend
+- Verify: YTD total R24,390.30 (2026) is compared to R18,500.00 (2025)
+- Verify: Calculation shows 31% increase YoY
+- Verify: Breakdown by category/equipment shows where increases occurred
+
+DATA VALIDATION CHECKLIST
+- [ ] Business profile data (VAT, address, contact) is correctly linked to customer record
+- [ ] Equipment list is specific to this single site (no multi-site data bleeding)
+- [ ] Last service date and next maintenance date are synchronized
+- [ ] Service history is accurate and complete for all associated equipment
+- [ ] Service costs match finalized invoices exactly
+- [ ] VAT amounts are correctly calculated (15% of subtotal)
+- [ ] Invoice totals are correct (subtotal + VAT)
+- [ ] Payment compliance is calculated accurately (on-time vs. late)
+- [ ] Service provider frequency ranking is correct
+- [ ] Agent ratings are calculated from all business reviews for that agent at this site
+- [ ] Reviews do not duplicate on update
+- [ ] Preferred vendor flags are enforced correctly
+- [ ] Equipment warranties and compliance dates are tracked accurately
+- [ ] Maintenance schedule alerts trigger at appropriate intervals (10 days before, on due date)
+- [ ] Cost trend calculations are correct (YTD, YoY comparison)
+- [ ] Only authorized business contacts can view and edit profile
+- [ ] All VAT-related fields are present for tax compliance
+- [ ] Response time averages are calculated from timestamp data
+- [ ] Equipment serial numbers and model data match warranty/compliance records

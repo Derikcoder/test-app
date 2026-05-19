@@ -1,0 +1,16 @@
+PERSONA SUMMARY
+- Persona ID: FSA-004
+- Persona Name: General Maintenance / Handyman Field Service Agent
+- Email: fsa-004@test.com
+- Phone: (+27) 012 345 6787
+- Persona Type: Service Agent
+- Category: General Maintenance / Handyman
+- Objective: Resolve broad minor-to-medium maintenance needs
+
+UAT FOCUS
+- Execute mixed-category maintenance tasks
+- Record practical outcomes and follow-up requirements
+- Validate flexible category handling and scheduling
+
+DATA HINTS
+- Typical issues: fixtures, doors, minor repairs, basic installations, painting, tiling, window replacement

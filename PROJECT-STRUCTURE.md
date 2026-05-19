@@ -110,6 +110,8 @@ main                 ← Production (stable, never touched directly)
 - `invoice.schema.v1.1.json`: Normalized JSON Schema for cleaner integration format.
 - `invoice.v1-to-v1.1.keymap.json`: Field mapping and transform hints from v1 to v1.1.
 - `invoiceSample.json`: Working invoice sample payload used as source reference.
+- `invoiceSample.v1.1.json`: Normalized v1.1 sample payload aligned with `invoice.schema.v1.1.json`.
+- `entities/`: UAT entities workspace (personas, templates, invoice extraction samples, machine profiles, and UAT scenarios).
 - `package.json`: Root scripts that orchestrate client/server workflows.
 - `.github/copilot-instructions.md`: GitHub Copilot custom instructions for this repo.
 - `client/`: React + Vite frontend application.

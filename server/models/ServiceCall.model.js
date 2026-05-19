@@ -287,6 +287,12 @@ const serviceCallSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Equipment',
     },
+    /** Reference to Machine/machine instance being serviced */
+    machineId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Machine',
+      sparse: true, // Optional - not all service calls need to link to a machine
+    },
     /** Group name for grouping branches (e.g., "Arrie Nel") */
     groupName: {
       type: String,

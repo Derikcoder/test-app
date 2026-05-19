@@ -27,6 +27,7 @@ import agentRoutes from './routes/agent.routes.js';
 import customerRoutes from './routes/customer.routes.js';
 import serviceCallRoutes from './routes/serviceCall.routes.js';
 import equipmentRoutes from './routes/equipment.routes.js';
+import machineRoutes from './routes/machine.routes.js';
 import quotationRoutes from './routes/quotation.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
 import emailRoutes from './routes/email.routes.js';
@@ -137,6 +138,9 @@ app.use('/api/service-calls', serviceCallRoutes);
 
 // Equipment registry and asset management
 app.use('/api/equipment', equipmentRoutes);
+
+// Machine/equipment tracking for service history and quotation generation
+app.use('/api/machines', machineRoutes);
 
 // Quotation/estimate management
 app.use('/api/quotations', quotationRoutes);

@@ -1459,6 +1459,7 @@ export const acceptPublicQuotation = async (req, res) => {
           password: temporaryAccessKey,
           role: 'customer',
           isSuperUser: false,
+          hasCompletedPasswordSetup: false,
           customerProfile: linkedCustomer._id,
           businessName: linkedCustomer.businessName || `${linkedCustomer.contactFirstName} ${linkedCustomer.contactLastName}`.trim(),
           phoneNumber: linkedCustomer.phoneNumber || 'Phone pending',

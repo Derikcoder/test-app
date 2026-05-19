@@ -3,6 +3,7 @@ import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
 import Customer from '../models/Customer.model.js';
 import Invoice from '../models/Invoice.model.js';
 import ServiceCallEmailLock from '../models/ServiceCallEmailLock.model.js';
+import User from '../models/User.model.js';
 import { logError, logInfo } from '../middleware/logger.middleware.js';
 
 const TERMINAL_SERVICE_CALL_STATUSES = ['completed', 'invoiced', 'cancelled'];
@@ -81,6 +82,48 @@ const withResolvedServiceLocation = (serviceCall) => {
 };
 
 const withResolvedServiceLocations = (serviceCalls = []) => serviceCalls.map((call) => withResolvedServiceLocation(call));
+
+const validateAssignedAgentReady = async ({ assignedAgentId, createdBy }) => {
+  if (!assignedAgentId) {
+    return null;
+  }
+
+  const agent = await FieldServiceAgent.findOne({ _id: assignedAgentId, createdBy })
+    .select('firstName lastName employeeId userAccount');
+
+  if (!agent) {
+    return {
+      statusCode: 404,
+      message: 'Assigned field service agent was not found for this business',
+    };
+  }
+
+  if (!agent.userAccount) {
+    return {
+      statusCode: 409,
+      message: 'Cannot assign this service call yet. The field service agent account must be provisioned first.',
+    };
+  }
+
+  const agentUser = await User.findById(agent.userAccount)
+    .select('isActive hasCompletedPasswordSetup');
+
+  if (!agentUser || agentUser.isActive === false) {
+    return {
+      statusCode: 409,
+      message: 'Cannot assign this service call. The linked field service agent account is inactive or missing.',
+    };
+  }
+
+  if (agentUser.hasCompletedPasswordSetup !== true) {
+    return {
+      statusCode: 409,
+      message: 'Cannot assign this service call before the field service agent completes first password setup.',
+    };
+  }
+
+  return null;
+};
 
 const buildServiceCallAccessFilter = (req, serviceCallId) => {
   if (req.user?.role === 'fieldServiceAgent' && req.user?.fieldServiceAgentProfile) {
@@ -460,6 +503,14 @@ export const createServiceCall = async (req, res) => {
 
     const resolvedLocation = resolveServiceLocationDetails({ serviceLocation, bookingRequest });
 
+    const assignmentValidation = await validateAssignedAgentReady({
+      assignedAgentId: assignedAgent,
+      createdBy: req.user._id,
+    });
+    if (assignmentValidation) {
+      return res.status(assignmentValidation.statusCode).json({ message: assignmentValidation.message });
+    }
+
     const serviceCall = await ServiceCall.create({
       callNumber: resolvedCallNumber,
       customer: resolvedCustomer,
@@ -551,6 +602,16 @@ export const updateServiceCall = async (req, res) => {
       const existingAssignedAgent = serviceCall.assignedAgent ? String(serviceCall.assignedAgent) : '';
 
       if (incomingAssignedAgent && incomingAssignedAgent !== existingAssignedAgent) {
+        const assignmentValidation = await validateAssignedAgentReady({
+          assignedAgentId: incomingAssignedAgent,
+          createdBy: serviceCall.createdBy,
+        });
+        if (assignmentValidation) {
+          return res.status(assignmentValidation.statusCode).json({ message: assignmentValidation.message });
+        }
+      }
+
+      if (incomingAssignedAgent && incomingAssignedAgent !== existingAssignedAgent) {
         serviceCall.assignedDate = new Date();
         serviceCall.assignmentNotifiedAt = new Date();
 
@@ -560,6 +621,16 @@ export const updateServiceCall = async (req, res) => {
 
         if (req.body.status === undefined || serviceCall.status === 'pending' || serviceCall.status === 'scheduled') {
           serviceCall.status = 'assigned';
+        }
+      }
+
+      if (!incomingAssignedAgent && existingAssignedAgent) {
+        serviceCall.assignedDate = null;
+        serviceCall.assignmentNotifiedAt = null;
+        serviceCall.agentAccepted = false;
+
+        if (req.body.status === undefined && ['assigned', 'scheduled'].includes(serviceCall.status)) {
+          serviceCall.status = 'pending';
         }
       }
     }

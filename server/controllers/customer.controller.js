@@ -47,6 +47,40 @@ const syncLinkedCustomerUser = async (customer) => {
   await linkedUser.save();
 };
 
+const deriveInviteState = (linkedUser) => {
+  if (!linkedUser) {
+    return {
+      hasCompletedPasswordSetup: null,
+      canRefreshFirstLoginCredentials: false,
+    };
+  }
+
+  const hasCompletedPasswordSetup = linkedUser.hasCompletedPasswordSetup === true;
+  return {
+    hasCompletedPasswordSetup,
+    canRefreshFirstLoginCredentials: !hasCompletedPasswordSetup,
+  };
+};
+
+const attachCustomerAccessState = async (customerDoc) => {
+  if (!customerDoc) return customerDoc;
+
+  const customer = customerDoc.toObject ? customerDoc.toObject() : { ...customerDoc };
+  if (!customer.userAccount) {
+    return {
+      ...customer,
+      hasCompletedPasswordSetup: null,
+      canRefreshFirstLoginCredentials: false,
+    };
+  }
+
+  const linkedUser = await User.findById(customer.userAccount).select('hasCompletedPasswordSetup');
+  return {
+    ...customer,
+    ...deriveInviteState(linkedUser),
+  };
+};
+
 const formatAddress = (address = {}) => {
   if (!address || typeof address !== 'object') return '';
 
@@ -157,7 +191,8 @@ export const getCustomers = async (req, res) => {
   try {
     const filter = buildReadableCustomerFilter(req);
     const customers = await Customer.find(filter).sort({ createdAt: -1 });
-    res.json(customers);
+    const hydratedCustomers = await Promise.all(customers.map((customer) => attachCustomerAccessState(customer)));
+    res.json(hydratedCustomers);
   } catch (error) {
     logError('Get customers error:', error);
     res.status(500).json({ message: error.message });
@@ -183,7 +218,7 @@ export const getCustomerById = async (req, res) => {
 
     await backfillCustomerAddressFromLatestServiceCall(customer);
 
-    res.json(customer);
+    res.json(await attachCustomerAccessState(customer));
   } catch (error) {
     logError('Get customer error:', error);
     res.status(500).json({ message: error.message });

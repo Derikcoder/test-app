@@ -1,0 +1,15 @@
+PERSONA SUMMARY
+- Persona ID: FSA-003
+- Persona Name: Plumbing Field Service Agent
+- Persona Type: Service Agent
+- Category: Plumbing
+- Objective: Resolve water system and drainage issues efficiently
+
+UAT FOCUS
+- Handle leaks, blockages, pressure problems
+- Log parts/material usage and outcomes
+- Validate customer/site-specific service completion data
+
+DATA HINTS
+- Typical assets: pipes, valves, pumps, geysers, drains
+- Typical issues: leaks, burst pipes, low pressure, blockages

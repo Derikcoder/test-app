@@ -1,0 +1,15 @@
+PERSONA SUMMARY
+- Persona ID: FSA-005
+- Persona Name: Security Systems Field Service Agent
+- Persona Type: Service Agent
+- Category: Security Systems
+- Scope: Gates, fencing, cameras, beams, access control, CCTV
+- Objective: Restore security system reliability and coverage
+
+UAT FOCUS
+- Handle incidents on mixed security installations
+- Capture affected subsystems and remediation details
+- Validate service category mapping and completion evidence
+
+DATA HINTS
+- Typical issues: camera outages, beam misalignment, gate motor faults

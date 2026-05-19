@@ -613,13 +613,28 @@ export const sendCustomerWelcomeEmail = async ({ to, customerName, userName, res
  * @param {string} options.agentName - Agent full name
  * @param {string} options.userName - Pre-assigned username
  * @param {string} options.resetUrl - Secure one-time set-password URL (expires in 1 hour)
+ * @param {string} [options.temporaryAccessKey] - Temporary secret access key for first login
+ * @param {string} [options.loginUrl] - Direct login URL for immediate sign-in
  * @returns {Promise<Object>} Email send result
  */
-export const sendAgentWelcomeEmail = async ({ to, agentName, userName, resetUrl }) => {
+export const sendAgentWelcomeEmail = async ({ to, agentName, userName, resetUrl, temporaryAccessKey, loginUrl }) => {
   if (!to) throw new Error('Agent email is required');
   if (!resetUrl) throw new Error('Reset URL is required');
 
   const transporter = await createTransporter();
+  const resolvedLoginUrl = loginUrl || `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`;
+  const accessKeyHtml = temporaryAccessKey
+    ? `
+      <div class="info-box" style="margin-top: 18px;">
+        <p><strong>Temporary Secret Access Key:</strong></p>
+        <p style="margin-top:8px;font-size:24px;font-weight:700;letter-spacing:0.2em;color:#05198C;">${temporaryAccessKey}</p>
+        <p style="margin-top:10px;">Use this as your temporary password on the login screen, then change it from your profile after signing in.</p>
+      </div>
+    `
+    : '';
+  const accessKeyText = temporaryAccessKey
+    ? `\nTemporary Secret Access Key: ${temporaryAccessKey}\nUse this as your temporary password on the login screen, then change it from your profile after signing in.\n`
+    : '';
 
   const mailOptions = {
     from: `${process.env.FROM_NAME || 'Appatunid'} <${process.env.FROM_EMAIL || 'noreply@appatunid.com'}>`,
@@ -656,16 +671,17 @@ export const sendAgentWelcomeEmail = async ({ to, agentName, userName, resetUrl 
           </div>
           <div class="content">
             <p>Hello <strong>${agentName || 'Agent'}</strong>,</p>
-            <p>Your field service agent account has been created. Before you can log in, you need to set your password using the secure link below.</p>
+            <p>Your field service agent account has been created. You can sign in immediately using the login screen and temporary secret access key below, or set a fresh password directly using the secure link.</p>
             <div class="info-box">
               <p><strong>Your login details:</strong></p>
               <p>Email: <strong>${to}</strong></p>
               <p>Username: <strong>${userName}</strong></p>
             </div>
             <div class="button-container">
-              <a href="${resetUrl}" class="cta-button">Set My Password</a>
+              <a href="${resolvedLoginUrl}" class="cta-button">Open Login Screen</a>
             </div>
-            <p style="text-align:center;color:#999;font-size:13px;">Or copy and paste this link into your browser:</p>
+            ${accessKeyHtml}
+            <p style="text-align:center;color:#999;font-size:13px;">You can also set a new password directly using this secure link:</p>
             <div class="link-text">${resetUrl}</div>
             <div class="warning-box">
               <p><strong>⚠️ Important:</strong></p>
@@ -673,7 +689,7 @@ export const sendAgentWelcomeEmail = async ({ to, agentName, userName, resetUrl 
               <p>• Do not share this link with anyone</p>
               <p>• If you did not expect this email, contact your administrator</p>
             </div>
-            <p>Once your password is set, you will be directed to your agent dashboard.</p>
+            <p>Once you are signed in, update your password from your profile and continue into your agent workspace.</p>
             <p style="margin-top:30px;">Welcome aboard,<br/><strong>Appatunid Team</strong></p>
           </div>
           <div class="footer">
@@ -685,7 +701,7 @@ export const sendAgentWelcomeEmail = async ({ to, agentName, userName, resetUrl 
       </body>
       </html>
     `,
-    text: `Welcome to Appatunid\n\nHello ${agentName || 'Agent'},\n\nYour field service agent account has been created.\n\nLogin details:\nEmail: ${to}\nUsername: ${userName}\n\nSet your password here (expires in 1 hour):\n${resetUrl}\n\nDo not share this link with anyone.\n\nWelcome aboard,\nAppatunid Team`,
+    text: `Welcome to Appatunid\n\nHello ${agentName || 'Agent'},\n\nYour field service agent account has been created.\n\nLogin details:\nEmail: ${to}\nUsername: ${userName}${accessKeyText}\nLogin here: ${resolvedLoginUrl}\n\nSet your password here (expires in 1 hour):\n${resetUrl}\n\nDo not share this link with anyone.\n\nWelcome aboard,\nAppatunid Team`,
   };
 
   const info = await transporter.sendMail(mailOptions);

@@ -1,0 +1,17 @@
+PERSONA SUMMARY
+- Persona ID: FSA-002
+- Persona Name: Electrical Field Service Agent
+- Email: fsa-002@test.com
+- Phone Number: (+27) 012-345-6789
+- Persona Type: Service Agent
+- Category: Electrical Appliances
+- Objective: Resolve electrical faults and restore safe operation
+
+UAT FOCUS
+- Handle electrical breakdown calls
+- Capture diagnostics and corrective actions
+- Validate correct status progression and communication
+
+DATA HINTS
+- Typical assets: deepfryers, plate warmers, dish washers, microwave ovens, ovens, stoves
+- Typical issues: tripping, not heating, not spraying water, not working, light bulb blown, plate tripping

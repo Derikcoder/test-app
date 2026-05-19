@@ -35,6 +35,7 @@ const CustomerAssetHistoryPage = lazy(() => import('./components/CustomerAssetHi
 const CustomerPortal = lazy(() => import('./components/CustomerPortal'));
 const ServiceCalls = lazy(() => import('./components/ServiceCalls'));
 const ServiceCallRegistration = lazy(() => import('./components/ServiceCallRegistration'));
+const MachineLibrary = lazy(() => import('./components/MachineLibrary'));
 const Quotations = lazy(() => import('./components/Quotations'));
 
 const PageLoader = () => (
@@ -297,6 +298,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ServiceCallRegistration />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/machines"
+              element={
+                <ProtectedRoute>
+                  <MachineLibrary />
                 </ProtectedRoute>
               }
             />

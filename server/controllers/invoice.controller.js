@@ -58,9 +58,11 @@ const ensureCustomerPortalAccess = async (customer) => {
   if (!customer?._id || !customerEmail) return null;
 
   let linkedUser = await User.findOne({ customerProfile: customer._id });
-  const temporaryAccessKey = generateTemporaryAccessKey();
+  let temporaryAccessKey = null;
+  let resetToken = null;
 
   if (!linkedUser) {
+    temporaryAccessKey = generateTemporaryAccessKey();
     const userName = await buildUniqueUsername(customerEmail);
     linkedUser = await User.create({
       userName,
@@ -68,6 +70,7 @@ const ensureCustomerPortalAccess = async (customer) => {
       password: temporaryAccessKey,
       role: 'customer',
       isSuperUser: false,
+      hasCompletedPasswordSetup: false,
       customerProfile: customer._id,
       businessName: customer.businessName || `${customer.contactFirstName || ''} ${customer.contactLastName || ''}`.trim() || 'Customer',
       phoneNumber: customer.phoneNumber || customer.alternatePhone || 'Phone pending',
@@ -75,13 +78,20 @@ const ensureCustomerPortalAccess = async (customer) => {
     });
   } else {
     linkedUser.email = customerEmail;
-    linkedUser.password = temporaryAccessKey;
     linkedUser.role = 'customer';
     linkedUser.isSuperUser = false;
     linkedUser.customerProfile = linkedUser.customerProfile || customer._id;
+
+    if (linkedUser.hasCompletedPasswordSetup !== true) {
+      temporaryAccessKey = generateTemporaryAccessKey();
+      linkedUser.password = temporaryAccessKey;
+      linkedUser.hasCompletedPasswordSetup = false;
+    }
   }
 
-  const resetToken = linkedUser.generatePasswordResetToken();
+  if (linkedUser.hasCompletedPasswordSetup !== true) {
+    resetToken = linkedUser.generatePasswordResetToken();
+  }
   await linkedUser.save();
 
   if (!customer.userAccount || String(customer.userAccount) !== String(linkedUser._id)) {
@@ -98,7 +108,10 @@ const ensureCustomerPortalAccess = async (customer) => {
     userName: linkedUser.userName,
     temporaryAccessKey,
     loginUrl: `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`,
-    resetUrl: `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`,
+    resetUrl: resetToken
+      ? `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`
+      : '',
+    hasCompletedPasswordSetup: linkedUser.hasCompletedPasswordSetup === true,
   };
 };
 

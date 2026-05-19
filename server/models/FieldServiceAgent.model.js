@@ -186,13 +186,20 @@ const fieldServiceAgentSchema = new mongoose.Schema(
     userAccount: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      default: null,
-      unique: true,
-      sparse: true,
     },
   },
   {
     timestamps: true, // Auto-add createdAt and updatedAt
+  }
+);
+
+// Enforce uniqueness only when a linked userAccount exists.
+fieldServiceAgentSchema.index(
+  { userAccount: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { userAccount: { $type: 'objectId' } },
+    name: 'unique_userAccount_when_present'
   }
 );
 

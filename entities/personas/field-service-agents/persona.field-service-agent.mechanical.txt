@@ -1,0 +1,15 @@
+PERSONA SUMMARY
+- Persona ID: FSA-001
+- Persona Name: Mechanical Field Service Agent
+- Persona Type: Service Agent
+- Category: Mechanical
+- Objective: Diagnose and resolve mechanical service requests safely and accurately
+
+UAT FOCUS
+- Receive and accept assigned or eligible jobs
+- Update service status and field notes
+- Record work outcomes linked to equipment/service call
+
+DATA HINTS
+- Typical assets: generators, pumps, engines, couplings
+- Typical issues: wear, vibration, alignment, leaks, overheating

@@ -66,12 +66,14 @@ body {
   }
 
   .auth-aside-title {
-    @apply text-3xl font-extrabold leading-tight;
+    @apply text-3xl sm:text-4xl font-black leading-tight;
     color: #ffffff;
+    letter-spacing: -0.01em;
+    text-shadow: 0 6px 20px rgba(2, 8, 23, 0.45);
   }
 
   .auth-aside-copy {
-    @apply mt-4 text-sm leading-relaxed;
+    @apply mt-4 text-base leading-relaxed;
     color: rgba(255, 255, 255, 0.9);
   }
 
@@ -87,8 +89,32 @@ body {
   }
 
   .auth-stat-value {
-    @apply mt-1 text-sm font-bold;
+    @apply mt-1 text-base font-extrabold;
     color: #ffffff;
+  }
+
+  .executive-title {
+    @apply text-3xl sm:text-4xl font-black tracking-tight;
+    color: #f8fbff;
+    text-shadow: 0 4px 16px rgba(2, 8, 23, 0.5);
+  }
+
+  .executive-subtitle {
+    @apply mt-2 text-base font-medium;
+    color: rgba(226, 232, 240, 0.96);
+  }
+
+  .executive-section-title {
+    @apply text-xl font-extrabold tracking-tight;
+    color: #f8fbff;
+    text-shadow: 0 2px 10px rgba(2, 8, 23, 0.45);
+  }
+
+  .executive-kpi-card {
+    @apply rounded-xl border p-3 text-center;
+    background: linear-gradient(165deg, rgba(2, 8, 23, 0.78), rgba(15, 23, 42, 0.58));
+    border-color: rgba(148, 163, 184, 0.35);
+    box-shadow: 0 12px 24px rgba(2, 8, 23, 0.26), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
 
   /* ============================================================
@@ -216,9 +242,9 @@ body {
    * Labels with proper contrast and styling
    */
   .glass-form-label {
-    @apply block text-sm font-semibold mb-2;
-    color: var(--primary);
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    @apply block text-sm font-bold mb-2;
+    color: #e6efff;
+    text-shadow: 0 1px 3px rgba(2, 8, 23, 0.45);
   }
 
   /**
@@ -227,28 +253,28 @@ body {
    */
   .glass-form-input {
     @apply w-full px-4 py-3 rounded-lg transition-all duration-300;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1.5px solid var(--glass-border);
-    color: var(--primary);
+    background: rgba(5, 25, 140, 0.22);
+    border: 1.5px solid rgba(168, 190, 255, 0.45);
+    color: #f8fbff;
     font-weight: 500;
   }
 
   .glass-form-input::placeholder {
-    @apply opacity-60;
-    color: var(--primary);
+    @apply opacity-80;
+    color: #c7d7ff;
   }
 
   .glass-form-input:focus {
     @apply outline-none;
-    background: rgba(255, 255, 255, 0.25);
-    border-color: var(--secondary);
-    box-shadow: 0 0 20px rgba(255, 251, 40, 0.3), inset 0 0 20px rgba(255, 251, 40, 0.1);
+    background: rgba(5, 25, 140, 0.35);
+    border-color: rgba(255, 251, 40, 0.9);
+    box-shadow: 0 0 0 2px rgba(255, 251, 40, 0.22), 0 0 20px rgba(255, 251, 40, 0.24);
   }
 
   .glass-form-input:hover:not(:focus) {
     @apply border-opacity-100;
-    background: rgba(255, 255, 255, 0.18);
-    border-color: rgba(255, 251, 40, 0.5);
+    background: rgba(5, 25, 140, 0.28);
+    border-color: rgba(255, 251, 40, 0.45);
   }
 
   /**
@@ -265,7 +291,7 @@ body {
    */
   .glass-form-select {
     @apply glass-form-input appearance-none cursor-pointer;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2305198C' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f8fbff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 1rem center;
     padding-right: 2.5rem;
@@ -370,17 +396,17 @@ body {
    * Styled h1, h2, h3 headings for glass forms
    */
   .glass-heading {
-    @apply text-3xl font-bold mb-2 text-center;
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    @apply text-3xl font-black mb-2 text-center;
+    color: #f8fbff;
+    letter-spacing: -0.01em;
+    text-shadow: 0 4px 14px rgba(2, 8, 23, 0.45);
   }
 
   .glass-heading-secondary {
-    @apply text-center text-sm font-medium opacity-75 mb-8;
-    color: var(--primary);
+    @apply text-center text-sm font-bold mb-8;
+    color: #e6efff;
+    opacity: 1;
+    letter-spacing: 0.01em;
   }
 
   /**
@@ -426,13 +452,14 @@ body {
    */
   .glass-card {
     @apply card card-glass p-6;
-    background: rgba(255, 255, 255, 0.08);
+    background: linear-gradient(165deg, rgba(5, 25, 140, 0.28), rgba(2, 8, 23, 0.55));
+    border-color: rgba(168, 190, 255, 0.28);
     transition: all 0.3s ease;
   }
 
   .glass-card:hover {
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2);
+    background: linear-gradient(165deg, rgba(5, 25, 140, 0.35), rgba(2, 8, 23, 0.62));
+    box-shadow: 0 16px 40px rgba(2, 12, 56, 0.35);
   }
 
   /**
@@ -486,11 +513,17 @@ body {
    * Full-width: w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3
    */
   .dark-field-input {
-    @apply w-full rounded-lg bg-white/10 border border-white/20 text-white px-4 py-3;
+    @apply w-full rounded-lg bg-slate-900/80 border border-cyan-300/40 text-slate-50 px-4 py-3;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.15);
   }
 
   .dark-field-input::placeholder {
-    @apply text-white/50;
+    @apply text-slate-300/80;
+  }
+
+  .dark-field-input:focus {
+    @apply outline-none border-yellow-300/80;
+    box-shadow: 0 0 0 2px rgba(255, 251, 40, 0.25), 0 0 0 1px rgba(255, 251, 40, 0.35);
   }
 
   /**
@@ -498,7 +531,8 @@ body {
    * mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300
    */
   .dark-label {
-    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-300;
+    @apply mb-1 block text-xs font-bold uppercase tracking-wide text-slate-100;
+    text-shadow: 0 1px 2px rgba(2, 8, 23, 0.45);
   }
 
   /**
@@ -541,19 +575,21 @@ body {
    * Service booking hero card — aligned to customer dashboard shell.
    */
   .service-booking-hero {
-    @apply rounded-2xl border border-white/15 bg-slate-950/45 p-6 shadow-xl backdrop-blur-sm;
+    @apply rounded-2xl border border-cyan-200/35 bg-slate-950/70 p-6 shadow-xl backdrop-blur-sm;
+    box-shadow: 0 18px 44px rgba(2, 12, 56, 0.45);
   }
 
   .service-booking-kicker {
-    @apply text-xs font-bold uppercase tracking-[0.18em] text-cyan-200;
+    @apply text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-100;
+    text-shadow: 0 1px 4px rgba(6, 182, 212, 0.25);
   }
 
   .service-booking-crumb {
-    @apply inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-900/50 px-3 py-1 text-[11px] text-white/85;
+    @apply inline-flex items-center gap-2 rounded-full border border-cyan-100/25 bg-slate-900/65 px-3 py-1 text-[11px] text-slate-100;
   }
 
   .service-booking-chip {
-    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide;
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide;
   }
 
   .service-booking-chip-entity {
@@ -573,31 +609,78 @@ body {
   }
 
   .service-booking-metric {
-    @apply rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2;
+    @apply rounded-xl border border-cyan-200/40 bg-slate-900/85 px-3 py-2;
+    box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.12);
   }
 
   .service-booking-metric-label {
-    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-white/60;
+    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-slate-200;
   }
 
   .service-booking-metric-value {
-    @apply mt-1 text-sm font-semibold text-cyan-100;
+    @apply mt-1 text-sm font-extrabold text-white;
+    letter-spacing: 0.01em;
   }
 
   .service-booking-form {
-    @apply p-6 sm:p-8 space-y-6;
+    @apply p-6 sm:p-8 space-y-7;
   }
 
   .service-booking-form > section {
-    @apply section-transition rounded-2xl border border-white/15 bg-slate-950/35 p-5 shadow-lg backdrop-blur-sm;
+    @apply section-transition relative overflow-hidden rounded-2xl border border-cyan-100/25 bg-slate-950/65 p-6 shadow-lg backdrop-blur-sm;
+    box-shadow: 0 10px 28px rgba(2, 12, 56, 0.28);
+  }
+
+  .service-booking-form > section::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.6), rgba(255, 251, 40, 0.55), rgba(56, 189, 248, 0.15));
+  }
+
+  .service-booking-form .glass-heading-secondary {
+    @apply text-lg font-extrabold mb-5 text-left;
+    color: #f5f8ff;
+    text-shadow: 0 2px 6px rgba(2, 8, 23, 0.45);
+    letter-spacing: 0.01em;
+  }
+
+  .service-booking-form .dark-field-input {
+    @apply text-[15px] leading-relaxed;
+    min-height: 3.2rem;
+    border-width: 1.5px;
+  }
+
+  .service-booking-form textarea.dark-field-input {
+    min-height: 7.5rem;
+  }
+
+  .service-booking-form .dark-label,
+  .service-booking-form label.text-white\/85,
+  .service-booking-form label.text-white\/90 {
+    color: rgba(241, 245, 249, 0.98);
+    font-weight: 700;
+  }
+
+  .service-booking-form p.text-xs.text-white\/70,
+  .service-booking-form p.text-sm.text-white\/60,
+  .service-booking-form p.text-sm.text-white\/50,
+  .service-booking-form p.text-white\/70,
+  .service-booking-form span.text-white\/60,
+  .service-booking-form span.text-white\/50 {
+    color: rgba(226, 232, 240, 0.95);
   }
 
   .service-booking-actions {
-    @apply grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3;
+    @apply grid grid-cols-1 gap-3 pt-3 sm:grid-cols-3;
   }
 
   .service-booking-action {
-    @apply inline-flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition;
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-3.5 text-[15px] font-bold transition;
+    letter-spacing: 0.01em;
   }
 
   .service-booking-action-primary {

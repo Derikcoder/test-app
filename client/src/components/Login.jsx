@@ -154,8 +154,8 @@ const Login = () => {
                 </section>
 
                 <section className="card card-glass glass-form max-w-none p-7 sm:p-9">
-                    <h2 className="glass-heading text-left">Sign In</h2>
-                    <p className="glass-heading-secondary mb-6 text-left">Access your dashboard with enterprise-grade security.</p>
+                    <h2 className="executive-section-title text-left">Sign In</h2>
+                    <p className="executive-subtitle mb-6 text-left">Access your dashboard with enterprise-grade security.</p>
 
                     {infoMessage && (
                         <div className="mb-5 rounded-2xl border border-cyan-400/40 bg-cyan-500/15 p-4 text-sm text-cyan-50">

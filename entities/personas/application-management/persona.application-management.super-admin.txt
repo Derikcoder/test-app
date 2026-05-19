@@ -1,0 +1,20 @@
+PERSONA SUMMARY
+- Persona ID: APP-MGMT-001
+- Persona Name: Super Admin
+- Persona Type: Application Management
+- Platform Role: superAdmin
+- Objective: Full governance, configuration, audit oversight, onboarding controls
+
+UAT FOCUS
+- Provision users for all supported roles and customer profiles
+- Validate role-based access boundaries for all modules
+- Override and audit critical profile/registration changes when permitted
+- Validate end-to-end workflow control and exception handling
+
+BASE SCENARIOS
+- Create and manage user accounts across roles
+- Review/approve sensitive changes with evidence
+- Access reporting and audit views
+
+NOTES
+- Expand with module-specific scenarios as UAT progresses.

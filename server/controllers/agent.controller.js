@@ -32,13 +32,50 @@ const validateCategorySkills = (category, skills) => {
   return { valid: true };
 };
 
+const deriveInviteState = (linkedUser) => {
+  if (!linkedUser) {
+    return {
+      hasCompletedPasswordSetup: null,
+      canResendInvite: false,
+    };
+  }
+
+  const hasCompletedPasswordSetup = linkedUser.hasCompletedPasswordSetup === true;
+  const canResendInvite = !hasCompletedPasswordSetup;
+
+  return {
+    hasCompletedPasswordSetup,
+    canResendInvite,
+  };
+};
+
+const attachInviteState = async (agentDoc) => {
+  if (!agentDoc) return agentDoc;
+
+  const agent = agentDoc.toObject ? agentDoc.toObject() : { ...agentDoc };
+  if (!agent.userAccount) {
+    return {
+      ...agent,
+      hasCompletedPasswordSetup: null,
+      canResendInvite: false,
+    };
+  }
+
+  const linkedUser = await User.findById(agent.userAccount).select('hasCompletedPasswordSetup');
+  return {
+    ...agent,
+    ...deriveInviteState(linkedUser),
+  };
+};
+
 // @desc    Get all field service agents
 // @route   GET /api/agents
 // @access  Private
 export const getAgents = async (req, res) => {
   try {
     const agents = await FieldServiceAgent.find({ createdBy: req.user._id }).sort({ createdAt: -1 });
-    res.json(agents);
+    const hydratedAgents = await Promise.all(agents.map((agent) => attachInviteState(agent)));
+    res.json(hydratedAgents);
   } catch (error) {
     logError('Get agents error:', error);
     res.status(500).json({ message: error.message });
@@ -59,7 +96,7 @@ export const getAgentById = async (req, res) => {
       return res.status(404).json({ message: 'Agent not found' });
     }
 
-    res.json(agent);
+    res.json(await attachInviteState(agent));
   } catch (error) {
     logError('Get agent error:', error);
     res.status(500).json({ message: error.message });
@@ -75,7 +112,7 @@ export const getMyAgentProfile = async (req, res) => {
     if (!agent) {
       return res.status(404).json({ message: 'Agent profile not found' });
     }
-    res.json(agent);
+    res.json(await attachInviteState(agent));
   } catch (error) {
     logError('Get my agent profile error:', error);
     res.status(500).json({ message: error.message });

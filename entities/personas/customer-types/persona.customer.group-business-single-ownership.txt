@@ -1,0 +1,386 @@
+PERSONA SUMMARY
+- Persona ID: CUST-003
+- Persona Name: Group Business Single Ownership (Multi-Branch Company)
+- Persona Type: Customer
+- Classification: Company with multiple branches/locations, single owner/parent entity
+- Objective: Coordinate and approve services across branches, maintain centralized control over payments and vendor relationships
+- Profile Model: Decentralized service booking + centralized approval & payment
+
+ORGANIZATIONAL STRUCTURE
+- Parent Company / Headquarters: Central billing, approval authority, payment control
+- Branch Offices: Can request services independently, require HQ approval before proceeding
+- Service Workflow: Branch → Approval Request → HQ Decision → Order Number Assignment → Service Execution
+- Payment Authority: Headquarters only (all invoices paid from central account)
+- Reporting: Consolidated by HQ, detailed by branch
+
+PROFILE PAGE FEATURES & UAT REQUIREMENTS
+
+=== 1. BRANCH SELECTOR & MULTI-SITE VIEW ===
+Profile section: "My Organization" / Branch Navigation
+- Top-level control: Branch dropdown or tab switcher
+- Available Branches:
+  * Headquarters / Main Office (central control functions)
+  * Branch A, Branch B, Branch C, ... (service request branches)
+- Navigation:
+  * Selecting a branch shows branch-specific views (equipment, service history, quotes)
+  * Selecting "Headquarters" shows consolidated/company-wide views
+- Validation Points:
+  * Each branch has its own data context
+  * No data leakage between branches unless explicitly authorized
+  * Branch selector is persistent across profile navigation
+
+=== 2. BRANCH-LEVEL: EQUIPMENT & MAINTENANCE SCHEDULE ===
+Profile section: "Equipment & Maintenance" (Branch View)
+- Same as single-business, but scoped to selected branch
+- For each branch:
+  * Equipment list is unique to that branch site
+  * Service history is specific to that branch's assets
+  * Maintenance schedules are tracked per branch
+- Validation Points:
+  * Equipment list updates correctly when switching branches
+  * No cross-branch equipment overlap
+  * Branch maintenance alerts are independent
+
+=== 3. BRANCH-LEVEL: SERVICE HISTORY & PENDING APPROVALS ===
+Profile section: "Service History & Approvals" (Branch View)
+- Two subsections:
+  a) Pending HQ Approval: Service requests awaiting headquarters decision
+     - Shows: Request date, equipment/category, cost estimate, request status, order number (blank - awaiting HQ assignment)
+     - Action buttons: "View Request Details", "Add Notes"
+     - Branch cannot proceed until HQ approves
+  b) Service History: Completed services and approved requests
+     - Shows: Service date, equipment, agent, cost, order number (assigned by HQ), status
+     - Organized by month or asset
+- Approval Request Detail View:
+  * Equipment requiring service and fault description
+  * Estimated cost (from agent quote)
+  * Branch contact who submitted request
+  * Branch operations manager approver
+  * Notes field (branch can add context for HQ)
+  * HQ approval status: "Pending", "Approved", "Rejected", "More Info Requested"
+  * Timestamp of request and HQ response
+- Validation Points:
+  * Requests are assigned to correct branch
+  * Estimates are accurate
+  * Approval status is consistently tracked
+  * Order number is populated only after HQ approval
+  * Branch cannot modify estimates or proceed without approval flag
+
+=== 4. HEADQUARTERS: SERVICE APPROVAL QUEUE ===
+Profile section: "Approval Queue" (HQ/Headquarters View)
+- Centralized dashboard for all pending service requests across all branches
+- Approval Queue Table:
+  * Branch name
+  * Equipment type and issue
+  * Requested cost estimate
+  * Request date and time elapsed
+  * Branch contact name
+  * Action buttons: "Approve & Assign Order #", "Request More Info", "Reject"
+- Approval Workflow:
+  1. HQ manager reviews request
+  2. HQ enters order number (from customer's internal PO system, cost center, or budget code)
+  3. HQ clicks "Approve & Assign Order #"
+  4. System confirms approval and notifies branch
+  5. Service call can now be initiated with order number included
+- Validation Points:
+  * Only HQ users can approve or reject
+  * Order number is required to approve (not optional)
+  * Order number must be unique within customer system (validation check if available)
+  * Approval notifications reach correct branch contact
+  * Rejected requests include reason for rejection
+
+=== 5. HEADQUARTERS: CONSOLIDATED FINANCIAL STATEMENT ===
+Profile section: "Company Financial Statement" (HQ View)
+- Consolidated view across all branches:
+  * Total company spend (YTD)
+  * Spend by branch (showing each branch's total expenditure)
+  * Spend by category across all branches
+  * Spend by service provider across company
+  * Total pending approvals (sum of all pending requests across branches)
+  * Payment compliance (company-wide, on-time payment %)
+  * VAT tracking (total VAT paid across all branches)
+  * Cost trend (YTD vs. prior year for company)
+  * Budget utilization by branch (if budget data available)
+- Detailed Breakdown:
+  * Branch A: R50,000 YTD (Mechanical: R30,000, Electrical: R15,000, Plumbing: R5,000)
+  * Branch B: R35,000 YTD (Electrical: R25,000, HVAC: R10,000)
+  * Branch C: R22,000 YTD (Plumbing: R22,000)
+  * Company Total: R107,000 YTD
+- Validation Points:
+  * Totals are mathematically correct (sum of branches = company total)
+  * Each invoice is counted only once
+  * VAT is correctly summed
+  * Payment compliance is accurate
+  * Budget tracking (if enabled) reflects actual vs. planned spend
+
+=== 6. HEADQUARTERS: CONSOLIDATED SERVICE PROVIDER PERFORMANCE ===
+Profile section: "Company Service Providers & Performance" (HQ View)
+- Consolidated ranking of all agents across all branches
+- For each provider:
+  * Agent name and specialty
+  * Total services completed across all branches
+  * Services per branch (breakdown, e.g., "Branch A: 5 services, Branch B: 3 services")
+  * Overall rating (average from all branch reviews)
+  * Response time average (across all branches)
+  * Preferred vendor status (company-wide)
+  * Last service date (most recent across all branches)
+  * Branch specialists (if agent only services specific branches)
+- Validation Points:
+  * Frequency counts are accurate across all branches
+  * Ratings are properly weighted or averaged
+  * Preferred vendor status is company-wide (not per-branch)
+  * Response times reflect company-wide performance
+
+=== 7. BRANCH-LEVEL & HQ: REVIEWS & VENDOR MANAGEMENT ===
+Profile section: "Service Provider Reviews" (Branch and HQ Views)
+- Branch Level:
+  * Branch can review service providers who worked on branch services
+  * Branch review is submitted as feedback
+  * Reviews are visible to HQ but may not affect company-wide rating
+- HQ Level:
+  * HQ can promote providers to "preferred vendor" status
+  * HQ can view all branch reviews
+  * HQ can aggregate ratings for company-wide performance
+- Review Workflow (unchanged):
+  * Service completion → Review opportunity
+  * Star rating, category ratings, text feedback
+  * Recommend for future services? (Y/N)
+- Validation Points:
+  * Branch reviews do not lock HQ from making vendor decisions
+  * HQ ratings can be independent of or informed by branch ratings
+  * Preferred vendor status is enforced company-wide
+
+=== 8. INVOICE STRUCTURE FOR MULTI-BRANCH COMPANY ===
+Key Addition: Order Number (Customer-Supplied)
+- Invoice must include:
+  * `order_number` (string, supplied by customer, not generated by service provider)
+  * `order_source` (optional: "Customer ERP", "Manual Entry", "API", etc.)
+  * `approval_reference` (reference to HQ approval record)
+  * `branch_identifier` (which branch requested the service)
+- Order Number Rules:
+  * Cannot be null (must be assigned by HQ before service)
+  * Must be unique within customer's system (validation depends on customer's rules)
+  * Typically format: cost center code, PO number, budget code, or internal ref
+  * Is used for cost allocation, audit trail, and purchase order matching
+- Invoice Example (v1 structure):
+  ```
+  {
+    "order_number": "CC-2026-05-BRANCH-A-0047",
+    "order_source": "Customer ERP System",
+    "approval_reference": "APPR-001109",
+    "branch_identifier": "BRANCH-A",
+    "branch_site_address": "123 Main St, Johannesburg",
+    ... rest of invoice fields ...
+  }
+  ```
+- Validation Points:
+  * Order number is present on all invoices for this customer type
+  * Order number matches HQ approval record
+  * Branch identifier matches service location
+  * Order number is immutable once invoice is issued (no editing)
+
+=== 9. DATA STRUCTURE FOR TESTING ===
+Expected Multi-Branch Profile Data Shape:
+{
+  "customer_id": "CUST-003",
+  "company_name": "Regional Services Inc.",
+  "company_type": "Multi-Branch Company",
+  "ownership_structure": "Single Owner",
+  "vat_registration_number": "9999999999",
+  "headquarters_address": "Corporate Tower, 500 Business Ave, Sandton, 2196",
+  "headquarters_contact": "CFO Office",
+  "headquarters_contact_number": "011 999 9999",
+  "branches": [
+    {
+      "branch_id": "BRANCH-A",
+      "branch_name": "Johannesburg Operations",
+      "branch_address": "123 Main St, Johannesburg, 2000",
+      "branch_contact": "Manager - John Smith",
+      "branch_contact_number": "011 555 1234",
+      "branch_contact_email": "john.smith@regional.co.za",
+      "equipment": [
+        {
+          "equipment_id": "EQ-A-001",
+          "equipment_name": "Diesel Generator 50KVA",
+          "manufacturer": "Cummins",
+          "model": "C50D5",
+          "serial_number": "CUM-50-2021-001",
+          "status": "Operational",
+          "last_service_date": "2026-04-15",
+          "next_scheduled_maintenance": "2026-10-15"
+        }
+      ],
+      "service_history": [
+        { "service_call_id": "SC-A-001", "date": "2026-04-15", "category": "mechanical", "agent_name": "David Mechanic", "cost": 18500.00, "status": "completed", "order_number": "CC-2026-04-BRANCH-A-0045" }
+      ],
+      "pending_approvals": [
+        { "request_id": "REQ-A-001", "equipment": "Generator 50KVA", "estimated_cost": 22000.00, "request_date": "2026-05-08", "order_number": null, "status": "pending_hq_approval" }
+      ]
+    },
+    {
+      "branch_id": "BRANCH-B",
+      "branch_name": "Cape Town Operations",
+      "branch_address": "456 Oak Ave, Cape Town, 8000",
+      "branch_contact": "Manager - Sarah Johnson",
+      "branch_contact_number": "021 444 5678",
+      "branch_contact_email": "sarah.johnson@regional.co.za",
+      "equipment": [
+        {
+          "equipment_id": "EQ-B-001",
+          "equipment_name": "HVAC Chiller Unit",
+          "manufacturer": "Trane",
+          "model": "CenTraVac",
+          "serial_number": "TR-CHIL-2020-001",
+          "status": "Operational",
+          "last_service_date": "2026-03-20",
+          "next_scheduled_maintenance": "2026-09-20"
+        }
+      ],
+      "service_history": [
+        { "service_call_id": "SC-B-001", "date": "2026-03-20", "category": "hvac", "agent_name": "Carol HVAC", "cost": 12500.00, "status": "completed", "order_number": "CC-2026-03-BRANCH-B-0044" }
+      ],
+      "pending_approvals": []
+    }
+  ],
+  "headquarters_view": {
+    "approval_queue": [
+      { "request_id": "REQ-A-001", "branch": "BRANCH-A", "equipment": "Generator 50KVA", "estimated_cost": 22000.00, "request_date": "2026-05-08", "order_number_field": null, "status": "pending_hq_approval", "branch_contact": "John Smith" }
+    ],
+    "consolidated_statement": {
+      "total_ytd": 31000.00,
+      "spend_by_branch": {
+        "BRANCH-A": 18500.00,
+        "BRANCH-B": 12500.00
+      },
+      "total_pending_approvals": 22000.00,
+      "payment_compliance": "100% on-time",
+      "total_vat_paid": 4650.00
+    },
+    "service_providers_consolidated": [
+      { "agent_id": "AG-006", "agent_name": "David Mechanic", "specialty": "mechanical", "services_completed": 1, "services_by_branch": { "BRANCH-A": 1, "BRANCH-B": 0 }, "overall_rating": 4.5, "preferred_vendor_status": "approved" },
+      { "agent_id": "AG-007", "agent_name": "Carol HVAC", "specialty": "hvac", "services_completed": 1, "services_by_branch": { "BRANCH-A": 0, "BRANCH-B": 1 }, "overall_rating": 5.0, "preferred_vendor_status": "pending_approval" }
+    ]
+  }
+}
+
+=== 10. UPDATED INVOICE SCHEMA FOR ORDER NUMBER ===
+Invoice v1 & v1.1 must include:
+- order_number (required, string)
+- order_source (optional, string)
+- approval_reference (optional, string, links to HQ approval)
+- branch_identifier (conditional: present if customer is multi-branch)
+- branch_site_address (conditional: branch location, for audit trail)
+
+UAT TEST SCENARIOS
+
+Scenario 1: Branch Request Service Without HQ Approval
+- Log in as branch manager (BRANCH-A)
+- Navigate to Profile > Service History & Approvals
+- Submit service request: "Generator 50KVA - suspected fuel pump failure"
+- System generates temporary request ID: REQ-A-001
+- Estimated cost from agent quote: R22,000.00
+- Request status shows: "Pending HQ Approval"
+- Order number field is blank with note: "Awaiting HQ assignment"
+- Verify: Branch cannot proceed with service booking without approval
+
+Scenario 2: HQ Reviews Approval Queue
+- Log in as HQ manager (Finance)
+- Navigate to Profile > Approval Queue (HQ View)
+- Verify: REQ-A-001 from BRANCH-A is listed
+- Shows: Generator repair, R22,000.00 estimate, request date 2026-05-08, branch contact "John Smith"
+- Verify: Only HQ users see this queue, not branch users
+
+Scenario 3: HQ Approves Request and Assigns Order Number
+- HQ manager views REQ-A-001 approval request
+- Clicks "Approve & Assign Order #"
+- Modal opens with fields:
+  * Order Number (required): HQ enters "CC-2026-05-BRANCH-A-0047" (from customer's PO system)
+  * Approval Notes (optional): "Approved under 2026 Q2 Mechanical Budget"
+- Clicks "Confirm Approval"
+- Verify: Request status changes to "Approved"
+- Verify: Order number is now "CC-2026-05-BRANCH-A-0047"
+- Verify: Branch receives notification that request is approved
+- Verify: Order number is immutable on the approval record
+
+Scenario 4: Branch Views Approved Request
+- Log in as branch manager (BRANCH-A)
+- Navigate to Profile > Service History & Approvals
+- Pending Approvals section shows REQ-A-001 with:
+  * Status: "Approved"
+  * Order Number: "CC-2026-05-BRANCH-A-0047"
+  * Button: "Proceed with Service Booking"
+- Branch clicks "Proceed with Service Booking"
+- Verify: Service call is created with order number pre-populated
+- Verify: Service call reference shows order number throughout workflow
+
+Scenario 5: Service Completion and Invoice with Order Number
+- Service REQ-A-001 is completed on 2026-05-15
+- Invoice is generated (INV-BRANCH-A-001)
+- Invoice contains:
+  * Order Number: "CC-2026-05-BRANCH-A-0047"
+  * Order Source: "Customer ERP System"
+  * Approval Reference: "APPR-REQ-A-001"
+  * Branch Identifier: "BRANCH-A"
+  * Branch Site Address: "123 Main St, Johannesburg, 2000"
+  * Amount excl. VAT: R19,130.43
+  * VAT (15%): R2,869.57
+  * Amount incl. VAT: R22,000.00
+- Verify: Order number matches HQ approval
+- Verify: Invoice is linked to approval record
+- Verify: Order number cannot be edited after invoice issuance
+
+Scenario 6: HQ Reviews Consolidated Statement
+- Log in as HQ manager
+- Navigate to Profile > Company Financial Statement
+- Verify consolidated totals:
+  * Branch A YTD: R40,500.00 (includes new completed service)
+  * Branch B YTD: R12,500.00
+  * Company Total YTD: R53,000.00
+- Verify: New invoice from Branch A service is included
+- Verify: Totals are sum of branch totals
+- Verify: Payment compliance shows company-wide on-time payment %
+
+Scenario 7: HQ Views Consolidated Service Provider Performance
+- Log in as HQ manager
+- Navigate to Profile > Company Service Providers & Performance
+- Verify:
+  * David Mechanic: 1 service, all in Branch A, rating 4.5, last service 2026-05-15
+  * Carol HVAC: 1 service, all in Branch B, rating 5.0, last service 2026-03-20
+- Verify: Breakdown shows which provider serves which branches
+- Verify: Preferred vendor status is company-wide (not per-branch)
+
+Scenario 8: Switch Branch Context and View Branch-Specific Data
+- Log in as HQ manager with visibility to all branches
+- Branch selector at top: Select "BRANCH-A"
+- Navigate to Profile > Equipment & Maintenance
+- Verify: Shows only BRANCH-A equipment (Generator 50KVA)
+- Switch to "BRANCH-B"
+- Verify: Shows only BRANCH-B equipment (HVAC Chiller Unit)
+- Switch back to "Headquarters" view
+- Verify: Shows consolidated statement and approval queue
+
+DATA VALIDATION CHECKLIST
+- [ ] Each branch has isolated equipment and service history
+- [ ] No data leakage between branches
+- [ ] Branch-submitted requests are visible to HQ in approval queue
+- [ ] HQ approval is required before service can proceed
+- [ ] Order number is assigned by HQ, not by service provider
+- [ ] Order number is mandatory on all invoices for this customer
+- [ ] Order number matches HQ approval record
+- [ ] Order number cannot be edited after invoice issuance
+- [ ] Consolidated statement sums are mathematically correct
+- [ ] Branch totals match sum of branch invoices
+- [ ] Service provider frequency is correctly counted across all branches
+- [ ] Service provider ratings are properly aggregated
+- [ ] Only HQ users can view approval queue
+- [ ] Only HQ users can approve/reject service requests
+- [ ] Only HQ can assign order numbers
+- [ ] Branch can view their own requests and approval status
+- [ ] Branch cannot view other branch requests (unless HQ grants access)
+- [ ] Approval notifications reach correct branch contact
+- [ ] Rejection reasons are communicated to branch
+- [ ] Payment authority is centralized at HQ
+- [ ] VAT tracking is correct across all branches
+- [ ] Timestamps are accurate for approval and invoice dates
+- [ ] Order number format validation matches customer's system (if applicable)
+- [ ] Audit trail captures approval workflow steps

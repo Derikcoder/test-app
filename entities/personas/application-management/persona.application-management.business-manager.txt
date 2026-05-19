@@ -1,0 +1,20 @@
+PERSONA SUMMARY
+- Persona ID: APP-MGMT-002
+- Persona Name: Business Manager
+- Persona Type: Application Management
+- Platform Role: businessAdministrator
+- Objective: Manage operations, users, service calls, customer lifecycle
+
+UAT FOCUS
+- Create and manage service calls across service categories
+- Assign and monitor field service agents
+- Validate customer onboarding and communication flows
+- Validate business-level reporting and status transitions
+
+BASE SCENARIOS
+- Create service calls for each target service category
+- Trigger quotations/invoices and customer communication flows
+- Monitor assigned work and completion states
+
+NOTES
+- Expand with SLA and workload balancing scenarios.

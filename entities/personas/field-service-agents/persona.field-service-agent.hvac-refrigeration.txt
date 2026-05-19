@@ -1,0 +1,15 @@
+PERSONA SUMMARY
+- Persona ID: FSA-004
+- Persona Name: HVAC and Refrigeration Field Service Agent
+- Persona Type: Service Agent
+- Category: HVAC / Refrigeration
+- Objective: Maintain and restore cooling/heating systems
+
+UAT FOCUS
+- Perform inspections, maintenance, and fault repairs
+- Capture system readings and service outcomes
+- Validate category-specific service call handling
+
+DATA HINTS
+- Typical assets: split units, package units, cold rooms, chillers
+- Typical issues: no cooling, gas leaks, compressor faults, airflow issues

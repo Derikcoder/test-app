@@ -129,8 +129,29 @@ const ServiceCalls = () => {
   setSelectedAssignments((prev) => ({ ...prev, [callId]: agentId }));
  };
 
+ const getAssignedAgentId = (call) => {
+  if (!call?.assignedAgent) return '';
+  if (typeof call.assignedAgent === 'string') return call.assignedAgent;
+  return call.assignedAgent?._id || '';
+ };
+
+ const formatAssignmentError = (error) => {
+  const backendMessage = String(error?.response?.data?.message || '').trim();
+  const normalized = backendMessage.toLowerCase();
+
+  if (
+   normalized.includes('must be provisioned first') ||
+   normalized.includes('first password setup') ||
+   normalized.includes('linked field service agent account is inactive or missing')
+  ) {
+   return `${backendMessage} Use Provision Login or Forgot Password for the agent email, then assign again.`;
+  }
+
+  return backendMessage || 'Failed to assign the service call. Please try again.';
+ };
+
  const assignCallToAgent = async (call) => {
-  const selectedAgent = selectedAssignments[call._id];
+  const selectedAgent = selectedAssignments[call._id] || getAssignedAgentId(call);
   if (!selectedAgent) {
    setQueueActionError('Please select a field service agent before assigning the call.');
    setQueueActionSuccess('');
@@ -151,9 +172,28 @@ const ServiceCalls = () => {
    await fetchServiceCalls();
    await fetchAgents();
   } catch (error) {
-   setQueueActionError(
-    error?.response?.data?.message || 'Failed to assign the service call. Please try again.'
+    setQueueActionError(formatAssignmentError(error));
+  } finally {
+   setAssigningCallId('');
+  }
+ };
+
+ const unassignCall = async (call) => {
+  setQueueActionError('');
+  setQueueActionSuccess('');
+  setAssigningCallId(call._id);
+  try {
+   await api.put(
+    `/service-calls/${call._id}`,
+    { assignedAgent: null, status: 'pending', agentAccepted: false },
+    { headers: { Authorization: `Bearer ${user?.token}` } }
    );
+   setSelectedAssignments((prev) => ({ ...prev, [call._id]: '' }));
+   setQueueActionSuccess(`Service call ${call.callNumber || call._id} was unassigned.`);
+   await fetchServiceCalls();
+   await fetchAgents();
+  } catch (error) {
+   setQueueActionError(formatAssignmentError(error));
   } finally {
    setAssigningCallId('');
   }
@@ -398,10 +438,17 @@ const ServiceCalls = () => {
      )}
     </div>
    )}
-   {showAssignControls && (
+  {showAssignControls && (
     <div className="pt-2 quick-actions-wrap">
+    {(() => {
+    const assignedAgentId = getAssignedAgentId(call);
+    const selectValue = selectedAssignments[call._id] ?? assignedAgentId;
+    const isReassignment = Boolean(assignedAgentId);
+
+    return (
+     <>
      <select
-      value={selectedAssignments[call._id] || ''}
+    value={selectValue || ''}
       onChange={(e) => handleAssignmentSelect(call._id, e.target.value)}
       className="flex-1 min-w-[160px] rounded-lg bg-white/10 border border-white/20 text-white text-xs px-3 py-2"
      >
@@ -418,8 +465,21 @@ const ServiceCalls = () => {
       onClick={() => assignCallToAgent(call)}
       className="quick-action-btn quick-action-btn-sm quick-action-btn-info disabled:opacity-50"
      >
-      {assigningCallId === call._id ? 'Assigning...' : 'Assign'}
+      {assigningCallId === call._id ? 'Saving...' : isReassignment ? 'Reassign' : 'Assign'}
      </button>
+      {isReassignment && (
+       <button
+        type="button"
+        disabled={assigningCallId === call._id}
+        onClick={() => unassignCall(call)}
+        className="quick-action-btn quick-action-btn-sm quick-action-btn-danger disabled:opacity-50"
+       >
+        {assigningCallId === call._id ? 'Saving...' : 'Unassign'}
+       </button>
+      )}
+       </>
+      );
+         })()}
     </div>
    )}
    {isAdmin && (
@@ -501,7 +561,7 @@ const ServiceCalls = () => {
  const Section = ({ title, calls, showAssignControls = false, emptyMsg }) => (
   <div className="card card-glass glass-card rounded-2xl shadow-xl p-6">
    <div className="flex items-center justify-between mb-4">
-    <h2 className="glass-heading text-lg">{title}</h2>
+  <h2 className="executive-section-title">{title}</h2>
     <span className="count-badge">{calls.length}</span>
    </div>
    {calls.length === 0 ? (
@@ -539,8 +599,8 @@ const ServiceCalls = () => {
      {/* Page header */}
      <div className="flex items-start justify-between flex-wrap gap-4">
       <div>
-       <h1 className="glass-heading text-3xl">Service Calls</h1>
-       <p className="text-white/70 mt-1">Status dashboard — {serviceCalls.length} total calls</p>
+         <h1 className="executive-title">Service Calls</h1>
+         <p className="executive-subtitle">Status dashboard — {serviceCalls.length} total calls</p>
       </div>
       <div className="quick-actions-grid w-full sm:w-auto">
        <button
@@ -582,9 +642,9 @@ const ServiceCalls = () => {
        { label: 'In Progress', count: inProgressCalls.length, color: 'text-indigo-300' },
        { label: 'Completed', count: completedCalls.length, color: 'text-emerald-300' },
       ].map(({ label, count, color }) => (
-       <div key={label} className="rounded-xl border border-white/15 bg-white/5 p-3 text-center">
+      <div key={label} className="executive-kpi-card">
         <p className={`text-2xl font-bold ${color}`}>{count}</p>
-        <p className="text-xs text-white/60 mt-1">{label}</p>
+       <p className="text-xs text-slate-200/90 mt-1 font-semibold">{label}</p>
        </div>
       ))}
      </div>
@@ -600,12 +660,14 @@ const ServiceCalls = () => {
      <Section
       title="Assigned — Awaiting Agent Acceptance"
       calls={awaitingAcceptanceCalls}
+      showAssignControls
       emptyMsg="No calls awaiting agent acceptance."
      />
 
      <Section
       title="Accepted — Not Yet Attended"
       calls={acceptedNotAttendedCalls}
+      showAssignControls
       emptyMsg="No accepted calls pending attendance."
      />
 

@@ -57,6 +57,8 @@ describe('Email Service', () => {
       to: 'test@example.com',
       agentName: 'Agent Smith',
       userName: 'Test User',
+      temporaryAccessKey: '1234567',
+      loginUrl: 'http://localhost:3000/login',
       resetUrl: 'http://localhost:3000/reset-password/abc123'
     });
     expect(result).toEqual({

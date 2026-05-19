@@ -1,0 +1,207 @@
+[{
+	"service_provider_details": [{
+		"business_trade_name": "WKD",
+		"business_registration_number": "#12/123456789/2019",
+		"tax_identification_number": "1234567890",
+		"vat_registration_number": "1234567890",
+		"business_address": "Plot 55, 1Ste Straat, Pyramid, Wallmanstall, Gauteng, Suid-Afrika",
+		"business_contact_number": "011 123 4567",
+		"business_email_address": "info@wkd.co.za",
+		"business_registration_website": "www.wolmaranskontrakdienste.co.za"
+	}],
+	"client_details": [{
+		"client_type": "Business",
+		"business_name": "Hertex Fabrics",
+		"business_registration_number": "#12/987654321/2018",
+		"tax_identification_number": "9876543210",
+		"vat_registration_number": "9876543210",
+		"client_address": "16 Kramer Weg, Kramerville, Sandton, Gauteng, Suid-Afrika",
+		"contact_person": "Ryan",
+		"client_contact_number": "011 765 4321",
+		"client_email_address": "ryan@hertex.xo.za"
+	}],
+	"invoice_details": [{
+		"invoice_number": "INV-2024-001",
+		"invoice_date": "2024-06-01",
+		"due_date": "2024-06-30",
+		"payment_terms": "Net 30 Days",
+		"currency": "ZAR"
+	}],
+	"service_details": [{
+		"service_description": "Generator engine repair work",
+		"machine_details": {
+			"machine_type": "Generator",
+			"machine_brand": "Ricardo",
+			"machine_model": "4105ZD",
+			"machine_serial_number": "C123456789",
+			"kva_rating": "63 KVA",
+			"current_machine_hours": "856 Hours",
+			"machine_hours_at_last_service": "Hours from last service invoice provided",
+			"fuel_type": "Diesel",
+			"construction_type": "Silent, box type",
+			"machine_fault_code": "E-1234",
+			"fault_code_description": "Engine overheating",
+			"date_of_last_service": "Date of previous invoice"
+		}
+	}],
+	"billing_and_costing": [{
+		"table_headings": {
+			"item": "Item",
+			"unit_cost": "Unit Cost",
+			"quantity": "Quantity",
+			"total": "Total"
+		},
+		"sundry_expenses": {
+			"service_parts_and_spares": [
+				{
+					"item": "Air Filter",
+					"description": "Donaldson is a high quality air filter for diesel generators",
+					"supplier": "Donaldson",
+					"part_number": "P772578",
+					"unit_cost": 600,
+					"quantity": 1,
+					"total": 600
+				},
+				{
+					"item": "Fuel Filter",
+					"description": "Sekura is a high quality fuel filter for diesel generators",
+					"supplier": "Sekura",
+					"part_number": "P772579",
+					"unit_cost": 270,
+					"quantity": 1,
+					"total": 270
+				},
+				{
+					"item": "Oil Filter",
+					"description": "Sekura is a high quality oil filter for diesel generators",
+					"supplier": "Sekura",
+					"part_number": "C-66071",
+					"unit_cost": 346.8,
+					"quantity": 1,
+					"total": 346.8
+				},
+				{
+					"item": "Oil Filter",
+					"description": "WIX is a high quality oil filter for diesel generators",
+					"supplier": "WIX",
+					"part_number": "W940/5",
+					"unit_cost": 292.5,
+					"quantity": 1,
+					"total": 292.5
+				}
+			],
+			"components": [
+				{
+					"item": "Cylinder Head",
+					"description": "Cylinder head for diesel generators",
+					"supplier": "Yongdong",
+					"part_number": "YD485",
+					"unit_cost": 1020,
+					"quantity": 4,
+					"total": 4080
+				},
+				{
+					"item": "O-Rings",
+					"description": "O-rings for diesel generators",
+					"supplier": "Yongdong",
+					"part_number": "YD486",
+					"unit_cost": 51,
+					"quantity": 12,
+					"total": 612
+				},
+				{
+					"item": "Piston Bare Standard",
+					"description": "Pistons for diesel generators",
+					"supplier": "Yongdong",
+					"part_number": "YD487",
+					"unit_cost": 975,
+					"quantity": 4,
+					"total": 3900
+				},
+				{
+					"item": "Piston rings Standard Set",
+					"description": "Piston rings for diesel generators",
+					"supplier": "Yongdong",
+					"part_number": "YD488",
+					"unit_cost": 1800,
+					"quantity": 1,
+					"total": 1800
+				},
+				{
+					"item": "Piston Rods",
+					"description": "Piston rods for diesel generators",
+					"supplier": "Yongdong",
+					"part_number": "YD494",
+					"unit_cost": 105,
+					"quantity": 16,
+					"total": 1680
+				},
+				{
+					"item": "Big End Ball Bearings",
+					"description": "Big end ball bearings for diesel generators",
+					"supplier": "Yongdong",
+					"part_number": "YD489",
+					"unit_cost": 1725,
+					"quantity": 1,
+					"total": 1725
+				},
+				{
+					"item": "Main Ball Bearings",
+					"description": "Piston rings for diesel generators",
+					"supplier": "Yongdong",
+					"part_number": "YD488",
+					"unit_cost": 150,
+					"quantity": 16,
+					"total": 2400
+				}
+			],
+			"third_party_service_providers": [],
+			"lubricants_and_concentrates": [],
+			"consumables": {
+				"base_cost": 17706.3,
+				"scale_band": "Above R5000.00",
+				"applied_percentage": 0.025,
+				"total_cost": 442.66,
+				"note": "Recommended default sliding-scale applied to sundry expenses excluding consumables."
+			},
+			"sundry_expenses_total": 18148.96
+		},
+		"fixed_expenses": {
+			"call_out_fee": {
+				"item": "Call-out fee",
+				"description": "Travel charge using R8.50/km with minimum call-out floor of R650.00.",
+				"supplier": "WKD",
+				"part_number": "CALL-OUT",
+				"unit_cost": 8.5,
+				"quantity": 360,
+				"total": 3060
+			},
+			"procurement_fee": {
+				"item": "Procurement Fee",
+				"description": "No procurement fee applied in this sample.",
+				"supplier": "WKD",
+				"part_number": "PROC-000",
+				"unit_cost": 0,
+				"quantity": 1,
+				"total": 0
+			},
+			"labor": {
+				"item": "Labor",
+				"description": "No explicit labor line captured in this sample.",
+				"supplier": "WKD",
+				"part_number": "LAB-000",
+				"unit_cost": 0,
+				"quantity": 0,
+				"total": 0
+			},
+			"fixed_expenses_total": 3060
+		},
+		"invoice_totals": {
+			"total_excluding_vat": 21208.96,
+			"vat_rate": 15,
+			"vat_amount": 3181.34,
+			"total_including_vat": 24390.3
+		}
+	}],
+	"service_notes": []
+}]

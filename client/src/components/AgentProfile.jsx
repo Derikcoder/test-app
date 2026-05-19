@@ -41,6 +41,14 @@ const AgentProfile = () => {
  const [error, setError] = useState('');
  const [actionError, setActionError] = useState('');
  const [actionSuccess, setActionSuccess] = useState('');
+ const [resendInviteLoading, setResendInviteLoading] = useState(false);
+ const [inviteCredentials, setInviteCredentials] = useState({ temporaryAccessKey: '', loginUrl: '' });
+ const [provisionModalOpen, setProvisionModalOpen] = useState(false);
+ const [provisionForm, setProvisionForm] = useState({ userName: '' });
+ const [provisionLoading, setProvisionLoading] = useState(false);
+ const [provisionError, setProvisionError] = useState('');
+ const [provisionSuccess, setProvisionSuccess] = useState('');
+ const [provisionAccessKey, setProvisionAccessKey] = useState('');
  const [acceptingCallId, setAcceptingCallId] = useState('');
  const [completingCallId, setCompletingCallId] = useState(null);
  const [creatingInvoiceCallId, setCreatingInvoiceCallId] = useState(null);
@@ -247,6 +255,76 @@ const AgentProfile = () => {
    setActionError(err.response?.data?.message || 'Failed to update agent profile.');
   } finally {
    setSavingContact(false);
+  }
+ };
+
+ const handleResendInvite = async () => {
+  if (!agent?._id) return;
+
+  setActionError('');
+  setActionSuccess('');
+  setInviteCredentials({ temporaryAccessKey: '', loginUrl: '' });
+  setResendInviteLoading(true);
+
+  try {
+   const response = await api.post(
+    `/auth/admin/resend-agent-welcome/${agent._id}`,
+    {},
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+
+   setActionSuccess(response.data?.message || `Welcome email resent to ${agent.email}`);
+   setInviteCredentials({
+    temporaryAccessKey: response.data?.temporaryAccessKey || '',
+    loginUrl: response.data?.loginUrl || '',
+   });
+  } catch (err) {
+   setActionError(err.response?.data?.message || 'Failed to resend invitation.');
+  } finally {
+   setResendInviteLoading(false);
+  }
+ };
+
+ const openProvisionModal = () => {
+  const suggestedUserName = `${agent?.firstName || 'agent'}_${agent?.lastName || 'user'}`
+   .toLowerCase()
+   .replace(/\s+/g, '')
+   .replace(/[^a-z0-9_]/g, '');
+
+  setProvisionForm({ userName: suggestedUserName });
+  setProvisionError('');
+  setProvisionSuccess('');
+  setProvisionAccessKey('');
+  setProvisionModalOpen(true);
+ };
+
+ const handleProvisionFromProfile = async (event) => {
+  event.preventDefault();
+  if (!agent?._id) return;
+
+  setProvisionError('');
+  setProvisionLoading(true);
+
+  try {
+   const response = await api.post(
+    '/auth/admin/provision-user',
+    {
+     role: 'fieldServiceAgent',
+     profileId: agent._id,
+     userName: provisionForm.userName,
+     email: agent.email,
+    },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+
+   setProvisionSuccess(response.data?.message || `Login provisioned for ${agent.email}`);
+   setProvisionAccessKey(response.data?.temporaryAccessKey || '');
+   setActionSuccess(response.data?.message || `Login provisioned for ${agent.email}`);
+   await fetchAgentData();
+  } catch (err) {
+   setProvisionError(err.response?.data?.message || 'Failed to provision login.');
+  } finally {
+   setProvisionLoading(false);
   }
  };
 
@@ -467,6 +545,59 @@ const AgentProfile = () => {
      Entity Focus: Field Agent Workspace | Record Type: Agent Profile + Assigned Service Calls
     </div>
 
+    {canEditAgentProfile ? (
+     <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/90 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+       <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Invite Actions</p>
+      <p className="text-sm text-slate-200">
+       Login account linked:{' '}
+       <span className={agent.userAccount ? 'text-emerald-300 font-semibold' : 'text-amber-300 font-semibold'}>
+        {agent.userAccount ? 'Yes' : 'No'}
+       </span>
+      </p>
+        {agent.userAccount ? (
+         <p className="text-xs text-slate-400 mt-1">
+          Permanent password set:{' '}
+          <span className={agent.hasCompletedPasswordSetup ? 'text-emerald-300 font-semibold' : 'text-amber-300 font-semibold'}>
+           {agent.hasCompletedPasswordSetup ? 'Yes' : 'No'}
+          </span>
+         </p>
+        ) : null}
+       </div>
+       {agent.userAccount ? (
+        agent.canResendInvite ? (
+        <button
+         type="button"
+         onClick={handleResendInvite}
+         disabled={resendInviteLoading}
+         className="quick-action-btn quick-action-btn-info disabled:cursor-not-allowed disabled:opacity-60"
+        >
+         {resendInviteLoading ? 'Resending Invite...' : 'Resend Invite'}
+        </button>
+        ) : (
+         <span className="inline-flex items-center rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-2.5 text-sm font-semibold text-slate-300">
+          Use Forgot Password
+         </span>
+        )
+       ) : (
+        <button
+         type="button"
+         onClick={openProvisionModal}
+         className="quick-action-btn quick-action-btn-primary"
+        >
+         Provision Login
+        </button>
+       )}
+      </div>
+      {!agent.userAccount ? (
+       <p className="mt-2 text-xs text-amber-300">This agent does not have a linked login account yet. Use Provision Login now, then Resend Invite will become available.</p>
+      ) : !agent.canResendInvite ? (
+       <p className="mt-2 text-xs text-emerald-300">This user has already set a permanent password. SuperAdmin invite recovery is no longer available; the user must use Forgot Password.</p>
+      ) : null}
+     </div>
+    ) : null}
+
      {/* Agent Profile Header */}
     <div className={`${panelClass} overflow-hidden mb-8`}>
      <div className="bg-slate-900 border-b border-slate-700 px-5 sm:px-8 py-6">
@@ -668,6 +799,14 @@ const AgentProfile = () => {
      )}
      {actionSuccess && (
       <div className="mb-4 p-4 rounded-lg border border-emerald-700 bg-emerald-950 text-emerald-200">{actionSuccess}</div>
+     )}
+     {inviteCredentials.temporaryAccessKey && (
+        <div className="mb-4 rounded-lg border border-emerald-700 bg-emerald-950/40 p-4 text-sm text-emerald-200">
+      <p className="font-semibold">Refreshed first-login credentials</p>
+      <p className="mt-2 text-xs uppercase tracking-wide text-emerald-300">Secret Access Key</p>
+      <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-yellow-200">{inviteCredentials.temporaryAccessKey}</p>
+      <p className="mt-2 text-emerald-300">Use this as the agent&apos;s temporary password on the login screen.</p>
+      </div>
      )}
     {selfDispatchMeta && (
          <div className="mb-4 p-4 rounded-lg border border-slate-700 bg-slate-900 text-sm text-slate-200">
@@ -1119,6 +1258,97 @@ const AgentProfile = () => {
      onCreated={() => { setEditingQuotation(null); fetchAgentData(); }}
     />
    )}
+
+    {provisionModalOpen && (
+     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-cyan-700 bg-slate-900 p-8 shadow-2xl mx-4">
+       <h2 className="text-xl font-bold text-slate-100 mb-1">Provision Login Credentials</h2>
+       <p className="text-sm text-slate-400 mb-6">
+        Creating a login account for <span className="text-cyan-300 font-semibold">{agent.firstName} {agent.lastName}</span>
+       </p>
+
+       {provisionSuccess ? (
+        <div className="mb-4 p-4 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-700 text-sm">
+         <p className="font-semibold mb-1">Account created!</p>
+         <p>{provisionSuccess}</p>
+         {provisionAccessKey ? (
+          <div className="mt-3 rounded-lg border border-emerald-600 bg-slate-950/60 p-3">
+           <p className="text-xs uppercase tracking-wide text-emerald-300">Secret Access Key</p>
+           <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-yellow-200">{provisionAccessKey}</p>
+           <p className="mt-2 text-emerald-300">Use this as the agent&apos;s temporary password on first login.</p>
+          </div>
+         ) : null}
+        </div>
+       ) : (
+        <form onSubmit={handleProvisionFromProfile} className="space-y-4">
+         <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Email (login email)</label>
+          <input
+           type="email"
+           value={agent.email || ''}
+           readOnly
+           className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 opacity-60 cursor-not-allowed"
+          />
+         </div>
+         <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-300">Username *</label>
+          <input
+           type="text"
+           value={provisionForm.userName}
+           onChange={(e) => setProvisionForm({ userName: e.target.value })}
+           required
+           className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100"
+          />
+         </div>
+         {provisionError ? (
+          <div className="p-3 rounded-lg bg-red-950 text-red-200 border border-red-700 text-sm">{provisionError}</div>
+         ) : null}
+         <div className="flex justify-end gap-3 pt-2">
+          <button
+           type="button"
+           onClick={() => setProvisionModalOpen(false)}
+           className="quick-action-btn quick-action-btn-secondary"
+          >
+           Cancel
+          </button>
+          <button
+           type="submit"
+           disabled={provisionLoading}
+           className="quick-action-btn quick-action-btn-primary disabled:opacity-60"
+          >
+           {provisionLoading ? 'Creating...' : 'Create Login'}
+          </button>
+         </div>
+        </form>
+       )}
+
+       {provisionSuccess ? (
+        <div className="mt-4 flex justify-end gap-3">
+         {provisionAccessKey ? (
+          <button
+           onClick={() => navigate('/login', {
+            state: {
+             email: agent.email,
+             password: provisionAccessKey,
+             infoMessage: 'Use this temporary secret access key to sign in as the field agent. If it is lost or already changed, choose Forgot Password with the same email address.',
+            },
+           })}
+           className="quick-action-btn quick-action-btn-info"
+          >
+           Open Login Screen
+          </button>
+         ) : null}
+         <button
+          onClick={() => setProvisionModalOpen(false)}
+          className="quick-action-btn quick-action-btn-secondary"
+         >
+          Close
+         </button>
+        </div>
+       ) : null}
+      </div>
+     </div>
+    )}
   </>
  );
 };

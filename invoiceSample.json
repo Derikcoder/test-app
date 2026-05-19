@@ -45,115 +45,163 @@
 		}
 	}],
 	"faktureerde_besonderhede || koste_berekening": [{
-		"lyn_items": [
-			{
-			"kategorie": "Diens Onderdele",
-			"part_tipe": "Lug Filter",
-			"fabrikaat": "Donaldson",
-			"part_nommer": "P772578",
-			"eenheid_koste": 600,
-			"aantal_eenhede": 1,
-			"totaal_koste": 600,
-			"part_beskrywing": "Donaldson is 'n hoe gehalte Lug Filter vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Diens Onderdele",
-			"part_tipe": "Brandstof Filter",
-			"fabrikaat": "Sekura",
-			"part_nommer": "P772579",
-			"eenheid_koste": 270,
-			"aantal_eenhede": 1,
-			"totaal_koste": 270,
-			"part_beskrywing": "Sekura is 'n hoe gehalte Brandstof Filter vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Diens Onderdele",
-			"part_tipe": "Olie Filter",
-			"fabrikaat": "Sekura",
-			"part_nommer": "C-66071",
-			"eenheid_koste": 346.8,
-			"aantal_eenhede": 1,
-			"totaal_koste": 346.8,
-			"part_beskrywing": "Sekura is 'n hoe gehalte Olie Filter vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Diens Onderdele",
-			"part_tipe": "Olie Filter",
-			"fabrikaat": "WIX",
-			"part_nommer": "W940/5",
-			"eenheid_koste": 292.5,
-			"aantal_eenhede": 1,
-			"totaal_koste": 292.5,
-			"part_beskrywing": "WIX is 'n hoe gehalte Olie Filter vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Parte",
-			"part_tipe": "Silinderhuls",
-			"fabrikaat": "Yongdong",
-			"part_nommer": "YD485",
-			"eenheid_koste": 1020,
-			"aantal_eenhede": 4,
-			"totaal_koste": 4080,
-			"part_beskrywing": "Silinderhuls vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Parte",
-			"part_tipe": "O-Ringe",
-			"fabrikaat": "Yongdong",
-			"part_nommer": "YD486",
-			"eenheid_koste": 51,
-			"aantal_eenhede": 12,
-			"totaal_koste": 612,
-			"part_beskrywing": "O-Ringe vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Parte",
-			"part_tipe": "Suier Kaal Standaard",
-			"fabrikaat": "Yongdong",
-			"part_nommer": "YD487",
-			"eenheid_koste": 975,
-			"aantal_eenhede": 4,
-			"totaal_koste": 3900,
-			"part_beskrywing": "Suiers vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Parte",
-			"part_tipe": "Suier ringe Standaard Stel",
-			"fabrikaat": "Yongdong",
-			"part_nommer": "YD488",
-			"eenheid_koste": 1800,
-			"aantal_eenhede": 1,
-			"totaal_koste": 1800,
-			"part_beskrywing": "Suier ringe vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Parte",
-			"part_tipe": "Suier Stange",
-			"fabrikaat": "Yongdong",
-			"part_nommer": "YD494",
-			"eenheid_koste": 105,
-			"aantal_eenhede": 16,
-			"totaal_koste": 1680,
-			"part_beskrywing": "Suier stange vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Parte",
-			"part_tipe": "Groot Kant Koeel Laers",
-			"fabrikaat": "Yongdong",
-			"part_nommer": "YD489",
-			"eenheid_koste": 1725,
-			"aantal_eenhede": 1,
-			"totaal_koste": 1725,
-			"part_beskrywing": "Groot Kant Koeel Laers vir Diesel Kragopwekkers"
-		},{
-			"kategorie": "Parte",
-			"part_tipe": "Hoof Koeel Laers",
-			"fabrikaat": "Yongdong",
-			"part_nommer": "YD488",
-			"eenheid_koste": 150,
-			"aantal_eenhede": 16,
-			"totaal_koste": 2400,
-			"part_beskrywing": "Suier ringe vir Diesel Kragopwekkers"
-		}],
-		"vaste_uitgawes": [{
-			"uitroepfooi_r/km": "R8.50 per km",
-			"aantal_kilometers": "360 km",
-			"minimum_uitroepfooi": "R650.00",
-			"uitroepfooi_totaal": "(8.50 * 360) > 650 ? (8.50 * 360) : 650"
+		"table_headings": {
+			"item": "Item",
+			"unit_cost": "Unit Cost",
+			"quantity": "Quantity",
+			"total": "Total"
+		},
+		"diverse_uitgawes": {
+			"diens_parte_en_onderdele": [
+				{
+					"item": "Air Filter",
+					"description": "Donaldson is 'n hoe gehalte Lug Filter vir Diesel Kragopwekkers",
+					"supplier": "Donaldson",
+					"part_number": "P772578",
+					"unit_cost": 600,
+					"quantity": 1,
+					"total": 600
+				},
+				{
+					"item": "Fuel Filter",
+					"description": "Sekura is 'n hoe gehalte Brandstof Filter vir Diesel Kragopwekkers",
+					"supplier": "Sekura",
+					"part_number": "P772579",
+					"unit_cost": 270,
+					"quantity": 1,
+					"total": 270
+				},
+				{
+					"item": "Oil Filter",
+					"description": "Sekura is 'n hoe gehalte Olie Filter vir Diesel Kragopwekkers",
+					"supplier": "Sekura",
+					"part_number": "C-66071",
+					"unit_cost": 346.8,
+					"quantity": 1,
+					"total": 346.8
+				},
+				{
+					"item": "Oil Filter",
+					"description": "WIX is 'n hoe gehalte Olie Filter vir Diesel Kragopwekkers",
+					"supplier": "WIX",
+					"part_number": "W940/5",
+					"unit_cost": 292.5,
+					"quantity": 1,
+					"total": 292.5
+				}
+			],
+			"komponente": [
+				{
+					"item": "Silinderhuls",
+					"description": "Silinderhuls vir Diesel Kragopwekkers",
+					"supplier": "Yongdong",
+					"part_number": "YD485",
+					"unit_cost": 1020,
+					"quantity": 4,
+					"total": 4080
+				},
+				{
+					"item": "O-Ringe",
+					"description": "O-Ringe vir Diesel Kragopwekkers",
+					"supplier": "Yongdong",
+					"part_number": "YD486",
+					"unit_cost": 51,
+					"quantity": 12,
+					"total": 612
+				},
+				{
+					"item": "Suier Kaal Standaard",
+					"description": "Suiers vir Diesel Kragopwekkers",
+					"supplier": "Yongdong",
+					"part_number": "YD487",
+					"unit_cost": 975,
+					"quantity": 4,
+					"total": 3900
+				},
+				{
+					"item": "Suier ringe Standaard Stel",
+					"description": "Suier ringe vir Diesel Kragopwekkers",
+					"supplier": "Yongdong",
+					"part_number": "YD488",
+					"unit_cost": 1800,
+					"quantity": 1,
+					"total": 1800
+				},
+				{
+					"item": "Suier Stange",
+					"description": "Suier stange vir Diesel Kragopwekkers",
+					"supplier": "Yongdong",
+					"part_number": "YD494",
+					"unit_cost": 105,
+					"quantity": 16,
+					"total": 1680
+				},
+				{
+					"item": "Groot Kant Koeel Laers",
+					"description": "Groot Kant Koeel Laers vir Diesel Kragopwekkers",
+					"supplier": "Yongdong",
+					"part_number": "YD489",
+					"unit_cost": 1725,
+					"quantity": 1,
+					"total": 1725
+				},
+				{
+					"item": "Hoof Koeel Laers",
+					"description": "Suier ringe vir Diesel Kragopwekkers",
+					"supplier": "Yongdong",
+					"part_number": "YD488",
+					"unit_cost": 150,
+					"quantity": 16,
+					"total": 2400
+				}
+			],
+			"derde_party_diens_verskaffers": [],
+			"smeermiddels_en_konsentrate": [],
+			"verbruikbare_voorraad": {
+				"basis_koste": 17706.3,
+				"skaal_band": "Above R5000.00",
+				"toegepaste_persentasie": 0.025,
+				"totaal_koste": 442.66,
+				"nota": "Recommended default sliding-scale applied to sundry expenses excluding consumables."
+			},
+			"diverse_uitgawes_totaal": 18148.96
+		},
+		"vaste_uitgawes": {
+			"uitroepfooi": {
+				"item": "Call-out fee",
+				"description": "Travel charge using R8.50/km with minimum call-out floor of R650.00.",
+				"supplier": "WKD",
+				"part_number": "CALL-OUT",
+				"unit_cost": 8.5,
+				"quantity": 360,
+				"total": 3060
+			},
+			"verkryging_koste": {
+				"item": "Procurement Fee",
+				"description": "No procurement fee applied in this sample.",
+				"supplier": "WKD",
+				"part_number": "PROC-000",
+				"unit_cost": 0,
+				"quantity": 1,
+				"total": 0
+			},
+			"arbeid": {
+				"item": "Labor",
+				"description": "No explicit labor line captured in this sample.",
+				"supplier": "WKD",
+				"part_number": "LAB-000",
+				"unit_cost": 0,
+				"quantity": 0,
+				"total": 0
+			},
+			"vaste_uitgawes_totaal": 3060
+		},
+		"faktuur_totale_berekening": {
+			"totaal_btw_uitgesluit": 21208.96,
+			"btw_persentasie": 15,
+			"btw_bedrag": 3181.34,
+			"totaal_btw_ingesluit": 24390.3
 		}
-	],
-		"faktuur_totale_berekening": [{}]
 	}],
 	"diens_beskrywing": [{
 

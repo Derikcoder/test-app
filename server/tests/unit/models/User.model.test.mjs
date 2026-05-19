@@ -5,6 +5,20 @@
 import User from '../../../models/User.model.js';
 
 describe('User Model', () => {
+	test('defaults permanent password setup state to true', () => {
+		const user = new User({
+			userName: 'setup-user',
+			email: 'setup@example.com',
+			password: 'password123',
+			role: 'superAdmin',
+			businessName: 'Setup Biz',
+			phoneNumber: '0800000002',
+			physicalAddress: 'Address 3',
+		});
+
+		expect(user.hasCompletedPasswordSetup).toBe(true);
+	});
+
 	test('generates password reset token and expiry', () => {
 		const user = new User({
 			userName: 'reset-user',

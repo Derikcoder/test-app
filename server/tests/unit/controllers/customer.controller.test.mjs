@@ -134,10 +134,25 @@ describe('Customer Controller', () => {
     Customer.find = jest.fn().mockReturnValue({
       sort: jest.fn().mockResolvedValue(expected),
     });
+    User.findById = jest.fn()
+      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue({ hasCompletedPasswordSetup: true }) })
+      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) });
+    mockBusinessCustomer.userAccount = 'user-customer-1';
 
     await getCustomers(req, res);
 
     expect(Customer.find).toHaveBeenCalledWith({ createdBy: 'user-1' });
-    expect(res.json).toHaveBeenCalledWith(expected);
+    expect(res.json).toHaveBeenCalledWith([
+      expect.objectContaining({
+        _id: 'customer-1',
+        hasCompletedPasswordSetup: true,
+        canRefreshFirstLoginCredentials: false,
+      }),
+      expect.objectContaining({
+        _id: 'customer-2',
+        hasCompletedPasswordSetup: null,
+        canRefreshFirstLoginCredentials: false,
+      }),
+    ]);
   });
 });

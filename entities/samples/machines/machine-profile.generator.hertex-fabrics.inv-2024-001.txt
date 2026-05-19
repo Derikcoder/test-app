@@ -1,0 +1,43 @@
+MACHINE PROFILE (INVOICE-DERIVED)
+- Source Invoice: INV-2024-001
+- Customer: Hertex Fabrics
+- Service Description: Kragopwekker enjin herstelwerk (Generator engine repair)
+
+ASSET DETAILS
+- Machine Type: Kragopwekker (Generator)
+- Make: Ricardo
+- Model: 4105ZD
+- Serial Number: C123456789
+- kVA Rating: 63 KVA
+- Current Runtime: 856 hours
+- Fuel Type: Diesel
+- Build Type: Silent, box type
+
+FAULT DETAILS
+- Fault Code: E-1234
+- Fault Description: Oorverhitting van die enjin (Engine overheating)
+- Last Service Date Note: Prior invoice reference
+
+PARTS AND SERVICE COST SNAPSHOT
+- Air Filter (Donaldson P772578): 600 x 1 = 600
+- Fuel Filter (Sekura P772579): 270 x 1 = 270
+- Oil Filter (Sekura C-66071): 346.8 x 1 = 346.8
+- Oil Filter (WIX W940/5): 292.5 x 1 = 292.5
+- Cylinder Sleeve (Yongdong YD485): 1020 x 4 = 4080
+- O-Rings (Yongdong YD486): 51 x 12 = 612
+- Pistons Std (Yongdong YD487): 975 x 4 = 3900
+- Piston Rings Set (Yongdong YD488): 1800 x 1 = 1800
+- Piston Rods (Yongdong YD494): 105 x 16 = 1680
+- Big End Bearings (Yongdong YD489): 1725 x 1 = 1725
+- Main Bearings (Yongdong YD488): 150 x 16 = 2400
+
+FIXED COST SNAPSHOT
+- Call-out Rate: R8.50 per km
+- Distance: 360 km
+- Minimum Call-out: R650.00
+- Formula Note: max(8.50 * 360, 650)
+
+UAT USAGE
+- Use this profile to validate generator-repair service call creation.
+- Verify line-item preservation from diagnostic to invoicing stage.
+- Verify mechanical category assignment and machine linkage.

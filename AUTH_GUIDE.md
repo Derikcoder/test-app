@@ -53,6 +53,8 @@ Both servers are currently running:
 - `POST /api/auth/passkeys/generate` - Generate onboarding passkey (admin roles)
 - `POST /api/auth/passkeys/request-renewal` - Request passkey renewal
 - `POST /api/auth/passkeys/fulfill-renewal/:requestToken` - Fulfill renewal request
+- `POST /api/auth/admin/provision-user` - Admin-provisioned onboarding for existing customer or field-agent profiles; now returns a temporary secret access key plus reset-link email for first login
+- `POST /api/auth/admin/resend-agent-welcome/:agentProfileId` - Refresh a field agent's first-login temporary secret access key and resend the welcome email
 - `GET /api/auth/profile` - Get user profile (Protected)
 - `PUT /api/auth/profile` - Update user profile (Protected)
 - `POST /api/auth/admin/profile-links/attach` - Attach operational profile
@@ -65,6 +67,53 @@ Both servers are currently running:
 - `businessAdministrator`
 - `fieldServiceAgent`
 - `customer`
+
+## Onboarding Summary
+
+- `superAdmin` remains a principal admin account and does not use the temporary-access-key provisioning flow.
+- `customer` and `fieldServiceAgent` now share the same admin-driven onboarding pattern: create the operational profile first, then call `POST /api/auth/admin/provision-user` to generate the linked user account.
+- Provisioning returns a temporary secret access key for immediate first login and also sends a welcome email containing the same key plus a one-hour reset-password link.
+- If the user loses the temporary key before setting a permanent password, they can use Forgot Password with the same email address.
+- Admins can refresh field-agent first-login credentials with `POST /api/auth/admin/resend-agent-welcome/:agentProfileId` only while the linked user is still in first-login state.
+
+## UAT Testing Methodology While Permanent Password Is Not Set
+
+Use this methodology whenever a test account exists, but the persona has not yet set a permanent password.
+
+Definition used during UAT:
+- `password set = FALSE` means the account is still operating on first-login credentials only. The user may have a temporary secret access key, a reset-password link, or both, but no trusted permanent password has been confirmed yet.
+
+Scope:
+- This methodology applies to `customer` and `fieldServiceAgent` personas.
+- `superAdmin` is excluded and should be managed with stricter admin credential controls.
+
+UAT rule:
+- Do not log out of the only active authenticated session for a persona if the permanent password has not been set and the latest temporary secret access key is not in hand.
+
+Recommended UAT sequence:
+1. Keep the current authenticated persona session open.
+2. Open a separate browser, incognito window, or browser profile for `superAdmin`.
+3. As `superAdmin`, open the target persona profile.
+4. If no linked login exists, use `Provision Login`.
+5. If a linked login already exists and the user has not yet set a permanent password, use `Resend Invite` to refresh the first-login credentials.
+6. Capture the newest temporary secret access key shown in the UI.
+7. In development, also capture the Ethereal preview URL from the backend terminal if email inspection is needed.
+8. Only after the new temporary credentials are captured should the existing persona session be logged out.
+9. Log back in using the newest temporary secret access key or use the reset link / Forgot Password if you intentionally want to test recovery.
+
+Important UAT behavior:
+- Each `Resend Invite` supersedes the previous temporary first-login credential for practical testing purposes. Always trust the newest key shown by the latest successful resend/provision action.
+- `Resend Invite` is an acceptable repeatable UAT recovery tool while `password set = FALSE`.
+- Once the permanent password is explicitly set and confirmed, SuperAdmin invite refresh is no longer available and the user must use normal login plus Forgot Password.
+
+Operational note for solo testing:
+- Treat `superAdmin` as your control console.
+- Treat each separate browser session as a distinct persona workstation.
+- Avoid switching personas by destroying your only authenticated session unless replacement credentials are already captured.
+
+Target production direction:
+- For MVP and UAT, `Provision Login` plus `Resend Invite` is the controlled first-login methodology.
+- For production operations, all non-`superAdmin` personas should converge on the same recovery philosophy: onboarding creates first credentials, and ongoing recovery uses Forgot Password.
 
 ### Registration Identifier Policy
 - `businessRegistrationNumber`, `taxNumber`, `vatNumber` are write-once for non-superAdmin users.

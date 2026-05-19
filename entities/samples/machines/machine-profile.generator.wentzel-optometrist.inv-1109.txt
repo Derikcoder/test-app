@@ -1,0 +1,34 @@
+MACHINE PROFILE (INVOICE-DERIVED)
+- Source Invoice: 1109
+- Customer: Wentzel Optometrist Inc
+- Service Reason: Altenator Vervang (alternator replacement)
+- Service Date: 2026/04/29
+
+ASSET DETAILS
+- Machine Type: Diesel generator (silent type, three phase)
+- Make: Yangdong
+- Model: YND485D
+- kVA Rating: 15KVA
+- Phases: Drie (three)
+- Fuel Type: Diesel
+- Runtime Hours: ? (not captured on invoice)
+
+LINE ITEMS
+- SAE4 7.5 20kva 3Fase Altenator: R19,500.00 x 1 = R19,500.00
+- Verbruikbare Voorraad: R292.50 x 1 = R292.50
+
+FIXED COSTS
+- Uitroep /km: R650.00 x 1 = R650.00
+- Arbeid: R650.00 x 8 = R5,200.00
+
+TOTALS
+- Diverse Uitgawes: R19,792.50
+- Vaste Uitgawes: R5,850.00
+- Totaal (BTW uitgesl): R25,642.50
+- BTW: R3,846.38
+- Totaal (BTW ingesl): R29,488.88
+
+UAT USAGE
+- Validate alternator replacement workflow for a single-business customer.
+- Verify amount calculations from exclusive to inclusive VAT.
+- Verify machine/service classification consistency.

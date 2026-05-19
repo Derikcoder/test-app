@@ -1,0 +1,25 @@
+MACHINE TEMPLATE
+- Template ID: MACH-GEN-001
+- Category: Backup Power Generator
+
+CORE DATA
+- Make:
+- Model:
+- Serial Number:
+- kVA Rating:
+- Fuel Type:
+- Installation Date:
+- Site Location:
+- Runtime Hours:
+
+SERVICE DATA
+- Last Service Date:
+- Next Service Due:
+- Current Fault Description:
+- Starting Behavior: [Normal | Hard Start | No Start]
+- Output Condition: [Stable | Fluctuating | No Output]
+- Alarm Codes:
+
+UAT NOTES
+- Capture owner/contact linkage to service call.
+- Capture readings before and after service.

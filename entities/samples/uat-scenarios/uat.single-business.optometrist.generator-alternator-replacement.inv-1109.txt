@@ -1,0 +1,42 @@
+UAT SCENARIO
+- Scenario ID: UAT-SB-INV-1109
+- Scenario Name: Single business (optometrist) generator alternator replacement
+- Source Invoice: 1109
+
+GOAL
+Validate end-to-end workflow for a single-branch business customer requiring generator alternator replacement.
+
+INPUT DATA
+- Customer Persona File:
+  entities/personas/customer-types/persona.customer.single-business-single-branch.txt
+- Machine Profile File:
+  entities/samples/machines/machine-profile.generator.wentzel-optometrist.inv-1109.txt
+
+TEST STEPS
+1. Create or select customer: Wentzel Optometrist Inc.
+2. Use business address: 407 Friesland lane, Lynnwood, Pretoria, 0081.
+3. Create service call in mechanical/generator category.
+4. Capture machine details: Yangdong YND485D, 15KVA, three phase, diesel.
+5. Set issue/reason as alternator replacement.
+6. Add line items and fixed costs from invoice.
+7. Verify subtotal (VAT excl), VAT amount, and VAT inclusive total.
+8. Complete workflow through quotation/pro-forma/final invoice as configured.
+
+EXPECTED RESULTS
+- Customer is treated as single-branch business.
+- Service category and machine mapping are correct.
+- All cost lines persist and totals remain accurate.
+- VAT calculations match invoice pattern.
+- Invoice and communication outputs align with business operations.
+
+VALIDATION CHECKLIST
+- [ ] Customer profile and contact data saved correctly.
+- [ ] Service reason and category are correct.
+- [ ] Machine metadata saved correctly.
+- [ ] Diverse and fixed costs captured correctly.
+- [ ] VAT exclusive/inclusive totals match expected values.
+- [ ] Final workflow status and notifications are correct.
+
+DEFECT LOG
+- Defect IDs:
+- Notes:

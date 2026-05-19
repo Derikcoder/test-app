@@ -166,4 +166,57 @@ describe('ServiceCallRegistration portal grouped customer booking', () => {
     expect(postPayload.bookingRequest.contact.businessRole).toBe('branch');
     expect(postPayload.bookingRequest.contact.headOfficeId).toBe('ho-456');
   });
+
+  it('requires maintenance task selection and hides machine location radio for general maintenance', async () => {
+    render(<ServiceCallRegistration />);
+
+    fireEvent.change(screen.getByDisplayValue('Generator & Backup Power'), {
+      target: { value: 'general-maintenance' },
+    });
+
+    expect(screen.queryByText(/is machine located at residential address\?/i)).not.toBeInTheDocument();
+    expect(screen.getByText('General Maintenance Task Checklist')).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByLabelText('Preferred Site Visit Date (required)'),
+      { target: { value: '2026-12-01' } }
+    );
+    fireEvent.click(screen.getByLabelText(/i confirm that the information is accurate/i));
+    fireEvent.click(screen.getByRole('button', { name: /book service call/i }));
+
+    expect(await screen.findByText('Select at least one general maintenance task.')).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText('Fixtures'));
+    fireEvent.click(screen.getByLabelText('Minor Repairs'));
+    fireEvent.click(screen.getByRole('button', { name: /book service call/i }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledTimes(1);
+    });
+
+    const postPayload = vi.mocked(api.post).mock.calls[0][1];
+    expect(postPayload.bookingRequest.generalMaintenance.selectedTasks).toEqual(['Fixtures', 'Minor Repairs']);
+    expect(postPayload.bookingRequest.generatorDetails.machineLocationSameAsAdmin).toBe(true);
+    expect(postPayload.bookingRequest.generatorDetails.generatorMakeModel).toBe('');
+  });
+
+  it('shows outage window controls only for generator category', async () => {
+    render(<ServiceCallRegistration />);
+
+    expect(screen.getByDisplayValue('Outage Window Not Applicable')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue('Generator & Backup Power'), {
+      target: { value: 'general-maintenance' },
+    });
+
+    expect(screen.queryByDisplayValue('Outage Window Not Applicable')).not.toBeInTheDocument();
+    expect(screen.getByText('Service outage window applies to Generator & Backup Power bookings only.')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue('General Maintenance'), {
+      target: { value: 'generator-backup-power' },
+    });
+
+    expect(screen.getByDisplayValue('Outage Window Not Applicable')).toBeInTheDocument();
+  });
 });

@@ -1,0 +1,43 @@
+UAT SCENARIO
+- Scenario ID: UAT-SB-INV-2024-001
+- Scenario Name: Single business customer generator engine repair
+- Source Invoice: INV-2024-001
+
+GOAL
+Validate end-to-end workflow for a single-branch business customer requiring generator engine repair.
+
+INPUT DATA
+- Customer Persona File:
+  entities/personas/customer-types/persona.customer.single-business-single-branch.txt
+- Machine Profile File:
+  entities/samples/machines/machine-profile.generator.hertex-fabrics.inv-2024-001.txt
+
+TEST STEPS
+1. Create or select business customer profile using invoice-derived details.
+2. Create service call in mechanical/generator category.
+3. Capture machine data: Ricardo 4105ZD, SN C123456789, 63 KVA, 856 hours.
+4. Capture fault: E-1234, engine overheating.
+5. Add service parts as line items from invoice sample.
+6. Apply call-out and distance charge logic.
+7. Move workflow through quotation/pro-forma/final invoice (as applicable).
+8. Verify payment terms and due date handling (Net 30, ZAR).
+
+EXPECTED RESULTS
+- Correct customer type and single-site linkage.
+- Correct service category and machine linkage.
+- Line items and totals persist through workflow transitions.
+- Contact details and business compliance fields remain intact.
+- Final invoice output aligns with supplied business data pattern.
+
+VALIDATION CHECKLIST
+- [ ] Customer created/linked as single business branch profile.
+- [ ] Service call category and ownership are correct.
+- [ ] Machine fields captured without loss.
+- [ ] Fault code and description stored.
+- [ ] Parts/line items preserved and traceable.
+- [ ] Financial terms (Net 30, due date) applied correctly.
+- [ ] Notifications target correct contact email/phone.
+
+DEFECT LOG
+- Defect IDs:
+- Notes:

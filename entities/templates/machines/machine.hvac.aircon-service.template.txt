@@ -1,0 +1,30 @@
+MACHINE TEMPLATE
+- Template ID: MACH-AC-001
+- Category: Air Conditioner Service
+
+CORE DATA
+- Unit Type: [Split | Cassette | Ducted | Package]
+- Make:
+- Model:
+- Serial Number:
+- Refrigerant Type:
+- Installation Date:
+- Site/Room Location:
+
+SERVICE DATA
+- Reported Issue:
+- Cooling Performance: [Normal | Reduced | None]
+- Airflow Condition: [Normal | Restricted]
+- Coil Condition:
+- Filter Condition:
+- Pressure Readings (if captured):
+- Temperature Differential (if captured):
+
+ACTION DATA
+- Cleaning Performed: [Yes | No]
+- Gas Top-Up Performed: [Yes | No]
+- Parts Replaced:
+- Post-Service Test Outcome:
+
+UAT NOTES
+- Capture before/after performance evidence in service notes.

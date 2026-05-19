@@ -10,6 +10,7 @@ import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
+import MachineSelector from './MachineSelector';
 
 const SERVICE_BOOKING_CATALOG = {
  'generator-backup-power': {
@@ -49,6 +50,18 @@ const SERVICE_BOOKING_CATALOG = {
 };
 
 const DEFAULT_SERVICE_CATEGORY = 'generator-backup-power';
+const OUTAGE_WINDOW_CATEGORY = 'generator-backup-power';
+const GENERAL_MAINTENANCE_CATEGORY = 'general-maintenance';
+
+const GENERAL_MAINTENANCE_TASK_OPTIONS = [
+ 'Fixtures',
+ 'Doors',
+ 'Minor Repairs',
+ 'Basic Installations',
+ 'Painting',
+ 'Tiling',
+ 'Window Replacement',
+];
 
 const getDefaultServiceTypeForCategory = (category) =>
  SERVICE_BOOKING_CATALOG[category]?.serviceTypes?.[0]?.value || 'Preventive Maintenance';
@@ -108,6 +121,11 @@ const ServiceCallRegistration = () => {
  );
  const [selectedPastCallId, setSelectedPastCallId] = useState('');
 
+// Machine selection integration
+const [selectedMachine, setSelectedMachine] = useState(null);
+const [selectedMachineId, setSelectedMachineId] = useState('');
+const [quotationTemplate, setQuotationTemplate] = useState(null);
+
  const [formData, setFormData] = useState({
   customerType: isCustomerPortalBooking
    ? _portalDefaults.customerType
@@ -160,6 +178,7 @@ const ServiceCallRegistration = () => {
   machineLocationNotes: '',
   generatorMakeModel: '',
   generatorCapacityKva: '',
+    generalMaintenanceTasks: [],
   machineModelNumber: '',
   serviceCategory: DEFAULT_SERVICE_CATEGORY,
   serviceType: getDefaultServiceTypeForCategory(DEFAULT_SERVICE_CATEGORY),
@@ -178,6 +197,27 @@ const ServiceCallRegistration = () => {
   notes: '',
   confirmAccuracy: false,
  });
+
+ const handleMachineSelected = ({ machineId, machine, quotationTemplate }) => {
+  setSelectedMachineId(machineId);
+  setSelectedMachine(machine);
+  setQuotationTemplate(quotationTemplate);
+  setFormData((prev) => ({
+   ...prev,
+   siteName: machine.siteName || prev.siteName,
+   generatorMakeModel: machine.generatorMakeModel || prev.generatorMakeModel,
+   machineModelNumber: machine.machineModelNumber || prev.machineModelNumber,
+   generatorCapacityKva: machine.generatorCapacityKva
+    ? String(machine.generatorCapacityKva)
+    : prev.generatorCapacityKva,
+  }));
+ };
+
+ const handleMachineDeselected = () => {
+  setSelectedMachineId('');
+  setSelectedMachine(null);
+  setQuotationTemplate(null);
+ };
 
  const getServiceCallContactEmail = (call) => {
   const bookingEmail = call?.bookingRequest?.contact?.contactEmail;
@@ -297,6 +337,8 @@ const ServiceCallRegistration = () => {
   }
 
   if (name === 'serviceCategory') {
+    const isGeneralMaintenance = value === GENERAL_MAINTENANCE_CATEGORY;
+   const allowsOutageWindow = value === OUTAGE_WINDOW_CATEGORY;
    const nextServiceType = getDefaultServiceTypeForCategory(value);
    const nextServiceTypeConfig = getServiceTypeConfig(value, nextServiceType);
    const requiresEquipmentDetails = Boolean(nextServiceTypeConfig?.requiresEquipmentDetails);
@@ -305,6 +347,25 @@ const ServiceCallRegistration = () => {
     ...prev,
     serviceCategory: value,
     serviceType: nextServiceType,
+     ...(isGeneralMaintenance
+      ? {
+        machineLocationSameAsAdmin: 'yes',
+        machineStreetAddress: '',
+        machineComplexName: '',
+        machineAddressDetail: '',
+        machineSuburb: '',
+        machineCityDistrict: '',
+        machineProvince: '',
+        machinePostalCode: '',
+       }
+      : {}),
+      ...(allowsOutageWindow
+       ? {}
+       : {
+          outageWindowApplicable: 'no',
+          outageStart: '',
+          outageEnd: '',
+         }),
     ...(requiresEquipmentDetails
      ? {}
      : {
@@ -312,9 +373,27 @@ const ServiceCallRegistration = () => {
         machineModelNumber: '',
         generatorCapacityKva: '',
        }),
+     ...(isGeneralMaintenance ? {} : { generalMaintenanceTasks: [] }),
    }));
    return;
   }
+
+    if (name === 'generalMaintenanceTasks') {
+    setFormData((prev) => {
+     const selectedTasks = new Set(prev.generalMaintenanceTasks || []);
+     if (checked) {
+      selectedTasks.add(value);
+     } else {
+      selectedTasks.delete(value);
+     }
+
+     return {
+      ...prev,
+      generalMaintenanceTasks: [...selectedTasks],
+     };
+    });
+    return;
+    }
 
   if (name === 'serviceType') {
    const nextServiceTypeConfig = getServiceTypeConfig(formData.serviceCategory, value);
@@ -351,6 +430,7 @@ const ServiceCallRegistration = () => {
   const br = call.bookingRequest || {};
   const gd = br.generatorDetails || {};
   const category = br.serviceCategory || DEFAULT_SERVICE_CATEGORY;
+  const allowsOutageWindow = category === OUTAGE_WINDOW_CATEGORY;
   const nextServiceType = call.serviceType || getDefaultServiceTypeForCategory(category);
   const lastDate =
    call.completedDate
@@ -376,11 +456,20 @@ const ServiceCallRegistration = () => {
    machineProvince: machineAddr.province || '',
    machinePostalCode: machineAddr.postalCode || '',
    machineLocationNotes: gd.machineLocationNotes || '',
+   outageWindowApplicable: allowsOutageWindow && br.outageWindow ? 'yes' : 'no',
+   outageStart: allowsOutageWindow && br.outageWindow?.start
+    ? new Date(br.outageWindow.start).toISOString().slice(0, 16)
+    : '',
+   outageEnd: allowsOutageWindow && br.outageWindow?.end
+    ? new Date(br.outageWindow.end).toISOString().slice(0, 16)
+    : '',
    dateOfLastService: lastDate,
   }));
  };
 
  const validateForm = () => {
+  const isGeneralMaintenance = formData.serviceCategory === GENERAL_MAINTENANCE_CATEGORY;
+  const allowsOutageWindow = formData.serviceCategory === OUTAGE_WINDOW_CATEGORY;
   const serviceTypeConfig = getServiceTypeConfig(formData.serviceCategory, formData.serviceType);
   const requiresEquipmentDetails = Boolean(serviceTypeConfig?.requiresEquipmentDetails);
 
@@ -397,12 +486,15 @@ const ServiceCallRegistration = () => {
     !formData.selectedHeadOfficeId
    ) return 'Please select a Head Office to link this branch service call to.';
   }
-  if (formData.machineLocationSameAsAdmin === 'no') {
+  if (!isGeneralMaintenance && formData.machineLocationSameAsAdmin === 'no') {
    if (!formData.machineStreetAddress.trim()) return 'Machine location street address is required.';
    if (!formData.machineSuburb.trim()) return 'Machine location suburb is required.';
    if (!formData.machineCityDistrict.trim()) return 'Machine location city/district is required.';
    if (!formData.machineProvince.trim()) return 'Machine location province is required.';
    if (!formData.machinePostalCode.trim()) return 'Machine location postal code is required.';
+  }
+  if (isGeneralMaintenance && (!formData.generalMaintenanceTasks || formData.generalMaintenanceTasks.length === 0)) {
+   return 'Select at least one general maintenance task.';
   }
   if (!formData.adminStreetAddress.trim())
    return `${formData.customerType === 'business' ? 'Administrative' : 'Physical'} street address is required.`;
@@ -428,10 +520,11 @@ const ServiceCallRegistration = () => {
   if (!isCustomerPortalBooking && !formData.progressStatus.trim()) return 'Progress status is required for existing customers.';
    if (!formData.dateOfPreferredServiceCall) return 'Preferred service call date is required.';
   }
-  if (formData.outageWindowApplicable === 'yes' && (!formData.outageStart || !formData.outageEnd)) {
+  if (allowsOutageWindow && formData.outageWindowApplicable === 'yes' && (!formData.outageStart || !formData.outageEnd)) {
    return 'Outage window start and end are required when outage window is marked applicable.';
   }
   if (
+   allowsOutageWindow &&
    formData.outageWindowApplicable === 'yes'
    && formData.outageStart
    && formData.outageEnd
@@ -465,6 +558,8 @@ const ServiceCallRegistration = () => {
  };
 
  const buildPayload = () => {
+  const isGeneralMaintenance = formData.serviceCategory === GENERAL_MAINTENANCE_CATEGORY;
+  const allowsOutageWindow = formData.serviceCategory === OUTAGE_WINDOW_CATEGORY;
   const serviceTypeConfig = getServiceTypeConfig(formData.serviceCategory, formData.serviceType);
   const requiresEquipmentDetails = Boolean(serviceTypeConfig?.requiresEquipmentDetails);
   const serviceCategoryLabel = SERVICE_BOOKING_CATALOG[formData.serviceCategory]?.label || formData.serviceCategory;
@@ -481,7 +576,7 @@ const ServiceCallRegistration = () => {
    postalCode: formData.adminPostalCode,
   };
   const machineAddress =
-   formData.machineLocationSameAsAdmin === 'yes'
+   isGeneralMaintenance || formData.machineLocationSameAsAdmin === 'yes'
     ? administrativeAddress
     : {
        streetAddress: formData.machineStreetAddress,
@@ -493,10 +588,10 @@ const ServiceCallRegistration = () => {
        postalCode: formData.machinePostalCode,
       };
   const resolvedServiceLocation =
-   formData.machineLocationSameAsAdmin === 'yes'
+   isGeneralMaintenance || formData.machineLocationSameAsAdmin === 'yes'
     ? formatAddress('admin')
     : formatAddress('machine');
-  const outageWindowIsApplicable = formData.outageWindowApplicable === 'yes';
+  const outageWindowIsApplicable = allowsOutageWindow && formData.outageWindowApplicable === 'yes';
   const hasOutageWindow = outageWindowIsApplicable && Boolean(formData.outageStart && formData.outageEnd);
   const outageWindowSummary = hasOutageWindow
    ? `${new Date(formData.outageStart).toLocaleString()} -> ${new Date(formData.outageEnd).toLocaleString()}`
@@ -527,9 +622,12 @@ const ServiceCallRegistration = () => {
       `Service Category: ${serviceCategoryLabel}`,
       `Site Name: ${formData.siteName}`,
       `Administrative Address: ${formatAddress('admin')}`,
-      `Machine Location Same As Admin: ${formData.machineLocationSameAsAdmin === 'yes' ? 'Yes' : 'No'}`,
-      `Machine Technical Address: ${resolvedServiceLocation}`,
-      `Machine Location Notes: ${formData.machineLocationNotes || 'None'}`,
+      `Dispatch Location Same As Administrative Address: ${isGeneralMaintenance || formData.machineLocationSameAsAdmin === 'yes' ? 'Yes' : 'No'}`,
+      `Dispatch Address: ${resolvedServiceLocation}`,
+      `Dispatch Notes: ${formData.machineLocationNotes || 'None'}`,
+      ...(isGeneralMaintenance
+       ? [`General Maintenance Tasks: ${(formData.generalMaintenanceTasks || []).join(', ') || 'None selected'}`]
+       : []),
       ...equipmentDescriptionLines,
       `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
       `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
@@ -552,9 +650,12 @@ const ServiceCallRegistration = () => {
       `Phone: ${formData.contactPhone}`,
       `Service Category: ${serviceCategoryLabel}`,
       `Residential Address: ${formatAddress('admin')}`,
-      `Machine Located At Residential Address: ${formData.machineLocationSameAsAdmin === 'yes' ? 'Yes' : 'No'}`,
-      `Machine Address: ${resolvedServiceLocation}`,
-      `Machine Location Notes: ${formData.machineLocationNotes || 'None'}`,
+      `Dispatch Location Same As Residential Address: ${isGeneralMaintenance || formData.machineLocationSameAsAdmin === 'yes' ? 'Yes' : 'No'}`,
+      `Dispatch Address: ${resolvedServiceLocation}`,
+      `Dispatch Notes: ${formData.machineLocationNotes || 'None'}`,
+      ...(isGeneralMaintenance
+       ? [`General Maintenance Tasks: ${(formData.generalMaintenanceTasks || []).join(', ') || 'None selected'}`]
+       : []),
       ...equipmentDescriptionLines,
       `Service History Type: ${formData.serviceHistoryType === 'existing-customer' ? 'Existing Customer' : 'First Service Call'}`,
       `Date of Last Service: ${formData.dateOfLastService || 'N/A'}`,
@@ -572,54 +673,60 @@ const ServiceCallRegistration = () => {
      ];
 
   return {
-   title,
-   description: descriptionLines.join('\n'),
-   priority: formData.urgency,
-   serviceType: formData.serviceType,
-   scheduledDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
-   serviceLocation: resolvedServiceLocation,
-   bookingRequest: {
-    contact: {
-     customerType: formData.customerType,
-     businessStructure: isBusiness ? formData.businessStructure : '',
-     businessRole: (isBusiness && formData.businessStructure === 'group') ? formData.businessRole : '',
-    headOfficeId: resolvedHeadOfficeId,
-     companyName: isBusiness ? formData.companyName : '',
-     contactPerson: formData.contactPerson,
-     contactEmail: formData.contactEmail,
-     contactPhone: formData.contactPhone,
+    title,
+    description: descriptionLines.join('\n'),
+    priority: formData.urgency,
+    serviceType: formData.serviceType,
+    scheduledDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
+    serviceLocation: resolvedServiceLocation,
+    machineId: selectedMachineId || null,
+    bookingRequest: {
+      contact: {
+        customerType: formData.customerType,
+        businessStructure: isBusiness ? formData.businessStructure : '',
+        businessRole: (isBusiness && formData.businessStructure === 'group') ? formData.businessRole : '',
+        headOfficeId: resolvedHeadOfficeId,
+        companyName: isBusiness ? formData.companyName : '',
+        contactPerson: formData.contactPerson,
+        contactEmail: formData.contactEmail,
+        contactPhone: formData.contactPhone,
+      },
+      administrativeAddress,
+      machineAddress,
+      generatorDetails: {
+        siteName: isBusiness ? formData.siteName : '',
+        generatorMakeModel: requiresEquipmentDetails ? formData.generatorMakeModel : '',
+        machineModelNumber: requiresEquipmentDetails ? formData.machineModelNumber : '',
+        generatorCapacityKva: requiresEquipmentDetails && formData.generatorCapacityKva
+          ? Number(formData.generatorCapacityKva)
+          : null,
+        machineLocationSameAsAdmin: isGeneralMaintenance ? true : formData.machineLocationSameAsAdmin === 'yes',
+        machineLocationNotes: formData.machineLocationNotes,
+      },
+      generalMaintenance: isGeneralMaintenance
+        ? {
+            selectedTasks: formData.generalMaintenanceTasks || [],
+          }
+        : null,
+      outageWindow: hasOutageWindow
+        ? {
+            start: new Date(formData.outageStart).toISOString(),
+            end: new Date(formData.outageEnd).toISOString(),
+          }
+        : null,
+      serviceCategory: formData.serviceCategory,
+      preferredDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
+      dateOfLastService: formData.dateOfLastService
+        ? new Date(formData.dateOfLastService).toISOString()
+        : null,
+      serviceHistoryType: formData.serviceHistoryType,
+      servicesInProgress: formData.servicesInProgress,
+      progressStatus: formData.progressStatus,
+      quotationHistory: formData.quotationHistory,
+      invoicingHistory: formData.invoicingHistory,
+      preferredTimeWindow: formData.preferredTimeWindow,
+      additionalNotes: formData.notes,
     },
-    administrativeAddress,
-    machineAddress,
-    generatorDetails: {
-     siteName: isBusiness ? formData.siteName : '',
-     generatorMakeModel: requiresEquipmentDetails ? formData.generatorMakeModel : '',
-     machineModelNumber: requiresEquipmentDetails ? formData.machineModelNumber : '',
-     generatorCapacityKva: requiresEquipmentDetails && formData.generatorCapacityKva
-      ? Number(formData.generatorCapacityKva)
-      : null,
-     machineLocationSameAsAdmin: formData.machineLocationSameAsAdmin === 'yes',
-     machineLocationNotes: formData.machineLocationNotes,
-    },
-    outageWindow: hasOutageWindow
-     ? {
-        start: new Date(formData.outageStart).toISOString(),
-        end: new Date(formData.outageEnd).toISOString(),
-       }
-     : null,
-    serviceCategory: formData.serviceCategory,
-    preferredDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
-    dateOfLastService: formData.dateOfLastService
-     ? new Date(formData.dateOfLastService).toISOString()
-     : null,
-    serviceHistoryType: formData.serviceHistoryType,
-    servicesInProgress: formData.servicesInProgress,
-    progressStatus: formData.progressStatus,
-    quotationHistory: formData.quotationHistory,
-    invoicingHistory: formData.invoicingHistory,
-    preferredTimeWindow: formData.preferredTimeWindow,
-    additionalNotes: formData.notes,
-   },
   };
  };
 
@@ -658,6 +765,8 @@ const ServiceCallRegistration = () => {
   SERVICE_BOOKING_CATALOG[formData.serviceCategory] || SERVICE_BOOKING_CATALOG[DEFAULT_SERVICE_CATEGORY];
  const selectedServiceTypeConfig = getServiceTypeConfig(formData.serviceCategory, formData.serviceType);
  const requiresEquipmentDetails = Boolean(selectedServiceTypeConfig?.requiresEquipmentDetails);
+ const isGeneralMaintenance = formData.serviceCategory === GENERAL_MAINTENANCE_CATEGORY;
+ const allowsOutageWindow = formData.serviceCategory === OUTAGE_WINDOW_CATEGORY;
  const equipmentLabel = selectedServiceTypeConfig?.equipmentLabel || 'Equipment';
  const capacityLabel = selectedServiceTypeConfig?.capacityLabel || 'Capacity';
 
@@ -710,8 +819,8 @@ const ServiceCallRegistration = () => {
          <span className="text-white/40">/</span>
          <span className="font-semibold text-cyan-100">Registration</span>
         </div>
-        <h1 className="mt-2 text-2xl font-extrabold text-white">Book a Service Call</h1>
-        <p className="mt-2 text-sm text-white/85">
+        <h1 className="mt-2 executive-title">Book a Service Call</h1>
+        <p className="executive-subtitle">
          Register a new service request with category-aware dispatch details.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -911,6 +1020,29 @@ const ServiceCallRegistration = () => {
           Select category first. Equipment details appear only for request types that require machine-specific information.
          </p>
         </section>
+
+        {isGeneralMaintenance && (
+         <section className="space-y-4">
+          <h2 className="glass-heading-secondary">General Maintenance Task Checklist</h2>
+          <p className="text-xs text-white/70">
+           Select the work items that apply. Dispatch will use the registered service address, without machine-specific questions.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+           {GENERAL_MAINTENANCE_TASK_OPTIONS.map((task) => (
+            <label key={task} className="flex items-center gap-3 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/85">
+             <input
+              type="checkbox"
+              name="generalMaintenanceTasks"
+              value={task}
+              checked={(formData.generalMaintenanceTasks || []).includes(task)}
+              onChange={handleInputChange}
+             />
+             <span>{task}</span>
+            </label>
+           ))}
+          </div>
+         </section>
+        )}
 
         {isCustomerPortalBooking ? (
          <section className="space-y-3">
@@ -1138,40 +1270,52 @@ const ServiceCallRegistration = () => {
          </>
         )}
 
-        {requiresEquipmentDetails && (
-         <section className="space-y-4">
-          <h2 className="glass-heading-secondary">{equipmentLabel} Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <input
-            name="generatorMakeModel"
-            value={formData.generatorMakeModel}
-            onChange={handleInputChange}
-            placeholder={`${equipmentLabel} Make / Brand / Series`}
-            className="dark-field-input"
-            required
-           />
-           <input
-            name="machineModelNumber"
-            value={formData.machineModelNumber}
-            onChange={handleInputChange}
-            placeholder="Equipment Model Number"
-            className="dark-field-input"
-            required
-           />
-           <input
-            type="number"
-            min="1"
-            name="generatorCapacityKva"
-            value={formData.generatorCapacityKva}
-            onChange={handleInputChange}
-            placeholder={capacityLabel}
-            className="dark-field-input"
-            required
-           />
-          </div>
-         </section>
+        {/* MachineSelector integration: show after category selection, before equipment details */}
+        {!isGeneralMaintenance && (
+          <MachineSelector
+            userToken={user?.token}
+            serviceCategory={formData.serviceCategory}
+            onMachineSelected={handleMachineSelected}
+            onMachineDeselected={handleMachineDeselected}
+            selectedMachineId={selectedMachineId}
+          />
         )}
 
+        {requiresEquipmentDetails && (
+          <section className="space-y-4">
+            <h2 className="glass-heading-secondary">{equipmentLabel} Details</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                name="generatorMakeModel"
+                value={formData.generatorMakeModel}
+                onChange={handleInputChange}
+                placeholder={`${equipmentLabel} Make / Brand / Series`}
+                className="dark-field-input"
+                required
+              />
+              <input
+                name="machineModelNumber"
+                value={formData.machineModelNumber}
+                onChange={handleInputChange}
+                placeholder="Equipment Model Number"
+                className="dark-field-input"
+                required
+              />
+              <input
+                type="number"
+                min="1"
+                name="generatorCapacityKva"
+                value={formData.generatorCapacityKva}
+                onChange={handleInputChange}
+                placeholder={capacityLabel}
+                className="dark-field-input"
+                required
+              />
+            </div>
+          </section>
+        )}
+
+        {!isGeneralMaintenance && (
         <section className="space-y-4">
          <h2 className="glass-heading-secondary">
           {requiresEquipmentDetails ? 'Technical Machine Location (Dispatch)' : 'Service Location (Dispatch)'}
@@ -1241,9 +1385,10 @@ const ServiceCallRegistration = () => {
           </>
          )}
         </section>
+        )}
 
         <section className="space-y-4">
-         <h2 className="glass-heading-secondary">Service & Outage Window</h2>
+         <h2 className="glass-heading-secondary">Service Details</h2>
          <div className={`grid grid-cols-1 ${isCustomerPortalBooking ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
           <select name="urgency" value={formData.urgency} onChange={handleInputChange} className="dark-field-input">
            <option value="low" className="text-black">Low</option>
@@ -1257,22 +1402,24 @@ const ServiceCallRegistration = () => {
             <option value="existing-customer" className="text-black">Existing Customer</option>
            </select>
           )}
-          <select
-           name="outageWindowApplicable"
-           value={formData.outageWindowApplicable}
-           onChange={handleInputChange}
-           className="dark-field-input"
-          >
-           <option value="no" className="text-black">Outage Window Not Applicable</option>
-           <option value="yes" className="text-black">Outage Window Applicable</option>
-          </select>
+          {allowsOutageWindow && (
+           <select
+            name="outageWindowApplicable"
+            value={formData.outageWindowApplicable}
+            onChange={handleInputChange}
+            className="dark-field-input"
+           >
+            <option value="no" className="text-black">Outage Window Not Applicable</option>
+            <option value="yes" className="text-black">Outage Window Applicable</option>
+           </select>
+          )}
          </div>
          <p className="text-xs text-white/70">
           {isCustomerPortalBooking
            ? 'Choose a preferred visit date. Repeat-service selections can pre-fill equipment and site details from your service history.'
            : 'Choose a service history type first. First service calls only need a preferred visit date, while existing customers also require the last serviced date.'}
          </p>
-         {formData.outageWindowApplicable === 'yes' ? (
+         {allowsOutageWindow && formData.outageWindowApplicable === 'yes' ? (
           <>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="space-y-1">
@@ -1302,9 +1449,13 @@ const ServiceCallRegistration = () => {
             Outage window is enabled for this booking, so both start and end are required.
            </p>
           </>
-         ) : (
+         ) : allowsOutageWindow ? (
           <p className="text-xs text-white/70">
            Outage window is not applicable for this machine/site booking.
+          </p>
+         ) : (
+          <p className="text-xs text-white/70">
+           Service outage window applies to Generator & Backup Power bookings only.
           </p>
          )}
 

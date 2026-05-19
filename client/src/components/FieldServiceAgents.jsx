@@ -51,8 +51,9 @@ const FieldServiceAgents = () => {
  const [provisionLoading, setProvisionLoading] = useState(false);
  const [provisionError, setProvisionError] = useState('');
  const [provisionSuccess, setProvisionSuccess] = useState('');
+ const [provisionAccessKey, setProvisionAccessKey] = useState('');
  const [resendLoadingId, setResendLoadingId] = useState(null);
- const [resendMessage, setResendMessage] = useState({ id: null, text: '', isError: false });
+ const [resendMessage, setResendMessage] = useState({ id: null, text: '', isError: false, temporaryAccessKey: '' });
  const [categoryFilter, setCategoryFilter] = useState('all');
  const [skillFilter, setSkillFilter] = useState('all');
  const [formData, setFormData] = useState(getEmptyFormData());
@@ -198,6 +199,7 @@ const FieldServiceAgents = () => {
   });
   setProvisionError('');
   setProvisionSuccess('');
+      setProvisionAccessKey('');
  };
 
  const handleProvisionSubmit = async (e) => {
@@ -206,7 +208,7 @@ const FieldServiceAgents = () => {
   setProvisionSuccess('');
   setProvisionLoading(true);
   try {
-   await api.post(
+      const response = await api.post(
     '/auth/admin/provision-user',
     {
      role: 'fieldServiceAgent',
@@ -216,7 +218,8 @@ const FieldServiceAgents = () => {
     },
     { headers: { Authorization: `Bearer ${user.token}` } }
    );
-   setProvisionSuccess(`Welcome email sent to ${provisionModal.email}. The agent will set their own password via the link in the email.`);
+      setProvisionSuccess(response.data?.message || `Login provisioned for ${provisionModal.email}`);
+      setProvisionAccessKey(response.data?.temporaryAccessKey || '');
    fetchAgents();
   } catch (err) {
    setProvisionError(err.response?.data?.message || 'Failed to provision login');
@@ -227,18 +230,23 @@ const FieldServiceAgents = () => {
 
  const handleResendWelcome = async (agent) => {
   setResendLoadingId(agent._id);
-  setResendMessage({ id: null, text: '', isError: false });
+      setResendMessage({ id: null, text: '', isError: false, temporaryAccessKey: '' });
   try {
-   await api.post(
+       const response = await api.post(
     `/auth/admin/resend-agent-welcome/${agent._id}`,
     {},
     { headers: { Authorization: `Bearer ${user.token}` } }
    );
-   setResendMessage({ id: agent._id, text: `Invitation resent to ${agent.email}.`, isError: false });
-   setTimeout(() => setResendMessage({ id: null, text: '', isError: false }), 5000);
+       setResendMessage({
+            id: agent._id,
+            text: response.data?.message || `Invitation resent to ${agent.email}.`,
+            isError: false,
+            temporaryAccessKey: response.data?.temporaryAccessKey || '',
+       });
+            setTimeout(() => setResendMessage({ id: null, text: '', isError: false, temporaryAccessKey: '' }), 8000);
   } catch (err) {
-   setResendMessage({ id: agent._id, text: err.response?.data?.message || 'Failed to resend invitation.', isError: true });
-   setTimeout(() => setResendMessage({ id: null, text: '', isError: false }), 5000);
+            setResendMessage({ id: agent._id, text: err.response?.data?.message || 'Failed to resend invitation.', isError: true, temporaryAccessKey: '' });
+            setTimeout(() => setResendMessage({ id: null, text: '', isError: false, temporaryAccessKey: '' }), 5000);
   } finally {
    setResendLoadingId(null);
   }
@@ -297,7 +305,14 @@ const FieldServiceAgents = () => {
      )}
      {resendMessage.text && (
       <div className={`mb-4 p-4 rounded-lg border text-sm ${resendMessage.isError ? 'bg-red-950 text-red-200 border-red-700' : 'bg-emerald-950 text-emerald-200 border-emerald-700'}`}>
-       {resendMessage.text}
+                   <p>{resendMessage.text}</p>
+                   {resendMessage.temporaryAccessKey ? (
+                        <div className="mt-3 rounded-lg border border-emerald-600 bg-slate-950/60 p-3">
+                         <p className="text-xs uppercase tracking-wide text-emerald-300">Secret Access Key</p>
+                         <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-yellow-200">{resendMessage.temporaryAccessKey}</p>
+                         <p className="mt-2 text-emerald-300">Use this as the agent&apos;s temporary password on the login screen. If it is lost later, the agent can use Forgot Password with the same email address.</p>
+                        </div>
+                   ) : null}
       </div>
      )}
 
@@ -561,16 +576,20 @@ const FieldServiceAgents = () => {
              >
               Edit
              </button>
-             {agent.userAccount ? (
+                                     {agent.userAccount ? (
               <span className="inline-flex items-center gap-2 mr-3">
                <span className="text-xs text-emerald-400 font-semibold">Login ✓</span>
-               <button
-                onClick={(e) => { e.stopPropagation(); handleResendWelcome(agent); }}
-                disabled={resendLoadingId === agent._id}
-                className="text-xs text-cyan-400 hover:text-cyan-200 disabled:opacity-50"
-               >
-                {resendLoadingId === agent._id ? 'Sending...' : 'Resend Invite'}
-               </button>
+                                           {agent.canResendInvite ? (
+                                                <button
+                                                 onClick={(e) => { e.stopPropagation(); handleResendWelcome(agent); }}
+                                                 disabled={resendLoadingId === agent._id}
+                                                 className="text-xs text-cyan-400 hover:text-cyan-200 disabled:opacity-50"
+                                                >
+                                                 {resendLoadingId === agent._id ? 'Sending...' : 'Resend Invite'}
+                                                </button>
+                                           ) : (
+                                                <span className="text-xs text-slate-400">Use Forgot Password</span>
+                                           )}
               </span>
              ) : (
               <button
@@ -621,7 +640,15 @@ const FieldServiceAgents = () => {
       <div className="mb-4 p-4 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-700 text-sm">
        <p className="font-semibold mb-1">Account created!</p>
        <p>{provisionSuccess}</p>
-       <p className="mt-2 text-emerald-300">The agent will receive a secure link to set their own password. The link expires in 1 hour.</p>
+                   {provisionAccessKey ? (
+                        <div className="mt-3 rounded-lg border border-emerald-600 bg-slate-950/60 p-3">
+                         <p className="text-xs uppercase tracking-wide text-emerald-300">Secret Access Key</p>
+                         <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-yellow-200">{provisionAccessKey}</p>
+                         <p className="mt-2 text-emerald-300">Use this as the agent&apos;s temporary password on the login screen.</p>
+                        </div>
+                   ) : null}
+                   <p className="mt-2 text-emerald-300">A welcome email was also sent with the same first-login key and a reset link if the agent wants to set a permanent password immediately.</p>
+                   <p className="mt-2 text-emerald-300">If the agent logs out before changing it, they can recover access from the Forgot Password screen using the same email address.</p>
       </div>
      ) : (
       <form onSubmit={handleProvisionSubmit} className="space-y-4">
@@ -644,7 +671,7 @@ const FieldServiceAgents = () => {
          className={inputClass}
         />
        </div>
-       <p className="text-xs text-slate-400 -mt-2">A secure set-password link will be emailed to the agent. No password required from you.</p>
+      <p className="text-xs text-slate-400 -mt-2">A temporary secret access key will be generated automatically for the agent&apos;s first login, matching the customer onboarding flow.</p>
        {provisionError && (
         <div className="p-3 rounded-lg bg-red-950 text-red-200 border border-red-700 text-sm">{provisionError}</div>
        )}
@@ -661,14 +688,28 @@ const FieldServiceAgents = () => {
          disabled={provisionLoading}
          className="px-5 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold disabled:opacity-50"
         >
-         {provisionLoading ? 'Sending...' : 'Send Invitation'}
+         {provisionLoading ? 'Creating...' : 'Create Login'}
         </button>
        </div>
       </form>
      )}
 
      {provisionSuccess && (
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex justify-end gap-3">
+                   {provisionAccessKey ? (
+                        <button
+                         onClick={() => navigate('/login', {
+                              state: {
+                               email: provisionModal.email,
+                               password: provisionAccessKey,
+                               infoMessage: 'Use this temporary secret access key to sign in as the field agent. If it is lost or already changed, choose Forgot Password to set a permanent password with this email address.',
+                              },
+                         })}
+                         className="px-5 py-2 rounded-lg border border-cyan-700 bg-cyan-950 text-cyan-100 hover:bg-cyan-900 font-semibold"
+                        >
+                         Open Login Screen
+                        </button>
+                   ) : null}
        <button
         onClick={() => setProvisionModal(null)}
         className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"

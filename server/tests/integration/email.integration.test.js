@@ -66,6 +66,8 @@ describe('Email Integration — Ethereal SMTP', () => {
       to: 'newagent@example.com',
       agentName: 'John Field',
       userName: 'john_field',
+      temporaryAccessKey: '1234567',
+      loginUrl: 'http://localhost:3000/login',
       resetUrl: 'http://localhost:3002/reset-password/integrationtesttoken',
     };
 

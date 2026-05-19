@@ -1,0 +1,28 @@
+MACHINE TEMPLATE
+- Template ID: MACH-GEYSER-001
+- Category: Geyser Replacement
+
+CORE DATA
+- Existing Unit Type:
+- Existing Unit Capacity (L):
+- Existing Unit Age:
+- Existing Unit Location:
+- Water Pressure Context:
+- Electrical Isolation Confirmed: [Yes | No]
+
+REPLACEMENT DATA
+- New Unit Make:
+- New Unit Model:
+- New Unit Capacity (L):
+- Valve/Compliance Components Installed:
+- Installation Date:
+- Installer Notes:
+
+SERVICE DATA
+- Fault Trigger for Replacement:
+- Leak/Failure Type:
+- Safety Checks Completed: [Yes | No]
+- Test Run Outcome:
+
+UAT NOTES
+- Include compliance-related evidence fields where applicable.

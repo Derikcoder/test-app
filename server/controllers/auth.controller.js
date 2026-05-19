@@ -334,6 +334,7 @@ export const registerUser = async (req, res) => {
       isSuperUser: ['superAdmin', 'businessAdministrator'].includes(requestedRole),
       fieldServiceAgentProfile: fieldServiceAgentProfile ? fieldServiceAgentProfile._id : null,
       customerProfile: customerProfile ? customerProfile._id : null,
+      hasCompletedPasswordSetup: true,
     });
 
     if (fieldServiceAgentProfile) {
@@ -733,6 +734,7 @@ export const updateUserProfile = async (req, res) => {
         return res.status(400).json({ message: 'Password must be at least 6 characters' });
       }
       user.password = req.body.password; // Will be hashed automatically
+      user.hasCompletedPasswordSetup = true;
     }
 
     // Save updated user (triggers validation and pre-save hooks)
@@ -1017,8 +1019,8 @@ export const fulfillPasskeyRenewal = async (req, res) => {
  * @function adminProvisionUser
  * @description Directly creates a User account for an existing FieldServiceAgent or Customer
  *              profile, bypassing the passkey self-registration flow. Intended for admin-driven
- *              onboarding (e.g. UAT, staff setup). Sets isSuperUser=false and links the User
- *              back to the operational profile.
+ *              onboarding (e.g. UAT, staff setup). Sets isSuperUser=false, issues a temporary
+ *              access key for first login, and links the User back to the operational profile.
  * @route POST /api/auth/admin/provision-user
  * @access Private (superAdmin, businessAdministrator)
  */
@@ -1076,14 +1078,15 @@ export const adminProvisionUser = async (req, res) => {
       return res.status(400).json({ message: `A user with this ${field} already exists` });
     }
 
-    const temporaryAccessKey = role === 'customer' ? generateOneTimePasskey() : null;
+    const temporaryAccessKey = generateOneTimePasskey();
 
     const newUser = await User.create({
       userName,
       email: normalizedEmail,
-      password: temporaryAccessKey || crypto.randomBytes(32).toString('hex'), // customer gets a one-time login key; other roles use secure set-password invite
+      password: temporaryAccessKey,
       role,
       isSuperUser: false,
+      hasCompletedPasswordSetup: false,
       ...profileLink,
       ...businessData,
     });
@@ -1105,7 +1108,14 @@ export const adminProvisionUser = async (req, res) => {
       const agentName = profile.firstName && profile.lastName
         ? `${profile.firstName} ${profile.lastName}`
         : undefined;
-      await sendAgentWelcomeEmail({ to: normalizedEmail, agentName, userName, resetUrl });
+      await sendAgentWelcomeEmail({
+        to: normalizedEmail,
+        agentName,
+        userName,
+        resetUrl,
+        temporaryAccessKey,
+        loginUrl: getClientLoginUrl(),
+      });
     } else {
       const customerName = profile.contactFirstName && profile.contactLastName
         ? `${profile.contactFirstName} ${profile.contactLastName}`
@@ -1135,7 +1145,7 @@ export const adminProvisionUser = async (req, res) => {
       email: newUser.email,
       role: newUser.role,
       temporaryAccessKey,
-      loginUrl: role === 'customer' ? getClientLoginUrl() : null,
+      loginUrl: getClientLoginUrl(),
     });
   } catch (error) {
     logError('Admin provision user error:', error);
@@ -1479,12 +1489,13 @@ export const listRegistrationOverrideAudits = async (req, res) => {
 };
 
 /**
- * Resend Agent Welcome / Set-Password Email
+ * Resend Agent Welcome Email
  *
  * @async
  * @function resendAgentWelcomeEmail
- * @description Regenerates a password reset token and resends the welcome email to an already-provisioned
- *              field service agent. Used when the original email was not received or has expired.
+ * @description Regenerates a temporary access key and password reset token, then resends the welcome
+ *              email to an already-provisioned field service agent. Used when the original email was
+ *              not received or the first-login credentials need to be refreshed.
  * @route POST /api/auth/admin/resend-agent-welcome/:agentProfileId
  * @access Private (superAdmin, businessAdministrator)
  */
@@ -1505,13 +1516,31 @@ export const resendAgentWelcomeEmail = async (req, res) => {
       return res.status(404).json({ message: 'Linked user account not found' });
     }
 
+    if (agentUser.hasCompletedPasswordSetup === true) {
+      return res.status(409).json({
+        message: 'This agent has already set a permanent password. Use Forgot Password for future recovery.',
+        recoveryRoute: '/forgot-password',
+      });
+    }
+
+    const temporaryAccessKey = generateOneTimePasskey();
+    agentUser.password = temporaryAccessKey;
+    agentUser.hasCompletedPasswordSetup = false;
+
     const resetToken = agentUser.generatePasswordResetToken();
     await agentUser.save();
 
     const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
     const agentName = `${profile.firstName} ${profile.lastName}`;
 
-    await sendAgentWelcomeEmail({ to: agentUser.email, agentName, userName: agentUser.userName, resetUrl });
+    await sendAgentWelcomeEmail({
+      to: agentUser.email,
+      agentName,
+      userName: agentUser.userName,
+      resetUrl,
+      temporaryAccessKey,
+      loginUrl: getClientLoginUrl(),
+    });
 
     logInfo('Admin resent agent welcome email', {
       sentBy: req.user._id,
@@ -1520,7 +1549,11 @@ export const resendAgentWelcomeEmail = async (req, res) => {
       email: agentUser.email,
     });
 
-    return res.status(200).json({ message: `Welcome email resent to ${agentUser.email}` });
+    return res.status(200).json({
+      message: `Welcome email resent to ${agentUser.email}`,
+      temporaryAccessKey,
+      loginUrl: getClientLoginUrl(),
+    });
   } catch (error) {
     logError('Resend agent welcome email error:', error);
     return res.status(500).json({ message: 'Server error' });
@@ -1673,6 +1706,7 @@ export const resetPassword = async (req, res) => {
     
     // Update password (will be hashed by pre-save hook)
     user.password = password;
+    user.hasCompletedPasswordSetup = true;
     
     // Clear reset token fields
     user.resetPasswordToken = null;

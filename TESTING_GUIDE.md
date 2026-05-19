@@ -22,27 +22,36 @@
 └─────────────────────────────────────────┘
 ```
 
-
-
-## 📋 Table of Contents
-  - [Jestering Pattern & Principles](#jestering-pattern--principles)
+## Table of Contents
 
 - [Overview](#overview)
+- [Jestering Pattern & Principles](#jestering-pattern--principles)
 - [Testing Setup](#testing-setup)
 - [Test Structure](#test-structure)
+- [UAT Auth Methodology - password set = FALSE](#uat-auth-methodology---password-set--false)
 - [Running Tests](#running-tests)
 - [Test Coverage](#test-coverage)
 - [Writing New Tests](#writing-new-tests)
 - [Best Practices](#best-practices)
 - [Troubleshooting](#troubleshooting)
+- [Expanding Test Coverage](#expanding-test-coverage)
+- [Resources](#resources)
+- [Notes](#notes)
 
 ---
 
+## Overview
+
+This guide covers the test stack used in this project, how the suite is organized, how to run it, and the conventions expected when writing new tests.
+
+It is intended to keep server, client, and database testing practices aligned while making coverage, debugging, and maintenance straightforward.
 
 ## #Jestering Pattern & Principles
 
 ### What is #Jestering?
+
 The #Jestering test framework enforces:
+
 - **GIVEN/WHEN/THEN** structure for every test (readable AAA)
 - Use of reusable mock factories (`createMock[Entity]()`) for all entities and Express objects
 - Realistic, complete test data in all mocks
@@ -51,22 +60,28 @@ The #Jestering test framework enforces:
 - Explicit anti-pattern checklist (see below)
 
 ### Factory Usage
-- All entity and Express mocks must be created via `server/tests/unit/__mocks__/factories/`
+
+- All entity and Express mocks should be created via `server/tests/unit/__mocks__/factories/`
 - Example: `const mockUser = createMockUser({ email: 'customer@example.com' })`
-- Factories ensure consistency, realism, and maintainability
+- Factories improve consistency and maintainability
 
 ### Anti-Pattern Checklist
-- ❌ Over-mocking (e.g., `jest.mock('everything')`)
-- ❌ Testing implementation details (e.g., `expect(helperFunction).toHaveBeenCalled()`)
-- ❌ Fragile selectors (avoid checking exact call order unless required)
-- ❌ Shared state between tests (always reset in `beforeEach`)
-- ❌ Magic strings without explanation
+
+- Avoid over-mocking (for example, `jest.mock('everything')`)
+- Avoid testing implementation details
+- Avoid fragile assertions on call order unless required
+- Avoid shared state across tests
+- Avoid unexplained magic strings
 
 ### Example Jestering Test
+
 ```javascript
 test('customer approves pro-forma', async () => {
   // GIVEN
-  const req = createMockRequest({ params: { token: 'share-token-123' }, body: { decision: 'approved' } });
+  const req = createMockRequest({
+    params: { token: 'share-token-123' },
+    body: { decision: 'approved' },
+  });
   const res = createMockResponse();
   const mockInvoice = mockStates.awaitingApproval();
   Invoice.findOne.mockResolvedValue(mockInvoice);
@@ -82,32 +97,9 @@ test('customer approves pro-forma', async () => {
 });
 ```
 
-> **Always:**
-> - Use factories for all mocks
-> - Structure tests as GIVEN/WHEN/THEN
-> - Reset mocks in `beforeEach`
-> - Use realistic data
-> - Avoid anti-patterns above
+## Testing Setup
 
-This project uses **Jest** for backend testing and **Vitest** with **React Testing Library** for frontend testing. The test suite provides comprehensive coverage for:
-
-- **Backend (Server):** Models, Controllers, Middleware
-- **Frontend (Client):** Components, Context, API Configuration
-- **Database:** Model validation and behavior
-
-### Testing Frameworks
-
-| Area | Framework | Description |
-|------|-----------|-------------|
-| **Server** | Jest | Node.js testing framework |
-| **Client** | Vitest | Vite-native testing framework |
-| **React** | React Testing Library | Component testing utilities |
-| **API** | Supertest | HTTP assertion library |
-| **Mocking** | Jest/Vitest Mocks | Function and module mocking |
-
----
-
-## 🛠️ Testing Setup
+This section covers dependencies, configuration files, and environment setup required to run the test suites.
 
 ### Prerequisites
 
@@ -126,11 +118,13 @@ npm install
 ### Dependencies Installed
 
 **Server (`server/package.json`):**
+
 - `jest` - Testing framework
 - `supertest` - HTTP testing
 - `@types/jest` - TypeScript types for Jest
 
 **Client (`client/package.json`):**
+
 - `vitest` - Testing framework
 - `@testing-library/react` - React component testing
 - `@testing-library/jest-dom` - Additional matchers
@@ -141,6 +135,7 @@ npm install
 ### Configuration Files
 
 **Server:** `server/jest.config.js`
+
 ```javascript
 - Test Environment: Node
 - Coverage Threshold: 60%
@@ -148,19 +143,20 @@ npm install
 ```
 
 **Client:** `client/vite.config.js`
+
 ```javascript
 - Test Environment: jsdom
 - Setup File: src/__tests__/setup.js
 - Globals: Enabled (describe, it, expect)
 ```
 
----
+## Test Structure
 
-## 📁 Test Structure
+This section shows the expected folder layout for server and client tests, plus naming conventions.
 
 ### Server Tests (`server/tests/`)
 
-```
+```text
 server/tests/
 ├── setup.js                           # Test environment setup
 └── unit/
@@ -174,7 +170,7 @@ server/tests/
 
 ### Client Tests (`client/src/__tests__/`)
 
-```
+```text
 client/src/__tests__/
 ├── setup.js                          # React Testing Library setup
 ├── components/
@@ -185,15 +181,43 @@ client/src/__tests__/
     └── axios.test.js                # Axios configuration tests
 ```
 
-
 ### Test File Naming Convention
+
 - Server: `*.test.mjs` (ESM, Jestering pattern)
-- Client: `*.test.jsx` (for components), `*.test.js` (for utilities)
+- Client: `*.test.jsx` (components), `*.test.js` (utilities)
 - Pattern: `[filename].test.[mjs|js|jsx]`
 
----
+## UAT Auth Methodology - password set = FALSE
 
-## 🚀 Running Tests
+This project includes a manual UAT methodology for personas whose permanent password has not yet been set.
+
+Definition:
+
+- `password set = FALSE` means a user account is provisioned, but no permanent password has been established and verified.
+
+Applicable personas:
+
+- `customer`
+- `fieldServiceAgent`
+
+UAT operating rule:
+
+- Do not log out of the only active session for a persona in this state unless you captured the newest temporary secret access key, or you intentionally plan to test Forgot Password.
+
+Manual testing pattern:
+
+1. Keep the active persona session open.
+2. Use a separate browser session for `superAdmin`.
+3. From the persona profile, use Provision Login if no linked account exists.
+4. Use Resend Invite whenever you need fresh first-login credentials.
+5. Record the newest temporary secret access key and Ethereal preview URL in development.
+6. Only then log out and re-enter as that persona.
+
+Exit condition:
+
+- Once permanent password is set and verified, normal login and Forgot Password flows become the required path.
+
+## Running Tests
 
 ### Server Tests
 
@@ -204,10 +228,10 @@ cd server
 # Run all tests
 npm test
 
-# Run tests in watch mode (auto-rerun on file changes)
+# Run tests in watch mode
 npm run test:watch
 
-# Run tests with coverage report
+# Run tests with coverage
 npm run test:coverage
 
 # Run specific test file
@@ -229,7 +253,7 @@ npm test
 # Run tests in watch mode
 npm run test:watch
 
-# Run tests with coverage report
+# Run tests with coverage
 npm run test:coverage
 
 # Run tests with UI
@@ -267,9 +291,7 @@ npm test
 }
 ```
 
----
-
-## 📊 Test Coverage
+## Test Coverage
 
 ### Current Coverage
 
@@ -285,6 +307,7 @@ npm test
 ### Viewing Coverage Reports
 
 **Server:**
+
 ```bash
 cd server
 npm run test:coverage
@@ -292,14 +315,19 @@ open coverage/lcov-report/index.html
 ```
 
 **Client:**
+
 ```bash
 cd client
 npm run test:coverage
 open coverage/index.html
 ```
 
+## Writing New Tests
+
+When adding new tests, follow the Jestering pattern first: write scenarios in GIVEN/WHEN/THEN form, use shared mock factories, and keep assertions behavior-focused.
 
 ### Server Test Template (Jestering)
+
 ```javascript
 /**
  * @file [filename].test.mjs
@@ -309,48 +337,34 @@ import { jest } from '@jest/globals';
 import { createMockRequest, createMockResponse } from '../__mocks__/factories/express.factory.js';
 import { createMock[Entity] } from '../__mocks__/factories/[entity].factory.js';
 
-// Mock dependencies at module boundaries
-await jest.unstable_mockModule('../../../models/[Entity].model.js', () => ({ __esModule: true, default: {} }));
+await jest.unstable_mockModule('../../../models/[Entity].model.js', () => ({
+  __esModule: true,
+  default: {},
+}));
 
 const controller = await import('../../../controllers/[controller].js');
 const functionToTest = controller.functionToTest;
 const Entity = (await import('../../../models/[Entity].model.js')).default;
 
-    test('should [expected behavior]', async () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  test('[user action] [does something]', async () => {
-    // GIVEN
-    const req = createMockRequest({ /* overrides */ });
-    const res = createMockResponse();
-    const mockEntity = createMock[Entity]({ /* overrides */ });
-    Entity.findOne = jest.fn().mockResolvedValue(mockEntity);
-
-    // WHEN
-    await functionToTest(req, res);
-
-    // THEN
-    expect(Entity.findOne).toHaveBeenCalled();
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ /* expected data */ })
-    );
-  });
+beforeEach(() => {
+  jest.clearAllMocks();
 });
-```
-      // Arrange
-      const mockData = { /* test data */ };
-      Model.findOne = jest.fn().mockResolvedValue(mockData);
 
-      // Act
-      await functionToTest(req, res, next);
+test('[user action] [does something]', async () => {
+  // GIVEN
+  const req = createMockRequest({ /* overrides */ });
+  const res = createMockResponse();
+  const mockEntity = createMock[Entity]({ /* overrides */ });
+  Entity.findOne = jest.fn().mockResolvedValue(mockEntity);
 
-      // Assert
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({}));
-    });
-  });
+  // WHEN
+  await functionToTest(req, res);
+
+  // THEN
+  expect(Entity.findOne).toHaveBeenCalled();
+  expect(res.json).toHaveBeenCalledWith(
+    expect.objectContaining({ /* expected data */ })
+  );
 });
 ```
 
@@ -368,10 +382,8 @@ import { BrowserRouter } from 'react-router-dom';
 import ComponentName from '../../components/ComponentName';
 import { AuthProvider } from '../../context/AuthContext';
 
-// Mock dependencies
 vi.mock('axios');
 
-// Helper to render with providers
 const renderComponent = () => {
   return render(
     <BrowserRouter>
@@ -391,7 +403,6 @@ describe('ComponentName', () => {
   describe('Rendering', () => {
     it('should render component with expected elements', () => {
       renderComponent();
-      
       expect(screen.getByText(/expected text/i)).toBeInTheDocument();
       expect(screen.getByRole('button')).toBeInTheDocument();
     });
@@ -400,7 +411,6 @@ describe('ComponentName', () => {
   describe('User Interaction', () => {
     it('should handle button click', async () => {
       renderComponent();
-      
       const button = screen.getByRole('button');
       fireEvent.click(button);
 
@@ -412,173 +422,99 @@ describe('ComponentName', () => {
 });
 ```
 
----
-
-## 🎓 Best Practices
+## Best Practices
 
 ### General
 
-1. **Test Behavior, Not Implementation**
-   - Focus on what the code does, not how it does it
-   - Test user interactions and outcomes
-
-2. **Use Descriptive Test Names**
-   ```javascript
-   ✅ test('should return 401 when password is incorrect')
-   ❌ test('password test')
-   ```
-
-3. **Arrange-Act-Assert Pattern**
-   ```javascript
-   test('should login user', () => {
-     // Arrange: Setup test data
-     const mockUser = { email: 'test@example.com' };
-     
-     // Act: Execute the code
-     const result = loginUser(mockUser);
-     
-     // Assert: Verify the result
-     expect(result).toBeDefined();
-   });
-   ```
-
-4. **Keep Tests Independent**
-   - Each test should run in isolation
-   - Use `beforeEach` to reset state
-   - Don't rely on test execution order
+1. Test behavior, not implementation details.
+2. Use descriptive test names.
+3. Keep tests independent.
+4. Reset state in `beforeEach`.
+5. Prefer accessible queries in UI tests.
 
 ### Server Tests
 
-1. **Mock External Dependencies**
-   ```javascript
-   jest.mock('../models/User.model.js');
-   ```
-
-2. **Test Error Handling**
-   ```javascript
-   test('should handle database errors', async () => {
-     Model.findOne.mockRejectedValue(new Error('DB Error'));
-     await controller(req, res);
-     expect(res.status).toHaveBeenCalledWith(500);
-   });
-   ```
-
-3. **Clean Up MongoDB Connections**
-   ```javascript
-   afterAll(async () => {
-     await mongoose.connection.close();
-   });
-   ```
+1. Mock external dependencies at boundaries.
+2. Include error-path coverage.
+3. Close DB connections in teardown where needed.
 
 ### Client Tests
 
-1. **Use Testing Library Queries**
-   ```javascript
-   // Preferred
-   screen.getByRole('button', { name: /submit/i })
-   screen.getByLabelText(/email/i)
-   
-   // Avoid
-   screen.getByClassName('submit-btn')
-   ```
+1. Prefer Testing Library role/label queries.
+2. Include accessibility checks.
+3. Use `waitFor` for async assertions.
 
-2. **Test Accessibility**
-   ```javascript
-   test('should have accessible form fields', () => {
-     render(<Login />);
-     expect(screen.getByLabelText(/email/i)).toBeRequired();
-   });
-   ```
-
-3. **Wait for Async Operations**
-   ```javascript
-   await waitFor(() => {
-     expect(screen.getByText(/success/i)).toBeInTheDocument();
-   });
-   ```
-
----
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
 #### Server Tests
 
 **Issue:** Tests hang or timeout
+
 ```bash
-# Solution: Add --detectOpenHandles flag
 npm test -- --detectOpenHandles
 ```
 
 **Issue:** MongoDB connection errors
-```bash
-# Solution: Ensure MongoDB is running
-sudo systemctl start mongod
 
-# Or use in-memory MongoDB
+```bash
+sudo systemctl start mongod
 npm install --save-dev mongodb-memory-server
 ```
 
 **Issue:** Module import errors
+
 ```javascript
 // Ensure package.json has "type": "module"
-// Use .js extensions in imports
 import User from '../models/User.model.js';
 ```
 
 #### Client Tests
 
 **Issue:** `window is not defined`
+
 ```javascript
-// Solution: Ensure jsdom is installed and configured
 // vite.config.js
-test: {
-  environment: 'jsdom',
-}
+// test: { environment: 'jsdom' }
 ```
 
 **Issue:** React hooks error
+
 ```javascript
-// Solution: Wrap component in proper providers
 const { result } = renderHook(() => useAuth(), {
   wrapper: AuthProvider,
 });
 ```
 
 **Issue:** Axios not mocked
+
 ```javascript
-// Solution: Mock axios before imports
 vi.mock('axios');
 ```
 
 ### Debug Mode
 
 **Server (Jest):**
-```bash
-# Run with verbose output
-npm test -- --verbose
 
-# Debug specific test
+```bash
+npm test -- --verbose
 node --inspect-brk node_modules/.bin/jest tests/unit/models/User.model.test.js
 ```
 
 **Client (Vitest):**
-```bash
-# Run with UI for debugging
-npx vitest --ui
 
-# Run with reporter
+```bash
+npx vitest --ui
 npx vitest --reporter=verbose
 ```
 
----
-
-## 📈 Expanding Test Coverage
+## Expanding Test Coverage
 
 ### Priority Areas to Test
 
 **Server:**
+
 - [ ] Agent Controller (create, update, delete, performance)
 - [ ] Customer Controller (CRUD, sites)
 - [ ] ServiceCall Controller (CRUD, parts, photos, rating)
@@ -588,12 +524,14 @@ npx vitest --reporter=verbose
 - [ ] Logger Middleware (logging, error handling)
 
 **Client:**
+
 - [ ] Register Component (form validation, submission)
 - [ ] UserProfile Component (display, edit, update)
 - [ ] ProtectedRoute Component (authentication guard)
 - [ ] Additional React components as created
 
 **Database:**
+
 - [ ] Agent Model (validation, auto-ID generation)
 - [ ] Customer Model (validation, sites array)
 - [ ] ServiceCall Model (validation, parts, photos)
@@ -601,37 +539,26 @@ npx vitest --reporter=verbose
 - [ ] Quotation Model (validation, status workflow)
 - [ ] Invoice Model (validation, payment calculations)
 
----
+## Resources
 
-## 🔗 Resources
-
-**Jest:**
 - [Jest Documentation](https://jestjs.io/docs/getting-started)
 - [Jest Matchers](https://jestjs.io/docs/expect)
-
-**Vitest:**
 - [Vitest Documentation](https://vitest.dev/)
 - [Vitest API](https://vitest.dev/api/)
-
-**React Testing Library:**
 - [RTL Documentation](https://testing-library.com/docs/react-testing-library/intro/)
 - [Common Queries](https://testing-library.com/docs/queries/about)
-
-**Supertest:**
 - [Supertest GitHub](https://github.com/visionmedia/supertest)
 
----
+## Notes
 
-## 📝 Notes
-
-- **Test Environment:** Tests use isolated test databases (see `server/tests/setup.js`)
-- **Coverage Reports:** Generated in `coverage/` directories (gitignored)
-- **CI/CD Ready:** Tests can be integrated into GitHub Actions or other CI pipelines
-- **Performance:** Run tests in parallel for faster execution (`--maxWorkers=4`)
+- Tests use isolated test databases (see `server/tests/setup.js`).
+- Coverage reports are generated in `coverage/` directories.
+- Tests can be integrated with CI workflows.
+- Run tests in parallel when appropriate (`--maxWorkers=4`).
 
 ---
 
-**Last Updated:** 2026-02-26
+**Last Updated:** 2026-05-19
 **Maintained By:** Development Team
 
 For questions or issues, please create a GitHub issue or contact the team.

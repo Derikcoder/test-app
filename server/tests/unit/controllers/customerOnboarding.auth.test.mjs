@@ -36,7 +36,7 @@ await jest.unstable_mockModule('../../../middleware/logger.middleware.js', () =>
   logInfo: jest.fn(),
 }));
 
-const { adminProvisionUser } = await import('../../../controllers/auth.controller.js');
+const { adminProvisionUser, resendAgentWelcomeEmail } = await import('../../../controllers/auth.controller.js');
 
 describe('Customer Onboarding Auth', () => {
   beforeEach(() => {
@@ -89,6 +89,7 @@ describe('Customer Onboarding Auth', () => {
         customerProfile: 'cust-1',
         email: 'customer@example.com',
         userName: 'acme_customer',
+        hasCompletedPasswordSetup: false,
       })
     );
     expect(Customer.findByIdAndUpdate).toHaveBeenCalledWith('cust-1', { userAccount: 'user-1' });
@@ -107,6 +108,75 @@ describe('Customer Onboarding Auth', () => {
         userId: 'user-1',
         role: 'customer',
         temporaryAccessKey: expect.any(String),
+      })
+    );
+  });
+
+  test('admin provisions field agent account and returns first-login credentials', async () => {
+    // GIVEN
+    const req = createMockRequest({
+      user: { _id: 'admin-1', role: 'superAdmin' },
+      body: {
+        role: 'fieldServiceAgent',
+        profileId: 'agent-1',
+        userName: 'john_field',
+        email: 'agent@example.com',
+      },
+    });
+    const res = createMockResponse();
+
+    FieldServiceAgent.findById = jest.fn().mockResolvedValue({
+      _id: 'agent-1',
+      userAccount: null,
+      firstName: 'John',
+      lastName: 'Field',
+    });
+
+    User.findOne = jest.fn().mockResolvedValue(null);
+    const newUser = {
+      _id: 'user-2',
+      userName: 'john_field',
+      email: 'agent@example.com',
+      role: 'fieldServiceAgent',
+      generatePasswordResetToken: jest.fn().mockReturnValue('reset-token-agent'),
+      save: jest.fn().mockResolvedValue(true),
+    };
+    User.create = jest.fn().mockResolvedValue(newUser);
+    FieldServiceAgent.findByIdAndUpdate = jest.fn().mockResolvedValue(true);
+    sendAgentWelcomeEmail.mockResolvedValue({ messageId: 'msg-2' });
+
+    // WHEN
+    await adminProvisionUser(req, res);
+
+    // THEN
+    expect(User.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: 'fieldServiceAgent',
+        fieldServiceAgentProfile: 'agent-1',
+        email: 'agent@example.com',
+        userName: 'john_field',
+        password: expect.any(String),
+        hasCompletedPasswordSetup: false,
+      })
+    );
+    expect(FieldServiceAgent.findByIdAndUpdate).toHaveBeenCalledWith('agent-1', { userAccount: 'user-2' });
+    expect(newUser.generatePasswordResetToken).toHaveBeenCalled();
+    expect(sendAgentWelcomeEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'agent@example.com',
+        userName: 'john_field',
+        resetUrl: expect.stringContaining('/reset-password/reset-token-agent'),
+        temporaryAccessKey: expect.any(String),
+        loginUrl: expect.stringContaining('/login'),
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-2',
+        role: 'fieldServiceAgent',
+        temporaryAccessKey: expect.any(String),
+        loginUrl: expect.stringContaining('/login'),
       })
     );
   });
@@ -132,5 +202,41 @@ describe('Customer Onboarding Auth', () => {
     });
     expect(User.create).not.toHaveBeenCalled();
     expect(sendCustomerWelcomeEmail).not.toHaveBeenCalled();
+  });
+
+  test('rejects resend invite after agent has set a permanent password', async () => {
+    // GIVEN
+    const req = createMockRequest({
+      user: { _id: 'admin-1', role: 'superAdmin' },
+      params: { agentProfileId: 'agent-1' },
+    });
+    const res = createMockResponse();
+
+    FieldServiceAgent.findById = jest.fn().mockResolvedValue({
+      _id: 'agent-1',
+      userAccount: 'user-2',
+      firstName: 'John',
+      lastName: 'Field',
+    });
+
+    User.findById = jest.fn().mockResolvedValue({
+      _id: 'user-2',
+      email: 'agent@example.com',
+      userName: 'john_field',
+      hasCompletedPasswordSetup: true,
+    });
+
+    // WHEN
+    await resendAgentWelcomeEmail(req, res);
+
+    // THEN
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'This agent has already set a permanent password. Use Forgot Password for future recovery.',
+        recoveryRoute: '/forgot-password',
+      })
+    );
+    expect(sendAgentWelcomeEmail).not.toHaveBeenCalled();
   });
 });

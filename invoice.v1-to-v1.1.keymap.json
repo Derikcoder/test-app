@@ -5,7 +5,8 @@
   "notes": [
     "Use this map when converting legacy v1 invoice payloads to v1.1 normalized payloads.",
     "Fields with transform hints need parsing/normalization logic.",
-    "Array notation [] means apply mapping for each array item."
+    "Array notation [] means apply mapping for each array item.",
+    "Billing and costing mappings now follow the structured sundry-expenses, fixed-expenses, and totals model."
   ],
   "top_level": {
     "diensverskaffer_besonderhede": "service_provider_details",
@@ -192,69 +193,204 @@
       "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].kategorie",
-      "to": "billing_and_costing[].line_items[].category",
+      "from": "faktureerde_besonderhede || koste_berekening[].table_headings.item",
+      "to": "billing_and_costing[].table_headings.item",
       "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].part_tipe",
-      "to": "billing_and_costing[].line_items[].part_type",
+      "from": "faktureerde_besonderhede || koste_berekening[].table_headings.unit_cost",
+      "to": "billing_and_costing[].table_headings.unit_cost",
       "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].fabrikaat",
-      "to": "billing_and_costing[].line_items[].manufacturer",
+      "from": "faktureerde_besonderhede || koste_berekening[].table_headings.quantity",
+      "to": "billing_and_costing[].table_headings.quantity",
       "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].part_nommer",
-      "to": "billing_and_costing[].line_items[].part_number",
+      "from": "faktureerde_besonderhede || koste_berekening[].table_headings.total",
+      "to": "billing_and_costing[].table_headings.total",
       "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].eenheid_koste",
-      "to": "billing_and_costing[].line_items[].unit_cost",
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diens_parte_en_onderdele[].item",
+      "to": "billing_and_costing[].sundry_expenses.service_parts_and_spares[].item",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diens_parte_en_onderdele[].description",
+      "to": "billing_and_costing[].sundry_expenses.service_parts_and_spares[].description",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diens_parte_en_onderdele[].supplier",
+      "to": "billing_and_costing[].sundry_expenses.service_parts_and_spares[].supplier",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diens_parte_en_onderdele[].part_number",
+      "to": "billing_and_costing[].sundry_expenses.service_parts_and_spares[].part_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diens_parte_en_onderdele[].unit_cost",
+      "to": "billing_and_costing[].sundry_expenses.service_parts_and_spares[].unit_cost",
       "transform": "to_number"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].aantal_eenhede",
-      "to": "billing_and_costing[].line_items[].quantity",
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diens_parte_en_onderdele[].quantity",
+      "to": "billing_and_costing[].sundry_expenses.service_parts_and_spares[].quantity",
       "transform": "to_number"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].totaal_koste",
-      "to": "billing_and_costing[].line_items[].total_cost",
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diens_parte_en_onderdele[].total",
+      "to": "billing_and_costing[].sundry_expenses.service_parts_and_spares[].total",
       "transform": "to_number"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].lyn_items[].part_beskrywing",
-      "to": "billing_and_costing[].line_items[].part_description",
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].komponente[].item",
+      "to": "billing_and_costing[].sundry_expenses.components[].item",
       "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].uitroepfooi_r/km",
-      "to": "billing_and_costing[].fixed_expenses[].callout_fee_per_km",
-      "transform": "parse_currency_rate"
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].komponente[].description",
+      "to": "billing_and_costing[].sundry_expenses.components[].description",
+      "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].aantal_kilometers",
-      "to": "billing_and_costing[].fixed_expenses[].distance_km",
-      "transform": "parse_distance_km"
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].komponente[].supplier",
+      "to": "billing_and_costing[].sundry_expenses.components[].supplier",
+      "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].minimum_uitroepfooi",
-      "to": "billing_and_costing[].fixed_expenses[].minimum_callout_fee",
-      "transform": "parse_currency_amount"
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].komponente[].part_number",
+      "to": "billing_and_costing[].sundry_expenses.components[].part_number",
+      "transform": "copy_string"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes[].uitroepfooi_totaal",
-      "to": "billing_and_costing[].fixed_expenses[].callout_fee_total",
-      "transform": "evaluate_formula_or_set_manual"
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].komponente[].unit_cost",
+      "to": "billing_and_costing[].sundry_expenses.components[].unit_cost",
+      "transform": "to_number"
     },
     {
-      "from": "faktureerde_besonderhede || koste_berekening[].faktuur_totale_berekening[]",
-      "to": "billing_and_costing[].invoice_totals[]",
-      "transform": "normalize_totals_object"
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].komponente[].quantity",
+      "to": "billing_and_costing[].sundry_expenses.components[].quantity",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].komponente[].total",
+      "to": "billing_and_costing[].sundry_expenses.components[].total",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].derde_party_diens_verskaffers[]",
+      "to": "billing_and_costing[].sundry_expenses.third_party_service_providers[]",
+      "transform": "copy_object"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].smeermiddels_en_konsentrate[]",
+      "to": "billing_and_costing[].sundry_expenses.lubricants_and_concentrates[]",
+      "transform": "copy_object"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].verbruikbare_voorraad.basis_koste",
+      "to": "billing_and_costing[].sundry_expenses.consumables.base_cost",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].verbruikbare_voorraad.skaal_band",
+      "to": "billing_and_costing[].sundry_expenses.consumables.scale_band",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].verbruikbare_voorraad.toegepaste_persentasie",
+      "to": "billing_and_costing[].sundry_expenses.consumables.applied_percentage",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].verbruikbare_voorraad.totaal_koste",
+      "to": "billing_and_costing[].sundry_expenses.consumables.total_cost",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].verbruikbare_voorraad.nota",
+      "to": "billing_and_costing[].sundry_expenses.consumables.note",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].diverse_uitgawes[].diverse_uitgawes_totaal",
+      "to": "billing_and_costing[].sundry_expenses.sundry_expenses_total",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.uitroepfooi.item",
+      "to": "billing_and_costing[].fixed_expenses.call_out_fee.item",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.uitroepfooi.description",
+      "to": "billing_and_costing[].fixed_expenses.call_out_fee.description",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.uitroepfooi.supplier",
+      "to": "billing_and_costing[].fixed_expenses.call_out_fee.supplier",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.uitroepfooi.part_number",
+      "to": "billing_and_costing[].fixed_expenses.call_out_fee.part_number",
+      "transform": "copy_string"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.uitroepfooi.unit_cost",
+      "to": "billing_and_costing[].fixed_expenses.call_out_fee.unit_cost",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.uitroepfooi.quantity",
+      "to": "billing_and_costing[].fixed_expenses.call_out_fee.quantity",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.uitroepfooi.total",
+      "to": "billing_and_costing[].fixed_expenses.call_out_fee.total",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.verkryging_koste",
+      "to": "billing_and_costing[].fixed_expenses.procurement_fee",
+      "transform": "copy_object"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.arbeid",
+      "to": "billing_and_costing[].fixed_expenses.labor",
+      "transform": "copy_object"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].vaste_uitgawes.vaste_uitgawes_totaal",
+      "to": "billing_and_costing[].fixed_expenses.fixed_expenses_total",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].faktuur_totale_berekening.totaal_btw_uitgesluit",
+      "to": "billing_and_costing[].invoice_totals.total_excluding_vat",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].faktuur_totale_berekening.btw_persentasie",
+      "to": "billing_and_costing[].invoice_totals.vat_rate",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].faktuur_totale_berekening.btw_bedrag",
+      "to": "billing_and_costing[].invoice_totals.vat_amount",
+      "transform": "to_number"
+    },
+    {
+      "from": "faktureerde_besonderhede || koste_berekening[].faktuur_totale_berekening.totaal_btw_ingesluit",
+      "to": "billing_and_costing[].invoice_totals.total_including_vat",
+      "transform": "to_number"
     },
     {
       "from": "diens_beskrywing[]",

@@ -297,7 +297,12 @@ const Customers = () => {
              </td>
              <td className="px-6 py-4 text-right whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
               {customer.userAccount ? (
-               <span className="mr-3 text-xs text-emerald-400 font-semibold">Login ✓</span>
+               <span className="mr-3 inline-flex items-center gap-2 align-middle">
+                <span className="text-xs text-emerald-400 font-semibold">Login ✓</span>
+                <span className={`text-xs font-semibold ${customer.hasCompletedPasswordSetup ? 'text-slate-400' : 'text-amber-300'}`}>
+                 {customer.hasCompletedPasswordSetup ? 'Use Forgot Password' : 'First login pending'}
+                </span>
+               </span>
               ) : (
                <button
                 onClick={(e) => handleOpenProvisionModal(e, customer)}

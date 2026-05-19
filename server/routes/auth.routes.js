@@ -93,7 +93,7 @@ router.post(
 
 /**
  * @route   POST /api/auth/admin/resend-agent-welcome/:agentProfileId
- * @desc    Resend welcome email with a fresh set-password link to an already-provisioned agent
+ * @desc    Resend welcome email with refreshed first-login credentials to an already-provisioned agent
  * @access  Private (superAdmin, businessAdministrator)
  */
 router.post(

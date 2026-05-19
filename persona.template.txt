@@ -1,0 +1,90 @@
+PERSONA TEMPLATE (UAT)
+======================
+
+1) PERSONA IDENTITY
+- Persona ID: [PER-001]
+- Persona Name: [Full name]
+- Persona Type: [Application Management | Service Agent | Customer]
+- Category: [e.g., Electrical, HVAC, Mechanical, Plumbing, Multi-Disciplinary]
+- Active: [Yes/No]
+- Version: [v1.0]
+- Last Updated: [YYYY-MM-DD]
+
+2) BUSINESS CONTEXT
+- Business/Organization Name: [Name]
+- Region/Service Area: [City/Province/Area]
+- Operating Hours: [e.g., Mon-Fri 08:00-17:00]
+- Preferred Contact Channel: [Email | Phone | WhatsApp]
+
+3) PROFILE ATTRIBUTES
+- Role in Platform: [Role name in app]
+- Permissions Needed: [List required permissions]
+- Key Skills/Specialization: [List]
+- Constraints/Limitations: [List]
+
+4) UAT GOAL
+- Primary Goal: [What this persona must achieve]
+- Success Criteria: [Measurable expected outcome]
+- Failure Criteria: [What counts as failure]
+
+5) SERVICE NEED / REQUEST PROFILE
+- Service Category Needed: [e.g., Generator Repair]
+- Service Type: [Emergency | Scheduled | Preventive | Inspection]
+- Priority Level: [Low | Medium | High | Critical]
+- Typical Problem Statement: [Natural language problem]
+- Typical Site/Location Context: [Address pattern / site type]
+
+6) TEST DATA INPUTS
+- Customer Type Expected: [Residential | Head Office | Branch | Prospect]
+- Contact Person: [Name]
+- Contact Email: [Email]
+- Contact Phone: [Phone]
+- Address / Site Data: [Structured details]
+- Equipment/Asset Data (if applicable): [Model, serial, install date]
+- Compliance/Legal Fields (if applicable): [VAT, registration, etc.]
+
+7) WORKFLOW EXPECTATIONS
+- Expected Trigger: [What starts the flow]
+- Expected Route/Endpoint(s): [If known]
+- Expected Status Progression:
+  1. [Status A]
+  2. [Status B]
+  3. [Status C]
+- Expected Notifications: [Email/WhatsApp/system]
+- Expected Ownership Rules: [createdBy / assignedAgent / role visibility]
+
+8) ACCEPTANCE CHECKLIST
+- [ ] Persona can be created/loaded with valid data
+- [ ] Service call can be created from this persona scenario
+- [ ] Correct customer type is created/linked
+- [ ] Correct service category is applied
+- [ ] Correct role-based access is enforced
+- [ ] Notifications are sent to intended recipient(s)
+- [ ] Status transitions follow expected sequence
+- [ ] Final output matches success criteria
+
+9) NEGATIVE / EDGE TESTS
+- Missing required fields: [Expected system response]
+- Invalid contact/channel data: [Expected system response]
+- Unauthorized action attempt: [Expected system response]
+- Duplicate or conflicting profile data: [Expected system response]
+
+10) EXECUTION LOG
+- Run ID: [UAT-YYYYMMDD-001]
+- Executed By: [Name]
+- Environment: [Local | Staging | Production-like]
+- Date/Time: [Timestamp]
+- Result: [Pass | Fail | Blocked]
+- Defects Found: [Ticket IDs]
+- Notes: [Observations]
+
+11) TRACEABILITY
+- Linked User Story / Requirement: [ID]
+- Linked Test Case IDs: [IDs]
+- Linked Evidence: [Screenshots, logs, API responses]
+
+---
+COPY INSTRUCTIONS
+1. Copy this file and rename it to: persona.[persona-name].txt
+2. Fill all sections before creating service calls for UAT.
+3. Keep one file per persona for auditability.

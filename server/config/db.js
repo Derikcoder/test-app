@@ -9,6 +9,7 @@
 
 import mongoose from 'mongoose';
 import User from '../models/User.model.js';
+import FieldServiceAgent from '../models/FieldServiceAgent.model.js';
 
 const DEFAULT_LOCAL_MONGO_URI = 'mongodb://127.0.0.1:27017/test-app';
 
@@ -19,6 +20,7 @@ const connectAndSync = async (uri) => {
 
   // Keep runtime indexes aligned with schema definitions after model/index updates.
   await User.syncIndexes();
+  await FieldServiceAgent.syncIndexes();
   return conn;
 };
 
@@ -65,6 +67,7 @@ const connectDB = async () => {
       const conn = await connectAndSync(attempt.uri);
       console.log(`✅ ${attempt.label} Connected: ${conn.connection.host}`);
       console.log('✅ User indexes synchronized');
+      console.log('✅ FieldServiceAgent indexes synchronized');
       return conn;
     } catch (error) {
       console.error(`❌ ${attempt.label} connection failed: ${error.message}`);

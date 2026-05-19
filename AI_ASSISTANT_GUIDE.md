@@ -1357,6 +1357,51 @@ git merge consolidation
 
 ## 🔄 Recent Changes
 
+### 2026-05-19 (Session 29)
+**Feature: Uniform Persona Onboarding + Explicit UAT First-Login Methodology**
+
+- ✅ **Field agent onboarding aligned with customer onboarding**
+   - `fieldServiceAgent` provisioning now issues a temporary secret access key, matching the customer first-login model.
+   - Agent welcome email now includes login-first guidance, temporary secret access key, and reset link.
+   - Agent resend-invite flow now refreshes first-login credentials instead of only sending a reset-link-style invite.
+
+- ✅ **Agent profile onboarding controls completed**
+   - Added visible `Invite Actions` strip to `AgentProfile.jsx`.
+   - Added direct `Provision Login` and `Resend Invite` controls on the agent profile page so Super Admin does not need to return to the list view.
+   - Added on-screen temporary secret access key visibility for provision/resend actions to support fast UAT persona switching.
+
+- ✅ **Testing methodology documented**
+   - `AUTH_GUIDE.md` now defines an explicit UAT methodology for accounts where `password set = FALSE`.
+   - `TESTING_GUIDE.md` now documents the repeatable SuperAdmin-assisted testing pattern: keep the active persona session open, refresh first-login credentials from a separate SuperAdmin session, then log out only after the newest credentials are captured.
+
+### 2026-05-12 (Session 28)
+**Feature: UAT Entity Workspace + Invoice Structure Normalization**
+
+- ✅ **UAT entity workspace scaffolded and expanded**
+   - Added and populated `entities/` with persona templates, customer persona files, machine templates, invoice sample extraction artifacts, and UAT scenario files.
+   - Expanded customer personas for:
+      - Single residential customer profile behavior
+      - Single-branch business profile behavior
+      - Group business (single ownership) branch/HQ approval model
+      - Franchise multi-owner model with branch-billing boundaries and HQ service-health oversight
+
+- ✅ **Canonical invoiced-details structure formalized**
+   - Added `entities/templates/invoice.invoiced-details.template.txt` as the reference structure for:
+      - Sundry expenses
+      - Fixed expenses
+      - VAT-exclusive/inclusive totals
+   - Added formal consumables sliding-scale guidance and examples.
+
+- ✅ **Invoice schema family aligned to structured costing model**
+   - Updated `invoice.schema.v1.json` to the structured costing layout.
+   - Updated `invoice.schema.v1.1.json` to normalized structured equivalents.
+   - Updated `invoice.v1-to-v1.1.keymap.json` mappings to match the new schema model.
+   - Updated `invoiceSample.json` to the new v1 structure.
+   - Added `invoiceSample.v1.1.json` as the normalized sample payload.
+
+- ✅ **Validation status**
+   - Updated JSON/schema/keymap/sample artifacts validated with no syntax errors in workspace checks.
+
 ### 2026-04-09 (Session 27)
 **Feature: FieldAgentSelfProfile — Field Service Agent's Own Workspace**
 

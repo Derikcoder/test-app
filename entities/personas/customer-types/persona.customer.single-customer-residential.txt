@@ -1,0 +1,206 @@
+PERSONA SUMMARY
+- Persona ID: CUST-001
+- Persona Name: Single Customer Residential
+- Persona Type: Customer
+- Classification: Residential, domestic
+- Objective: Request and receive service for home assets, manage service providers, track spending and satisfaction
+
+CUSTOMER PROFILE
+- Property Type: Single residential house or small apartment
+- Primary Decision Maker: Household owner or primary tenant
+- Typical Service Categories: Plumbing, Electrical, HVAC, General Maintenance, occasionally Heavy Equipment (backup generator)
+- Service Provider Diversity: Works with multiple agents across different specialties for different home needs
+- Primary Concern: Reliability, quality, cost transparency, and service provider accountability
+
+PROFILE PAGE FEATURES & UAT REQUIREMENTS
+
+=== 1. SERVICE HISTORY (CATEGORICAL VIEW) ===
+Profile section: "My Service History"
+- Display all completed service calls, organized by service category (Plumbing, Electrical, HVAC, Mechanical, etc.)
+- Each category shows:
+  * Count of completed services in that category
+  * Most recent service date in that category
+  * Expandable list of all service calls (dates, agent, cost, brief description)
+- Validation Points:
+  * Service categories match the agent specializations that worked on the property
+  * Service dates and agent names are accurate
+  * Costs match the finalized invoices
+  * Completed services do not appear in pending/outstanding sections
+
+=== 2. QUOTES & INVOICES (CATEGORICAL + STATEMENT) ===
+Profile section: "My Quotes, Invoices & Statement"
+- Three subsections:
+  a) Pending Quotes: Services requested but not yet quoted
+     - Shows: Service request date, service category, agent assigned, time elapsed
+     - Validation: No quote exists yet; customer can see request is in progress
+  b) Outstanding Quotes: Quotes provided, awaiting customer acceptance
+     - Shows: Quote date, service category, agent, quote amount, quote expiry date
+     - Validation: Quote exists; customer has not yet accepted; expiry date is enforced
+  c) Invoice History: Completed services with invoices
+     - Shows: Invoice date, service category, agent, invoice number, amount paid, payment date
+     - Grouped by month or year
+     - Validation: Invoices match completed service calls; payment status is accurate
+- Total Statement at Bottom:
+  * Total spent YTD (year-to-date)
+  * Total pending quotes (sum of outstanding quote amounts)
+  * Average service cost by category
+  * Payment compliance (e.g., "100% on-time payments")
+
+=== 3. FREQUENT SERVICE PROVIDERS & REVIEWS ===
+Profile section: "My Service Providers & Ratings"
+- Display list of agents customer has worked with, ranked by frequency (most frequent at top)
+- For each agent:
+  * Agent name and specialty/category
+  * Total services completed (count)
+  * Overall rating (star average from customer reviews)
+  * Most recent review (date, rating, brief text excerpt)
+  * Last service date
+  * Next action button: "Update Review" or "Write Review" (depending on whether review exists post-service)
+- Validation Points:
+  * Agent list only includes agents who completed work for this customer
+  * Frequency count matches service history
+  * Ratings come from actual customer reviews; no review = no rating or "no rating yet"
+  * Most recent review is the latest one posted after service completion
+
+=== 4. REVIEW UPDATE WORKFLOW ===
+Interaction: Customer clicks "Update Review" after service completion
+- Pre-conditions:
+  * Service call is marked as "Completed"
+  * Service call has a finalized invoice
+  * At least 1 review period has elapsed since service completion (optional: 24-48 hour buffer)
+- Workflow:
+  1. Modal/Page opens showing:
+     - Agent name, service category, service date, final invoice amount
+     - Star rating selector (1-5 stars, default to previous rating if exists)
+     - Text area for review comment (max 500 chars)
+     - Submit and Cancel buttons
+  2. On Submit:
+     - Review is saved to the service call record
+     - Timestamp is recorded
+     - Agent's overall rating is recalculated
+     - Customer sees confirmation message: "Review submitted successfully"
+  3. On Cancel:
+     - No changes; modal closes
+- Validation Points:
+  * Customer can only review their own services
+  * Only one review per service call (update overwrites previous, not creates duplicate)
+  * Review text is sanitized (no SQL injection, XSS protection)
+  * Agent's overall rating recalculates immediately
+  * Review is visible on customer's profile and (if configured) visible to agent
+
+=== 5. DATA STRUCTURE FOR TESTING ===
+Expected Profile Data Shape:
+{
+  "customer_id": "CUST-001",
+  "customer_name": "John Smith",
+  "residential_address": "123 Oak Street, Sunnyville, ZA",
+  "service_history": {
+    "plumbing": [
+      { "service_call_id": "SC-001", "date": "2026-04-15", "agent_name": "Alice Plumber", "cost": 1200.00, "status": "completed" },
+      { "service_call_id": "SC-005", "date": "2026-03-10", "agent_name": "Alice Plumber", "cost": 850.00, "status": "completed" }
+    ],
+    "electrical": [
+      { "service_call_id": "SC-002", "date": "2026-04-20", "agent_name": "Bob Electrician", "cost": 2500.00, "status": "completed" }
+    ],
+    "hvac": [
+      { "service_call_id": "SC-003", "date": "2026-02-28", "agent_name": "Carol HVAC", "cost": 3200.00, "status": "completed" }
+    ],
+    "mechanical": [
+      { "service_call_id": "SC-004", "date": "2026-01-05", "agent_name": "David Mechanic", "cost": 4500.00, "status": "completed" }
+    ]
+  },
+  "pending_quotes": [
+    { "quote_id": "QT-001", "service_request_id": "SR-010", "category": "electrical", "agent_name": "Bob Electrician", "requested_date": "2026-05-01", "days_pending": 3 }
+  ],
+  "outstanding_quotes": [
+    { "quote_id": "QT-002", "service_request_id": "SR-008", "category": "plumbing", "agent_name": "Alice Plumber", "quote_amount": 1500.00, "quote_date": "2026-04-28", "expiry_date": "2026-05-12" }
+  ],
+  "invoice_history": [
+    { "invoice_id": "INV-001", "service_call_id": "SC-001", "category": "plumbing", "agent_name": "Alice Plumber", "amount": 1200.00, "paid_date": "2026-04-22" },
+    { "invoice_id": "INV-002", "service_call_id": "SC-002", "category": "electrical", "agent_name": "Bob Electrician", "amount": 2500.00, "paid_date": "2026-04-27" }
+  ],
+  "statement": {
+    "total_ytd": 12250.00,
+    "total_pending_quotes": 1500.00,
+    "avg_cost_by_category": { "plumbing": 1025.00, "electrical": 2500.00, "hvac": 3200.00, "mechanical": 4500.00 },
+    "payment_compliance": "100% on-time"
+  },
+  "service_providers": [
+    { "agent_id": "AG-001", "agent_name": "David Mechanic", "specialty": "mechanical", "services_completed": 1, "overall_rating": 4.5, "last_service_date": "2026-01-05", "latest_review": { "rating": 4.5, "text": "Excellent work, quick turnaround.", "review_date": "2026-01-06" } },
+    { "agent_id": "AG-002", "agent_name": "Carol HVAC", "specialty": "hvac", "services_completed": 1, "overall_rating": 5.0, "last_service_date": "2026-02-28", "latest_review": { "rating": 5.0, "text": "Professional and thorough.", "review_date": "2026-03-01" } },
+    { "agent_id": "AG-003", "agent_name": "Alice Plumber", "specialty": "plumbing", "services_completed": 2, "overall_rating": 4.0, "last_service_date": "2026-04-15", "latest_review": { "rating": 4.0, "text": "Good work, minor delay.", "review_date": "2026-04-16" } },
+    { "agent_id": "AG-004", "agent_name": "Bob Electrician", "specialty": "electrical", "services_completed": 1, "overall_rating": null, "last_service_date": "2026-04-20", "latest_review": null }
+  ]
+}
+
+UAT TEST SCENARIOS
+
+Scenario 1: View Service History Grouped by Category
+- Log in as residential customer
+- Navigate to Profile > Service History
+- Verify: Plumbing services are listed under "Plumbing"; Electrical under "Electrical"; etc.
+- Verify: Service counts are accurate (e.g., "2 Plumbing Services")
+- Verify: Dates, agent names, and costs match the actual service call data
+
+Scenario 2: Check Quotes and Invoices Statement
+- Log in as residential customer
+- Navigate to Profile > Quotes & Invoices
+- Verify: Pending quotes section shows only services without quotes
+- Verify: Outstanding quotes section shows quotes awaiting acceptance
+- Verify: Invoice history shows all completed and paid invoices, grouped by category or month
+- Verify: Statement totals are calculated correctly (YTD, pending, averages, compliance)
+- Verify: Currency formatting is consistent (ZAR, 2 decimal places)
+
+Scenario 3: Review Service Provider List
+- Log in as residential customer
+- Navigate to Profile > Service Providers & Ratings
+- Verify: Agents are listed in order of frequency (most frequent first)
+- Verify: Agent specialty, service count, overall rating, and last service date are correct
+- Verify: Agents with no reviews show "no rating yet" or null rating
+- Verify: "Update Review" button is visible only for agents with completed services
+
+Scenario 4: Write a New Review (Post-Service)
+- Service call SC-002 (Bob Electrician, Electrical, 2026-04-20) is marked "Completed" and invoice is finalized
+- Log in as residential customer
+- Navigate to Profile > Service Providers & Ratings
+- Click "Update Review" on Bob Electrician
+- Modal opens with: Service date, service category, invoice amount, star rating field (currently empty), comment field
+- Select 4 stars, enter "Fast and professional, highly recommended"
+- Click "Submit"
+- Verify: Review is saved; modal closes; Bob's overall rating updates to 4.0
+- Verify: Latest review is now visible on Bob's entry in the provider list
+- Log out and log back in; verify review persists
+
+Scenario 5: Update an Existing Review
+- Bob Electrician previously has review: "Fast and professional, highly recommended" (4 stars) from 2026-04-21
+- Service is now being reviewed again (customer wants to adjust rating)
+- Log in as residential customer
+- Navigate to Profile > Service Providers & Ratings
+- Click "Update Review" on Bob Electrician
+- Modal opens with current review pre-populated: 4 stars and existing comment
+- Change to 5 stars, modify comment to "Exceptional service, great communication"
+- Click "Submit"
+- Verify: Review is updated (not duplicated); rating updates to 5.0 in the provider list
+- Verify: Latest review shows new text and date, and old review is replaced
+
+Scenario 6: Payment Compliance Check
+- Customer has 5 invoices, all paid on or before due date
+- Log in as residential customer
+- Navigate to Profile > Quotes & Invoices > Statement
+- Verify: "Payment Compliance" shows "100% on-time" or similar
+- Create a mock scenario: Delay one invoice payment beyond due date
+- Verify: Compliance updates to reflect late payment (e.g., "80% on-time")
+
+DATA VALIDATION CHECKLIST
+- [ ] Service history categorization logic is correct (each service in exactly one category)
+- [ ] Pending quotes only show services without a finalized quote
+- [ ] Outstanding quotes have an expiry date that can be enforced
+- [ ] Invoice history matches completed service calls and invoices
+- [ ] Statement calculations are mathematically correct
+- [ ] Agent frequency ranking updates as new services are completed
+- [ ] Overall agent rating recalculates from all associated reviews
+- [ ] Review submission does not create duplicates
+- [ ] Reviews are sanitized before storage
+- [ ] Timestamps are accurate (service date, review date, payment date)
+- [ ] Only the logged-in customer can view and edit their own profile
+- [ ] No sensitive information (passwords, payment card data) is visible in profile

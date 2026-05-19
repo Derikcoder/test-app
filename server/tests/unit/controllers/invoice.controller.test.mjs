@@ -169,6 +169,55 @@ describe('Invoice Controller - Public Share Endpoints', () => {
       expect(populate).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.any(String), documentNumber: expect.any(String) }));
     });
+
+    it('does not reset portal credentials when the customer already has a permanent password', async () => {
+      const linkedUser = {
+        _id: 'user-1',
+        email: 'customer@example.com',
+        userName: 'customer',
+        hasCompletedPasswordSetup: true,
+        save: jest.fn().mockResolvedValue(true),
+      };
+      const invoice = {
+        _id: 'invoice-123',
+        save: jest.fn(),
+        customer: {
+          _id: 'customer-1',
+          email: 'customer@example.com',
+          phoneNumber: '0800001234',
+          userAccount: 'user-1',
+        },
+        lineItems: [],
+        documentType: 'proForma',
+        workflowStatus: 'draft',
+        ...createMockInvoice({ id: 'invoice-123', documentType: 'proForma' }),
+      };
+      const populate = jest.fn();
+      populate.mockReturnValue({ populate, ...invoice });
+      Invoice.findOne = jest.fn(() => ({ populate }));
+      User.findOne = jest.fn().mockResolvedValue(linkedUser);
+
+      await sendInvoice(req, res);
+
+      expect(linkedUser.save).toHaveBeenCalled();
+      expect(linkedUser.password).toBeUndefined();
+      expect(sendInvoiceDocumentEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          temporaryAccessKey: null,
+          resetUrl: '',
+        })
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          portalUser: expect.objectContaining({
+            email: 'customer@example.com',
+            userName: 'customer',
+            temporaryAccessKey: null,
+          }),
+          resetUrl: '',
+        })
+      );
+    });
   });
 
   describe('submitSharedInvoiceDecision', () => {

@@ -1,0 +1,233 @@
+PERSONA SUMMARY
+- Persona ID: CUST-004
+- Persona Name: Group Business Franchise Multi-Owner
+- Persona Type: Customer
+- Classification: Franchise network with multiple owners
+- Objective: Enable branch-owned service and billing operations while giving HQ visibility into service adequacy and lagging maintenance risk
+
+OPERATING MODEL
+- Billing Ownership: Each franchise branch is responsible for its own quotes, approvals, invoices, and payments
+- Service Booking Ownership: Each branch books and manages its own services
+- HQ Control Model: HQ defines standards and monitors performance/compliance but does not pay branch invoices and does not assign branch order numbers
+- Order Number Policy: No HQ-generated order number workflow for this persona; branch/customer systems may optionally provide local references per branch
+
+PROFILE PAGE FEATURES & UAT REQUIREMENTS
+
+=== 1. BRANCH OWNERSHIP ISOLATION ===
+Profile section: "Branch Scope & Ownership"
+- Every branch has an independent financial and service ledger
+- Branch users can only view and manage their own branch:
+	* Service requests
+	* Quotes
+	* Invoices
+	* Payments
+	* Equipment register
+- HQ users can view cross-branch rollups and branch-level summaries, but cannot alter branch billing records
+- Validation Points:
+	* Branch A cannot see Branch B invoices/payments
+	* HQ can view branch totals and status but not execute branch payments
+	* Ownership boundaries are enforced by role and branch_id scoping
+
+=== 2. BRANCH-LEVEL BILLING (DECENTRALIZED) ===
+Profile section: "Branch Quotes, Invoices & Payments"
+- Per branch, show:
+	* Pending quotes
+	* Outstanding quotes
+	* Invoice history
+	* Payment status
+	* Branch statement total (YTD, monthly)
+- Invoice requirements for this persona:
+	* Branch invoice contains branch identifier and branch billing entity details
+	* No HQ approval-order-number field required by default
+	* Optional branch reference number allowed (branch-supplied)
+- Validation Points:
+	* Invoice creation and payment posting happen at branch scope only
+	* Financial totals are branch-local and do not auto-merge into a centralized payable workflow
+
+=== 3. HQ OVERSIGHT: SERVICE ADEQUACY DASHBOARD ===
+Profile section: "Franchise Service Health"
+- HQ dashboard to evaluate whether branches are receiving adequate servicing
+- KPIs per branch:
+	* Services completed in last 30/60/90 days
+	* Preventive vs reactive service ratio
+	* Average response time
+	* Repeat-failure rate per equipment type
+	* Open critical service calls
+	* On-time maintenance compliance %
+- HQ views:
+	* Branch ranking by service health score
+	* Category heatmap (mechanical/electrical/plumbing/HVAC) by branch
+	* Provider performance by branch
+- Validation Points:
+	* Metrics reflect real service call and maintenance records
+	* Branch health scores recalculate when new service events are logged
+
+=== 4. HQ OVERSIGHT: LAG DETECTION & ESCALATIONS ===
+Profile section: "Lagging Service Alerts"
+- HQ can monitor and be alerted when branches lag on servicing equipment
+- Lag rules (configurable defaults):
+	* Maintenance overdue > 7 days: Warning
+	* Maintenance overdue > 30 days: High risk
+	* Critical asset not serviced within SLA window: Critical
+	* Repeat breakdown within 60 days: Escalation
+- Alert payload per branch/equipment:
+	* Branch name and owner
+	* Equipment ID/type
+	* Last service date
+	* Next due date
+	* Days overdue
+	* Risk level
+	* Suggested action (schedule service, replace provider, escalate to compliance)
+- Validation Points:
+	* Alerts trigger based on equipment schedules and SLA settings
+	* Resolved alerts close automatically after completed qualifying service
+	* HQ can acknowledge/escalate alerts, but branch executes remediation
+
+=== 5. BRANCH REVIEWS & HQ QUALITY MONITORING ===
+Profile section: "Provider Reviews and Quality"
+- Branches submit and update reviews for providers who serviced their branch
+- HQ can read branch reviews across network to assess vendor consistency
+- HQ can see quality drift indicators:
+	* Rating drop trends
+	* Complaint frequency by branch
+	* Provider inconsistency across branches
+- Validation Points:
+	* Review authorship is tied to branch users only
+	* HQ analytics are read-only and aggregate branch-level feedback
+
+=== 6. DATA STRUCTURE FOR TESTING ===
+Expected Franchise Profile Data Shape:
+{
+	"customer_id": "CUST-004",
+	"franchise_name": "PrimeCare Franchise Group",
+	"hq_role": "Standards & Oversight",
+	"billing_model": "branch_managed",
+	"order_number_model": "branch_optional_reference_only",
+	"branches": [
+		{
+			"branch_id": "FRA-001",
+			"branch_name": "PrimeCare Pretoria East",
+			"owner_name": "Owner A",
+			"branch_billing_entity": "PrimeCare Pretoria East (Pty) Ltd",
+			"service_health": {
+				"completed_services_90d": 18,
+				"preventive_ratio": 0.61,
+				"avg_response_hours": 5.2,
+				"repeat_failure_rate": 0.08,
+				"maintenance_compliance_pct": 93
+			},
+			"lag_alerts": [
+				{
+					"alert_id": "AL-1001",
+					"equipment_id": "EQ-PR-009",
+					"equipment_type": "Backup Generator",
+					"last_service_date": "2026-03-20",
+					"next_due_date": "2026-04-20",
+					"days_overdue": 22,
+					"risk_level": "high",
+					"status": "open"
+				}
+			],
+			"invoices": [
+				{
+					"invoice_id": "INV-FRA-001-113",
+					"branch_reference_number": "PTA-PO-7781",
+					"amount_incl_vat": 11250.00,
+					"payment_status": "paid"
+				}
+			]
+		},
+		{
+			"branch_id": "FRA-002",
+			"branch_name": "PrimeCare Cape Gate",
+			"owner_name": "Owner B",
+			"branch_billing_entity": "PrimeCare Cape Gate CC",
+			"service_health": {
+				"completed_services_90d": 10,
+				"preventive_ratio": 0.30,
+				"avg_response_hours": 11.4,
+				"repeat_failure_rate": 0.22,
+				"maintenance_compliance_pct": 68
+			},
+			"lag_alerts": [
+				{
+					"alert_id": "AL-2007",
+					"equipment_id": "EQ-CG-015",
+					"equipment_type": "HVAC Rooftop Unit",
+					"last_service_date": "2026-02-11",
+					"next_due_date": "2026-03-11",
+					"days_overdue": 62,
+					"risk_level": "critical",
+					"status": "open"
+				}
+			],
+			"invoices": [
+				{
+					"invoice_id": "INV-FRA-002-089",
+					"branch_reference_number": null,
+					"amount_incl_vat": 8450.00,
+					"payment_status": "outstanding"
+				}
+			]
+		}
+	],
+	"hq_dashboard": {
+		"branch_health_ranking": [
+			{ "branch_id": "FRA-001", "health_score": 84 },
+			{ "branch_id": "FRA-002", "health_score": 52 }
+		],
+		"network_overdue_assets": 5,
+		"branches_below_compliance_threshold": 1
+	}
+}
+
+UAT TEST SCENARIOS
+
+Scenario 1: Branch Billing Isolation
+- Log in as Branch A owner
+- Navigate to Quotes, Invoices & Payments
+- Verify: Only Branch A invoices and payments are visible
+- Attempt to access Branch B invoice endpoint/view
+- Verify: Access denied or filtered out
+
+Scenario 2: No HQ Order Number Workflow
+- Log in as HQ user
+- Open branch invoice details
+- Verify: No mandatory HQ-generated order-number field
+- Verify: Optional branch reference number can exist per branch invoice
+
+Scenario 3: HQ Service Adequacy Monitoring
+- Log in as HQ user
+- Open Franchise Service Health dashboard
+- Verify: Each branch shows service health KPIs and health score
+- Verify: Branches with low preventive ratio and high repeat failures rank lower
+
+Scenario 4: Lag Alert Detection
+- Simulate equipment whose maintenance is overdue by 35 days
+- Verify: Alert severity = high risk
+- Simulate overdue by 65 days on critical asset
+- Verify: Alert severity = critical and appears in HQ escalation queue
+
+Scenario 5: Lag Alert Resolution
+- Branch completes overdue maintenance service
+- Verify: Matching lag alert transitions from open to resolved automatically
+- Verify: Branch and HQ dashboards update counts and compliance metrics
+
+Scenario 6: HQ Read-Only Financial Oversight
+- Log in as HQ user
+- View branch financial summaries
+- Verify: HQ can see branch totals and payment status trends
+- Verify: HQ cannot mark branch invoices as paid or edit branch billing records
+
+DATA VALIDATION CHECKLIST
+- [ ] Branch billing and payments are fully branch-scoped
+- [ ] HQ does not run centralized payable workflow for franchise branches
+- [ ] No required HQ order-number field for this persona
+- [ ] Optional branch reference number is supported without enforcing format
+- [ ] Branch ownership and role boundaries are enforced for data access
+- [ ] HQ can view adequacy KPIs for all branches
+- [ ] Service lag alerts trigger correctly by overdue thresholds
+- [ ] Critical assets overdue trigger highest severity alerts
+- [ ] Alert resolution closes after qualifying completed service
+- [ ] Branch health ranking recalculates when service data changes
+- [ ] Compliance percentages and response-time averages are accurate
