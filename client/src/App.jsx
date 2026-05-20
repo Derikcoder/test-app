@@ -124,7 +124,7 @@ const AdminRoute = ({ children }) => {
 const ProfileRoute = () => {
   const { user } = useAuth();
 
-  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile />;
+  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile workspaceMode="profile" />;
 
   if (user?.role === 'customer') {
     return <Navigate to="/customer/dashboard" replace />;
@@ -139,8 +139,24 @@ const ProfileRoute = () => {
  */
 const ServiceCallsRoute = () => {
   const { user } = useAuth();
-  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile />;
+  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile workspaceMode="service-calls" />;
   return <ServiceCalls />;
+};
+
+/**
+ * Role-based dashboard route — gives field agents a dedicated dashboard route,
+ * while preserving existing behavior for other roles.
+ */
+const DashboardRoute = () => {
+  const { user } = useAuth();
+
+  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile workspaceMode="dashboard" />;
+
+  if (user?.role === 'customer') {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+
+  return <Navigate to="/profile" replace />;
 };
 
 /**
@@ -176,6 +192,14 @@ function App() {
             <Route path="/quotation-approval/:token" element={<QuotationApprovalPage />} />
 
             {/* Protected Routes - Require authentication */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardRoute />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/profile"
               element={

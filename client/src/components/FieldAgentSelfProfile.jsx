@@ -4,12 +4,20 @@ import Sidebar from './Sidebar';
 import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
 import SiteInstructionModal from './SiteInstructionModal';
+import { VISIBLE_AGENT_CATEGORIES, getAllowedSkillsForCategory } from '../constants/agentTaxonomy';
+import {
+ getConfirmPasswordBorderClass,
+ getPasswordInputBorderClass,
+} from '../utils/passwordSecurity';
 
 const pageShellClass = 'min-h-screen bg-slate-950 pt-20 pb-8 px-3 sm:px-6 lg:px-8';
 const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
 const statCardClass = 'rounded-xl border border-slate-700 bg-slate-900/85 p-6';
 const tabActiveClass = 'text-cyan-300 border-b-2 border-cyan-300';
 const tabInactiveClass = 'text-slate-300 hover:text-slate-100';
+const MAX_PROFILE_PHOTO_BYTES = 500 * 1024;
+const PROFILE_PHOTO_DIMENSION = 512;
+const ALLOWED_PROFILE_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png'];
 const roleLabelMap = {
  superAdmin: 'Super Admin',
  businessAdministrator: 'Business Administrator',
@@ -17,10 +25,40 @@ const roleLabelMap = {
  customer: 'Customer',
 };
 
-const FieldAgentSelfProfile = () => {
- const { user } = useAuth();
+const createEmptyProvider = () => ({
+ businessName: '',
+ location: '',
+ category: '',
+ supplierProductType: '',
+ preferredBrands: '',
+});
+
+const normalizeProviderForForm = (provider) => ({
+ businessName: provider?.businessName || '',
+ location: provider?.location || '',
+ category: provider?.category || '',
+ supplierProductType: provider?.supplierProductType || '',
+ preferredBrands: Array.isArray(provider?.preferredBrands) ? provider.preferredBrands.join(', ') : '',
+});
+
+const serializeProviderForSave = (provider) => ({
+ businessName: provider.businessName,
+ location: provider.location,
+ category: provider.category,
+ supplierProductType: provider.supplierProductType,
+ preferredBrands: String(provider.preferredBrands || '')
+  .split(',')
+  .map((brand) => brand.trim())
+  .filter(Boolean),
+});
+
+const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
+ const { user, updateUser } = useAuth();
  const id = user?.fieldServiceAgentProfile;
  const roleLabel = roleLabelMap[user?.role] || 'Field Service Agent';
+ const isDashboardView = workspaceMode === 'dashboard';
+ const isProfileView = workspaceMode === 'profile';
+ const isServiceCallsView = workspaceMode === 'service-calls';
  const [agent, setAgent] = useState(null);
  const [serviceCalls, setServiceCalls] = useState([]);
  const [eligibleUnassignedCalls, setEligibleUnassignedCalls] = useState([]);
@@ -35,6 +73,31 @@ const FieldAgentSelfProfile = () => {
  const [resendingQuotationId, setResendingQuotationId] = useState(null);
  const [activeTab, setActiveTab] = useState('all');
  const [editingQuotation, setEditingQuotation] = useState(null);
+ const [particularsForm, setParticularsForm] = useState({
+  email: '',
+  phoneNumber: '',
+  backupEmail: '',
+  assignedArea: '',
+  vehicleNumber: '',
+  category: 'Mechanical',
+  skills: [],
+  notes: '',
+  preferredSuppliers: [],
+  preferredThirdPartyServiceProviders: [],
+ });
+ const [savingParticulars, setSavingParticulars] = useState(false);
+ const [passwordForm, setPasswordForm] = useState({
+  password: '',
+  confirmPassword: '',
+ });
+ const [savingPassword, setSavingPassword] = useState(false);
+ const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
+ const passwordBorderClass = getPasswordInputBorderClass(passwordForm.password);
+ const confirmPasswordBorderClass = getConfirmPasswordBorderClass(passwordForm.password, passwordForm.confirmPassword);
+
+ const profilePhotoSrc = agent?.profilePhoto?.data && agent?.profilePhoto?.mimeType
+  ? `data:${agent.profilePhoto.mimeType};base64,${agent.profilePhoto.data}`
+  : '';
 
  const handleEditQuotation = async (quotationId) => {
   try {
@@ -104,6 +167,29 @@ const FieldAgentSelfProfile = () => {
   fetchAgentData();
  }, [user?.fieldServiceAgentProfile]);
 
+ useEffect(() => {
+  if (!agent) return;
+
+  setParticularsForm({
+    email: agent.email || '',
+   phoneNumber: agent.phoneNumber || '',
+   backupEmail: agent.backupEmail || '',
+   assignedArea: agent.assignedArea || '',
+   vehicleNumber: agent.vehicleNumber || '',
+   category: agent.category || 'Mechanical',
+   skills: Array.isArray(agent.skills) ? agent.skills : [],
+   notes: agent.notes || '',
+  preferredSuppliers: Array.isArray(agent.preferredSuppliers)
+   ? agent.preferredSuppliers.map(normalizeProviderForForm)
+   : [],
+  preferredThirdPartyServiceProviders: Array.isArray(agent.preferredThirdPartyServiceProviders)
+   ? agent.preferredThirdPartyServiceProviders.map(normalizeProviderForForm)
+   : [],
+  });
+ }, [agent]);
+
+ const categorySkills = getAllowedSkillsForCategory(particularsForm.category);
+
  const fetchAgentData = async () => {
   if (!id) {
    setError('No agent profile linked to your account. Please contact your administrator.');
@@ -142,6 +228,204 @@ const FieldAgentSelfProfile = () => {
    }
   } finally {
    setLoading(false);
+  }
+ };
+
+ const handleParticularsChange = (event) => {
+  const { name, value } = event.target;
+
+  if (name === 'category') {
+   const allowedSkills = getAllowedSkillsForCategory(value);
+   setParticularsForm((prev) => ({
+    ...prev,
+    category: value,
+    skills: (prev.skills || []).filter((skill) => allowedSkills.includes(skill)),
+   }));
+   return;
+  }
+
+  setParticularsForm((prev) => ({ ...prev, [name]: value }));
+ };
+
+ const handleParticularSkillToggle = (skill) => {
+  setParticularsForm((prev) => {
+   const existing = Array.isArray(prev.skills) ? prev.skills : [];
+   const skills = existing.includes(skill)
+    ? existing.filter((value) => value !== skill)
+    : [...existing, skill];
+
+   return { ...prev, skills };
+  });
+ };
+
+ const addPreferredProvider = (listName) => {
+  setParticularsForm((prev) => ({
+   ...prev,
+   [listName]: [...(prev[listName] || []), createEmptyProvider()],
+  }));
+ };
+
+ const removePreferredProvider = (listName, index) => {
+  setParticularsForm((prev) => ({
+   ...prev,
+   [listName]: (prev[listName] || []).filter((_, itemIndex) => itemIndex !== index),
+  }));
+ };
+
+ const updatePreferredProviderField = (listName, index, field, value) => {
+  setParticularsForm((prev) => ({
+   ...prev,
+   [listName]: (prev[listName] || []).map((provider, itemIndex) => {
+    if (itemIndex !== index) return provider;
+    return {
+     ...provider,
+     [field]: value,
+    };
+   }),
+  }));
+ };
+
+ const saveParticulars = async () => {
+  if (!agent?._id) return;
+
+  setActionError('');
+  setActionSuccess('');
+  setSavingParticulars(true);
+
+  try {
+   await api.put(
+    `/agents/${agent._id}`,
+    {
+      email: particularsForm.email,
+     phoneNumber: particularsForm.phoneNumber,
+     backupEmail: particularsForm.backupEmail,
+     assignedArea: particularsForm.assignedArea,
+     vehicleNumber: particularsForm.vehicleNumber,
+      category: particularsForm.category,
+      skills: particularsForm.skills,
+     notes: particularsForm.notes,
+    preferredSuppliers: (particularsForm.preferredSuppliers || []).map(serializeProviderForSave),
+    preferredThirdPartyServiceProviders: (particularsForm.preferredThirdPartyServiceProviders || []).map(serializeProviderForSave),
+    },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+
+   setActionSuccess('Dashboard particulars updated successfully.');
+   await fetchAgentData();
+  } catch (err) {
+   setActionError(err?.response?.data?.message || 'Failed to update particulars.');
+  } finally {
+   setSavingParticulars(false);
+  }
+ };
+
+ const handlePasswordChange = (event) => {
+  const { name, value } = event.target;
+  setPasswordForm((prev) => ({ ...prev, [name]: value }));
+ };
+
+ const savePassword = async () => {
+  setActionError('');
+  setActionSuccess('');
+
+  if (!passwordForm.password) {
+   setActionError('New password is required.');
+   return;
+  }
+
+  if (passwordForm.password.length < 6) {
+   setActionError('Password must be at least 6 characters.');
+   return;
+  }
+
+  if (passwordForm.password !== passwordForm.confirmPassword) {
+   setActionError('Passwords do not match.');
+   return;
+  }
+
+  setSavingPassword(true);
+
+  try {
+   const response = await api.put(
+    '/auth/profile',
+    { password: passwordForm.password },
+    { headers: { Authorization: `Bearer ${user.token}` } }
+   );
+
+   updateUser(response.data);
+   setActionSuccess('Password updated successfully.');
+   setPasswordForm({ password: '', confirmPassword: '' });
+  } catch (err) {
+   setActionError(err?.response?.data?.message || 'Failed to update password.');
+  } finally {
+   setSavingPassword(false);
+  }
+ };
+
+ const loadImageDimensions = (file) => new Promise((resolve, reject) => {
+  const objectUrl = window.URL.createObjectURL(file);
+  const image = new Image();
+
+  image.onload = () => {
+   const dimensions = { width: image.width, height: image.height };
+   window.URL.revokeObjectURL(objectUrl);
+   resolve(dimensions);
+  };
+
+  image.onerror = () => {
+   window.URL.revokeObjectURL(objectUrl);
+   reject(new Error('Unable to read image dimensions'));
+  };
+
+  image.src = objectUrl;
+ });
+
+ const handleProfilePhotoSelect = async (event) => {
+  const [file] = event.target.files || [];
+  if (!file || !agent?._id) return;
+
+  setActionError('');
+  setActionSuccess('');
+
+  if (!ALLOWED_PROFILE_PHOTO_MIME_TYPES.includes(file.type)) {
+   setActionError('Profile photo must be JPG or PNG.');
+   event.target.value = '';
+   return;
+  }
+
+  if (file.size > MAX_PROFILE_PHOTO_BYTES) {
+   setActionError('Profile photo must be 500KB or less.');
+   event.target.value = '';
+   return;
+  }
+
+  try {
+   const dimensions = await loadImageDimensions(file);
+   if (dimensions.width !== PROFILE_PHOTO_DIMENSION || dimensions.height !== PROFILE_PHOTO_DIMENSION) {
+    setActionError('Profile photo must be exactly 512x512 pixels.');
+    event.target.value = '';
+    return;
+   }
+
+   setUploadingProfilePhoto(true);
+
+   const formData = new FormData();
+   formData.append('profilePhoto', file);
+
+   await api.patch(`/agents/${agent._id}/profile-photo`, formData, {
+    headers: {
+     Authorization: `Bearer ${user.token}`,
+     'Content-Type': 'multipart/form-data',
+    },
+   });
+
+   setActionSuccess('Profile photo updated successfully.');
+   await fetchAgentData();
+  } catch (err) {
+   setActionError(err?.response?.data?.message || err.message || 'Failed to upload profile photo.');
+  } finally {
+   setUploadingProfilePhoto(false);
+   event.target.value = '';
   }
  };
 
@@ -433,20 +717,30 @@ const FieldAgentSelfProfile = () => {
        {roleLabel}
       </span>
       <span className="inline-flex items-center rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200">
-       My Profile
+       {isDashboardView ? 'Dashboard' : isProfileView ? 'My Profile' : 'Service Calls'}
       </span>
      </div>
 
      <div className="mb-6 rounded-xl border border-cyan-800 bg-cyan-950/50 px-4 py-3 text-sm text-cyan-100">
-      My Workspace | My Assigned Service Calls
+      {isDashboardView
+       ? 'My Workspace | Dashboard Overview'
+       : isProfileView
+        ? 'My Workspace | Profile Details'
+        : 'My Workspace | My Assigned Service Calls'}
      </div>
 
      {/* Agent Profile Header */}
      <div className={`${panelClass} overflow-hidden mb-8`}>
       <div className="bg-slate-900 border-b border-slate-700 px-5 sm:px-8 py-6">
        <div className="flex items-center gap-6">
-        <div className="w-24 h-24 bg-gradient-to-br from-cyan-800 to-slate-900 rounded-full flex items-center justify-center text-cyan-200 text-3xl font-bold shadow-lg border border-slate-600">
-         {agent.firstName?.[0]}{agent.lastName?.[0]}
+        <div className="w-24 h-24 rounded-full shadow-lg border border-slate-600 overflow-hidden bg-gradient-to-br from-cyan-800 to-slate-900 flex items-center justify-center">
+         {profilePhotoSrc ? (
+          <img src={profilePhotoSrc} alt="Agent profile" className="h-full w-full object-cover" />
+         ) : (
+          <span className="text-cyan-200 text-3xl font-bold">
+           {agent.firstName?.[0]}{agent.lastName?.[0]}
+          </span>
+         )}
         </div>
         <div className="flex-1">
          <h1 className="text-3xl font-bold text-slate-100">
@@ -489,8 +783,9 @@ const FieldAgentSelfProfile = () => {
       </div>
      </div>
 
-     {/* Statistics Cards */}
-     <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+    {/* Statistics Cards */}
+    {isServiceCallsView && (
+    <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
       <div className={statCardClass}>
        <div className="flex items-center justify-between">
         <div>
@@ -605,6 +900,344 @@ const FieldAgentSelfProfile = () => {
        </div>
       </button>
      </div>
+      )}
+
+      {isDashboardView && (
+        <div className="mb-8 rounded-xl border border-slate-700 bg-slate-900/85 p-6">
+         <h2 className="text-xl font-semibold text-slate-100">Update My Particulars</h2>
+         <p className="mt-1 text-sm text-slate-400">
+          Maintain the contact and operational details captured during registration.
+         </p>
+
+         <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950/70 p-4">
+          <div className="flex flex-wrap items-center gap-4">
+           <div className="h-16 w-16 overflow-hidden rounded-full border border-slate-600 bg-slate-900 flex items-center justify-center">
+            {profilePhotoSrc ? (
+             <img src={profilePhotoSrc} alt="Profile preview" className="h-full w-full object-cover" />
+            ) : (
+             <span className="text-cyan-200 text-lg font-semibold">{agent.firstName?.[0]}{agent.lastName?.[0]}</span>
+            )}
+           </div>
+           <div className="text-sm text-slate-300">
+            <p className="font-semibold text-slate-100">Profile Photo</p>
+            <p className="text-xs text-slate-400">JPG or PNG, exactly 512x512, maximum 500KB.</p>
+           </div>
+           <label className={`cursor-pointer rounded-lg border px-3 py-2 text-xs font-semibold ${
+            uploadingProfilePhoto
+             ? 'border-slate-600 bg-slate-700 text-slate-300 cursor-not-allowed'
+             : 'border-cyan-700 bg-cyan-900 text-cyan-100 hover:bg-cyan-800'
+           }`}>
+            {uploadingProfilePhoto ? 'Uploading...' : 'Upload Photo'}
+            <input
+             type="file"
+             accept="image/jpeg,image/png"
+             onChange={handleProfilePhotoSelect}
+             disabled={uploadingProfilePhoto}
+             className="hidden"
+            />
+           </label>
+          </div>
+         </div>
+
+         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="text-sm text-slate-300">
+             Primary Email
+             <input
+              type="email"
+              name="email"
+              value={particularsForm.email}
+              onChange={handleParticularsChange}
+              className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+              placeholder="Business primary email"
+             />
+            </label>
+
+            <label className="text-sm text-slate-300">
+           Phone Number
+           <input
+            name="phoneNumber"
+            value={particularsForm.phoneNumber}
+            onChange={handleParticularsChange}
+            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            placeholder="Update phone number"
+           />
+          </label>
+
+          <label className="text-sm text-slate-300">
+           Backup Email
+           <input
+            name="backupEmail"
+            value={particularsForm.backupEmail}
+            onChange={handleParticularsChange}
+            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            placeholder="Optional backup email"
+           />
+          </label>
+
+          <label className="text-sm text-slate-300">
+           Assigned Area
+           <input
+            name="assignedArea"
+            value={particularsForm.assignedArea}
+            onChange={handleParticularsChange}
+            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            placeholder="Service area"
+           />
+          </label>
+
+          <label className="text-sm text-slate-300">
+           Vehicle Number
+           <input
+            name="vehicleNumber"
+            value={particularsForm.vehicleNumber}
+            onChange={handleParticularsChange}
+            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            placeholder="Vehicle registration"
+           />
+          </label>
+
+          <label className="text-sm text-slate-300">
+           Service Category
+           <select
+            name="category"
+            value={particularsForm.category}
+            onChange={handleParticularsChange}
+            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+           >
+            {VISIBLE_AGENT_CATEGORIES.map((category) => (
+             <option key={category} value={category}>{category}</option>
+            ))}
+           </select>
+          </label>
+
+          <div className="text-sm text-slate-300 md:col-span-2">
+           Skills
+           <div className="mt-1 grid grid-cols-1 gap-2 rounded-lg border border-slate-600 bg-slate-950 p-3 md:grid-cols-2 max-h-52 overflow-y-auto">
+            {categorySkills.map((skill) => (
+             <label key={skill} className="flex items-center gap-2 text-sm text-slate-200">
+              <input
+               type="checkbox"
+               checked={(particularsForm.skills || []).includes(skill)}
+               onChange={() => handleParticularSkillToggle(skill)}
+               className="form-checkbox-dark"
+              />
+              <span>{skill}</span>
+             </label>
+            ))}
+           </div>
+           <p className="mt-2 text-xs text-slate-400">Use Multi-Disciplinary for cross-category service capability.</p>
+          </div>
+
+          <label className="text-sm text-slate-300 md:col-span-2">
+           Notes
+           <textarea
+            name="notes"
+            value={particularsForm.notes}
+            onChange={handleParticularsChange}
+            className="mt-1 h-24 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            placeholder="Any operational notes"
+           />
+          </label>
+
+          <div className="md:col-span-2 rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+           <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-slate-100">Preferred Suppliers (Parts and Materials)</h3>
+            <button
+             type="button"
+             onClick={() => addPreferredProvider('preferredSuppliers')}
+             className="rounded-lg border border-cyan-700 bg-cyan-900 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-800"
+            >
+             Add Supplier
+            </button>
+           </div>
+
+           <div className="mt-4 space-y-3">
+            {(particularsForm.preferredSuppliers || []).length === 0 ? (
+             <p className="text-xs text-slate-400">No preferred suppliers added yet.</p>
+            ) : null}
+
+            {(particularsForm.preferredSuppliers || []).map((provider, index) => (
+             <div key={`supplier-${index}`} className="rounded-lg border border-slate-700 bg-slate-900/80 p-3">
+              <div className="mb-3 flex items-center justify-between">
+               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Supplier {index + 1}</p>
+               <button
+                type="button"
+                onClick={() => removePreferredProvider('preferredSuppliers', index)}
+                className="rounded-md border border-rose-700 bg-rose-900 px-2 py-1 text-xs font-semibold text-rose-100 hover:bg-rose-800"
+               >
+                Remove
+               </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+               <input
+                value={provider.businessName}
+                onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'businessName', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Business name"
+               />
+               <input
+                value={provider.location}
+                onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'location', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Location"
+               />
+               <input
+                value={provider.category}
+                onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'category', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Category"
+               />
+               <input
+                value={provider.supplierProductType}
+                onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'supplierProductType', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Supplier product type"
+               />
+               <input
+                value={provider.preferredBrands}
+                onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'preferredBrands', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 md:col-span-2"
+                placeholder="Preferred brands (comma-separated)"
+               />
+              </div>
+             </div>
+            ))}
+           </div>
+          </div>
+
+          <div className="md:col-span-2 rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+           <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-slate-100">Preferred Third Party Service Providers</h3>
+            <button
+             type="button"
+             onClick={() => addPreferredProvider('preferredThirdPartyServiceProviders')}
+             className="rounded-lg border border-cyan-700 bg-cyan-900 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-800"
+            >
+             Add Provider
+            </button>
+           </div>
+
+           <div className="mt-4 space-y-3">
+            {(particularsForm.preferredThirdPartyServiceProviders || []).length === 0 ? (
+             <p className="text-xs text-slate-400">No preferred third-party providers added yet.</p>
+            ) : null}
+
+            {(particularsForm.preferredThirdPartyServiceProviders || []).map((provider, index) => (
+             <div key={`third-party-${index}`} className="rounded-lg border border-slate-700 bg-slate-900/80 p-3">
+              <div className="mb-3 flex items-center justify-between">
+               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Provider {index + 1}</p>
+               <button
+                type="button"
+                onClick={() => removePreferredProvider('preferredThirdPartyServiceProviders', index)}
+                className="rounded-md border border-rose-700 bg-rose-900 px-2 py-1 text-xs font-semibold text-rose-100 hover:bg-rose-800"
+               >
+                Remove
+               </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+               <input
+                value={provider.businessName}
+                onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'businessName', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Business name"
+               />
+               <input
+                value={provider.location}
+                onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'location', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Location"
+               />
+               <input
+                value={provider.category}
+                onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'category', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Category"
+               />
+               <input
+                value={provider.supplierProductType}
+                onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'supplierProductType', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                placeholder="Supplier product type"
+               />
+               <input
+                value={provider.preferredBrands}
+                onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'preferredBrands', event.target.value)}
+                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 md:col-span-2"
+                placeholder="Preferred brands (comma-separated)"
+               />
+              </div>
+             </div>
+            ))}
+           </div>
+          </div>
+         </div>
+
+         <div className="mt-4 flex flex-wrap gap-3">
+          <button
+           type="button"
+           onClick={saveParticulars}
+           disabled={savingParticulars}
+           className={`rounded-lg border px-4 py-2 text-sm font-semibold text-white ${
+            savingParticulars
+             ? 'cursor-not-allowed border-slate-600 bg-slate-700/70'
+             : 'border-cyan-700 bg-cyan-900 hover:bg-cyan-800'
+           }`}
+          >
+           {savingParticulars ? 'Saving...' : 'Save Particulars'}
+          </button>
+         </div>
+
+         <div className="mt-8 border-t border-slate-700 pt-6">
+          <h3 className="text-lg font-semibold text-slate-100">Update Password</h3>
+          <p className="mt-1 text-sm text-slate-400">
+           Set your permanent password after first login or rotate it anytime.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+           <label className="text-sm text-slate-300">
+            New Password
+            <input
+             type="password"
+             name="password"
+             value={passwordForm.password}
+             onChange={handlePasswordChange}
+             className={`mt-1 w-full rounded-lg border bg-slate-950 px-3 py-2 text-slate-100 ${passwordBorderClass}`}
+             placeholder="Enter new password"
+            />
+           </label>
+
+           <label className="text-sm text-slate-300">
+            Confirm Password
+            <input
+             type="password"
+             name="confirmPassword"
+             value={passwordForm.confirmPassword}
+             onChange={handlePasswordChange}
+             className={`mt-1 w-full rounded-lg border bg-slate-950 px-3 py-2 text-slate-100 ${confirmPasswordBorderClass}`}
+             placeholder="Confirm new password"
+            />
+           </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+           <button
+            type="button"
+            onClick={savePassword}
+            disabled={savingPassword}
+            className={`rounded-lg border px-4 py-2 text-sm font-semibold text-white ${
+             savingPassword
+              ? 'cursor-not-allowed border-slate-600 bg-slate-700/70'
+              : 'border-indigo-700 bg-indigo-900 hover:bg-indigo-800'
+            }`}
+           >
+            {savingPassword ? 'Updating...' : 'Update Password'}
+           </button>
+          </div>
+         </div>
+       </div>
+      )}
      {actionError && (
       <div className="mb-4 p-4 rounded-lg border border-red-700 bg-red-950 text-red-200">{actionError}</div>
      )}
@@ -617,8 +1250,9 @@ const FieldAgentSelfProfile = () => {
       </div>
      )}
 
-     {/* Service Calls Section */}
-     <div className={`${panelClass} overflow-hidden`}>
+    {/* Service Calls Section */}
+    {isServiceCallsView && (
+    <div className={`${panelClass} overflow-hidden`}>
       <div className="px-5 sm:px-8 py-6 border-b border-slate-700 bg-slate-900/95">
        <h2 className="text-2xl font-bold text-slate-100">My Service Calls</h2>
        <p className="mt-1 text-sm text-slate-400">Track awaiting acceptance, accepted, on-hold, in-progress, and completed jobs — with quick quotation access.</p>
@@ -749,7 +1383,7 @@ const FieldAgentSelfProfile = () => {
                {call.bookingRequest && (
                 <div className="mb-4 rounded-lg border border-slate-700 bg-slate-950/70 p-4 text-sm text-slate-200">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  <div>
+                    <div>
                    <span className="text-slate-400">Customer Type:</span>
                    <span className="ml-2 capitalize">{call.bookingRequest.contact?.customerType || 'N/A'}</span>
                   </div>
@@ -1108,6 +1742,7 @@ const FieldAgentSelfProfile = () => {
        )}
       </div>
      </div>
+      )}
     </div>
    </div>
    {editingQuotation && (

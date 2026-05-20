@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getPasswordInputBorderClass } from '../utils/passwordSecurity';
 import api from '../api/axios';
 import { getPostLoginRedirect } from '../utils/authRedirect';
 
@@ -45,6 +46,7 @@ const Login = () => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const passwordBorderClass = getPasswordInputBorderClass(formData.password);
     const [infoMessage, setInfoMessage] = useState('');
 
     useEffect(() => {
@@ -221,7 +223,7 @@ const Login = () => {
                                 autoComplete="current-password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                className="glass-form-input"
+                                className={`glass-form-input ${passwordBorderClass}`}
                                 placeholder="Enter your secure password"
                             />
                         </div>

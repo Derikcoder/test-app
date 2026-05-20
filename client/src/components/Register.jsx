@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { getPostLoginRedirect } from '../utils/authRedirect';
+import {
+ getConfirmPasswordBorderClass,
+ getPasswordInputBorderClass,
+} from '../utils/passwordSecurity';
 
 const ROLE_OPTIONS = [
   {
@@ -58,6 +62,8 @@ const Register = () => {
  const requiresBusinessInfo = BUSINESS_REQUIRED_ROLES.includes(selectedRole);
  const requiresFieldAgentProfile = selectedRole === 'fieldServiceAgent';
  const requiresCustomerProfile = selectedRole === 'customer';
+ const passwordBorderClass = getPasswordInputBorderClass(formData.password);
+ const confirmPasswordBorderClass = getConfirmPasswordBorderClass(formData.password, formData.confirmPassword);
 
  const handleChange = (e) => {
   setFormData({
@@ -215,7 +221,7 @@ const Register = () => {
          required
          value={formData.password}
          onChange={handleChange}
-         className="glass-form-input"
+         className={`glass-form-input ${passwordBorderClass}`}
          placeholder="Minimum 6 characters"
         />
        </div>
@@ -227,7 +233,7 @@ const Register = () => {
          required
          value={formData.confirmPassword}
          onChange={handleChange}
-         className="glass-form-input"
+         className={`glass-form-input ${confirmPasswordBorderClass}`}
          placeholder="Re-enter password"
         />
        </div>

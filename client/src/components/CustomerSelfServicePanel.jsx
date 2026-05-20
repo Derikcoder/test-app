@@ -9,6 +9,11 @@ import { useAuth } from '../context/AuthContext';
 import { deriveCustomerAssets } from '../utils/customerAssets';
 import { getCustomerRouteSegment } from '../utils/authRedirect';
 import api from '../api/axios';
+import {
+  evaluatePasswordSecurity,
+  getConfirmPasswordBorderClass,
+  getPasswordInputBorderClass,
+} from '../utils/passwordSecurity';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -223,6 +228,10 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
   }, [serviceCalls]);
 
   const assetInventory = useMemo(() => deriveCustomerAssets(customer, serviceCalls), [customer, serviceCalls]);
+  const passwordSecurity = useMemo(
+    () => evaluatePasswordSecurity(formData.password),
+    [formData.password]
+  );
   const customerProfileSegment = getCustomerRouteSegment(customer?.customerType);
 
   const handleOpenAssetHistory = (asset) => {
@@ -504,9 +513,13 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4">
+          <div className={`rounded-2xl border p-4 ${
+            formData.password
+              ? (passwordSecurity.isSecure ? 'border-emerald-400/25 bg-emerald-500/10' : 'border-amber-400/25 bg-amber-500/10')
+              : 'border-amber-400/25 bg-amber-500/10'
+          }`}>
             <div className="mb-3">
-              <p className="text-sm font-semibold text-amber-100">Change Password</p>
+              <p className={`text-sm font-semibold ${passwordSecurity.isSecure ? 'text-emerald-100' : 'text-amber-100'}`}>Change Password</p>
               <p className="mt-1 text-xs text-amber-50/80">
                 Leave these fields blank if you do not want to change your login password today.
               </p>
@@ -514,13 +527,30 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="password">
                 New Password
-                <input id="password" type="password" value={formData.password} onChange={(e) => updateField('password', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+                <input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => updateField('password', e.target.value)}
+                  className={`rounded-lg border bg-slate-950/70 px-3 py-2 text-sm text-white outline-none ${getPasswordInputBorderClass(formData.password)}`}
+                />
               </label>
               <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="confirmPassword">
                 Confirm New Password
-                <input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={(e) => updateField('confirmPassword', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => updateField('confirmPassword', e.target.value)}
+                  className={`rounded-lg border bg-slate-950/70 px-3 py-2 text-sm text-white outline-none ${getConfirmPasswordBorderClass(formData.password, formData.confirmPassword)}`}
+                />
               </label>
             </div>
+            {formData.password ? (
+              <p className={`mt-2 text-xs ${passwordSecurity.isSecure ? 'text-emerald-200' : 'text-amber-100'}`}>
+                {passwordSecurity.label}
+              </p>
+            ) : null}
           </div>
 
           <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="notes">

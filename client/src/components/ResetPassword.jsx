@@ -12,6 +12,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { getPostLoginRedirect } from '../utils/authRedirect';
+import {
+ evaluatePasswordSecurity,
+ getConfirmPasswordBorderClass,
+ getPasswordInputBorderClass,
+} from '../utils/passwordSecurity';
 
 /**
  * Reset Password Component
@@ -47,6 +52,7 @@ const ResetPassword = () => {
  });
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false);
+ const passwordSecurity = evaluatePasswordSecurity(formData.password);
 
  /**
   * Handle Input Changes
@@ -147,7 +153,7 @@ const ResetPassword = () => {
        minLength={6}
        value={formData.password}
        onChange={handleChange}
-       className="glass-form-input"
+      className={`glass-form-input ${getPasswordInputBorderClass(formData.password)}`}
        placeholder="Enter new password (min 6 characters)"
        disabled={loading}
       />
@@ -169,7 +175,7 @@ const ResetPassword = () => {
        minLength={6}
        value={formData.confirmPassword}
        onChange={handleChange}
-       className="glass-form-input"
+      className={`glass-form-input ${getConfirmPasswordBorderClass(formData.password, formData.confirmPassword)}`}
        placeholder="Confirm your new password"
        disabled={loading}
       />
@@ -182,22 +188,25 @@ const ResetPassword = () => {
         <div className="flex-1 h-2 bg-gray-300 rounded-full overflow-hidden">
          <div 
           className={`h-full transition-all duration-300 ${
-           formData.password.length < 6 
-            ? 'w-1/3 bg-red-500' 
-            : formData.password.length < 10 
-            ? 'w-2/3 bg-yellow-500' 
-            : 'w-full bg-green-500'
+           formData.password.length < 6
+            ? 'w-1/3 bg-red-500'
+            : passwordSecurity.isSecure
+            ? 'w-full bg-green-500'
+            : 'w-2/3 bg-yellow-500'
           }`}
          />
         </div>
         <span className="text-xs font-medium" style={{ color: 'var(--primary)' }}>
-         {formData.password.length < 6 
-          ? 'Weak' 
-          : formData.password.length < 10 
-          ? 'Medium' 
-          : 'Strong'}
+         {formData.password.length < 6
+          ? 'Weak'
+          : passwordSecurity.isSecure
+          ? 'Strong'
+          : 'Medium'}
         </span>
        </div>
+       <p className="text-xs mt-2" style={{ color: passwordSecurity.isSecure ? '#86efac' : 'var(--primary)' }}>
+        {passwordSecurity.label}
+       </p>
       </div>
      )}
 

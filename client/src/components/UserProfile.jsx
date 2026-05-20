@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Sidebar from './Sidebar';
+import {
+ getConfirmPasswordBorderClass,
+ getPasswordInputBorderClass,
+} from '../utils/passwordSecurity';
 
 const UserProfile = () => {
  const navigate = useNavigate();
@@ -87,6 +91,8 @@ const UserProfile = () => {
  };
 
  const profileRole = roleDisplayName[user.role] || 'Platform User';
+ const passwordBorderClass = getPasswordInputBorderClass(formData.password);
+ const confirmPasswordBorderClass = getConfirmPasswordBorderClass(formData.password, formData.confirmPassword);
  const canOverrideRegistrationIdentifiers = user.role === 'superAdmin' || user.isSuperUser === true;
  const isRegistrationFieldLocked = (value) => !canOverrideRegistrationIdentifiers && Boolean(value?.trim());
  const registrationIdentifierFields = ['businessRegistrationNumber', 'taxNumber', 'vatNumber'];
@@ -530,7 +536,7 @@ const UserProfile = () => {
              name="password"
              value={formData.password}
              onChange={handleInputChange}
-             className="glass-form-input"
+             className={`glass-form-input ${passwordBorderClass}`}
              placeholder="Leave blank to keep current"
             />
            </div>
@@ -541,7 +547,7 @@ const UserProfile = () => {
              name="confirmPassword"
              value={formData.confirmPassword}
              onChange={handleInputChange}
-             className="glass-form-input"
+             className={`glass-form-input ${confirmPasswordBorderClass}`}
             />
            </div>
           </div>
