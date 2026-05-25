@@ -6,6 +6,7 @@ PERSONA SUMMARY
 - Persona Type: Service Agent
 - Category: Electrical Appliances
 - Objective: Resolve electrical faults and restore safe operation
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 UAT FOCUS
 - Handle electrical breakdown calls

@@ -4,6 +4,7 @@ PERSONA SUMMARY
 - Persona Type: Customer
 - Classification: Franchise network with multiple owners
 - Objective: Enable branch-owned service and billing operations while giving HQ visibility into service adequacy and lagging maintenance risk
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 OPERATING MODEL
 - Billing Ownership: Each franchise branch is responsible for its own quotes, approvals, invoices, and payments

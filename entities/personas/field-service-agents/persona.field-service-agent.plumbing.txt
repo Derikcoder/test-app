@@ -1,9 +1,12 @@
 PERSONA SUMMARY
 - Persona ID: FSA-003
 - Persona Name: Plumbing Field Service Agent
+- Email: fsa-003@test.com
+- Phone Number: (+27) 012-345-6788
 - Persona Type: Service Agent
 - Category: Plumbing
 - Objective: Resolve water system and drainage issues efficiently
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 UAT FOCUS
 - Handle leaks, blockages, pressure problems

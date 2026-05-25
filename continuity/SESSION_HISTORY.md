@@ -115,3 +115,10 @@ Chronological checkpoint record for crash recovery and continuity.
 - Checkpoint: 20260408-135848-main
 - Note: post-crash-recovery-all-committed
 - Next Action: Resume: quotation approval portal + final invoice committed; all tests green
+
+## 2026-05-20 11:36:00 SAST
+- Branch: main
+- HEAD: 02d09a9
+- Checkpoint: 20260520-113600-main
+- Note: Restore point before Field Service Agent UI logic fixes
+- Next Action: Fix broken Field Service Agent perspective UI logic, then resume UAT Section 2.3

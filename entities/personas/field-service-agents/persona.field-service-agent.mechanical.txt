@@ -4,7 +4,7 @@ PERSONA SUMMARY
 - Persona Type: Service Agent
 - Category: Mechanical
 - Objective: Diagnose and resolve mechanical service requests safely and accurately
-
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 UAT FOCUS
 - Receive and accept assigned or eligible jobs
 - Update service status and field notes

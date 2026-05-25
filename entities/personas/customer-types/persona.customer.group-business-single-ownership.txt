@@ -5,6 +5,7 @@ PERSONA SUMMARY
 - Classification: Company with multiple branches/locations, single owner/parent entity
 - Objective: Coordinate and approve services across branches, maintain centralized control over payments and vendor relationships
 - Profile Model: Decentralized service booking + centralized approval & payment
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 ORGANIZATIONAL STRUCTURE
 - Parent Company / Headquarters: Central billing, approval authority, payment control

@@ -7,6 +7,9 @@ node_modules/
 .env.local
 .env.*.local
 
+# Local test credentials (developer-only, never commit)
+entities/personas/LOCAL_TEST_CREDENTIALS.md
+
 # Local TLS certs/keys (development only)
 certs/*.pem
 certs/*-key.pem

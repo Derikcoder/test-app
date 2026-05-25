@@ -5,6 +5,7 @@ PERSONA SUMMARY
 - Classification: Single branch business, independent or standalone
 - Objective: Manage service needs for one business site, track equipment maintenance, control costs, ensure business continuity
 - Profile Source: Wentzel Optometrist Inc (Invoice 1109)
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 CUSTOMER BUSINESS PROFILE
 - Business Name: Wentzel Optometrist Inc

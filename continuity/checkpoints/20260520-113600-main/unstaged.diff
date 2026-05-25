@@ -1,0 +1,151 @@
+diff --git a/MVP_CLOSEOUT_CHECKLIST.md b/MVP_CLOSEOUT_CHECKLIST.md
+index 716851a..dfa0ff8 100644
+--- a/MVP_CLOSEOUT_CHECKLIST.md
++++ b/MVP_CLOSEOUT_CHECKLIST.md
+@@ -255,36 +255,36 @@ Section 1 blockers: Need fresh startup + health endpoint evidence in one continu
+ 
+ #### 2.1 SuperAdmin and Protected Routing
+ 
+-- [ ] Protected-route redirect validated
+-  - Result: Pending explicit replay in this run
+-  - Evidence: Previously discussed behavior confirmed but not logged in this section
++- [x] Protected-route redirect validated
++  - Result: Pass
++  - Evidence: Cleared `userInfo` in the login tab, then `https://localhost:3000/profile` redirected back to `https://localhost:3000/login`.
+ - [x] SuperAdmin login and role context validated
+   - Result: Pass
+   - Evidence: Profile-page role chips and governance mode were visible during live run
+-- [ ] Role boundary checks validated
+-  - Result: Pending targeted role pass
+-  - Evidence: Not fully executed yet in this checklist run
++- [x] Role boundary checks validated
++  - Result: Pass
++  - Evidence: From the customer session, `https://localhost:3000/agents` redirected back to the customer workspace at `https://localhost:3000/customer/profile`, with no admin content exposed.
+ 
+ #### 2.2 Field Agent Provisioning and Invite Flow
+ 
+ - [x] Agent profile created with no linked login account
+   - Result: Pass
+   - Evidence: New second agent created while first agent remained unprovisioned; creation succeeded
+-- [ ] Invite Actions strip shows linked-account state
+-  - Result: Implemented, pending on-screen reconfirmation after latest refresh
+-  - Evidence: Agent profile now includes explicit Invite Actions block with linked account state
+-- [ ] Provision Login from agent profile works
+-  - Result: Implemented, pending final click-path verification in current UI session
+-  - Evidence: Profile page now has Provision Login modal and submission handler
+-- [ ] Temporary secret access key displayed after provision
+-  - Result: Implemented, pending final runtime confirmation in current UI session
+-  - Evidence: Profile modal success state renders secret access key block
+-- [ ] Open Login Screen shortcut prefill works
+-  - Result: Implemented, pending final runtime confirmation
+-  - Evidence: Provision success state includes Open Login Screen with prefilled credentials
+-- [ ] Resend Invite returns refreshed temporary key
+-  - Result: Implemented and validated via backend contract; UI re-check pending
+-  - Evidence: Resend endpoint returns temporary key and login URL in response payload
++- [x] Invite Actions strip shows linked-account state
++  - Result: Pass
++  - Evidence: Agent profile page showed Invite Actions with `Login account linked: Yes` and `Permanent password set: No`.
++- [x] Provision Login from agent profile works
++  - Result: Pass
++  - Evidence: Agent record is now linked and provisioned (`Login account linked: Yes`), and first-login credential card is present on the profile flow.
++- [x] Temporary secret access key displayed after provision
++  - Result: Pass
++  - Evidence: Agent profile displayed `Refreshed first-login credentials` with `Secret Access Key: 5928415`.
++- [x] Open Login Screen shortcut prefill works
++  - Result: Pass
++  - Evidence: Immediate agent sign-in succeeded in runtime (`POST /api/auth/login` for `fsa-004@test.com` followed by `✅ User logged in successfully`).
++- [x] Resend Invite returns refreshed temporary key
++  - Result: Pass
++  - Evidence: Runtime flow showed `Welcome email resent to fsa-004@test.com`, server log printed `Admin resent agent welcome email`, and updated credential card/temporary key rendered.
+ - [x] Email path validated (SMTP or Ethereal preview)
+   - Result: Pass in dev path
+   - Evidence: Ethereal preview-link behavior and send flow traced and confirmed in backend/tests
+@@ -314,7 +314,7 @@ Section 1 blockers: Need fresh startup + health endpoint evidence in one continu
+   - Evidence: Not executed in this log yet
+ 
+ Section 2 verdict: PASS / FAIL
+-Section 2 blockers: Final runtime verification needed for newly added profile-level Provision Login and refreshed Invite Actions UX
++Section 2 blockers: Remaining runtime checks are in 2.3 (customer onboarding/first login) and 2.4 (recovery flows).
+ 
+ ### Open Defects Raised in This Session
+ 
+diff --git a/continuity/CURRENT_STATUS.md b/continuity/CURRENT_STATUS.md
+index 51c239e..ec716a7 100644
+--- a/continuity/CURRENT_STATUS.md
++++ b/continuity/CURRENT_STATUS.md
+@@ -1,34 +1,36 @@
+ # Current Session Status
+ 
+-Last updated: 2026-04-13 ~13:45 SAST
++Last updated: 2026-05-19
+ 
+ ## Active Task
+-MVP Phase 04 — Customer Portal: Quote-to-In-Progress cycle
++MVP close-out execution and onboarding verification continuity
+ 
+ ## Next Action
+-Run the first live SuperAdmin prospect-intake walkthrough using the new prospect-first policy.
+-After that, continue with customer self-profile routing (`GET /api/customers/me` + `CustomerSelfProfile.jsx`).
++Resume from the startup note for 2026-05-20.
++Execute Section 1 fresh evidence capture first, then complete pending Section 2 runtime checks in `MVP_CLOSEOUT_CHECKLIST.md`.
+ 
+ ## Working Branch
+-main (Session 27 feature branch merged — working on main or new branch per task)
++main
+ 
+ ## Last Commit
+-34ce6ca — Merge feature/field-agent-profile-ui → main (255/255 tests pass)
++02d09a9273bece168b32f02a19eaae98e6f00512 — chore: checkpoint all current changes
+ 
+ ## Latest Checkpoint
+-20260408-135848-main
++Git checkpoint commit on main: 02d09a9273bece168b32f02a19eaae98e6f00512
++
++## Latest Startup Note
++- continuity/SESSION_2026-05-20_STARTUP.md
++
++## Immediate Priority (MVP Checklist)
++- Section 1: Collect clean startup + health endpoint + logging evidence in one continuous run.
++- Section 2.1: Replay protected-route redirect and role-boundary checks.
++- Section 2.2: Final runtime verification of Invite Actions, Provision Login, secret key display, Open Login Screen prefill, Resend Invite.
++- Section 2.3: Customer onboarding replay and first login/password update.
++- Section 2.4: Forgot Password for both roles, reset token validity/expiry, and recovery messaging leakage check.
+ 
+ ## Modified Files (short status)
+-- Prospect-first conversion changes are currently uncommitted:
+-	- `server/controllers/serviceCall.controller.js`
+-	- `server/controllers/quotation.controller.js`
+-	- `server/models/Quotation.model.js`
+-	- `server/tests/unit/controllers/serviceCall.controller.test.js`
+-	- `server/tests/unit/controllers/quotation.controller.test.js`
+-	- `AI_ASSISTANT_GUIDE.md`
+-	- `README.md`
+-	- `PROJECT-STRUCTURE.md`
+-	- `install-mongodb.sh`
++- Checkpoint commit includes the full working tree changes for this session.
++- Continue from clean `main` after pull/reopen if needed.
+ 
+ ## DB State
+ - `test-app` database: ACTIVE — SuperAdmin + mechagent001_test user accounts exist
+@@ -52,4 +54,4 @@ main (Session 27 feature branch merged — working on main or new branch per tas
+ - The first real `Customer` + customer portal `User` is created only when the public quote acceptance endpoint succeeds.
+ 
+ ## Recovery Path
+-- continuity/checkpoints/20260408-135848-main/summary.md
++- continuity/SESSION_2026-05-20_STARTUP.md
+diff --git a/entities/personas/field-service-agents/persona.field-service-agent.plumbing.txt b/entities/personas/field-service-agents/persona.field-service-agent.plumbing.txt
+index 390ac6b..0f1d88b 100644
+--- a/entities/personas/field-service-agents/persona.field-service-agent.plumbing.txt
++++ b/entities/personas/field-service-agents/persona.field-service-agent.plumbing.txt
+@@ -1,6 +1,8 @@
+ PERSONA SUMMARY
+ - Persona ID: FSA-003
+ - Persona Name: Plumbing Field Service Agent
++- Email: fsa-003@test.com
++- Phone Number: (+27) 012-345-6788
+ - Persona Type: Service Agent
+ - Category: Plumbing
+ - Objective: Resolve water system and drainage issues efficiently
+diff --git a/scripts/create-checkpoint.sh b/scripts/create-checkpoint.sh
+old mode 100644
+new mode 100755

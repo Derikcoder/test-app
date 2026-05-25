@@ -4,6 +4,7 @@ PERSONA SUMMARY
 - Persona Type: Service Agent
 - Category: HVAC / Refrigeration
 - Objective: Maintain and restore cooling/heating systems
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 UAT FOCUS
 - Perform inspections, maintenance, and fault repairs

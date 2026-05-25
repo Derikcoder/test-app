@@ -4,6 +4,7 @@ PERSONA SUMMARY
 - Persona Type: Application Management
 - Platform Role: businessAdministrator
 - Objective: Manage operations, users, service calls, customer lifecycle
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 UAT FOCUS
 - Create and manage service calls across service categories

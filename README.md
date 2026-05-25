@@ -107,6 +107,12 @@ This is an enterprise-grade field service management application built with the 
 - 💸 Captures procurement and delivery economics: `partsProcurementCost`, `thirdPartyDeliveryCost`, and derived `estimatedPartsProfit`
 - 📅 Default quotation validity is now 14 days, with calendar override available for customer-specific arrangements
 - 🔒 Labour rate is editable by superAdmin only; backend enforces default `R650/hour` for non-super users
+- ✅ Procurement-vs-job travel separation lock:
+   - job travel uses `distanceTravelledKm` + `travelTimeMinutes` for call-out billing logic
+   - procurement uses `procurementDistanceTravelledKm` + `procurementTravelTimeMinutes` for in-house parts fulfilment costing
+- 🧮 Procurement formula lock (in-house mode):
+   - `partsProcurementCost = (procurementDistanceTravelledKm x R8.50) + ((procurementTravelTimeMinutes / 60) x R650)`
+- 👀 Procurement formula and computed result are explicitly displayed in quotation and site-instruction UI to improve auditability
 
 ### Invoice & Pro-Forma Workflow
 - 🧾 Pro-forma site instruction workflow lets field agents capture additional work, discovered problems, solutions, and deposit requirements on site
@@ -122,6 +128,10 @@ This is an enterprise-grade field service management application built with the 
 - ✅ Public customer approval/rejection endpoint available at `POST /api/invoices/share/:token/decision`
 - 🌐 Customer-facing approval route available at `/invoice-approval/:token`
 - 📊 Invoice responses include quotation variance summaries to expose billed-vs-quoted movement for customer-facing billing review
+- 🆔 Invoice numbers are now generated with an atomic sequence counter (`invoice_number`) to avoid collisions under concurrent writes
+- 🗃️ Invoices are centrally stored in one invoice registry collection with globally unique `invoiceNumber` values (`INV-XXXXXX`)
+- 🔗 Each invoice is now explicitly linked to both `customer` and `agent` identifiers for stronger traceability
+- 🔄 Invoice/pro-forma costing now mirrors quotation separation rules for procurement travel vs job travel, including legacy fallback handling
 
 ### Role-Aware Visual System
 - 🎯 Unified color legend in sidebar footer for instant entity recognition across all pages
@@ -905,11 +915,22 @@ npm update
 - **[PROJECT_TRACKING_SYSTEM.md](PROJECT_TRACKING_SYSTEM.md)** - Command-center workflow for delivery, risk, and branch operations
 - **[AGENT_OPERATING_MODEL.md](AGENT_OPERATING_MODEL.md)** - Specialized agent roles, handoffs, and rollout plan
 - **[CLEANUP_SEQUENCE_AGENT_PLAN.md](CLEANUP_SEQUENCE_AGENT_PLAN.md)** - Cleanup order-of-operations with agent delegation
+- **[COST_CALC_AUDIT_STRATEGY.md](COST_CALC_AUDIT_STRATEGY.md)** - Costing separation contract, audit checklist, and regression release gate
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
 - **[NPM_SCRIPTS.md](NPM_SCRIPTS.md)** - Complete npm scripts reference (root, client, and server)
 - **[entities/README.md](entities/README.md)** - UAT entities workspace guide (personas, templates, invoice breakdown normalization)
 
 ## 📋 Recent Updates
+
+### May 25, 2026 — Cost Contract Lock + Invoice ID Integrity + UAT Re-Entry
+
+- ✅ Locked procurement-vs-call-out travel separation across quotation and invoice/pro-forma flows
+- ✅ Added shared travel/procurement calculation utility layer with explicit formula presentation in UI
+- ✅ Added procurement-specific data contract fields on quotation/invoice schemas and recalculation paths
+- ✅ Hardened invoice numbering with atomic sequence generation (`invoice_number`) for collision-safe unique IDs
+- ✅ Added direct invoice-to-agent linkage (`agent` reference) to complement existing invoice-to-customer linkage
+- ✅ Added focused regression coverage for costing separation and schema contract locks
+- ✅ Added `COST_CALC_AUDIT_STRATEGY.md` and validated targeted client/server regression pack before UAT continuation
 
 ### May 12, 2026 — UAT Persona Expansion + Structured Invoice Schema Alignment
 

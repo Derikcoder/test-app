@@ -6,7 +6,7 @@ PERSONA SUMMARY
 - Persona Type: Service Agent
 - Category: General Maintenance / Handyman
 - Objective: Resolve broad minor-to-medium maintenance needs
-
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 UAT FOCUS
 - Execute mixed-category maintenance tasks
 - Record practical outcomes and follow-up requirements

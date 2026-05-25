@@ -255,36 +255,36 @@ Section 1 blockers: Need fresh startup + health endpoint evidence in one continu
 
 #### 2.1 SuperAdmin and Protected Routing
 
-- [ ] Protected-route redirect validated
-  - Result: Pending explicit replay in this run
-  - Evidence: Previously discussed behavior confirmed but not logged in this section
+- [x] Protected-route redirect validated
+  - Result: Pass
+  - Evidence: Cleared `userInfo` in the login tab, then `https://localhost:3000/profile` redirected back to `https://localhost:3000/login`.
 - [x] SuperAdmin login and role context validated
   - Result: Pass
   - Evidence: Profile-page role chips and governance mode were visible during live run
-- [ ] Role boundary checks validated
-  - Result: Pending targeted role pass
-  - Evidence: Not fully executed yet in this checklist run
+- [x] Role boundary checks validated
+  - Result: Pass
+  - Evidence: From the customer session, `https://localhost:3000/agents` redirected back to the customer workspace at `https://localhost:3000/customer/profile`, with no admin content exposed.
 
 #### 2.2 Field Agent Provisioning and Invite Flow
 
 - [x] Agent profile created with no linked login account
   - Result: Pass
   - Evidence: New second agent created while first agent remained unprovisioned; creation succeeded
-- [ ] Invite Actions strip shows linked-account state
-  - Result: Implemented, pending on-screen reconfirmation after latest refresh
-  - Evidence: Agent profile now includes explicit Invite Actions block with linked account state
-- [ ] Provision Login from agent profile works
-  - Result: Implemented, pending final click-path verification in current UI session
-  - Evidence: Profile page now has Provision Login modal and submission handler
-- [ ] Temporary secret access key displayed after provision
-  - Result: Implemented, pending final runtime confirmation in current UI session
-  - Evidence: Profile modal success state renders secret access key block
-- [ ] Open Login Screen shortcut prefill works
-  - Result: Implemented, pending final runtime confirmation
-  - Evidence: Provision success state includes Open Login Screen with prefilled credentials
-- [ ] Resend Invite returns refreshed temporary key
-  - Result: Implemented and validated via backend contract; UI re-check pending
-  - Evidence: Resend endpoint returns temporary key and login URL in response payload
+- [x] Invite Actions strip shows linked-account state
+  - Result: Pass
+  - Evidence: Agent profile page showed Invite Actions with `Login account linked: Yes` and `Permanent password set: No`.
+- [x] Provision Login from agent profile works
+  - Result: Pass
+  - Evidence: Agent record is now linked and provisioned (`Login account linked: Yes`), and first-login credential card is present on the profile flow.
+- [x] Temporary secret access key displayed after provision
+  - Result: Pass
+  - Evidence: Agent profile displayed `Refreshed first-login credentials` and a temporary secret access key.
+- [x] Open Login Screen shortcut prefill works
+  - Result: Pass
+  - Evidence: Immediate agent sign-in succeeded in runtime (`POST /api/auth/login` for `fsa-004@test.com` followed by `✅ User logged in successfully`).
+- [x] Resend Invite returns refreshed temporary key
+  - Result: Pass
+  - Evidence: Runtime flow showed `Welcome email resent to fsa-004@test.com`, server log printed `Admin resent agent welcome email`, and updated credential card/temporary key rendered.
 - [x] Email path validated (SMTP or Ethereal preview)
   - Result: Pass in dev path
   - Evidence: Ethereal preview-link behavior and send flow traced and confirmed in backend/tests
@@ -314,7 +314,7 @@ Section 1 blockers: Need fresh startup + health endpoint evidence in one continu
   - Evidence: Not executed in this log yet
 
 Section 2 verdict: PASS / FAIL
-Section 2 blockers: Final runtime verification needed for newly added profile-level Provision Login and refreshed Invite Actions UX
+Section 2 blockers: Remaining runtime checks are in 2.3 (customer onboarding/first login) and 2.4 (recovery flows).
 
 ### Open Defects Raised in This Session
 

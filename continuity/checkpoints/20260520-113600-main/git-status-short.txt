@@ -1,0 +1,6 @@
+ M MVP_CLOSEOUT_CHECKLIST.md
+ M continuity/CURRENT_STATUS.md
+A  continuity/SESSION_2026-05-20_STARTUP.md
+ M entities/personas/field-service-agents/persona.field-service-agent.plumbing.txt
+ M scripts/create-checkpoint.sh
+?? continuity/checkpoints/20260520-113600-main/

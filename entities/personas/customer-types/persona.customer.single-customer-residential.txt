@@ -4,6 +4,7 @@ PERSONA SUMMARY
 - Persona Type: Customer
 - Classification: Residential, domestic
 - Objective: Request and receive service for home assets, manage service providers, track spending and satisfaction
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 CUSTOMER PROFILE
 - Property Type: Single residential house or small apartment

@@ -1,6 +1,6 @@
 # AI Assistant Guide - Field Service Management System
 
-**Last Updated:** April 23, 2026  
+**Last Updated:** May 25, 2026  
 **Project Version:** 1.0.0  
 **Target Audience:** AI Code Assistants (GitHub Copilot, Cursor, etc.)
 
@@ -56,6 +56,65 @@
 ## 📋 Quick Context
 
 ### Recent Changes
+
+#### Session: May 25, 2026 — Cost Separation Hardening + Invoice Identity Integrity + UAT Re-Entry Pack
+**Focus:** Lock financial correctness across quotation and invoice/pro-forma flows by separating job travel from procurement travel, enforce collision-safe invoice IDs, and prepare a clean UAT continuation path.
+
+- ✅ Added shared travel/procurement costing utilities in `client/src/utils/travelCosting.js`:
+   - `calculateCallOutTravelCost` (with call-out floor rule)
+   - `calculateProcurementCostBreakdown` (distance + labour-time only)
+   - constants: `TRAVEL_RATE_PER_KM=8.5`, `PROCUREMENT_LABOUR_RATE_PER_HOUR=650`, call-out floor settings
+- ✅ Quotation UI (`CreateQuoteModal.jsx`) now enforces strict separation:
+   - job travel inputs (`distanceTravelledKm`, `travelTimeMinutes`) are independent from procurement inputs (`procurementDistanceTravelledKm`, `procurementTravelTimeMinutes`)
+   - procurement formula is rendered explicitly in UI
+   - third-party delivery quote path uses provider quote endpoint
+- ✅ Quotation backend (`quotation.controller.js` + `Quotation.model.js`) persists and recalculates procurement-specific fields end-to-end
+- ✅ Site instruction/pro-forma UI (`SiteInstructionModal.jsx`) now mirrors the same separation contract and payload semantics as quotation flow
+- ✅ Invoice backend (`invoice.controller.js` + `Invoice.model.js`) now mirrors quotation contract:
+   - persists `procurementDistanceTravelledKm` and `procurementTravelTimeMinutes`
+   - computes in-house procurement cost from procurement variables only
+   - keeps call-out floor logic isolated to job travel
+   - maintains deterministic fallback for legacy records missing procurement fields
+- ✅ Invoice identity generation hardened for concurrency safety:
+   - replaced `countDocuments()` invoice numbering with atomic sequence generation
+   - invoice numbers now use `SequenceCounter` via `getNextSequenceValue('invoice_number')` and `formatSequenceId('INV', ...)`
+   - unique index retained and reinforced for central invoice registry behavior
+- ✅ Invoice schema now includes explicit `agent` reference (FieldServiceAgent ObjectId), so each invoice directly ties to both `customer` and `agent`
+- ✅ Invoice population and creation paths now include `agent` resolution from service-call assignment (or explicit manual payload)
+- ✅ Added/updated regression tests:
+   - `client/src/__tests__/utils/travelCosting.test.js` (NEW)
+   - `client/src/__tests__/components/CreateQuoteModal.test.jsx` updated for separation assertions
+   - `client/src/__tests__/components/SiteInstructionModal.test.jsx` (NEW) payload separation regression
+   - `server/tests/unit/controllers/quotation.model.test.mjs` updated with procurement-field lock
+   - `server/tests/unit/controllers/invoice.model.test.mjs` updated with procurement + agent lock
+- ✅ Added governance artifact `COST_CALC_AUDIT_STRATEGY.md` with:
+   - locked formulas and data contract
+   - UI/API audit checklists
+   - regression command pack and release gate
+   - spot-check scenarios for procurement-vs-call-out drift detection
+- ✅ UAT readiness sweep executed and green before restart:
+   - client targeted tests passed
+   - server targeted quotation/invoice model tests passed
+
+**Primary Files Updated (Session Scope):**
+- `client/src/utils/travelCosting.js` (NEW)
+- `client/src/components/CreateQuoteModal.jsx`
+- `client/src/components/SiteInstructionModal.jsx`
+- `client/src/__tests__/utils/travelCosting.test.js` (NEW)
+- `client/src/__tests__/components/CreateQuoteModal.test.jsx`
+- `client/src/__tests__/components/SiteInstructionModal.test.jsx` (NEW)
+- `server/models/Quotation.model.js`
+- `server/controllers/quotation.controller.js`
+- `server/models/Invoice.model.js`
+- `server/controllers/invoice.controller.js`
+- `server/routes/quotation.routes.js`
+- `server/tests/unit/controllers/quotation.model.test.mjs`
+- `server/tests/unit/controllers/invoice.model.test.mjs`
+- `COST_CALC_AUDIT_STRATEGY.md` (NEW)
+
+**Restart Handoff Note:**
+- Resume UAT from Section 2.3 then 2.4 (customer onboarding/login recovery).
+- Costing/invoice regression baseline is currently green.
 
 #### Session: April 23, 2026 — Customer Portal Navigation + Existing-Customer Booking + Location/Invoice Intelligence
 **Focus:** Consolidate customer self-service routing, remove duplicate booking capture for existing customers, and strengthen service-call/invoice traceability across customer and field-agent views.

@@ -4,6 +4,7 @@ PERSONA SUMMARY
 - Persona Type: Application Management
 - Platform Role: superAdmin
 - Objective: Full governance, configuration, audit oversight, onboarding controls
+- Login credentials: use entities/personas/LOCAL_TEST_CREDENTIALS.md (local-only, gitignored).
 
 UAT FOCUS
 - Provision users for all supported roles and customer profiles

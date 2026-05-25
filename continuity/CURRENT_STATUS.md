@@ -1,55 +1,31 @@
 # Current Session Status
 
-Last updated: 2026-04-13 ~13:45 SAST
+Last updated: 2026-05-20 11:36:00 SAST
 
 ## Active Task
-MVP Phase 04 — Customer Portal: Quote-to-In-Progress cycle
+Restore point before Field Service Agent UI logic fixes
 
 ## Next Action
-Run the first live SuperAdmin prospect-intake walkthrough using the new prospect-first policy.
-After that, continue with customer self-profile routing (`GET /api/customers/me` + `CustomerSelfProfile.jsx`).
+Fix broken Field Service Agent perspective UI logic, then resume UAT Section 2.3
 
 ## Working Branch
-main (Session 27 feature branch merged — working on main or new branch per task)
+main
 
 ## Last Commit
-34ce6ca — Merge feature/field-agent-profile-ui → main (255/255 tests pass)
+02d09a9
 
 ## Latest Checkpoint
-20260408-135848-main
+20260520-113600-main
 
 ## Modified Files (short status)
-- Prospect-first conversion changes are currently uncommitted:
-	- `server/controllers/serviceCall.controller.js`
-	- `server/controllers/quotation.controller.js`
-	- `server/models/Quotation.model.js`
-	- `server/tests/unit/controllers/serviceCall.controller.test.js`
-	- `server/tests/unit/controllers/quotation.controller.test.js`
-	- `AI_ASSISTANT_GUIDE.md`
-	- `README.md`
-	- `PROJECT-STRUCTURE.md`
-	- `install-mongodb.sh`
-
-## DB State
-- `test-app` database: ACTIVE — SuperAdmin + mechagent001_test user accounts exist
-- `test-app-test` database: DROPPED (will rebuild on next `npm test`)
-
-## UAT Credential Store
-- Location: `server/.env` → section "App Test Accounts Secrets"
-- SuperAdmin: `jj@wolmaranskontrakdienste.co.za` — active login confirmed
-- Agent: `mechagent001_test` (userName) / `privtfa1@wolmaranskontrakdienste.co.za` — active login confirmed
-- Customer (private): `privcusttest@wolmaranskontrakdienste.co.za` / `TESTADMIN` — not yet provisioned
-
-## UAT Progress
-- [x] UAT-0: Agent onboarding via email invite → set-password → login ✅
-- [ ] UAT-1: Agent first-login flow + profile view
-- [ ] UAT-2: Service call creation by agent
-- [ ] UAT-3: Quotation creation by admin
-- [ ] UAT-4: Customer portal — quote approval
-
-## Policy Update
-- Prospect-first conversion is now active: booking-request service calls and sent quotations do not create `Customer` or `User` records.
-- The first real `Customer` + customer portal `User` is created only when the public quote acceptance endpoint succeeds.
+-  M MVP_CLOSEOUT_CHECKLIST.md
+-  M continuity/CURRENT_STATUS.md
+- A  continuity/SESSION_2026-05-20_STARTUP.md
+-  M entities/personas/field-service-agents/persona.field-service-agent.plumbing.txt
+-  M scripts/create-checkpoint.sh
+- ?? continuity/checkpoints/20260520-113600-main/
 
 ## Recovery Path
-- continuity/checkpoints/20260408-135848-main/summary.md
+- continuity/checkpoints/20260520-113600-main/summary.md
+- continuity/checkpoints/20260520-113600-main/unstaged.diff
+- continuity/checkpoints/20260520-113600-main/staged.diff

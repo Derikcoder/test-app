@@ -2,7 +2,7 @@
 
 This document provides a structured, enterprise-grade overview of the codebase. It is intended to help engineers, QA, and ops teams quickly understand where key responsibilities live and how the system is organized.
 
-Last updated: 2026-04-23
+Last updated: 2026-05-25
 
 ## 🆕 Latest Update (2026-04-23)
 
@@ -11,6 +11,25 @@ Last updated: 2026-04-23
 - Updated `ServiceCallRegistration.jsx` to support existing-customer portal booking mode (repeat/new booking paths) and grouped customer linkage (`headOffice`, `branch`, `franchise`, `singleBusiness`, `residential`).
 - Added focused portal booking regression coverage in `client/src/__tests__/components/ServiceCallRegistration.portalBooking.test.jsx`.
 - Added project execution aid `MVP_PHASE8_12_SCENARIO_CHEAT_SHEET.md` for full-cycle scenario tracking.
+
+## 🆕 Latest Update (2026-05-25)
+
+- Added shared costing utility module `client/src/utils/travelCosting.js` for call-out travel and procurement breakdown calculations.
+- Updated quotation and site-instruction UIs to keep procurement travel inputs separate from call-out travel inputs.
+- Added explicit procurement fields end-to-end on quotation and invoice contracts:
+  - `procurementDistanceTravelledKm`
+  - `procurementTravelTimeMinutes`
+- Added delivery quote endpoint wiring to support third-party provider quoting from UI:
+  - `POST /api/quotations/delivery-quote`
+- Updated invoice model to use atomic sequence-based invoice numbering via `SequenceCounter` (`invoice_number`) instead of count-based numbering.
+- Added explicit invoice-to-agent linkage in `Invoice.model.js` with direct `agent` reference and central lookup index (`customer`, `agent`, `createdAt`).
+- Added focused regression tests for costing/data-contract lock:
+  - `client/src/__tests__/utils/travelCosting.test.js`
+  - `client/src/__tests__/components/SiteInstructionModal.test.jsx`
+  - updated `client/src/__tests__/components/CreateQuoteModal.test.jsx`
+  - updated `server/tests/unit/controllers/quotation.model.test.mjs`
+  - updated `server/tests/unit/controllers/invoice.model.test.mjs`
+- Added governance document `COST_CALC_AUDIT_STRATEGY.md` to codify release-gate checks for costing correctness.
 
 ---
 
