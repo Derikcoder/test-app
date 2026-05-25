@@ -10,5 +10,11 @@ describe('Invoice Model', () => {
     expect(Array.isArray(Invoice.EDITABLE_FIELDS)).toBe(true);
     expect(Invoice.IMMUTABLE_FIELDS).toContain('invoiceNumber');
     expect(Invoice.EDITABLE_FIELDS).toContain('workflowStatus');
+    expect(Invoice.schema.path('procurementDistanceTravelledKm')).toBeDefined();
+    expect(Invoice.schema.path('procurementTravelTimeMinutes')).toBeDefined();
+    expect(Invoice.schema.path('agent')).toBeDefined();
+    expect(Invoice.EDITABLE_FIELDS).toContain('procurementDistanceTravelledKm');
+    expect(Invoice.EDITABLE_FIELDS).toContain('procurementTravelTimeMinutes');
+    expect(Invoice.EDITABLE_FIELDS).toContain('agent');
   });
 });

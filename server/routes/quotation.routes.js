@@ -24,6 +24,7 @@ import {
   generateQuotationPDF,
   generateSharedQuotationPDF,
   sendQuotation,
+  getThirdPartyDeliveryQuote,
   acceptPublicQuotation,
   rejectPublicQuotation,
   getPublicQuotationByToken,
@@ -52,6 +53,13 @@ router.post('/', protect, createQuotation);
  * @access  Private (JWT required)
  */
 router.post('/from-service-call/:serviceCallId', protect, createQuotationFromServiceCall);
+
+/**
+ * @route   POST /api/quotations/delivery-quote
+ * @desc    Fetch third-party delivery quote from provider API adapter
+ * @access  Private (JWT required)
+ */
+router.post('/delivery-quote', protect, getThirdPartyDeliveryQuote);
 
 /**
  * @route   GET /api/quotations/share/:token

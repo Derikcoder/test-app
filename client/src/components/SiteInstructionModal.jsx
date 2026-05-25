@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios';
-
-const TRAVEL_RATE_PER_KM = 8.5;
-const CALL_OUT_FLOOR_DISTANCE_KM = 45;
-const CALL_OUT_FLOOR_TIME_MINUTES = 30;
-const CALL_OUT_FLOOR_AMOUNT = 650;
+import {
+  CALL_OUT_FLOOR_AMOUNT,
+  calculateCallOutTravelCost,
+  calculateProcurementCostBreakdown,
+  PROCUREMENT_LABOUR_RATE_PER_HOUR,
+  TRAVEL_RATE_PER_KM,
+} from '../utils/travelCosting';
 
 const formatCurrency = (value) => `R ${Number(value || 0).toFixed(2)}`;
 
@@ -37,6 +39,8 @@ const buildFormState = (invoice) => ({
   distanceTravelledKm: invoice?.distanceTravelledKm ?? 0,
   travelRatePerKm: invoice?.travelRatePerKm ?? TRAVEL_RATE_PER_KM,
   travelTimeMinutes: invoice?.travelTimeMinutes ?? 0,
+  procurementDistanceTravelledKm: invoice?.procurementDistanceTravelledKm ?? invoice?.distanceTravelledKm ?? 0,
+  procurementTravelTimeMinutes: invoice?.procurementTravelTimeMinutes ?? invoice?.travelTimeMinutes ?? 0,
   timeTravelledCost: invoice?.timeTravelledCost ?? 0,
   consumablesRate: invoice?.consumablesRate ?? 0,
   vatRate: invoice?.vatRate ?? 15,
@@ -62,21 +66,45 @@ const calculatePreview = (formData) => {
     unitPrice: Number(item.unitPrice) || 0,
   }));
   const partsCost = lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-  const partsProcurementCost = Number(formData.partsProcurementCost) || 0;
   const thirdPartyDeliveryCost = formData.partsFulfilmentMode === 'thirdPartyDelivery'
     ? (Number(formData.thirdPartyDeliveryCost) || 0)
     : 0;
-  const estimatedPartsProfit = partsCost - partsProcurementCost - thirdPartyDeliveryCost;
   const laborHours = Number(formData.laborHours) || 0;
   const laborRate = Number(formData.laborRate) || 0;
   const laborCost = laborHours * laborRate;
   const distanceTravelledKm = Number(formData.distanceTravelledKm) || 0;
   const travelRatePerKm = Number(formData.travelRatePerKm) || TRAVEL_RATE_PER_KM;
   const travelTimeMinutes = Number(formData.travelTimeMinutes) || 0;
+  const procurementDistanceTravelledKm = Number(formData.procurementDistanceTravelledKm) || 0;
+  const procurementTravelTimeMinutes = Number(formData.procurementTravelTimeMinutes) || 0;
   const timeTravelledCost = Number(formData.timeTravelledCost) || 0;
-  const baseTravelCost = (distanceTravelledKm * travelRatePerKm) + timeTravelledCost;
-  const isCallOutFloorApplicable = distanceTravelledKm < CALL_OUT_FLOOR_DISTANCE_KM && travelTimeMinutes < CALL_OUT_FLOOR_TIME_MINUTES;
-  const travelCost = isCallOutFloorApplicable ? Math.max(baseTravelCost, CALL_OUT_FLOOR_AMOUNT) : baseTravelCost;
+  const {
+    isCallOutFloorApplicable,
+    travelCost,
+  } = calculateCallOutTravelCost({
+    distanceTravelledKm,
+    travelRatePerKm,
+    travelTimeMinutes,
+    timeTravelledCost,
+  });
+  const procurementBreakdown = calculateProcurementCostBreakdown({
+    distanceTravelledKm: procurementDistanceTravelledKm,
+    travelRatePerKm: TRAVEL_RATE_PER_KM,
+    travelTimeMinutes: procurementTravelTimeMinutes,
+    procurementLabourRatePerHour: PROCUREMENT_LABOUR_RATE_PER_HOUR,
+  });
+  const inHouseDistanceProcurementCost = procurementBreakdown.distanceCost;
+  const inHouseTimeProcurementCost = procurementBreakdown.travelLabourCost;
+  const inHouseTravelLabourHours = procurementBreakdown.travelLabourHours;
+  const inHouseTotalProcurementCost = procurementBreakdown.totalCost;
+  const partsProcurementCost = formData.partsFulfilmentMode === 'inHouseProcurement'
+    ? inHouseTotalProcurementCost
+    : (Number(formData.partsProcurementCost) || 0);
+  const inHouseFulfilmentCost = 0;
+  const partsFulfilmentCost = formData.partsFulfilmentMode === 'thirdPartyDelivery'
+    ? thirdPartyDeliveryCost
+    : inHouseFulfilmentCost;
+  const estimatedPartsProfit = partsCost - partsProcurementCost - partsFulfilmentCost;
   const consumablesRate = Number(formData.consumablesRate) || 0;
   const consumablesCost = partsCost * (consumablesRate / 100);
   const subtotal = partsCost + laborCost + travelCost + consumablesCost;
@@ -87,7 +115,12 @@ const calculatePreview = (formData) => {
   return {
     partsCost: partsCost.toFixed(2),
     partsProcurementCost: partsProcurementCost.toFixed(2),
+    inHouseDistanceProcurementCost: inHouseDistanceProcurementCost.toFixed(2),
+    inHouseTimeProcurementCost: inHouseTimeProcurementCost.toFixed(2),
+    inHouseTravelLabourHours: inHouseTravelLabourHours.toFixed(2),
     thirdPartyDeliveryCost: thirdPartyDeliveryCost.toFixed(2),
+    inHouseFulfilmentCost: inHouseFulfilmentCost.toFixed(2),
+    partsFulfilmentCost: partsFulfilmentCost.toFixed(2),
     estimatedPartsProfit: estimatedPartsProfit.toFixed(2),
     laborHours: laborHours.toFixed(2),
     laborRate: laborRate.toFixed(2),
@@ -95,6 +128,8 @@ const calculatePreview = (formData) => {
     distanceTravelledKm: distanceTravelledKm.toFixed(2),
     travelRatePerKm: travelRatePerKm.toFixed(2),
     travelTimeMinutes: travelTimeMinutes.toFixed(2),
+    procurementDistanceTravelledKm: procurementDistanceTravelledKm.toFixed(2),
+    procurementTravelTimeMinutes: procurementTravelTimeMinutes.toFixed(2),
     timeTravelledCost: timeTravelledCost.toFixed(2),
     travelCost: travelCost.toFixed(2),
     isCallOutFloorApplicable,
@@ -111,14 +146,34 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [fetchingDeliveryQuote, setFetchingDeliveryQuote] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [portalInvite, setPortalInvite] = useState(null);
+  const [deliveryQuoteMeta, setDeliveryQuoteMeta] = useState(null);
   const [shareChannels, setShareChannels] = useState({ email: true, whatsapp: true, telegram: false });
   const [formData, setFormData] = useState(buildFormState(null));
 
   const preview = useMemo(() => calculatePreview(formData), [formData]);
+
+  useEffect(() => {
+    if (formData.partsFulfilmentMode !== 'thirdPartyDelivery') {
+      setDeliveryQuoteMeta(null);
+      setFormData((prev) => ({
+        ...prev,
+        deliveryProvider: '',
+        thirdPartyDeliveryCost: 0,
+      }));
+      return;
+    }
+
+    setDeliveryQuoteMeta(null);
+    setFormData((prev) => ({
+      ...prev,
+      thirdPartyDeliveryCost: 0,
+    }));
+  }, [formData.partsFulfilmentMode, formData.deliveryProvider, formData.procurementDistanceTravelledKm]);
 
   const openModal = async () => {
     setIsOpen(true);
@@ -150,6 +205,43 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const fetchThirdPartyDeliveryQuote = async () => {
+    if (!formData.deliveryProvider?.trim()) {
+      setError('Select or type a delivery provider before fetching a quote.');
+      return;
+    }
+
+    try {
+      setFetchingDeliveryQuote(true);
+      setError('');
+
+      const response = await api.post(
+        '/quotations/delivery-quote',
+        {
+          deliveryProvider: formData.deliveryProvider,
+          distanceTravelledKm: Number(formData.procurementDistanceTravelledKm) || 0,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const quoteAmount = Number(response.data?.quoteAmount) || 0;
+      setFormData((prev) => ({
+        ...prev,
+        thirdPartyDeliveryCost: quoteAmount,
+      }));
+      setDeliveryQuoteMeta(response.data || null);
+    } catch (quoteError) {
+      setDeliveryQuoteMeta(null);
+      setFormData((prev) => ({
+        ...prev,
+        thirdPartyDeliveryCost: 0,
+      }));
+      setError(quoteError?.response?.data?.message || 'Failed to fetch delivery quote from provider API.');
+    } finally {
+      setFetchingDeliveryQuote(false);
+    }
   };
 
   const updateSiteInstruction = (field, value) => {
@@ -194,13 +286,17 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
     })),
     partsFulfilmentMode: formData.partsFulfilmentMode,
     deliveryProvider: formData.partsFulfilmentMode === 'thirdPartyDelivery' ? formData.deliveryProvider : '',
-    partsProcurementCost: Number(formData.partsProcurementCost) || 0,
+    partsProcurementCost: formData.partsFulfilmentMode === 'inHouseProcurement'
+      ? (Number(preview.partsProcurementCost) || 0)
+      : (Number(formData.partsProcurementCost) || 0),
     thirdPartyDeliveryCost: formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (Number(formData.thirdPartyDeliveryCost) || 0) : 0,
     laborHours: Number(formData.laborHours) || 0,
     laborRate: Number(formData.laborRate) || 0,
     distanceTravelledKm: Number(formData.distanceTravelledKm) || 0,
     travelRatePerKm: Number(formData.travelRatePerKm) || TRAVEL_RATE_PER_KM,
     travelTimeMinutes: Number(formData.travelTimeMinutes) || 0,
+    procurementDistanceTravelledKm: Number(formData.procurementDistanceTravelledKm) || 0,
+    procurementTravelTimeMinutes: Number(formData.procurementTravelTimeMinutes) || 0,
     timeTravelledCost: Number(formData.timeTravelledCost) || 0,
     consumablesRate: Number(formData.consumablesRate) || 0,
     vatRate: Number(formData.vatRate) || 15,
@@ -212,8 +308,25 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
     terms: formData.terms,
   });
 
+  const validateBeforeSave = () => {
+    if (formData.partsFulfilmentMode === 'thirdPartyDelivery' && !String(formData.deliveryProvider || '').trim()) {
+      return 'Delivery provider is required for third-party delivery mode.';
+    }
+
+    if (formData.partsFulfilmentMode === 'thirdPartyDelivery' && Number(formData.thirdPartyDeliveryCost) <= 0) {
+      return 'Fetch third-party delivery cost from provider API before saving.';
+    }
+
+    return '';
+  };
+
   const saveDraft = async (nextMessage = 'Pro-forma draft saved.') => {
     if (!formData.invoiceId) return null;
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setError(validationError);
+      return null;
+    }
     setSaving(true);
     setError('');
 
@@ -439,6 +552,9 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                 <div className={panelClass}>
                   <h3 className="text-slate-100 font-semibold mb-3">Costing Controls</h3>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="md:col-span-5">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Parts Fulfilment Costing</h4>
+                    </div>
                     <div>
                       <label className={labelClass}>Parts Fulfilment</label>
                       <select value={formData.partsFulfilmentMode} onChange={(e) => updateField('partsFulfilmentMode', e.target.value)} className={inputClass}>
@@ -446,18 +562,75 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                         <option value="thirdPartyDelivery" className="text-black">Third-party Delivery</option>
                       </select>
                     </div>
-                    <div>
-                      <label className={labelClass}>Parts Procurement Cost (R)</label>
-                      <input type="number" min="0" step="0.01" value={formData.partsProcurementCost} onChange={(e) => updateField('partsProcurementCost', e.target.value)} className={inputClass} />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Delivery Provider</label>
-                      <input value={formData.deliveryProvider} onChange={(e) => updateField('deliveryProvider', e.target.value)} disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'} className={inputClass} />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Third-party Delivery Cost (R)</label>
-                      <input type="number" min="0" step="0.01" value={formData.thirdPartyDeliveryCost} onChange={(e) => updateField('thirdPartyDeliveryCost', e.target.value)} disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'} className={inputClass} />
-                    </div>
+                    {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                      <div>
+                        <label className={labelClass}>Parts Procurement Cost (Auto Formula) (R)</label>
+                        <input value={preview.partsProcurementCost} readOnly className={`${inputClass} opacity-70`} />
+                        <div className="mt-2 grid grid-cols-1 gap-2">
+                          <div>
+                            <label className={labelClass}>Procurement Distance Travelled (km)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formData.procurementDistanceTravelledKm}
+                              onChange={(e) => updateField('procurementDistanceTravelledKm', e.target.value)}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Procurement Travel Time (minutes)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={formData.procurementTravelTimeMinutes}
+                              onChange={(e) => updateField('procurementTravelTimeMinutes', e.target.value)}
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          Formula: ({preview.procurementDistanceTravelledKm} km x {formatCurrency(TRAVEL_RATE_PER_KM)}) + ({preview.inHouseTravelLabourHours} h x {formatCurrency(PROCUREMENT_LABOUR_RATE_PER_HOUR)}/h)
+                        </p>
+                        <p className="text-[11px] text-cyan-300 mt-1">
+                          Result: {formatCurrency(preview.inHouseDistanceProcurementCost)} + {formatCurrency(preview.inHouseTimeProcurementCost)} = {formatCurrency(preview.partsProcurementCost)}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">These two inputs are the required variables for procurement costing.</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className={labelClass}>Parts Procurement Cost (R)</label>
+                        <input type="number" min="0" step="0.01" value={formData.partsProcurementCost} onChange={(e) => updateField('partsProcurementCost', e.target.value)} className={inputClass} />
+                      </div>
+                    )}
+                    {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
+                      <>
+                        <div>
+                          <label className={labelClass}>Delivery Provider</label>
+                          <input value={formData.deliveryProvider} onChange={(e) => updateField('deliveryProvider', e.target.value)} className={inputClass} />
+                        </div>
+                        <div>
+                          <label className={labelClass}>Third-party Delivery Cost (Provider API) (R)</label>
+                          <div className="flex gap-2">
+                            <input value={Number(formData.thirdPartyDeliveryCost || 0).toFixed(2)} readOnly className={`${inputClass} opacity-70`} />
+                            <button
+                              type="button"
+                              onClick={fetchThirdPartyDeliveryQuote}
+                              disabled={fetchingDeliveryQuote}
+                              className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-900 disabled:opacity-60"
+                            >
+                              {fetchingDeliveryQuote ? 'Fetching...' : 'Fetch API Quote'}
+                            </button>
+                          </div>
+                          {deliveryQuoteMeta?.quoteId ? (
+                            <p className="text-[11px] text-cyan-200 mt-1">Quote Ref: {deliveryQuoteMeta.quoteId}</p>
+                          ) : (
+                            <p className="text-[11px] text-slate-400 mt-1">Cost is API-derived only. Manual entry disabled.</p>
+                          )}
+                        </div>
+                      </>
+                    ) : null}
                     <div>
                       <label className={labelClass}>Labour Hours</label>
                       <input type="number" min="0" step="0.25" value={formData.laborHours} onChange={(e) => updateField('laborHours', e.target.value)} className={inputClass} />
@@ -465,6 +638,9 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                     <div>
                       <label className={labelClass}>Labour Rate (R/hour)</label>
                       <input type="number" min="0" step="0.01" value={formData.laborRate} onChange={(e) => updateField('laborRate', e.target.value)} className={inputClass} />
+                    </div>
+                    <div className="md:col-span-5">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Call-out Fee Calculation</h4>
                     </div>
                     <div>
                       <label className={labelClass}>Distance Travelled (km)</label>
@@ -479,7 +655,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                       <input type="number" min="0" step="1" value={formData.travelTimeMinutes} onChange={(e) => updateField('travelTimeMinutes', e.target.value)} className={inputClass} />
                     </div>
                     <div>
-                      <label className={labelClass}>Time Travelled Cost (R)</label>
+                      <label className={labelClass}>Time Travelled Cost (R) (Call-out Override, Optional)</label>
                       <input type="number" min="0" step="0.01" value={formData.timeTravelledCost} onChange={(e) => updateField('timeTravelledCost', e.target.value)} className={inputClass} />
                     </div>
                     <div>
@@ -493,7 +669,21 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                     <div className="md:col-span-3 rounded-lg border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-100">
                       <p>Parts Cost: {formatCurrency(preview.partsCost)}</p>
                       <p>Parts Procurement Cost: {formatCurrency(preview.partsProcurementCost)}</p>
-                      <p>Third-party Delivery Cost: {formatCurrency(preview.thirdPartyDeliveryCost)}</p>
+                      {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
+                        <p>Third-party Delivery Cost: {formatCurrency(preview.thirdPartyDeliveryCost)}</p>
+                      ) : (
+                        <p>In-house Procurement Cost (Formula): {formatCurrency(preview.partsProcurementCost)}</p>
+                      )}
+                      {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                        <p className="text-xs text-slate-400">Distance: {preview.procurementDistanceTravelledKm} km x {formatCurrency(TRAVEL_RATE_PER_KM)} = {formatCurrency(preview.inHouseDistanceProcurementCost)}</p>
+                      ) : null}
+                      {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                        <p className="text-xs text-slate-400">Time component: {preview.inHouseTravelLabourHours} h x {formatCurrency(PROCUREMENT_LABOUR_RATE_PER_HOUR)}/h = {formatCurrency(preview.inHouseTimeProcurementCost)}</p>
+                      ) : null}
+                      {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                        <p className="text-xs text-cyan-300">Standardized rule: In-house Procurement Cost = (distance x {formatCurrency(TRAVEL_RATE_PER_KM)}) + (travel time x {formatCurrency(PROCUREMENT_LABOUR_RATE_PER_HOUR)}/h)</p>
+                      ) : null}
+                      <p className="text-xs text-slate-400">Applied Fulfilment Cost: {formatCurrency(preview.partsFulfilmentCost)}</p>
                       <p className="font-semibold">Estimated Parts Profit: {formatCurrency(preview.estimatedPartsProfit)}</p>
                       <p>Labour: {preview.laborHours} h x {formatCurrency(preview.laborRate)} = {formatCurrency(preview.laborCost)}</p>
                       <p>Travel: ({preview.distanceTravelledKm} km x {formatCurrency(preview.travelRatePerKm)}) + {formatCurrency(preview.timeTravelledCost)}</p>

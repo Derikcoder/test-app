@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/axios';
+import {
+  CALL_OUT_FLOOR_AMOUNT,
+  calculateCallOutTravelCost,
+  calculateProcurementCostBreakdown,
+  CALL_OUT_FLOOR_DISTANCE_KM,
+  CALL_OUT_FLOOR_TIME_MINUTES,
+  PROCUREMENT_LABOUR_RATE_PER_HOUR,
+  TRAVEL_RATE_PER_KM,
+} from '../utils/travelCosting';
 
 const TEMPLATE_OPTIONS = [
   { value: 'auto', label: 'Auto (from machine/service data)' },
@@ -10,10 +19,6 @@ const TEMPLATE_OPTIONS = [
 ];
 
 const MIN_PROFIT_MARGIN_RATE = 0.2;
-const TRAVEL_RATE_PER_KM = 8.5;
-const CALL_OUT_FLOOR_DISTANCE_KM = 45;
-const CALL_OUT_FLOOR_TIME_MINUTES = 30;
-const CALL_OUT_FLOOR_AMOUNT = 650;
 const INCLUDED_ASSESSMENT_MINUTES = 15;
 const AUTO_RESOLUTION_SOURCE_LABELS = {
   'equipment-history': 'Equipment history',
@@ -134,12 +139,14 @@ const CreateQuoteModal = ({
   const [customers, setCustomers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [fetchingDeliveryQuote, setFetchingDeliveryQuote] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [sendSuccess, setSendSuccess] = useState('');
   const [autoResolutionInfo, setAutoResolutionInfo] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('auto');
   const [createdQuotationId, setCreatedQuotationId] = useState('');
+  const [deliveryQuoteMeta, setDeliveryQuoteMeta] = useState(null);
   const [shareChannels, setShareChannels] = useState({
     email: false,
     whatsapp: false,
@@ -183,6 +190,8 @@ const CreateQuoteModal = ({
     travelRatePerKm: sourceData.travelRatePerKm ?? TRAVEL_RATE_PER_KM,
     travelTimeMinutes: sourceData.travelTimeMinutes ?? 0,
     timeTravelledCost: sourceData.timeTravelledCost ?? 0,
+    procurementDistanceTravelledKm: sourceData.procurementDistanceTravelledKm ?? sourceData.distanceTravelledKm ?? 0,
+    procurementTravelTimeMinutes: sourceData.procurementTravelTimeMinutes ?? sourceData.travelTimeMinutes ?? 0,
     consumablesRate: sourceData.consumablesRate ?? 2,
     notes: sourceData.notes || '',
     terms: sourceData.terms || 'Payment due within 30 days. Quotation valid for 14 days from date of issue.',
@@ -254,6 +263,8 @@ const CreateQuoteModal = ({
       deliveryProvider: sourceData.deliveryProvider || prev.deliveryProvider,
       partsProcurementCost: sourceData.partsProcurementCost ?? prev.partsProcurementCost,
       thirdPartyDeliveryCost: sourceData.thirdPartyDeliveryCost ?? prev.thirdPartyDeliveryCost,
+      procurementDistanceTravelledKm: sourceData.procurementDistanceTravelledKm ?? prev.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: sourceData.procurementTravelTimeMinutes ?? prev.procurementTravelTimeMinutes,
       notes: sourceData.notes || prev.notes,
       lineItems: sourceData?.lineItems?.length ? sourceData.lineItems : prev.lineItems,
     }));
@@ -269,9 +280,29 @@ const CreateQuoteModal = ({
     sourceData.deliveryProvider,
     sourceData.partsProcurementCost,
     sourceData.thirdPartyDeliveryCost,
+    sourceData.procurementDistanceTravelledKm,
+    sourceData.procurementTravelTimeMinutes,
     sourceData.notes,
     sourceData.lineItems,
   ]);
+
+  useEffect(() => {
+    if (formData.partsFulfilmentMode !== 'thirdPartyDelivery') {
+      setDeliveryQuoteMeta(null);
+      setFormData((prev) => ({
+        ...prev,
+        deliveryProvider: '',
+        thirdPartyDeliveryCost: 0,
+      }));
+      return;
+    }
+
+    setDeliveryQuoteMeta(null);
+    setFormData((prev) => ({
+      ...prev,
+      thirdPartyDeliveryCost: 0,
+    }));
+  }, [formData.partsFulfilmentMode, formData.deliveryProvider, formData.procurementDistanceTravelledKm]);
 
   const applySuggestedTemplate = () => {
     const suggested = selectedTemplate === 'auto'
@@ -285,6 +316,43 @@ const CreateQuoteModal = ({
       ...prev,
       lineItems: suggested,
     }));
+  };
+
+  const fetchThirdPartyDeliveryQuote = async () => {
+    if (!formData.deliveryProvider?.trim()) {
+      setError('Select or type a delivery provider before fetching a quote.');
+      return;
+    }
+
+    try {
+      setFetchingDeliveryQuote(true);
+      setError('');
+
+      const response = await api.post(
+        '/quotations/delivery-quote',
+        {
+          deliveryProvider: formData.deliveryProvider,
+          distanceTravelledKm: Number(formData.procurementDistanceTravelledKm) || 0,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const quoteAmount = Number(response.data?.quoteAmount) || 0;
+      setFormData((prev) => ({
+        ...prev,
+        thirdPartyDeliveryCost: quoteAmount,
+      }));
+      setDeliveryQuoteMeta(response.data || null);
+    } catch (quoteError) {
+      setDeliveryQuoteMeta(null);
+      setFormData((prev) => ({
+        ...prev,
+        thirdPartyDeliveryCost: 0,
+      }));
+      setError(quoteError?.response?.data?.message || 'Failed to fetch delivery quote from provider API.');
+    } finally {
+      setFetchingDeliveryQuote(false);
+    }
   };
 
   useEffect(() => {
@@ -313,6 +381,8 @@ const CreateQuoteModal = ({
         travelRatePerKm: existingQuotation.travelRatePerKm ?? TRAVEL_RATE_PER_KM,
         travelTimeMinutes: existingQuotation.travelTimeMinutes ?? 0,
         timeTravelledCost: existingQuotation.timeTravelledCost ?? 0,
+        procurementDistanceTravelledKm: existingQuotation.procurementDistanceTravelledKm ?? existingQuotation.distanceTravelledKm ?? 0,
+        procurementTravelTimeMinutes: existingQuotation.procurementTravelTimeMinutes ?? existingQuotation.travelTimeMinutes ?? 0,
         consumablesRate: existingQuotation.consumablesRate ?? 2,
         notes: existingQuotation.notes || '',
         terms: existingQuotation.terms || 'Payment due within 30 days. Quotation valid for 14 days from date of issue.',
@@ -370,11 +440,9 @@ const CreateQuoteModal = ({
       const unitPrice = getMarkedUpUnitPrice(item.unitPrice);
       return sum + (quantity * unitPrice);
     }, 0);
-    const partsProcurementCost = Number(formData.partsProcurementCost) || 0;
     const thirdPartyDeliveryCost = formData.partsFulfilmentMode === 'thirdPartyDelivery'
       ? (Number(formData.thirdPartyDeliveryCost) || 0)
       : 0;
-    const estimatedPartsProfit = partsCost - partsProcurementCost - thirdPartyDeliveryCost;
 
     const labourHours = Number(formData.labourHours) || 0;
     const labourRate = Number(formData.labourRate) || 0;
@@ -383,15 +451,42 @@ const CreateQuoteModal = ({
     const travelRatePerKm = Number(formData.travelRatePerKm) || TRAVEL_RATE_PER_KM;
     const travelTimeMinutes = Number(formData.travelTimeMinutes) || 0;
     const timeTravelledCost = Number(formData.timeTravelledCost) || 0;
-    const baseTravelCost = (distanceTravelledKm * travelRatePerKm) + timeTravelledCost;
-    const isCallOutFloorApplicable = distanceTravelledKm < CALL_OUT_FLOOR_DISTANCE_KM && travelTimeMinutes < CALL_OUT_FLOOR_TIME_MINUTES;
+    const procurementDistanceTravelledKm = Number(formData.procurementDistanceTravelledKm) || 0;
+    const procurementTravelTimeMinutes = Number(formData.procurementTravelTimeMinutes) || 0;
+    const {
+      distanceTravelCost,
+      timeTravelCost,
+      baseTravelCost,
+      isCallOutFloorApplicable,
+      travelCost: travellingCost,
+    } = calculateCallOutTravelCost({
+      distanceTravelledKm,
+      travelRatePerKm,
+      travelTimeMinutes,
+      timeTravelledCost,
+    });
     const isFirstVisitCallOutPackage = isCallOutFloorApplicable && isFirstSiteVisit;
     // Labour is always billed at full hours. The R650 call-out floor is a separate
     // dispatch/assessment charge and does not replace any billed labour time.
     const chargeableLabourHours = labourHours;
-    const travellingCost = isCallOutFloorApplicable
-      ? Math.max(baseTravelCost, CALL_OUT_FLOOR_AMOUNT)
-      : baseTravelCost;
+    const procurementBreakdown = calculateProcurementCostBreakdown({
+      distanceTravelledKm: procurementDistanceTravelledKm,
+      travelRatePerKm: TRAVEL_RATE_PER_KM,
+      travelTimeMinutes: procurementTravelTimeMinutes,
+      procurementLabourRatePerHour: PROCUREMENT_LABOUR_RATE_PER_HOUR,
+    });
+    const inHouseDistanceProcurementCost = procurementBreakdown.distanceCost;
+    const inHouseTimeProcurementCost = procurementBreakdown.travelLabourCost;
+    const inHouseTravelLabourHours = procurementBreakdown.travelLabourHours;
+    const inHouseTotalProcurementCost = procurementBreakdown.totalCost;
+    const partsProcurementCost = formData.partsFulfilmentMode === 'inHouseProcurement'
+      ? inHouseTotalProcurementCost
+      : (Number(formData.partsProcurementCost) || 0);
+    const inHouseFulfilmentCost = 0;
+    const partsFulfilmentCost = formData.partsFulfilmentMode === 'thirdPartyDelivery'
+      ? thirdPartyDeliveryCost
+      : inHouseFulfilmentCost;
+    const estimatedPartsProfit = partsCost - partsProcurementCost - partsFulfilmentCost;
     const consumablesRate = Number(formData.consumablesRate) || 0;
 
     const labourCost = chargeableLabourHours * labourRate;
@@ -408,14 +503,21 @@ const CreateQuoteModal = ({
     return {
       partsCost: partsCost.toFixed(2),
       partsProcurementCost: partsProcurementCost.toFixed(2),
+      inHouseDistanceProcurementCost: inHouseDistanceProcurementCost.toFixed(2),
+      inHouseTimeProcurementCost: inHouseTimeProcurementCost.toFixed(2),
+      inHouseTravelLabourHours: inHouseTravelLabourHours.toFixed(2),
       thirdPartyDeliveryCost: thirdPartyDeliveryCost.toFixed(2),
+      inHouseFulfilmentCost: inHouseFulfilmentCost.toFixed(2),
+      partsFulfilmentCost: partsFulfilmentCost.toFixed(2),
       estimatedPartsProfit: estimatedPartsProfit.toFixed(2),
       labourHours: labourHours.toFixed(2),
       chargeableLabourHours: chargeableLabourHours.toFixed(2),
       labourCost: labourCost.toFixed(2),
       distanceTravelledKm: distanceTravelledKm.toFixed(2),
+      procurementDistanceTravelledKm: procurementDistanceTravelledKm.toFixed(2),
       travelRatePerKm: travelRatePerKm.toFixed(2),
       travelTimeMinutes: travelTimeMinutes.toFixed(2),
+      procurementTravelTimeMinutes: procurementTravelTimeMinutes.toFixed(2),
       timeTravelledCost: timeTravelledCost.toFixed(2),
       baseTravelCost: baseTravelCost.toFixed(2),
       isCallOutFloorApplicable,
@@ -431,9 +533,15 @@ const CreateQuoteModal = ({
     formData.lineItems,
     formData.labourHours,
     formData.labourRate,
+    formData.partsFulfilmentMode,
+    formData.partsProcurementCost,
+    formData.thirdPartyDeliveryCost,
+    formData.isFirstSiteVisit,
     formData.distanceTravelledKm,
+    formData.procurementDistanceTravelledKm,
     formData.travelRatePerKm,
     formData.travelTimeMinutes,
+    formData.procurementTravelTimeMinutes,
     formData.timeTravelledCost,
     formData.consumablesRate,
     formData.vatRate,
@@ -460,8 +568,16 @@ const CreateQuoteModal = ({
     if (Number(formData.travelRatePerKm) < 0) return 'Rate per km cannot be negative.';
     if (Number(formData.distanceTravelledKm) < 0) return 'Distance travelled cannot be negative.';
     if (Number(formData.travelTimeMinutes) < 0) return 'Travel time cannot be negative.';
+    if (Number(formData.procurementDistanceTravelledKm) < 0) return 'Procurement distance travelled cannot be negative.';
+    if (Number(formData.procurementTravelTimeMinutes) < 0) return 'Procurement travel time cannot be negative.';
     if (Number(formData.timeTravelledCost) < 0) return 'Time travelled cost cannot be negative.';
     if (Number(formData.consumablesRate) < 0) return 'Consumables rate cannot be negative.';
+    if (formData.partsFulfilmentMode === 'thirdPartyDelivery' && !String(formData.deliveryProvider || '').trim()) {
+      return 'Delivery provider is required for third-party delivery mode.';
+    }
+    if (formData.partsFulfilmentMode === 'thirdPartyDelivery' && Number(formData.thirdPartyDeliveryCost) <= 0) {
+      return 'Fetch third-party delivery cost from provider API before submitting.';
+    }
 
     return null;
   };
@@ -498,7 +614,9 @@ const CreateQuoteModal = ({
         deliveryProvider: formData.partsFulfilmentMode === 'thirdPartyDelivery'
           ? formData.deliveryProvider
           : '',
-        partsProcurementCost: Number(formData.partsProcurementCost) || 0,
+        partsProcurementCost: formData.partsFulfilmentMode === 'inHouseProcurement'
+          ? (Number(totals.partsProcurementCost) || 0)
+          : (Number(formData.partsProcurementCost) || 0),
         thirdPartyDeliveryCost: formData.partsFulfilmentMode === 'thirdPartyDelivery'
           ? (Number(formData.thirdPartyDeliveryCost) || 0)
           : 0,
@@ -510,6 +628,8 @@ const CreateQuoteModal = ({
         travelRatePerKm: Number(formData.travelRatePerKm) || TRAVEL_RATE_PER_KM,
         travelTimeMinutes: Number(formData.travelTimeMinutes) || 0,
         timeTravelledCost: Number(formData.timeTravelledCost) || 0,
+        procurementDistanceTravelledKm: Number(formData.procurementDistanceTravelledKm) || 0,
+        procurementTravelTimeMinutes: Number(formData.procurementTravelTimeMinutes) || 0,
         consumablesRate: Number(formData.consumablesRate) || 2,
         validUntil: formData.validUntil || undefined,
         notes: formData.notes,
@@ -889,6 +1009,7 @@ const CreateQuoteModal = ({
                     </p>
                   </div>
                   <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-white/80 mb-2">Parts Fulfilment Costing</h4>
                     <label className="glass-form-label text-white/90">Parts Fulfilment</label>
                     <select
                       value={formData.partsFulfilmentMode}
@@ -899,61 +1020,98 @@ const CreateQuoteModal = ({
                       <option value="thirdPartyDelivery" className="text-black">Third-party Delivery</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="glass-form-label text-white/90">Parts Procurement Cost (R)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.partsProcurementCost}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, partsProcurementCost: event.target.value }))}
-                      className="dark-field-input"
-                    />
-                  </div>
-                  <div>
-                    <label className="glass-form-label text-white/90">Delivery Provider</label>
-                    <input
-                      value={formData.deliveryProvider}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, deliveryProvider: event.target.value }))}
-                      placeholder="e.g. Picup"
-                      className="dark-field-input"
-                      disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'}
-                    />
-                  </div>
-                  <div>
-                    <label className="glass-form-label text-white/90">Third-party Delivery Cost (R)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.thirdPartyDeliveryCost}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, thirdPartyDeliveryCost: event.target.value }))}
-                      className="dark-field-input"
-                      disabled={formData.partsFulfilmentMode !== 'thirdPartyDelivery'}
-                    />
-                  </div>
-                  <div>
-                    <label className="glass-form-label text-white/90">Labour Hours</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      value={formData.labourHours}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, labourHours: event.target.value }))}
-                      className="dark-field-input"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 pt-8">
-                    <input
-                      id="first-site-visit"
-                      type="checkbox"
-                      checked={Boolean(formData.isFirstSiteVisit)}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, isFirstSiteVisit: event.target.checked }))}
-                      className="form-checkbox-dark"
-                    />
-                    <label htmlFor="first-site-visit" className="glass-form-label text-white/90 mb-0">
-                      First-time customer/site visit
-                    </label>
+                  {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                    <div>
+                      <label className="glass-form-label text-white/90">Parts Procurement Cost (Internal Auto Formula) (R)</label>
+                      <input
+                        value={totals.partsProcurementCost}
+                        readOnly
+                        className="dark-field-input opacity-70"
+                      />
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        <div>
+                          <label className="glass-form-label text-white/90">Procurement Distance Travelled (km)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formData.procurementDistanceTravelledKm}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, procurementDistanceTravelledKm: event.target.value }))}
+                            className="dark-field-input"
+                          />
+                        </div>
+                        <div>
+                          <label className="glass-form-label text-white/90">Procurement Travel Time (minutes)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={formData.procurementTravelTimeMinutes}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, procurementTravelTimeMinutes: event.target.value }))}
+                            className="dark-field-input"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-white/70 mt-1">
+                        Formula: ({totals.procurementDistanceTravelledKm} km x R {TRAVEL_RATE_PER_KM.toFixed(2)}) + ({totals.inHouseTravelLabourHours} h x R {PROCUREMENT_LABOUR_RATE_PER_HOUR.toFixed(2)}/h)
+                      </p>
+                      <p className="text-[11px] text-cyan-200 mt-1">
+                        Result: R {totals.inHouseDistanceProcurementCost} + R {totals.inHouseTimeProcurementCost} = R {totals.partsProcurementCost}
+                      </p>
+                      <p className="text-[11px] text-white/70 mt-1">Internal operations cost only (not added to customer subtotal).</p>
+                      <p className="text-[11px] text-white/60 mt-1">These two inputs are the required variables for procurement costing.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="glass-form-label text-white/90">Parts Procurement Cost (R)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.partsProcurementCost}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, partsProcurementCost: event.target.value }))}
+                        className="dark-field-input"
+                      />
+                    </div>
+                  )}
+                  {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
+                    <>
+                      <div>
+                        <label className="glass-form-label text-white/90">Delivery Provider</label>
+                        <input
+                          value={formData.deliveryProvider}
+                          onChange={(event) => setFormData((prev) => ({ ...prev, deliveryProvider: event.target.value }))}
+                          placeholder="e.g. Picup"
+                          className="dark-field-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="glass-form-label text-white/90">Third-party Delivery Cost (Provider API) (R)</label>
+                        <div className="flex gap-2">
+                          <input
+                            value={Number(formData.thirdPartyDeliveryCost || 0).toFixed(2)}
+                            readOnly
+                            className="dark-field-input opacity-70"
+                          />
+                          <button
+                            type="button"
+                            onClick={fetchThirdPartyDeliveryQuote}
+                            disabled={fetchingDeliveryQuote}
+                            className="glass-btn-secondary px-3 py-2 text-xs font-semibold whitespace-nowrap"
+                          >
+                            {fetchingDeliveryQuote ? 'Fetching...' : 'Fetch API Quote'}
+                          </button>
+                        </div>
+                        {deliveryQuoteMeta?.quoteId ? (
+                          <p className="text-[11px] text-cyan-200 mt-1">Quote Ref: {deliveryQuoteMeta.quoteId}</p>
+                        ) : (
+                          <p className="text-[11px] text-white/70 mt-1">Cost is API-derived only. Manual entry disabled.</p>
+                        )}
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="md:col-span-5">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-white/80 mt-1">Call-out Fee Calculation</h4>
                   </div>
                   <div>
                     <label className="glass-form-label text-white/90">Labour Rate (R/hour)</label>
@@ -1002,13 +1160,24 @@ const CreateQuoteModal = ({
                     />
                   </div>
                   <div>
-                    <label className="glass-form-label text-white/90">Time Travelled Cost (R)</label>
+                    <label className="glass-form-label text-white/90">Time Travelled Cost (R) (Call-out Override, Optional)</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={formData.timeTravelledCost}
                       onChange={(event) => setFormData((prev) => ({ ...prev, timeTravelledCost: event.target.value }))}
+                      className="dark-field-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="glass-form-label text-white/90">Labour Hours</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={formData.labourHours}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, labourHours: event.target.value }))}
                       className="dark-field-input"
                     />
                   </div>
@@ -1022,6 +1191,18 @@ const CreateQuoteModal = ({
                       onChange={(event) => setFormData((prev) => ({ ...prev, consumablesRate: event.target.value }))}
                       className="dark-field-input"
                     />
+                  </div>
+                  <div className="flex items-center gap-3 pt-8">
+                    <input
+                      id="first-site-visit"
+                      type="checkbox"
+                      checked={Boolean(formData.isFirstSiteVisit)}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, isFirstSiteVisit: event.target.checked }))}
+                      className="form-checkbox-dark"
+                    />
+                    <label htmlFor="first-site-visit" className="glass-form-label text-white/90 mb-0">
+                      First-time customer/site visit
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1050,10 +1231,23 @@ const CreateQuoteModal = ({
                 </div>
                 <div className="rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white">
                   <p>Parts Cost: R {totals.partsCost}</p>
-                  <p>Parts Procurement Cost: R {totals.partsProcurementCost}</p>
-                  <p>Third-party Delivery Cost: R {totals.thirdPartyDeliveryCost}</p>
+                  <p>Parts Procurement Cost (Internal): R {totals.partsProcurementCost}</p>
+                  {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
+                    <p>Third-party Delivery Cost: R {totals.thirdPartyDeliveryCost}</p>
+                  ) : (
+                    <p>In-house Procurement Cost (Internal Formula): R {totals.partsProcurementCost}</p>
+                  )}
+                  {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                    <p className="text-xs text-white/70">Procurement distance: {totals.procurementDistanceTravelledKm} km x R {TRAVEL_RATE_PER_KM.toFixed(2)} = R {totals.inHouseDistanceProcurementCost}</p>
+                  ) : null}
+                  {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                    <p className="text-xs text-white/70">Time component: {totals.inHouseTravelLabourHours} h x R {PROCUREMENT_LABOUR_RATE_PER_HOUR.toFixed(2)}/h = R {totals.inHouseTimeProcurementCost}</p>
+                  ) : null}
+                  {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
+                    <p className="text-xs text-cyan-200">Standardized rule: In-house Procurement Cost = (distance x R {TRAVEL_RATE_PER_KM.toFixed(2)}) + (travel time x R {PROCUREMENT_LABOUR_RATE_PER_HOUR.toFixed(2)}/h)</p>
+                  ) : null}
+                  <p className="text-xs text-white/70">Applied Fulfilment Cost: R {totals.partsFulfilmentCost}</p>
                   <p className="font-semibold">Estimated Parts Profit: R {totals.estimatedPartsProfit}</p>
-                  <p>Labour Hours: {totals.labourHours}</p>
                   {totals.isFirstVisitCallOutPackage ? (
                     <p className="text-xs text-yellow-200">First visit call-out floor: R {CALL_OUT_FLOOR_AMOUNT.toFixed(2)} (min. travel charge)</p>
                   ) : null}
@@ -1067,7 +1261,7 @@ const CreateQuoteModal = ({
                   <p>Travelling Cost: R {totals.travellingCost}</p>
                   <p>Consumables Cost: R {totals.consumablesCost}</p>
                   <p className="text-xs text-white/70 mt-1">Rule reference: 50% labour threshold = R {totals.halfLabourThreshold}</p>
-                  <p className="mt-1">Subtotal: R {totals.subtotal}</p>
+                  <p className="mt-1">Customer Subtotal (Billable): R {totals.subtotal}</p>
                   <p>VAT: R {totals.vatAmount}</p>
                   <p className="font-semibold text-yellow-200">Total: R {totals.totalAmount}</p>
                 </div>

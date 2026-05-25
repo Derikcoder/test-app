@@ -120,6 +120,11 @@ const ServiceCallRegistration = () => {
   isCustomerPortalBooking && _portalHasPastCalls ? 'repeat' : 'new',
  );
  const [selectedPastCallId, setSelectedPastCallId] = useState('');
+ const [availableAgents, setAvailableAgents] = useState([]);
+ const [publicAgentProfiles, setPublicAgentProfiles] = useState({});
+ const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
+ const [agentProfilesError, setAgentProfilesError] = useState('');
+ const [selectedAgentId, setSelectedAgentId] = useState('');
 
 // Machine selection integration
 const [selectedMachine, setSelectedMachine] = useState(null);
@@ -219,6 +224,37 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
   setQuotationTemplate(null);
  };
 
+   const fetchAgentProfilesForBooking = async () => {
+    try {
+     setIsLoadingAgentProfiles(true);
+     setAgentProfilesError('');
+
+     const availableResponse = await api.get('/agents/available/list', {
+      headers: { Authorization: `Bearer ${user?.token}` },
+     });
+
+     const agents = Array.isArray(availableResponse.data) ? availableResponse.data : [];
+     setAvailableAgents(agents);
+
+     const profileResponses = await Promise.all(
+      agents.map(async (agent) => {
+       const profileResponse = await api.get(`/agents/public/${agent._id}`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+       });
+       return [agent._id, profileResponse.data];
+      })
+     );
+
+     setPublicAgentProfiles(Object.fromEntries(profileResponses));
+    } catch {
+     setAvailableAgents([]);
+     setPublicAgentProfiles({});
+     setAgentProfilesError('Unable to load validated agent profiles right now. You can still submit and have dispatch assign later.');
+    } finally {
+     setIsLoadingAgentProfiles(false);
+    }
+   };
+
  const getServiceCallContactEmail = (call) => {
   const bookingEmail = call?.bookingRequest?.contact?.contactEmail;
   if (bookingEmail) return String(bookingEmail).toLowerCase().trim();
@@ -265,7 +301,18 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
  useEffect(() => {
   if (!user?.token) return;
   fetchServiceCalls();
+  fetchAgentProfilesForBooking();
  }, [user?.token]);
+
+ const getMachineCoverageSummary = (profile) => {
+  const jobs = Array.isArray(profile?.serviceReport?.recentServiceEvidence)
+   ? profile.serviceReport.recentServiceEvidence
+   : [];
+  if (!jobs.length) return 'No completed/invoiced evidence yet';
+
+  const machineLinked = jobs.filter((job) => job?.hasMachineLink).length;
+  return `${machineLinked}/${jobs.length} recent completed jobs machine-linked`;
+ };
 
  useEffect(() => {
   const isBranch =
@@ -680,6 +727,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
     scheduledDate: new Date(formData.dateOfPreferredServiceCall).toISOString(),
     serviceLocation: resolvedServiceLocation,
     machineId: selectedMachineId || null,
+    assignedAgent: selectedAgentId || null,
     bookingRequest: {
       contact: {
         customerType: formData.customerType,
@@ -1020,6 +1068,94 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
           Select category first. Equipment details appear only for request types that require machine-specific information.
          </p>
         </section>
+
+          <section className="space-y-4">
+           <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="glass-heading-secondary">Choose Your Service Agent (Validated Sources of Truth)</h2>
+            {isLoadingAgentProfiles ? <span className="text-xs text-white/60">Loading agent evidence...</span> : null}
+           </div>
+           <p className="text-xs text-white/70">
+            Ratings, service outcomes, machine-link coverage, expertise brands, and supplier network data are pulled from the agent&apos;s public service report.
+           </p>
+
+           {agentProfilesError ? (
+            <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-amber-100 text-sm">
+             {agentProfilesError}
+            </div>
+           ) : null}
+
+           {(availableAgents || []).length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+             {availableAgents.map((agent) => {
+              const profile = publicAgentProfiles[agent._id] || {};
+              const machineCoverageSummary = getMachineCoverageSummary(profile);
+              const rating = Number(profile?.averageRating || 0);
+              const ratingsCount = Number(profile?.ratingsCount || 0);
+              const completedJobs = Number(profile?.serviceReport?.completedOrInvoicedJobs || 0);
+
+              return (
+               <label
+                key={agent._id}
+                className={`rounded-xl border p-4 cursor-pointer transition ${
+                 selectedAgentId === agent._id
+                  ? 'border-cyan-400/70 bg-cyan-900/30'
+                  : 'border-white/20 bg-slate-900/40 hover:border-white/40'
+                }`}
+               >
+                <div className="flex items-start gap-3">
+                 <input
+                  type="radio"
+                  name="selectedAgentId"
+                  value={agent._id}
+                  checked={selectedAgentId === agent._id}
+                  onChange={() => setSelectedAgentId(agent._id)}
+                  className="mt-1 accent-cyan-400"
+                 />
+                 <div className="flex-1 space-y-2">
+                  <p className="font-semibold text-white">
+                   {`${agent.firstName || ''} ${agent.lastName || ''}`.trim() || agent.employeeId}
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-[11px]">
+                   <span className="rounded-full border border-cyan-500/40 bg-cyan-900/20 px-2 py-1 text-cyan-200">{agent.employeeId}</span>
+                   <span className="rounded-full border border-emerald-500/40 bg-emerald-900/20 px-2 py-1 text-emerald-200">
+                    {ratingsCount > 0 ? `${rating.toFixed(1)} / 5 (${ratingsCount})` : 'Not rated yet'}
+                   </span>
+                   <span className="rounded-full border border-indigo-500/40 bg-indigo-900/20 px-2 py-1 text-indigo-200">
+                    {completedJobs} completed/invoiced jobs
+                   </span>
+                  </div>
+                  <p className="text-xs text-white/75">Machine coverage: {machineCoverageSummary}</p>
+                  <p className="text-xs text-white/75">
+                   Brands: {(profile?.expertiseBrands || []).slice(0, 4).join(', ') || 'No brand evidence yet'}
+                  </p>
+                  <a
+                   href={`/agents/public/${agent._id}`}
+                   target="_blank"
+                   rel="noreferrer"
+                   className="inline-flex text-xs text-cyan-200 underline underline-offset-2 hover:text-cyan-100"
+                  >
+                   View full public service report
+                  </a>
+                 </div>
+                </div>
+               </label>
+              );
+             })}
+            </div>
+           ) : (
+            <p className="text-sm text-white/60 rounded-xl border border-white/10 bg-slate-900/40 p-4">
+             No currently available agents listed. You can still book this service call and let dispatch assign the best-fit agent.
+            </p>
+           )}
+
+           <button
+            type="button"
+            onClick={() => setSelectedAgentId('')}
+            className="text-xs text-white/70 underline underline-offset-2 hover:text-white"
+           >
+            Clear agent selection and allow dispatch assignment
+           </button>
+          </section>
 
         {isGeneralMaintenance && (
          <section className="space-y-4">

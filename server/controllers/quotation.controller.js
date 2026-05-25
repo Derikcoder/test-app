@@ -60,6 +60,8 @@ const CALL_OUT_FLOOR_DISTANCE_KM = 45;
 const CALL_OUT_FLOOR_TIME_MINUTES = 30;
 const CALL_OUT_FLOOR_AMOUNT = 650;
 const INCLUDED_ASSESSMENT_MINUTES = 15;
+const PROCUREMENT_TRAVEL_RATE_PER_KM = 8.5;
+const PROCUREMENT_TRAVEL_RATE_PER_HOUR = 650;
 
 const getDefaultValidUntilDate = () => {
   const date = new Date();
@@ -260,6 +262,56 @@ const generateQuotationPdfBuffer = (quotation) => {
   });
 };
 
+const getProviderRateConfig = (providerName = '') => {
+  const normalized = String(providerName || '').trim().toLowerCase();
+
+  if (normalized.includes('picup')) {
+    return { baseFee: 95, perKm: 6.5, providerCode: 'picup' };
+  }
+
+  if (normalized.includes('courier')) {
+    return { baseFee: 110, perKm: 7.25, providerCode: 'courier' };
+  }
+
+  return { baseFee: 120, perKm: 7.5, providerCode: 'generic-third-party' };
+};
+
+// @desc    Fetch third-party delivery quote (provider API adapter)
+// @route   POST /api/quotations/delivery-quote
+// @access  Private
+export const getThirdPartyDeliveryQuote = async (req, res) => {
+  try {
+    const providerName = String(req.body?.deliveryProvider || '').trim();
+    const distanceTravelledKm = Number(req.body?.distanceTravelledKm) || 0;
+
+    if (!providerName) {
+      return res.status(400).json({ message: 'Delivery provider is required for third-party quote' });
+    }
+
+    if (distanceTravelledKm < 0) {
+      return res.status(400).json({ message: 'Distance travelled cannot be negative' });
+    }
+
+    const { baseFee, perKm, providerCode } = getProviderRateConfig(providerName);
+    const quoteAmount = Number((baseFee + (distanceTravelledKm * perKm)).toFixed(2));
+
+    const quoteId = `DQ-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    return res.json({
+      provider: providerName,
+      providerCode,
+      quoteId,
+      quoteAmount,
+      currency: 'ZAR',
+      distanceTravelledKm,
+      source: 'provider-api-adapter',
+    });
+  } catch (error) {
+    logError('Fetch third-party delivery quote error:', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 const calculateQuotationCosts = ({
   lineItems = [],
   partsFulfilmentMode,
@@ -273,6 +325,8 @@ const calculateQuotationCosts = ({
   distanceTravelledKm,
   travelRatePerKm,
   travelTimeMinutes,
+  procurementDistanceTravelledKm,
+  procurementTravelTimeMinutes,
   timeTravelledCost,
   consumablesRate,
   isSuperUser = false,
@@ -286,11 +340,9 @@ const calculateQuotationCosts = ({
   const resolvedDeliveryProvider = resolvedPartsFulfilmentMode === 'thirdPartyDelivery'
     ? String(deliveryProvider || '').trim()
     : '';
-  const resolvedPartsProcurementCost = Number.isFinite(Number(partsProcurementCost)) ? Number(partsProcurementCost) : 0;
   const resolvedThirdPartyDeliveryCost = resolvedPartsFulfilmentMode === 'thirdPartyDelivery'
     ? (Number.isFinite(Number(thirdPartyDeliveryCost)) ? Number(thirdPartyDeliveryCost) : 0)
     : 0;
-  const estimatedPartsProfit = Number((partsCost - resolvedPartsProcurementCost - resolvedThirdPartyDeliveryCost).toFixed(2));
 
   const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
   const resolvedIsFirstSiteVisit = Boolean(isFirstSiteVisit);
@@ -301,6 +353,12 @@ const calculateQuotationCosts = ({
   const requestedTravelRatePerKm = Number.isFinite(Number(travelRatePerKm)) ? Number(travelRatePerKm) : DEFAULT_TRAVEL_RATE_PER_KM;
   const resolvedTravelRatePerKm = isSuperUser ? requestedTravelRatePerKm : DEFAULT_TRAVEL_RATE_PER_KM;
   const resolvedTravelTimeMinutes = Number.isFinite(Number(travelTimeMinutes)) ? Number(travelTimeMinutes) : 0;
+  const resolvedProcurementDistanceTravelledKm = Number.isFinite(Number(procurementDistanceTravelledKm))
+    ? Number(procurementDistanceTravelledKm)
+    : resolvedDistanceTravelledKm;
+  const resolvedProcurementTravelTimeMinutes = Number.isFinite(Number(procurementTravelTimeMinutes))
+    ? Number(procurementTravelTimeMinutes)
+    : resolvedTravelTimeMinutes;
   const resolvedTimeTravelledCost = Number.isFinite(Number(timeTravelledCost))
     ? Number(timeTravelledCost)
     : Number.isFinite(Number(travellingCost))
@@ -315,6 +373,19 @@ const calculateQuotationCosts = ({
   const resolvedTravellingCost = isCallOutFloorApplicable
     ? Number(Math.max(baseTravellingCost, CALL_OUT_FLOOR_AMOUNT).toFixed(2))
     : baseTravellingCost;
+  const inHouseDistanceProcurementCost = Number((
+    resolvedProcurementDistanceTravelledKm * PROCUREMENT_TRAVEL_RATE_PER_KM
+  ).toFixed(2));
+  const inHouseTimeProcurementCost = Number((
+    (resolvedProcurementTravelTimeMinutes / 60) * PROCUREMENT_TRAVEL_RATE_PER_HOUR
+  ).toFixed(2));
+  const inHouseTotalProcurementCost = Number((
+    inHouseDistanceProcurementCost + inHouseTimeProcurementCost
+  ).toFixed(2));
+  const resolvedPartsProcurementCost = resolvedPartsFulfilmentMode === 'inHouseProcurement'
+    ? inHouseTotalProcurementCost
+    : (Number.isFinite(Number(partsProcurementCost)) ? Number(partsProcurementCost) : 0);
+  const estimatedPartsProfit = Number((partsCost - resolvedPartsProcurementCost - resolvedThirdPartyDeliveryCost).toFixed(2));
   const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
 
   // Labour is always billed at full hours. The call-out floor fee (R650) is the separate
@@ -351,6 +422,8 @@ const calculateQuotationCosts = ({
     distanceTravelledKm: resolvedDistanceTravelledKm,
     travelRatePerKm: resolvedTravelRatePerKm,
     travelTimeMinutes: resolvedTravelTimeMinutes,
+    procurementDistanceTravelledKm: resolvedProcurementDistanceTravelledKm,
+    procurementTravelTimeMinutes: resolvedProcurementTravelTimeMinutes,
     timeTravelledCost: resolvedTimeTravelledCost,
     travellingCost: resolvedTravellingCost,
     subtotal,
@@ -503,6 +576,8 @@ export const createQuotation = async (req, res) => {
       distanceTravelledKm,
       travelRatePerKm,
       travelTimeMinutes,
+      procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes,
       timeTravelledCost,
       consumablesRate,
       isSuperUser: Boolean(req.user?.isSuperUser),
@@ -537,6 +612,8 @@ export const createQuotation = async (req, res) => {
       distanceTravelledKm: costing.distanceTravelledKm,
       travelRatePerKm: costing.travelRatePerKm,
       travelTimeMinutes: costing.travelTimeMinutes,
+      procurementDistanceTravelledKm: costing.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: costing.procurementTravelTimeMinutes,
       timeTravelledCost: costing.timeTravelledCost,
       travellingCost: costing.travellingCost,
       subtotal: costing.subtotal,
@@ -585,6 +662,8 @@ export const createQuotationFromServiceCall = async (req, res) => {
       distanceTravelledKm,
       travelRatePerKm,
       travelTimeMinutes,
+      procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes,
       timeTravelledCost,
       consumablesRate,
       vatRate,
@@ -660,6 +739,8 @@ export const createQuotationFromServiceCall = async (req, res) => {
       distanceTravelledKm,
       travelRatePerKm,
       travelTimeMinutes,
+      procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes,
       timeTravelledCost,
       consumablesRate,
       isSuperUser: Boolean(req.user?.isSuperUser),
@@ -695,6 +776,8 @@ export const createQuotationFromServiceCall = async (req, res) => {
       distanceTravelledKm: costing.distanceTravelledKm,
       travelRatePerKm: costing.travelRatePerKm,
       travelTimeMinutes: costing.travelTimeMinutes,
+      procurementDistanceTravelledKm: costing.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: costing.procurementTravelTimeMinutes,
       timeTravelledCost: costing.timeTravelledCost,
       travellingCost: costing.travellingCost,
       subtotal: costing.subtotal,
@@ -795,6 +878,8 @@ export const updateQuotation = async (req, res) => {
       'distanceTravelledKm',
       'travelRatePerKm',
       'travelTimeMinutes',
+      'procurementDistanceTravelledKm',
+      'procurementTravelTimeMinutes',
       'timeTravelledCost',
       'travellingCost',
       'consumablesRate',
@@ -814,6 +899,8 @@ export const updateQuotation = async (req, res) => {
         distanceTravelledKm: quotation.distanceTravelledKm,
         travelRatePerKm: quotation.travelRatePerKm,
         travelTimeMinutes: quotation.travelTimeMinutes,
+        procurementDistanceTravelledKm: quotation.procurementDistanceTravelledKm,
+        procurementTravelTimeMinutes: quotation.procurementTravelTimeMinutes,
         timeTravelledCost: quotation.timeTravelledCost,
         travellingCost: quotation.travellingCost,
         consumablesRate: quotation.consumablesRate,
@@ -838,6 +925,8 @@ export const updateQuotation = async (req, res) => {
       quotation.distanceTravelledKm = costing.distanceTravelledKm;
       quotation.travelRatePerKm = costing.travelRatePerKm;
       quotation.travelTimeMinutes = costing.travelTimeMinutes;
+      quotation.procurementDistanceTravelledKm = costing.procurementDistanceTravelledKm;
+      quotation.procurementTravelTimeMinutes = costing.procurementTravelTimeMinutes;
       quotation.timeTravelledCost = costing.timeTravelledCost;
       quotation.travellingCost = costing.travellingCost;
       quotation.subtotal = costing.subtotal;

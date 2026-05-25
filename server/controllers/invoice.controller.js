@@ -9,6 +9,8 @@ import { logError, logInfo } from '../middleware/logger.middleware.js';
 import { sendInvoiceDocumentEmail } from '../utils/emailService.js';
 
 const DEFAULT_TRAVEL_RATE_PER_KM = 8.5;
+const PROCUREMENT_TRAVEL_RATE_PER_KM = 8.5;
+const PROCUREMENT_TRAVEL_RATE_PER_HOUR = 650;
 const CALL_OUT_FLOOR_DISTANCE_KM = 45;
 const CALL_OUT_FLOOR_TIME_MINUTES = 30;
 const CALL_OUT_FLOOR_AMOUNT = 650;
@@ -290,6 +292,8 @@ const calculateInvoiceCosts = ({
   distanceTravelledKm,
   travelRatePerKm,
   travelTimeMinutes,
+  procurementDistanceTravelledKm,
+  procurementTravelTimeMinutes,
   timeTravelledCost,
   consumablesRate,
   vatRate,
@@ -302,18 +306,35 @@ const calculateInvoiceCosts = ({
   const resolvedDeliveryProvider = resolvedPartsFulfilmentMode === 'thirdPartyDelivery'
     ? String(deliveryProvider || '').trim()
     : '';
-  const resolvedPartsProcurementCost = Number.isFinite(Number(partsProcurementCost)) ? Number(partsProcurementCost) : 0;
   const resolvedThirdPartyDeliveryCost = resolvedPartsFulfilmentMode === 'thirdPartyDelivery'
     ? (Number.isFinite(Number(thirdPartyDeliveryCost)) ? Number(thirdPartyDeliveryCost) : 0)
     : 0;
-  const estimatedPartsProfit = Number((partsCost - resolvedPartsProcurementCost - resolvedThirdPartyDeliveryCost).toFixed(2));
   const resolvedLaborHours = Number.isFinite(Number(laborHours)) ? Number(laborHours) : 0;
   const resolvedLaborRate = Number.isFinite(Number(laborRate)) ? Number(laborRate) : 650;
   const laborCost = Number((resolvedLaborHours * resolvedLaborRate).toFixed(2));
   const resolvedDistanceTravelledKm = Number.isFinite(Number(distanceTravelledKm)) ? Number(distanceTravelledKm) : 0;
   const resolvedTravelRatePerKm = Number.isFinite(Number(travelRatePerKm)) ? Number(travelRatePerKm) : DEFAULT_TRAVEL_RATE_PER_KM;
   const resolvedTravelTimeMinutes = Number.isFinite(Number(travelTimeMinutes)) ? Number(travelTimeMinutes) : 0;
+  const resolvedProcurementDistanceTravelledKm = Number.isFinite(Number(procurementDistanceTravelledKm))
+    ? Number(procurementDistanceTravelledKm)
+    : resolvedDistanceTravelledKm;
+  const resolvedProcurementTravelTimeMinutes = Number.isFinite(Number(procurementTravelTimeMinutes))
+    ? Number(procurementTravelTimeMinutes)
+    : resolvedTravelTimeMinutes;
   const resolvedTimeTravelledCost = Number.isFinite(Number(timeTravelledCost)) ? Number(timeTravelledCost) : 0;
+  const inHouseDistanceProcurementCost = Number((
+    resolvedProcurementDistanceTravelledKm * PROCUREMENT_TRAVEL_RATE_PER_KM
+  ).toFixed(2));
+  const inHouseTimeProcurementCost = Number((
+    (resolvedProcurementTravelTimeMinutes / 60) * PROCUREMENT_TRAVEL_RATE_PER_HOUR
+  ).toFixed(2));
+  const inHouseTotalProcurementCost = Number((
+    inHouseDistanceProcurementCost + inHouseTimeProcurementCost
+  ).toFixed(2));
+  const resolvedPartsProcurementCost = resolvedPartsFulfilmentMode === 'inHouseProcurement'
+    ? inHouseTotalProcurementCost
+    : (Number.isFinite(Number(partsProcurementCost)) ? Number(partsProcurementCost) : 0);
+  const estimatedPartsProfit = Number((partsCost - resolvedPartsProcurementCost - resolvedThirdPartyDeliveryCost).toFixed(2));
   const baseTravelCost = Number(((resolvedDistanceTravelledKm * resolvedTravelRatePerKm) + resolvedTimeTravelledCost).toFixed(2));
   const isCallOutFloorApplicable = resolvedDistanceTravelledKm < CALL_OUT_FLOOR_DISTANCE_KM
     && resolvedTravelTimeMinutes < CALL_OUT_FLOOR_TIME_MINUTES;
@@ -341,6 +362,8 @@ const calculateInvoiceCosts = ({
     distanceTravelledKm: resolvedDistanceTravelledKm,
     travelRatePerKm: resolvedTravelRatePerKm,
     travelTimeMinutes: resolvedTravelTimeMinutes,
+    procurementDistanceTravelledKm: resolvedProcurementDistanceTravelledKm,
+    procurementTravelTimeMinutes: resolvedProcurementTravelTimeMinutes,
     timeTravelledCost: resolvedTimeTravelledCost,
     travelCost,
     consumablesRate: resolvedConsumablesRate,
@@ -457,6 +480,7 @@ const enrichInvoicesWithVarianceSummary = (invoices = []) => {
 const populateInvoiceDocument = async (invoiceQuery) => {
   return invoiceQuery
     .populate('customer', 'businessName contactFirstName contactLastName customerId customerType email phoneNumber alternatePhone')
+    .populate('agent', 'firstName lastName employeeId category status')
     .populate('serviceCall', 'callNumber title status completedDate scheduledDate quotation')
     .populate(
       'quotation',
@@ -551,11 +575,14 @@ const mapQuotationToInvoiceSeed = ({ quotation, serviceCall }) => {
       deliveryProvider: '',
       partsProcurementCost: 0,
       thirdPartyDeliveryCost: 0,
+      agent: serviceCall.assignedAgent || null,
       laborHours: Number(serviceCall.laborHours || 0),
       laborRate: 650,
       distanceTravelledKm: 0,
       travelRatePerKm: DEFAULT_TRAVEL_RATE_PER_KM,
       travelTimeMinutes: 0,
+      procurementDistanceTravelledKm: 0,
+      procurementTravelTimeMinutes: 0,
       timeTravelledCost: 0,
       consumablesRate: 0,
       vatRate: 15,
@@ -572,11 +599,14 @@ const mapQuotationToInvoiceSeed = ({ quotation, serviceCall }) => {
     deliveryProvider: quotation.deliveryProvider,
     partsProcurementCost: quotation.partsProcurementCost,
     thirdPartyDeliveryCost: quotation.thirdPartyDeliveryCost,
+    agent: serviceCall?.assignedAgent || null,
     laborHours: quotation.labourHours,
     laborRate: quotation.labourRate,
     distanceTravelledKm: quotation.distanceTravelledKm,
     travelRatePerKm: quotation.travelRatePerKm,
     travelTimeMinutes: quotation.travelTimeMinutes,
+    procurementDistanceTravelledKm: quotation.procurementDistanceTravelledKm,
+    procurementTravelTimeMinutes: quotation.procurementTravelTimeMinutes,
     timeTravelledCost: quotation.timeTravelledCost,
     consumablesRate: quotation.consumablesRate,
     vatRate: quotation.vatRate,
@@ -754,6 +784,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
       serviceCall: serviceCall._id,
       quotation: linkedQuotation?._id,
       customer: resolvedCustomer,
+      agent: seed.agent || serviceCall.assignedAgent || null,
       siteId: serviceCall.siteId || linkedQuotation?.siteId,
       equipment: serviceCall.equipment?._id || linkedQuotation?.equipment,
       title: seed.title,
@@ -775,6 +806,8 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
       distanceTravelledKm: costing.distanceTravelledKm,
       travelRatePerKm: costing.travelRatePerKm,
       travelTimeMinutes: costing.travelTimeMinutes,
+      procurementDistanceTravelledKm: costing.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: costing.procurementTravelTimeMinutes,
       timeTravelledCost: costing.timeTravelledCost,
       travelCost: costing.travelCost,
       consumablesRate: costing.consumablesRate,
@@ -844,6 +877,7 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
       serviceCall: serviceCall._id,
       quotation: linkedQuotation?._id,
       customer: resolvedCustomer,
+      agent: seed.agent || serviceCall.assignedAgent || null,
       siteId: serviceCall.siteId || linkedQuotation?.siteId,
       equipment: serviceCall.equipment?._id || linkedQuotation?.equipment,
       title: seed.title,
@@ -865,6 +899,8 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
       distanceTravelledKm: costing.distanceTravelledKm,
       travelRatePerKm: costing.travelRatePerKm,
       travelTimeMinutes: costing.travelTimeMinutes,
+      procurementDistanceTravelledKm: costing.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: costing.procurementTravelTimeMinutes,
       timeTravelledCost: costing.timeTravelledCost,
       travelCost: costing.travelCost,
       consumablesRate: costing.consumablesRate,
@@ -898,6 +934,7 @@ export const createInvoice = async (req, res) => {
       serviceCall: serviceCallId,
       quotation,
       customer,
+      agent,
       siteId,
       equipment,
       title,
@@ -926,6 +963,8 @@ export const createInvoice = async (req, res) => {
       distanceTravelledKm,
       travelRatePerKm,
       travelTimeMinutes,
+      procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes,
       timeTravelledCost,
       consumablesRate,
       vatRate,
@@ -959,6 +998,8 @@ export const createInvoice = async (req, res) => {
       distanceTravelledKm,
       travelRatePerKm,
       travelTimeMinutes,
+      procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes,
       timeTravelledCost,
       consumablesRate,
       vatRate,
@@ -972,6 +1013,7 @@ export const createInvoice = async (req, res) => {
       serviceCall: serviceCallId,
       quotation,
       customer,
+      agent: agent || serviceCall.assignedAgent || null,
       siteId,
       equipment,
       title: title || serviceCall.title,
@@ -995,6 +1037,8 @@ export const createInvoice = async (req, res) => {
       distanceTravelledKm: costing.distanceTravelledKm,
       travelRatePerKm: costing.travelRatePerKm,
       travelTimeMinutes: costing.travelTimeMinutes,
+      procurementDistanceTravelledKm: costing.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: costing.procurementTravelTimeMinutes,
       timeTravelledCost: costing.timeTravelledCost,
       travelCost: costing.travelCost,
       consumablesRate: costing.consumablesRate,
@@ -1057,6 +1101,7 @@ const autoCreateFinalInvoiceAfterProFormaPayment = async ({ invoice }) => {
       serviceCall: serviceCall._id,
       quotation: linkedQuotation?._id,
       customer: resolvedCustomer,
+      agent: seed.agent || serviceCall.assignedAgent || null,
       siteId: serviceCall.siteId || linkedQuotation?.siteId,
       equipment: serviceCall.equipment?._id || linkedQuotation?.equipment,
       title: seed.title,
@@ -1078,6 +1123,8 @@ const autoCreateFinalInvoiceAfterProFormaPayment = async ({ invoice }) => {
       distanceTravelledKm: costing.distanceTravelledKm,
       travelRatePerKm: costing.travelRatePerKm,
       travelTimeMinutes: costing.travelTimeMinutes,
+      procurementDistanceTravelledKm: costing.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: costing.procurementTravelTimeMinutes,
       timeTravelledCost: costing.timeTravelledCost,
       travelCost: costing.travelCost,
       consumablesRate: costing.consumablesRate,
@@ -1289,6 +1336,12 @@ export const updateInvoice = async (req, res) => {
       distanceTravelledKm: req.body.distanceTravelledKm !== undefined ? req.body.distanceTravelledKm : invoice.distanceTravelledKm,
       travelRatePerKm: req.body.travelRatePerKm !== undefined ? req.body.travelRatePerKm : invoice.travelRatePerKm,
       travelTimeMinutes: req.body.travelTimeMinutes !== undefined ? req.body.travelTimeMinutes : invoice.travelTimeMinutes,
+      procurementDistanceTravelledKm: req.body.procurementDistanceTravelledKm !== undefined
+        ? req.body.procurementDistanceTravelledKm
+        : invoice.procurementDistanceTravelledKm,
+      procurementTravelTimeMinutes: req.body.procurementTravelTimeMinutes !== undefined
+        ? req.body.procurementTravelTimeMinutes
+        : invoice.procurementTravelTimeMinutes,
       timeTravelledCost: req.body.timeTravelledCost !== undefined ? req.body.timeTravelledCost : invoice.timeTravelledCost,
       consumablesRate: req.body.consumablesRate !== undefined ? req.body.consumablesRate : invoice.consumablesRate,
       vatRate: req.body.vatRate !== undefined ? req.body.vatRate : invoice.vatRate,
@@ -1315,6 +1368,8 @@ export const updateInvoice = async (req, res) => {
     invoice.distanceTravelledKm = costing.distanceTravelledKm;
     invoice.travelRatePerKm = costing.travelRatePerKm;
     invoice.travelTimeMinutes = costing.travelTimeMinutes;
+    invoice.procurementDistanceTravelledKm = costing.procurementDistanceTravelledKm;
+    invoice.procurementTravelTimeMinutes = costing.procurementTravelTimeMinutes;
     invoice.timeTravelledCost = costing.timeTravelledCost;
     invoice.travelCost = costing.travelCost;
     invoice.consumablesRate = costing.consumablesRate;

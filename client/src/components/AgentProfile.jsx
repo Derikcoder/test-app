@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
@@ -21,6 +21,24 @@ const roleLabelMap = {
  businessAdministrator: 'Business Administrator',
  fieldServiceAgent: 'Field Service Agent',
  customer: 'Customer',
+};
+const governanceFlagOptions = [
+ { value: 'green', label: 'Green', guidance: 'Good standing' },
+ { value: 'orange', label: 'Orange', guidance: 'Pay attention and contact agent' },
+ { value: 'red', label: 'Red', guidance: 'Final discussion before removal consideration' },
+];
+const governanceFlagTone = {
+ green: 'border-emerald-700 bg-emerald-950 text-emerald-200',
+ orange: 'border-amber-700 bg-amber-950 text-amber-200',
+ red: 'border-red-700 bg-red-950 text-red-200',
+};
+const ratingMeaningByScore = {
+ 5: 'Excellent',
+ 4: 'Proficient',
+ 3: 'Satisfactory',
+ 2: 'Risky',
+ 1: 'Not Recommended',
+ 0: 'N/A',
 };
 
 const AgentProfile = () => {
@@ -64,7 +82,14 @@ const AgentProfile = () => {
   vehicleNumber: '',
   category: DEFAULT_AGENT_CATEGORY,
   skills: [],
+  governanceFlag: 'green',
+  governanceFlagNote: '',
  });
+
+ const profilePhotoSrc = useMemo(() => {
+  if (!agent?.profilePhoto?.data || !agent?.profilePhoto?.mimeType) return '';
+  return `data:${agent.profilePhoto.mimeType};base64,${agent.profilePhoto.data}`;
+ }, [agent]);
 
  const editableSkills = useMemo(
   () => getAllowedSkillsForCategory(contactForm.category || DEFAULT_AGENT_CATEGORY),
@@ -103,6 +128,8 @@ const AgentProfile = () => {
     vehicleNumber: agentResponse.data.vehicleNumber || '',
     category: agentResponse.data.category || DEFAULT_AGENT_CATEGORY,
     skills: agentResponse.data.skills || [],
+    governanceFlag: agentResponse.data.governanceFlag || 'green',
+    governanceFlagNote: agentResponse.data.governanceFlagNote || '',
    });
 
    // Fetch service calls for this agent
@@ -244,6 +271,10 @@ const AgentProfile = () => {
      vehicleNumber: contactForm.vehicleNumber,
      category: contactForm.category,
      skills: contactForm.skills,
+      ...(isSuperAdmin ? {
+       governanceFlag: contactForm.governanceFlag,
+       governanceFlagNote: contactForm.governanceFlagNote,
+      } : {}),
     },
     { headers: { Authorization: `Bearer ${user.token}` } }
    );
@@ -602,9 +633,23 @@ const AgentProfile = () => {
     <div className={`${panelClass} overflow-hidden mb-8`}>
      <div className="bg-slate-900 border-b border-slate-700 px-5 sm:px-8 py-6">
        <div className="flex items-center gap-6">
-       <div className="w-24 h-24 bg-gradient-to-br from-cyan-800 to-slate-900 rounded-full flex items-center justify-center text-cyan-200 text-3xl font-bold shadow-lg border border-slate-600">
-         {agent.firstName?.[0]}{agent.lastName?.[0]}
+       <Link
+        to={`/agents/public/${agent._id}`}
+        className="group relative inline-flex"
+        title="Open public-facing profile"
+       >
+        <div className="w-24 h-24 bg-gradient-to-br from-cyan-800 to-slate-900 rounded-full flex items-center justify-center text-cyan-200 text-3xl font-bold shadow-lg border border-slate-600 transition group-hover:border-cyan-400 group-hover:text-cyan-100 overflow-hidden">
+         {profilePhotoSrc ? (
+          <img
+           src={profilePhotoSrc}
+           alt={`${agent.firstName || 'Agent'} ${agent.lastName || ''}`.trim()}
+           className="h-full w-full object-cover"
+          />
+         ) : (
+          <>{agent.firstName?.[0]}{agent.lastName?.[0]}</>
+         )}
         </div>
+       </Link>
         <div className="flex-1">
         <h1 className="text-3xl font-bold text-slate-100">
           {agent.firstName} {agent.lastName}
@@ -627,6 +672,9 @@ const AgentProfile = () => {
          }`}>
           {agent.status?.toUpperCase()}
          </span>
+          <span className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded-full border ${governanceFlagTone[agent.governanceFlag || 'green'] || governanceFlagTone.green}`}>
+           Flag: {(agent.governanceFlag || 'green').toUpperCase()}
+          </span>
          {canEditAgentProfile ? (
           <button
            type="button"
@@ -690,6 +738,36 @@ const AgentProfile = () => {
            </div>
            <p className="text-xs text-slate-400">Use Multi-Disciplinary for cross-sector agents who carry valuable skills across multiple categories.</p>
           </div>
+          {isSuperAdmin ? (
+           <>
+            <label className="space-y-1 md:col-span-2">
+             <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Governance Flag</span>
+             <select
+              name="governanceFlag"
+              value={contactForm.governanceFlag}
+              onChange={handleContactInputChange}
+              className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100"
+             >
+              {governanceFlagOptions.map((option) => (
+               <option key={option.value} value={option.value}>
+                {option.label} - {option.guidance}
+               </option>
+              ))}
+             </select>
+            </label>
+            <label className="space-y-1 md:col-span-2">
+             <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Governance Note</span>
+             <textarea
+              name="governanceFlagNote"
+              value={contactForm.governanceFlagNote}
+              onChange={handleContactInputChange}
+              rows="2"
+              className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100"
+              placeholder="Reason for current governance status"
+             />
+            </label>
+           </>
+          ) : null}
          </div>
          <div className="mt-4 quick-actions-wrap justify-end">
           <button type="button" onClick={() => setShowContactEditor(false)} className="quick-action-btn quick-action-btn-secondary">Cancel</button>
@@ -697,6 +775,27 @@ const AgentProfile = () => {
          </div>
         </form>
        ) : null}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+         <div className="rounded-lg border border-slate-700 bg-slate-950/70 px-4 py-3">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Average Service Rating</p>
+          <p className="mt-1 text-lg font-semibold text-slate-100">
+           {Number(agent.averageRating || 0).toFixed(2)} / 5
+           <span className="ml-2 text-sm text-cyan-300">
+            ({ratingMeaningByScore[Math.round(Number(agent.averageRating || 0))] || 'N/A'})
+           </span>
+          </p>
+         </div>
+         <div className="rounded-lg border border-slate-700 bg-slate-950/70 px-4 py-3">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Rating Rubric</p>
+          <p className="mt-1 text-xs text-slate-200">5=Excellent, 4=Proficient, 3=Satisfactory, 2=Risky, 1=Not Recommended, 0=N/A</p>
+         </div>
+        </div>
+        {agent.governanceFlagNote ? (
+         <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-200">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Governance Note</p>
+          <p className="mt-1">{agent.governanceFlagNote}</p>
+         </div>
+        ) : null}
        {agent.skills?.length > 0 && (
         <div className="mt-4">
            <p className="text-slate-300 text-sm font-medium mb-2">Skills:</p>

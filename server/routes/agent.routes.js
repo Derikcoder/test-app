@@ -10,12 +10,15 @@
  */
 
 import express from 'express';
+import multer from 'multer';
 import {
   getAgents,
   getAgentById,
+  getPublicAgentProfile,
   getMyAgentProfile,
   createAgent,
   updateAgent,
+  uploadAgentProfilePhoto,
   deleteAgent,
   getAgentPerformance,
   getAgentsBySpecialization,
@@ -28,6 +31,19 @@ import {
 import { protect } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+const profilePhotoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 },
+  fileFilter: (req, file, callback) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/png'];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return callback(new Error('Profile photo must be JPG or PNG'));
+    }
+
+    return callback(null, true);
+  },
+});
 
 /**
  * @route   GET /api/agents
@@ -51,6 +67,13 @@ router.post('/', protect, createAgent);
 router.get('/me', protect, getMyAgentProfile);
 
 /**
+ * @route   GET /api/agents/public/:id
+ * @desc    Get public-facing field agent profile
+ * @access  Private (JWT required)
+ */
+router.get('/public/:id', protect, getPublicAgentProfile);
+
+/**
  * @route   GET /api/agents/:id
  * @desc    Get single agent by ID
  * @access  Private (JWT required)
@@ -63,6 +86,28 @@ router.get('/:id', protect, getAgentById);
  * @access  Private (JWT required)
  */
 router.put('/:id', protect, updateAgent);
+
+/**
+ * @route   PATCH /api/agents/:id/profile-photo
+ * @desc    Upload or replace profile photo for an agent profile
+ * @access  Private (JWT required)
+ */
+router.patch(
+  '/:id/profile-photo',
+  protect,
+  (req, res, next) => {
+    profilePhotoUpload.single('profilePhoto')(req, res, (error) => {
+      if (!error) return next();
+
+      if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'Profile photo size must be 500KB or less' });
+      }
+
+      return res.status(400).json({ message: error.message || 'Failed to upload profile photo' });
+    });
+  },
+  uploadAgentProfilePhoto
+);
 
 /**
  * @route   DELETE /api/agents/:id

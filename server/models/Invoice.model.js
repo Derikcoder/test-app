@@ -8,6 +8,7 @@
  */
 
 import mongoose from 'mongoose';
+import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.js';
 
 /**
  * Line Item Sub-Schema
@@ -301,6 +302,12 @@ const invoiceSchema = new mongoose.Schema(
       ref: 'Customer',
       required: [true, 'Customer is required'],
     },
+    /** Reference to FieldServiceAgent responsible for this invoice */
+    agent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FieldServiceAgent',
+      index: true,
+    },
     /** Reference to specific site (for business customers with multiple sites) */
     siteId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -442,6 +449,18 @@ const invoiceSchema = new mongoose.Schema(
     travelTimeMinutes: {
       type: Number,
       min: [0, 'Travel time cannot be negative'],
+      default: 0,
+    },
+    /** Procurement route distance in kilometers (supplier collection run) */
+    procurementDistanceTravelledKm: {
+      type: Number,
+      min: [0, 'Procurement distance travelled cannot be negative'],
+      default: 0,
+    },
+    /** Procurement route travel time in minutes (supplier collection run) */
+    procurementTravelTimeMinutes: {
+      type: Number,
+      min: [0, 'Procurement travel time cannot be negative'],
       default: 0,
     },
     /** Additional time-based travel charge */
@@ -645,26 +664,33 @@ const invoiceSchema = new mongoose.Schema(
  * // Second invoice: INV-000002
  */
 invoiceSchema.pre('validate', async function (next) {
-  // Only generate for new documents without an invoice number.
-  // Must run pre-validate so the required field check passes.
-  if (this.isNew && !this.invoiceNumber) {
-    const count = await mongoose.model('Invoice').countDocuments();
-    this.invoiceNumber = `INV-${String(count + 1).padStart(6, '0')}`;
-  }
+  try {
+    // Generate from an atomic global sequence to prevent duplicate IDs under concurrency.
+    if (this.isNew && !this.invoiceNumber) {
+      const nextInvoiceSequence = await getNextSequenceValue('invoice_number');
+      this.invoiceNumber = formatSequenceId('INV', nextInvoiceSequence);
+    }
 
-  if (!this.issueDate) {
-    this.issueDate = new Date();
-  }
+    if (!this.issueDate) {
+      this.issueDate = new Date();
+    }
 
-  if (!this.dueDate) {
-    const dueDate = new Date(this.issueDate);
-    const resolvedPaymentTerms = Number.isFinite(Number(this.paymentTerms)) ? Number(this.paymentTerms) : 30;
-    dueDate.setDate(dueDate.getDate() + resolvedPaymentTerms);
-    this.dueDate = dueDate;
-  }
+    if (!this.dueDate) {
+      const dueDate = new Date(this.issueDate);
+      const resolvedPaymentTerms = Number.isFinite(Number(this.paymentTerms)) ? Number(this.paymentTerms) : 30;
+      dueDate.setDate(dueDate.getDate() + resolvedPaymentTerms);
+      this.dueDate = dueDate;
+    }
 
-  next();
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
+
+// Central invoice registry indexes for lookups and reporting.
+invoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
+invoiceSchema.index({ customer: 1, agent: 1, createdAt: -1 });
 
 invoiceSchema.pre('save', function (next) {
   // Set default due date if not provided (payment terms from issue date)
@@ -736,6 +762,7 @@ invoiceSchema.statics.IMMUTABLE_FIELDS = [
 invoiceSchema.statics.EDITABLE_FIELDS = [
   'quotation',
   'customer',
+  'agent',
   'siteId',
   'title',
   'description',
@@ -760,6 +787,8 @@ invoiceSchema.statics.EDITABLE_FIELDS = [
   'distanceTravelledKm',
   'travelRatePerKm',
   'travelTimeMinutes',
+  'procurementDistanceTravelledKm',
+  'procurementTravelTimeMinutes',
   'timeTravelledCost',
   'travelCost',
   'consumablesRate',

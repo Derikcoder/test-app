@@ -22,6 +22,7 @@ const InvoiceApprovalPage = lazy(() => import('./components/InvoiceApprovalPage'
 const QuotationApprovalPage = lazy(() => import('./components/QuotationApprovalPage'));
 const UserProfile = lazy(() => import('./components/UserProfile'));
 const FieldAgentSelfProfile = lazy(() => import('./components/FieldAgentSelfProfile'));
+const PublicAgentProfile = lazy(() => import('./components/PublicAgentProfile'));
 const FieldServiceAgents = lazy(() => import('./components/FieldServiceAgents'));
 const AgentProfile = lazy(() => import('./components/AgentProfile'));
 const Customers = lazy(() => import('./components/Customers'));
@@ -124,7 +125,7 @@ const AdminRoute = ({ children }) => {
 const ProfileRoute = () => {
   const { user } = useAuth();
 
-  if (user?.role === 'fieldServiceAgent') return <FieldAgentSelfProfile workspaceMode="profile" />;
+  if (user?.role === 'fieldServiceAgent') return <PublicAgentProfile useCurrentAgent />;
 
   if (user?.role === 'customer') {
     return <Navigate to="/customer/dashboard" replace />;
@@ -190,6 +191,7 @@ function App() {
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/invoice-approval/:token" element={<InvoiceApprovalPage />} />
             <Route path="/quotation-approval/:token" element={<QuotationApprovalPage />} />
+            <Route path="/agents/public/:id" element={<PublicAgentProfile />} />
 
             {/* Protected Routes - Require authentication */}
             <Route

@@ -10,5 +10,9 @@ describe('Quotation Model', () => {
     expect(Array.isArray(Quotation.EDITABLE_FIELDS)).toBe(true);
     expect(Quotation.IMMUTABLE_FIELDS).toContain('quotationNumber');
     expect(Quotation.EDITABLE_FIELDS).toContain('status');
+    expect(Quotation.EDITABLE_FIELDS).toContain('procurementDistanceTravelledKm');
+    expect(Quotation.EDITABLE_FIELDS).toContain('procurementTravelTimeMinutes');
+    expect(Quotation.schema.path('procurementDistanceTravelledKm')).toBeDefined();
+    expect(Quotation.schema.path('procurementTravelTimeMinutes')).toBeDefined();
   });
 });

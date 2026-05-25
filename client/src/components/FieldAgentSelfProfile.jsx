@@ -754,6 +754,16 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
          {agent.assignedArea && (
           <p className="text-slate-300 mt-1 text-sm">📍 Area: {agent.assignedArea}</p>
          )}
+         {agent._id && (
+          <a
+           href={`/agents/public/${agent._id}`}
+           target="_blank"
+           rel="noreferrer"
+           className="mt-3 inline-flex items-center rounded-lg border border-cyan-700 bg-cyan-950/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-cyan-200 transition hover:border-cyan-500 hover:text-cyan-100"
+          >
+           View Public Profile
+          </a>
+         )}
         </div>
         <div>
          <span className={`px-4 py-2 text-sm font-semibold rounded-full ${

@@ -248,6 +248,18 @@ const quotationSchema = new mongoose.Schema(
       min: [0, 'Travel time cannot be negative'],
       default: 0,
     },
+    /** Procurement route distance in kilometers (supplier collection run) */
+    procurementDistanceTravelledKm: {
+      type: Number,
+      min: [0, 'Procurement distance travelled cannot be negative'],
+      default: 0,
+    },
+    /** Procurement route travel time in minutes (supplier collection run) */
+    procurementTravelTimeMinutes: {
+      type: Number,
+      min: [0, 'Procurement travel time cannot be negative'],
+      default: 0,
+    },
     /** Time-based travelling cost component (manual for now) */
     timeTravelledCost: {
       type: Number,
@@ -478,6 +490,8 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'distanceTravelledKm',
   'travelRatePerKm',
   'travelTimeMinutes',
+  'procurementDistanceTravelledKm',
+  'procurementTravelTimeMinutes',
   'timeTravelledCost',
   'travellingCost',
   'subtotal',

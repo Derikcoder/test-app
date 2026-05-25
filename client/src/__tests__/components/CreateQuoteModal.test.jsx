@@ -236,4 +236,52 @@ describe('CreateQuoteModal', () => {
       expect(screen.getByText(/sc-000012/i)).toBeInTheDocument();
     });
   });
+
+  it('keeps procurement travel inputs separate from call-out travel inputs', async () => {
+    render(<CreateQuoteModal {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /create quote/i }));
+
+    const procurementDistanceInput = (await screen.findByText(/procurement distance travelled/i))
+      .closest('div')
+      .querySelector('input');
+    const procurementTimeInput = screen.getByText(/procurement travel time/i)
+      .closest('div')
+      .querySelector('input');
+    const calloutDistanceInput = screen.getByText(/^distance travelled \(km\)$/i)
+      .closest('div')
+      .querySelector('input');
+    const calloutTimeInput = screen.getByText(/^travel time \(minutes\)$/i)
+      .closest('div')
+      .querySelector('input');
+
+    expect(procurementDistanceInput).toBeTruthy();
+    expect(procurementTimeInput).toBeTruthy();
+    expect(calloutDistanceInput).toBeTruthy();
+    expect(calloutTimeInput).toBeTruthy();
+
+    fireEvent.change(procurementDistanceInput, { target: { value: '120' } });
+    fireEvent.change(procurementTimeInput, { target: { value: '240' } });
+    fireEvent.change(calloutDistanceInput, { target: { value: '5' } });
+    fireEvent.change(calloutTimeInput, { target: { value: '15' } });
+
+    const submitButton = screen.getByRole('button', { name: /submit quote/i });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/quotations/from-service-call/sc-123',
+        expect.objectContaining({
+          procurementDistanceTravelledKm: 120,
+          procurementTravelTimeMinutes: 240,
+          distanceTravelledKm: 5,
+          travelTimeMinutes: 15,
+          partsProcurementCost: 3620,
+        }),
+        {
+          headers: { Authorization: 'Bearer test-token' },
+        }
+      );
+    });
+  });
 });

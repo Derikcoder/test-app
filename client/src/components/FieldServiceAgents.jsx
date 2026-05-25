@@ -18,6 +18,11 @@ const roleLabelMap = {
  fieldServiceAgent: 'Field Service Agent',
  customer: 'Customer',
 };
+const governanceFlagTone = {
+ green: 'bg-emerald-950 text-emerald-200 border-emerald-700',
+ orange: 'bg-amber-950 text-amber-200 border-amber-700',
+ red: 'bg-red-950 text-red-200 border-red-700',
+};
 
 const FieldServiceAgents = () => {
  const navigate = useNavigate();
@@ -526,6 +531,7 @@ const FieldServiceAgents = () => {
                      <th className="th-cyan">Jobs In Progress</th>
                      <th className="th-cyan">Quotes Awaiting Approval</th>
                      <th className="th-cyan">Average Service Rating</th>
+                     <th className="th-cyan">Governance Flag</th>
                      <th className="px-6 py-3 text-right text-xs font-medium text-cyan-300 uppercase tracking-wide">Actions</th>
           </tr>
          </thead>
@@ -566,6 +572,11 @@ const FieldServiceAgents = () => {
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.jobsInProgress ?? 0}</td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.quotesAwaitingApproval ?? 0}</td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{Number(agent.averageRating || 0).toFixed(2)}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+             <span className={`px-2 py-1 text-xs font-semibold uppercase tracking-wide rounded-full border ${governanceFlagTone[agent.governanceFlag || 'green'] || governanceFlagTone.green}`}>
+              {agent.governanceFlag || 'green'}
+             </span>
+            </td>
             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
              <button
               onClick={(e) => {

@@ -10,6 +10,38 @@
 import mongoose from 'mongoose';
 import { AGENT_CATEGORIES, DEFAULT_AGENT_CATEGORY } from '../config/agentTaxonomy.js';
 
+const preferredProviderSchema = new mongoose.Schema(
+  {
+    businessName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    location: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    category: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    supplierProductType: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    preferredBrands: {
+      type: [String],
+      default: [],
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 /**
  * Field Service Agent Schema Definition
  * 
@@ -126,6 +158,27 @@ const fieldServiceAgentSchema = new mongoose.Schema(
       min: [0, 'Ratings count cannot be negative'],
       default: 0,
     },
+    /** Governance status flag set by super admin for risk oversight */
+    governanceFlag: {
+      type: String,
+      enum: ['green', 'orange', 'red'],
+      default: 'green',
+    },
+    /** Optional governance note attached to the current flag */
+    governanceFlagNote: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    /** Timestamp for the latest governance flag update */
+    governanceFlagUpdatedAt: {
+      type: Date,
+    },
+    /** Actor who last updated governance flag */
+    governanceFlagUpdatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     /** Hourly labor rate for cost calculation */
     hourlyRate: {
       type: Number,
@@ -175,6 +228,42 @@ const fieldServiceAgentSchema = new mongoose.Schema(
     notes: {
       type: String,
       trim: true,
+    },
+    /** Profile photo payload for field agent (base64 image + metadata) */
+    profilePhoto: {
+      mimeType: {
+        type: String,
+        default: '',
+      },
+      data: {
+        type: String,
+        default: '',
+      },
+      size: {
+        type: Number,
+        default: 0,
+      },
+      width: {
+        type: Number,
+        default: 0,
+      },
+      height: {
+        type: Number,
+        default: 0,
+      },
+      uploadedAt: {
+        type: Date,
+      },
+    },
+    /** Preferred parts/material suppliers for this field agent */
+    preferredSuppliers: {
+      type: [preferredProviderSchema],
+      default: [],
+    },
+    /** Preferred third-party service providers for this field agent */
+    preferredThirdPartyServiceProviders: {
+      type: [preferredProviderSchema],
+      default: [],
     },
     /** Reference to User who created this agent record */
     createdBy: {
@@ -264,6 +353,10 @@ fieldServiceAgentSchema.statics.EDITABLE_FIELDS = [
   'quotesAwaitingApproval',
   'averageRating',
   'ratingsCount',
+  'governanceFlag',
+  'governanceFlagNote',
+  'governanceFlagUpdatedAt',
+  'governanceFlagUpdatedBy',
   'hourlyRate',
   'status',
   'availability',
@@ -272,7 +365,9 @@ fieldServiceAgentSchema.statics.EDITABLE_FIELDS = [
   'selfDispatchSuspended',
   'selfDispatchSuspendedReason',
   'vehicleNumber',
-  'notes'
+  'notes',
+  'preferredSuppliers',
+  'preferredThirdPartyServiceProviders'
 ];
 
 const FieldServiceAgent = mongoose.model('FieldServiceAgent', fieldServiceAgentSchema);
