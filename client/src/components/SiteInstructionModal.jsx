@@ -15,6 +15,29 @@ const labelClass = 'dark-label';
 const inputClass = 'w-full rounded-lg border border-slate-600 bg-slate-950 text-slate-100 px-4 py-3 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40';
 const mutedCardClass = 'rounded-lg border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-100';
 
+const CameraIcon = ({ className = '' }) => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.76l1.18-1.77A2 2 0 0 1 11.1 3h1.8a2 2 0 0 1 1.66.93L15.74 6H17.5A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z" />
+    <circle cx="12" cy="13" r="3.25" />
+  </svg>
+);
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ''));
+  reader.onerror = () => reject(new Error('Unable to read image file'));
+  reader.readAsDataURL(file);
+});
+
 const buildFormState = (invoice) => ({
   invoiceId: invoice?._id || '',
   invoiceNumber: invoice?.invoiceNumber || '',
@@ -28,8 +51,11 @@ const buildFormState = (invoice) => ({
       description: item.description || '',
       quantity: Number(item.quantity) || 1,
       unitPrice: Number(item.unitPrice) || 0,
+      photos: Array.isArray(item.photos)
+        ? item.photos.filter((photo) => typeof photo === 'string' && photo.trim())
+        : [],
     }))
-    : [{ description: 'Service Work', quantity: 1, unitPrice: 0 }],
+    : [{ description: 'Service Work', quantity: 1, unitPrice: 0, photos: [] }],
   partsFulfilmentMode: invoice?.partsFulfilmentMode || 'inHouseProcurement',
   deliveryProvider: invoice?.deliveryProvider || '',
   partsProcurementCost: invoice?.partsProcurementCost ?? 0,
@@ -157,6 +183,12 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
 
   const preview = useMemo(() => calculatePreview(formData), [formData]);
 
+  const canAddAnotherLineItem = Boolean(
+    formData.lineItems.length === 0
+    || (Array.isArray(formData.lineItems[formData.lineItems.length - 1]?.photos)
+      && formData.lineItems[formData.lineItems.length - 1].photos.length >= 2)
+  );
+
   useEffect(() => {
     if (formData.partsFulfilmentMode !== 'thirdPartyDelivery') {
       setDeliveryQuoteMeta(null);
@@ -261,10 +293,50 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
     }));
   };
 
+  const handleLineItemPhotoUpload = async (index, event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+
+    if (!files.length) return;
+
+    const imageFiles = files.filter((file) => String(file.type || '').startsWith('image/'));
+    if (!imageFiles.length) {
+      setError('Only image files can be uploaded for invoice part photos.');
+      return;
+    }
+
+    try {
+      const uploadedPhotos = await Promise.all(imageFiles.map((file) => readFileAsDataUrl(file)));
+
+      setFormData((prev) => {
+        const nextLineItems = [...prev.lineItems];
+        const currentItem = nextLineItems[index] || {};
+        const currentPhotos = Array.isArray(currentItem.photos) ? currentItem.photos : [];
+        const mergedPhotos = [...currentPhotos, ...uploadedPhotos]
+          .filter((photo) => typeof photo === 'string' && photo.trim())
+          .slice(0, 4);
+
+        nextLineItems[index] = {
+          ...currentItem,
+          photos: mergedPhotos,
+        };
+
+        return {
+          ...prev,
+          lineItems: nextLineItems,
+        };
+      });
+    } catch {
+      setError('Failed to upload invoice part photos. Please try again.');
+    }
+  };
+
   const addLineItem = () => {
+    if (!canAddAnotherLineItem) return;
+
     setFormData((prev) => ({
       ...prev,
-      lineItems: [...prev.lineItems, { description: '', quantity: 1, unitPrice: 0 }],
+      lineItems: [...prev.lineItems, { description: '', quantity: 1, unitPrice: 0, photos: [] }],
     }));
   };
 
@@ -283,6 +355,9 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
       description: item.description,
       quantity: Number(item.quantity) || 0,
       unitPrice: Number(item.unitPrice) || 0,
+      photos: Array.isArray(item.photos)
+        ? item.photos.filter((photo) => typeof photo === 'string' && photo.trim()).slice(0, 4)
+        : [],
     })),
     partsFulfilmentMode: formData.partsFulfilmentMode,
     deliveryProvider: formData.partsFulfilmentMode === 'thirdPartyDelivery' ? formData.deliveryProvider : '',
@@ -524,38 +599,97 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                 <div className={`${panelClass} space-y-3`}>
                   <div>
                     <h3 className="text-slate-100 font-semibold">Billable Items (parts / materials)</h3>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Keep invoice-ready part lines here. Specialist work remains visible through the form, but the line items stay clean and billable.
+                    </p>
                   </div>
                   {formData.lineItems.map((item, index) => (
-                    <div key={`site-line-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
-                      <div className="md:col-span-6">
-                        <label className={labelClass}>Description</label>
-                        <input value={item.description} onChange={(e) => updateLineItem(index, 'description', e.target.value)} className={inputClass} />
+                    <div key={`site-line-${index}`} className="space-y-3 rounded-lg border border-slate-700 bg-slate-950/60 p-3">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                        <div className="md:col-span-6">
+                          <label className={labelClass}>Description</label>
+                          <input value={item.description} onChange={(e) => updateLineItem(index, 'description', e.target.value)} className={inputClass} />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className={labelClass}>Qty</label>
+                          <input type="number" min="0" step="1" value={item.quantity} onChange={(e) => updateLineItem(index, 'quantity', e.target.value)} className={inputClass} />
+                        </div>
+                        <div className="md:col-span-3">
+                          <label className={labelClass}>Unit Price (R)</label>
+                          <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateLineItem(index, 'unitPrice', e.target.value)} className={inputClass} />
+                        </div>
+                        <div className="md:col-span-1">
+                          <button type="button" onClick={() => removeLineItem(index)} className="w-full rounded-lg border border-red-700 bg-red-950 px-2 py-2 text-sm font-semibold text-red-200">X</button>
+                        </div>
                       </div>
-                      <div className="md:col-span-2">
-                        <label className={labelClass}>Qty</label>
-                        <input type="number" min="0" step="1" value={item.quantity} onChange={(e) => updateLineItem(index, 'quantity', e.target.value)} className={inputClass} />
+
+                      <div className="flex flex-col gap-3 rounded-md border border-cyan-800 bg-cyan-950/40 p-3 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-cyan-100">
+                            <CameraIcon className="h-4 w-4 text-cyan-300" />
+                            <p className="text-sm font-semibold">Part photos</p>
+                          </div>
+                          <p className="text-xs text-slate-300">Capture brand, serial number, barcode, and QR code images for this part. Minimum 2 photos, maximum 4.</p>
+                          <p className="text-xs text-cyan-200">Uploaded: {(Array.isArray(item.photos) ? item.photos.length : 0)}/4</p>
+                        </div>
+
+                        <label
+                          htmlFor={`site-line-photo-${index}`}
+                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-900"
+                        >
+                          <CameraIcon className="h-4 w-4" />
+                          Add photos
+                        </label>
+                        <input
+                          id={`site-line-photo-${index}`}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          multiple
+                          onChange={(event) => void handleLineItemPhotoUpload(index, event)}
+                          className="sr-only"
+                          aria-label={`Upload photos for invoice part ${index + 1}`}
+                        />
                       </div>
-                      <div className="md:col-span-3">
-                        <label className={labelClass}>Unit Price (R)</label>
-                        <input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => updateLineItem(index, 'unitPrice', e.target.value)} className={inputClass} />
-                      </div>
-                      <div className="md:col-span-1">
-                        <button type="button" onClick={() => removeLineItem(index)} className="w-full rounded-lg border border-red-700 bg-red-950 px-2 py-2 text-sm font-semibold text-red-200">X</button>
-                      </div>
+
+                      {Array.isArray(item.photos) && item.photos.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                          {item.photos.slice(0, 4).map((photo, photoIndex) => (
+                            <div key={`site-line-${index}-photo-${photoIndex}`} className="overflow-hidden rounded-md border border-slate-700 bg-slate-950">
+                              <img src={photo} alt={`Invoice part ${index + 1} photo ${photoIndex + 1}`} className="h-24 w-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
-                  <div className="flex justify-end pt-2">
-                    <button type="button" onClick={addLineItem} className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-900">Add Item</button>
+                  <div className="flex items-center justify-between gap-3 pt-2">
+                    <p className="text-xs text-slate-400">
+                      Add Item unlocks after the most recent invoice part has two photos.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={addLineItem}
+                      disabled={!canAddAnotherLineItem}
+                      className="rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Add Item
+                    </button>
                   </div>
                 </div>
 
                 <div className={panelClass}>
-                  <h3 className="text-slate-100 font-semibold mb-3">Costing Controls</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="md:col-span-5">
+                  <h3 className="text-slate-100 font-semibold mb-3">Costing Inputs</h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <div className="md:col-span-4 rounded-md border border-white/15 bg-white/5 px-3 py-2">
+                      <p className="text-xs text-white/70">
+                        Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00. Labour is always billed at full hours — the call-out floor fee is a separate dispatch/assessment charge.
+                      </p>
+                    </div>
+                    <div className="md:col-span-4 pt-1">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Parts Fulfilment Costing</h4>
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Parts Fulfilment</label>
                       <select value={formData.partsFulfilmentMode} onChange={(e) => updateField('partsFulfilmentMode', e.target.value)} className={inputClass}>
                         <option value="inHouseProcurement" className="text-black">In-house Procurement</option>
@@ -563,54 +697,56 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                       </select>
                     </div>
                     {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
-                      <div>
-                        <label className={labelClass}>Parts Procurement Cost (Auto Formula) (R)</label>
-                        <input value={preview.partsProcurementCost} readOnly className={`${inputClass} opacity-70`} />
-                        <div className="mt-2 grid grid-cols-1 gap-2">
-                          <div>
-                            <label className={labelClass}>Procurement Distance Travelled (km)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={formData.procurementDistanceTravelledKm}
-                              onChange={(e) => updateField('procurementDistanceTravelledKm', e.target.value)}
-                              className={inputClass}
-                            />
-                          </div>
-                          <div>
-                            <label className={labelClass}>Procurement Travel Time (minutes)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={formData.procurementTravelTimeMinutes}
-                              onChange={(e) => updateField('procurementTravelTimeMinutes', e.target.value)}
-                              className={inputClass}
-                            />
-                          </div>
+                      <>
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <label className={labelClass}>Parts Procurement Cost (Internal Auto Formula) (R)</label>
+                          <input value={preview.partsProcurementCost} readOnly className={`${inputClass} opacity-70`} />
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-1">
-                          Formula: ({preview.procurementDistanceTravelledKm} km x {formatCurrency(TRAVEL_RATE_PER_KM)}) + ({preview.inHouseTravelLabourHours} h x {formatCurrency(PROCUREMENT_LABOUR_RATE_PER_HOUR)}/h)
-                        </p>
-                        <p className="text-[11px] text-cyan-300 mt-1">
-                          Result: {formatCurrency(preview.inHouseDistanceProcurementCost)} + {formatCurrency(preview.inHouseTimeProcurementCost)} = {formatCurrency(preview.partsProcurementCost)}
-                        </p>
-                        <p className="text-[11px] text-slate-400 mt-1">These two inputs are the required variables for procurement costing.</p>
-                      </div>
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <label className={labelClass}>Procurement Distance Travelled (km)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formData.procurementDistanceTravelledKm}
+                            onChange={(e) => updateField('procurementDistanceTravelledKm', e.target.value)}
+                            className={inputClass}
+                          />
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <label className={labelClass}>Procurement Travel Time (minutes)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={formData.procurementTravelTimeMinutes}
+                            onChange={(e) => updateField('procurementTravelTimeMinutes', e.target.value)}
+                            className={inputClass}
+                          />
+                        </div>
+                        <div className="md:col-span-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100">
+                          <p className="text-[11px] text-slate-400">
+                            Formula: ({preview.procurementDistanceTravelledKm} km x {formatCurrency(TRAVEL_RATE_PER_KM)}) + ({preview.inHouseTravelLabourHours} h x {formatCurrency(PROCUREMENT_LABOUR_RATE_PER_HOUR)}/h)
+                          </p>
+                          <p className="text-[11px] text-cyan-300 mt-1">
+                            Result: {formatCurrency(preview.inHouseDistanceProcurementCost)} + {formatCurrency(preview.inHouseTimeProcurementCost)} = {formatCurrency(preview.partsProcurementCost)}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-1">These two inputs are the required variables for procurement costing.</p>
+                        </div>
+                      </>
                     ) : (
-                      <div>
+                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                         <label className={labelClass}>Parts Procurement Cost (R)</label>
                         <input type="number" min="0" step="0.01" value={formData.partsProcurementCost} onChange={(e) => updateField('partsProcurementCost', e.target.value)} className={inputClass} />
                       </div>
                     )}
                     {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
                       <>
-                        <div>
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                           <label className={labelClass}>Delivery Provider</label>
                           <input value={formData.deliveryProvider} onChange={(e) => updateField('deliveryProvider', e.target.value)} className={inputClass} />
                         </div>
-                        <div>
+                        <div className="md:col-span-2 rounded-lg border border-white/10 bg-white/5 p-3">
                           <label className={labelClass}>Third-party Delivery Cost (Provider API) (R)</label>
                           <div className="flex gap-2">
                             <input value={Number(formData.thirdPartyDeliveryCost || 0).toFixed(2)} readOnly className={`${inputClass} opacity-70`} />
@@ -631,42 +767,42 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                         </div>
                       </>
                     ) : null}
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Labour Hours</label>
                       <input type="number" min="0" step="0.25" value={formData.laborHours} onChange={(e) => updateField('laborHours', e.target.value)} className={inputClass} />
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Labour Rate (R/hour)</label>
                       <input type="number" min="0" step="0.01" value={formData.laborRate} onChange={(e) => updateField('laborRate', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="md:col-span-5">
+                    <div className="md:col-span-4 rounded-lg border border-white/15 bg-white/5 px-3 py-2">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Call-out Fee Calculation</h4>
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Distance Travelled (km)</label>
                       <input type="number" min="0" step="0.01" value={formData.distanceTravelledKm} onChange={(e) => updateField('distanceTravelledKm', e.target.value)} className={inputClass} />
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Rate per km (R)</label>
                       <input type="number" min="0" step="0.01" value={formData.travelRatePerKm} onChange={(e) => updateField('travelRatePerKm', e.target.value)} className={inputClass} />
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Travel Time (minutes)</label>
                       <input type="number" min="0" step="1" value={formData.travelTimeMinutes} onChange={(e) => updateField('travelTimeMinutes', e.target.value)} className={inputClass} />
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Time Travelled Cost (R) (Call-out Override, Optional)</label>
                       <input type="number" min="0" step="0.01" value={formData.timeTravelledCost} onChange={(e) => updateField('timeTravelledCost', e.target.value)} className={inputClass} />
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>Consumables Rate (%)</label>
                       <input type="number" min="0" step="0.01" value={formData.consumablesRate} onChange={(e) => updateField('consumablesRate', e.target.value)} className={inputClass} />
                     </div>
-                    <div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <label className={labelClass}>VAT Rate (%)</label>
                       <input type="number" min="0" max="100" step="0.01" value={formData.vatRate} onChange={(e) => updateField('vatRate', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="md:col-span-3 rounded-lg border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-100">
+                    <div className="md:col-span-4 rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white">
                       <p>Parts Cost: {formatCurrency(preview.partsCost)}</p>
                       <p>Parts Procurement Cost: {formatCurrency(preview.partsProcurementCost)}</p>
                       {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
@@ -750,17 +886,17 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                 </div>
 
                 <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-6 mt-2 border-t border-slate-700 bg-slate-950/95 px-4 sm:px-6 py-4">
-                 <div className="flex flex-wrap gap-3 justify-end">
-                  <button type="button" onClick={() => saveDraft()} disabled={saving} className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50">
+                 <div className="flex flex-wrap justify-end gap-3 pt-1">
+                  <button type="button" onClick={() => saveDraft()} disabled={saving} className="min-w-36 rounded-lg border border-slate-600 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50">
                     {saving ? 'Saving...' : 'Save Draft'}
                   </button>
-                  <button type="button" onClick={handleSend} disabled={sending || saving} className="rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-900 disabled:opacity-50">
+                  <button type="button" onClick={handleSend} disabled={sending || saving} className="min-w-36 rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-900 disabled:opacity-50">
                     {sending ? 'Sending...' : 'Send For Approval'}
                   </button>
-                  <button type="button" onClick={() => handleWorkflowAction('approved', 'Customer approval recorded.')} disabled={processing} className="rounded-lg border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-900 disabled:opacity-50">
+                  <button type="button" onClick={() => handleWorkflowAction('approved', 'Customer approval recorded.')} disabled={processing} className="min-w-36 rounded-lg border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-900 disabled:opacity-50">
                     Mark Approved
                   </button>
-                  <button type="button" onClick={handleFinalize} disabled={processing || saving} className="rounded-lg border border-amber-700 bg-amber-950 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-900 disabled:opacity-50">
+                  <button type="button" onClick={handleFinalize} disabled={processing || saving} className="min-w-36 rounded-lg border border-amber-700 bg-amber-950 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-900 disabled:opacity-50">
                     {processing ? 'Processing...' : 'Finalize Invoice'}
                   </button>
                  </div>

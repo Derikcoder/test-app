@@ -18,6 +18,21 @@ import { formatSequenceId, getNextSequenceValue } from '../utils/sequence.util.j
  * Includes description, quantity, pricing, and totals.
  */
 const lineItemSchema = new mongoose.Schema({
+  /** Optional part number / SKU */
+  partNumber: {
+    type: String,
+    trim: true,
+  },
+  /** Optional part name */
+  partName: {
+    type: String,
+    trim: true,
+  },
+  /** Optional part category/type */
+  partType: {
+    type: String,
+    trim: true,
+  },
   /** Item/service description */
   description: {
     type: String,
@@ -42,6 +57,29 @@ const lineItemSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Line total is required'],
     min: [0, 'Total cannot be negative'],
+  },
+  /** Supporting photos for the part or line item */
+  photos: {
+    type: [String],
+    default: [],
+  },
+}, { _id: true });
+
+const thirdPartyServiceProviderSchema = new mongoose.Schema({
+  companyName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  serviceRendered: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  serviceCost: {
+    type: Number,
+    min: [0, 'Service cost cannot be negative'],
+    default: 0,
   },
 }, { _id: true });
 
@@ -380,6 +418,11 @@ const invoiceSchema = new mongoose.Schema(
         message: 'Invoice must have at least one line item',
       },
     },
+    /** Third-party service providers captured for this invoice */
+    thirdPartyServiceProviders: {
+      type: [thirdPartyServiceProviderSchema],
+      default: [],
+    },
     /** Parts fulfilment mode to support profitability analysis */
     partsFulfilmentMode: {
       type: String,
@@ -689,7 +732,6 @@ invoiceSchema.pre('validate', async function (next) {
 });
 
 // Central invoice registry indexes for lookups and reporting.
-invoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
 invoiceSchema.index({ customer: 1, agent: 1, createdAt: -1 });
 
 invoiceSchema.pre('save', function (next) {
@@ -775,6 +817,7 @@ invoiceSchema.statics.EDITABLE_FIELDS = [
   'issueDate',
   'dueDate',
   'lineItems',
+  'thirdPartyServiceProviders',
   'partsFulfilmentMode',
   'deliveryProvider',
   'partsProcurementCost',

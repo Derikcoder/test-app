@@ -21,6 +21,7 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import agentRoutes from './routes/agent.routes.js';
@@ -100,6 +101,40 @@ connectDB().catch(err => {
  * API Routes
  * All routes are prefixed with /api for clear API versioning
  */
+
+/**
+ * @route   GET /
+ * @desc    API root endpoint with quick service pointers
+ * @access  Public
+ */
+app.get('/', (req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+
+  res.json({
+    message: 'Appatunid backend API is running',
+    status: 'OK',
+    database: dbConnected ? 'connected' : 'not-connected',
+    endpoints: {
+      apiRoot: '/api',
+      health: '/api/health',
+    },
+  });
+});
+
+/**
+ * @route   GET /health
+ * @desc    Convenience health alias for quick browser checks
+ * @access  Public
+ */
+app.get('/health', (req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+
+  res.json({
+    status: 'OK',
+    message: 'Server is running',
+    database: dbConnected ? 'connected' : 'not-connected',
+  });
+});
 
 /**
  * @route   GET /api

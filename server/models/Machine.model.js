@@ -119,7 +119,6 @@ const machineSchema = new mongoose.Schema(
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
-      sparse: true,
     },
 
     /** Notes from agent (condition, quirks, maintenance notes) */
@@ -170,7 +169,7 @@ machineSchema.index({ createdBy: 1, serviceCount: -1 });
 /**
  * Index for customer's machines
  */
-machineSchema.index({ customerId: 1 });
+machineSchema.index({ customerId: 1 }, { sparse: true });
 
 const Machine = mongoose.model('Machine', machineSchema);
 

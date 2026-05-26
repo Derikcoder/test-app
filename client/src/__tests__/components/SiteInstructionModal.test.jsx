@@ -17,6 +17,7 @@ vi.mock('../../api/axios', () => ({
 }));
 
 const token = 'test-token';
+const samplePhoto = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2x9sAAAAASUVORK5CYII=';
 
 const serviceCall = {
   _id: 'sc-123',
@@ -30,7 +31,7 @@ const invoiceSeed = {
   workflowStatus: 'draft',
   title: 'Site Instruction',
   serviceType: 'Preventive Maintenance',
-  lineItems: [{ description: 'Service Work', quantity: 1, unitPrice: 0 }],
+  lineItems: [{ description: 'Service Work', quantity: 1, unitPrice: 0, photos: [samplePhoto, samplePhoto] }],
   partsFulfilmentMode: 'inHouseProcurement',
   partsProcurementCost: 0,
   distanceTravelledKm: 0,
@@ -109,6 +110,54 @@ describe('SiteInstructionModal', () => {
           headers: { Authorization: 'Bearer test-token' },
         }
       );
+    });
+  });
+
+  it('requires two invoice part photos before allowing another line item', async () => {
+    const invoiceSeedWithoutPhotos = {
+      ...invoiceSeed,
+      lineItems: [{ description: 'Service Work', quantity: 1, unitPrice: 0, photos: [] }],
+    };
+
+    vi.mocked(api.post).mockResolvedValueOnce({
+      data: {
+        invoice: invoiceSeedWithoutPhotos,
+      },
+    });
+
+    render(
+      <SiteInstructionModal
+        token={token}
+        serviceCall={serviceCall}
+        triggerClassName="btn"
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /create site instruction/i }));
+
+    const addItemButton = await screen.findByRole('button', { name: /add item/i });
+    expect(addItemButton).toBeDisabled();
+
+    const photoInput = screen.getByLabelText(/upload photos for invoice part 1/i);
+
+    fireEvent.change(photoInput, {
+      target: {
+        files: [new File(['photo-one'], 'photo-one.png', { type: 'image/png' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(addItemButton).toBeDisabled();
+    });
+
+    fireEvent.change(photoInput, {
+      target: {
+        files: [new File(['photo-two'], 'photo-two.png', { type: 'image/png' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(addItemButton).toBeEnabled();
     });
   });
 });

@@ -1875,6 +1875,7 @@ git merge consolidation
 - [ ] Add data export features (CSV)
 - [ ] Dashboard with statistics
 - [ ] Email notifications for service calls
+- [ ] Add Super Admin-only JSON product/category import for quote prepopulation, with persona-tailored UX and profile-specific validation rules (keep hidden from fieldServiceAgent flows)
 
 ### Low Priority
 - [ ] Dark mode support

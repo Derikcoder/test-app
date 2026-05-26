@@ -18,10 +18,29 @@ const CALL_OUT_FLOOR_AMOUNT = 650;
 const normalizeLineItems = (lineItems = []) => {
   return lineItems.map((item) => ({
     ...item,
+    partNumber: item.partNumber ? String(item.partNumber).trim() : undefined,
+    partName: item.partName ? String(item.partName).trim() : undefined,
+    partType: item.partType ? String(item.partType).trim() : undefined,
     quantity: Number(item.quantity),
     unitPrice: Number(item.unitPrice),
     total: Number((Number(item.quantity) * Number(item.unitPrice)).toFixed(2)),
   }));
+};
+
+const normalizeThirdPartyServiceProviders = (providers = []) => {
+  if (!Array.isArray(providers)) return [];
+
+  return providers
+    .map((provider) => ({
+      companyName: String(provider?.companyName || '').trim(),
+      serviceRendered: String(provider?.serviceRendered || '').trim(),
+      serviceCost: Number(provider?.serviceCost),
+    }))
+    .filter((provider) => provider.companyName || provider.serviceRendered || Number.isFinite(provider.serviceCost))
+    .map((provider) => ({
+      ...provider,
+      serviceCost: Number.isFinite(provider.serviceCost) && provider.serviceCost >= 0 ? provider.serviceCost : 0,
+    }));
 };
 
 const buildShareToken = () => crypto.randomBytes(24).toString('hex');
@@ -484,12 +503,12 @@ const populateInvoiceDocument = async (invoiceQuery) => {
     .populate('serviceCall', 'callNumber title status completedDate scheduledDate quotation')
     .populate(
       'quotation',
-      'quotationNumber title status totalAmount subtotal vatAmount partsCost labourCost travellingCost consumablesCost partsProcurementCost thirdPartyDeliveryCost estimatedPartsProfit lineItems'
+      'quotationNumber title status totalAmount subtotal vatAmount partsCost labourCost travellingCost consumablesCost partsProcurementCost thirdPartyDeliveryCost estimatedPartsProfit lineItems thirdPartyServiceProviders'
     )
     .populate('equipment', 'equipmentId equipmentType brand model');
 };
 
-const generateInvoicePdfBuffer = (invoice) => {
+const generateInvoicePdfBuffer = (invoice, { includeCostBreakdown = true } = {}) => {
   const documentLabel = invoice.documentType === 'proForma' ? 'Pro-Forma Site Instruction' : 'Final Invoice';
 
   return new Promise((resolve, reject) => {
@@ -531,17 +550,28 @@ const generateInvoicePdfBuffer = (invoice) => {
     invoice.lineItems.forEach((item, idx) => {
       doc.fontSize(10).text(`${idx + 1}. ${item.description}`);
       doc.text(`   Qty: ${item.quantity} | Unit: R ${Number(item.unitPrice).toFixed(2)} | Total: R ${Number(item.total).toFixed(2)}`);
+      if (item.partNumber) {
+        doc.text(`   Part Number: ${item.partNumber}`);
+      }
+      if (item.partName) {
+        doc.text(`   Part Name: ${item.partName}`);
+      }
+      if (item.partType) {
+        doc.text(`   Part Type: ${item.partType}`);
+      }
     });
 
-    doc.moveDown();
-    doc.fontSize(11).text(`Parts Cost: R ${Number(invoice.partsCost || 0).toFixed(2)}`);
-    doc.text(`Labour: ${Number(invoice.laborHours || 0).toFixed(2)}h x R ${Number(invoice.laborRate || 0).toFixed(2)} = R ${Number(invoice.laborCost || 0).toFixed(2)}`);
-    doc.text(`Travel Cost: R ${Number(invoice.travelCost || 0).toFixed(2)}`);
-    doc.text(`Consumables: R ${Number(invoice.consumablesCost || 0).toFixed(2)}`);
-    if (invoice.depositRequired) {
-      doc.text(`Deposit Required: R ${Number(invoice.depositAmount || 0).toFixed(2)}`);
-      if (invoice.depositReason) {
-        doc.text(`Deposit Reason: ${invoice.depositReason}`);
+    if (includeCostBreakdown) {
+      doc.moveDown();
+      doc.fontSize(11).text(`Parts Cost: R ${Number(invoice.partsCost || 0).toFixed(2)}`);
+      doc.text(`Labour: ${Number(invoice.laborHours || 0).toFixed(2)}h x R ${Number(invoice.laborRate || 0).toFixed(2)} = R ${Number(invoice.laborCost || 0).toFixed(2)}`);
+      doc.text(`Travel Cost: R ${Number(invoice.travelCost || 0).toFixed(2)}`);
+      doc.text(`Consumables: R ${Number(invoice.consumablesCost || 0).toFixed(2)}`);
+      if (invoice.depositRequired) {
+        doc.text(`Deposit Required: R ${Number(invoice.depositAmount || 0).toFixed(2)}`);
+        if (invoice.depositReason) {
+          doc.text(`Deposit Reason: ${invoice.depositReason}`);
+        }
       }
     }
     doc.text(`Subtotal: R ${Number(invoice.subtotal || 0).toFixed(2)}`);
@@ -571,6 +601,7 @@ const mapQuotationToInvoiceSeed = ({ quotation, serviceCall }) => {
       title: serviceCall.title || `${serviceCall.serviceType || 'Service'} Billing Document`,
       description: serviceCall.description || '',
       lineItems: [{ description: serviceCall.serviceType || 'Service Work', quantity: 1, unitPrice: 0 }],
+      thirdPartyServiceProviders: [],
       partsFulfilmentMode: 'inHouseProcurement',
       deliveryProvider: '',
       partsProcurementCost: 0,
@@ -595,6 +626,7 @@ const mapQuotationToInvoiceSeed = ({ quotation, serviceCall }) => {
     title: quotation.title,
     description: quotation.description,
     lineItems: quotation.lineItems,
+    thirdPartyServiceProviders: normalizeThirdPartyServiceProviders(quotation.thirdPartyServiceProviders),
     partsFulfilmentMode: quotation.partsFulfilmentMode,
     deliveryProvider: quotation.deliveryProvider,
     partsProcurementCost: quotation.partsProcurementCost,
@@ -794,6 +826,7 @@ export const upsertProFormaInvoiceFromServiceCall = async (req, res) => {
       serviceType: linkedQuotation?.serviceType || serviceCall.serviceType,
       serviceDate: serviceCall.completedDate || serviceCall.scheduledDate || new Date(),
       lineItems: costing.normalizedLineItems,
+      thirdPartyServiceProviders: seed.thirdPartyServiceProviders,
       partsFulfilmentMode: costing.partsFulfilmentMode,
       deliveryProvider: costing.deliveryProvider,
       partsProcurementCost: costing.partsProcurementCost,
@@ -887,6 +920,7 @@ export const createFinalInvoiceFromServiceCall = async (req, res) => {
       serviceType: linkedQuotation?.serviceType || serviceCall.serviceType,
       serviceDate: serviceCall.completedDate || serviceCall.scheduledDate || new Date(),
       lineItems: costing.normalizedLineItems,
+      thirdPartyServiceProviders: seed.thirdPartyServiceProviders,
       partsFulfilmentMode: costing.partsFulfilmentMode,
       deliveryProvider: costing.deliveryProvider,
       partsProcurementCost: costing.partsProcurementCost,
@@ -940,6 +974,7 @@ export const createInvoice = async (req, res) => {
       title,
       description,
       lineItems,
+      thirdPartyServiceProviders,
       documentType,
       workflowStatus,
       serviceType,
@@ -1025,6 +1060,7 @@ export const createInvoice = async (req, res) => {
       issueDate: resolvedIssueDate,
       dueDate: resolvedDueDate,
       lineItems: costing.normalizedLineItems,
+      thirdPartyServiceProviders: normalizeThirdPartyServiceProviders(thirdPartyServiceProviders),
       partsFulfilmentMode: costing.partsFulfilmentMode,
       deliveryProvider: costing.deliveryProvider,
       partsProcurementCost: costing.partsProcurementCost,
@@ -1111,6 +1147,7 @@ const autoCreateFinalInvoiceAfterProFormaPayment = async ({ invoice }) => {
       serviceType: linkedQuotation?.serviceType || serviceCall.serviceType,
       serviceDate: serviceCall.completedDate || serviceCall.scheduledDate || new Date(),
       lineItems: costing.normalizedLineItems,
+      thirdPartyServiceProviders: seed.thirdPartyServiceProviders,
       partsFulfilmentMode: costing.partsFulfilmentMode,
       deliveryProvider: costing.deliveryProvider,
       partsProcurementCost: costing.partsProcurementCost,
@@ -1355,6 +1392,10 @@ export const updateInvoice = async (req, res) => {
       }
     });
 
+    if (req.body.thirdPartyServiceProviders !== undefined) {
+      invoice.thirdPartyServiceProviders = normalizeThirdPartyServiceProviders(req.body.thirdPartyServiceProviders);
+    }
+
     invoice.lineItems = costing.normalizedLineItems;
     invoice.partsFulfilmentMode = costing.partsFulfilmentMode;
     invoice.deliveryProvider = costing.deliveryProvider;
@@ -1535,7 +1576,7 @@ export const sendInvoice = async (req, res) => {
 
     const shareUrl = `${baseUrl}/api/invoices/share/${invoice.shareToken}/pdf`;
     const approvalUrl = `${publicAppUrl}/invoice-approval/${invoice.shareToken}`;
-    const pdfBuffer = await generateInvoicePdfBuffer(invoice);
+    const pdfBuffer = await generateInvoicePdfBuffer(invoice, { includeCostBreakdown: req.user?.role !== 'customer' });
     const documentLabel = invoice.documentType === 'proForma' ? 'Pro-Forma Site Instruction' : 'Invoice';
 
     let emailSent = false;
@@ -1666,7 +1707,7 @@ export const generateInvoicePDF = async (req, res) => {
       return res.status(404).json({ message: 'Invoice not found' });
     }
 
-    const pdfBuffer = await generateInvoicePdfBuffer(invoice);
+    const pdfBuffer = await generateInvoicePdfBuffer(invoice, { includeCostBreakdown: false });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${invoice.invoiceNumber}.pdf"`);
     res.send(pdfBuffer);

@@ -41,6 +41,7 @@ describe('Invoice Controller - Public Share Endpoints', () => {
       .mockReturnValueOnce(query)
       .mockReturnValueOnce(query)
       .mockReturnValueOnce(query)
+      .mockReturnValueOnce(query)
       .mockReturnValueOnce(Promise.resolve(result));
     return query;
   };
@@ -84,6 +85,51 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         created: expect.any(Boolean),
         invoice: expect.objectContaining({ invoiceNumber: expect.any(String), workflowStatus: expect.any(String) })
       }));
+    });
+
+    it('carries third-party service providers from quotation into final invoice', async () => {
+      req.params.serviceCallId = 'serviceCall-1';
+
+      const providers = [
+        { companyName: 'A-One Crane Hire', serviceRendered: 'Crane lift support', serviceCost: 1800 },
+      ];
+
+      ServiceCall.findOne = jest.fn().mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            populate: jest.fn().mockResolvedValue({
+              _id: 'serviceCall-1',
+              callNumber: 'SC-0001',
+              createdBy: 'user-1',
+              customer: { _id: 'customer-1' },
+              quotation: { _id: 'quotation-1', createdBy: 'user-1' },
+              save: jest.fn(),
+            }),
+          }),
+        }),
+      });
+
+      Quotation.findOne = jest.fn().mockResolvedValue({
+        _id: 'quotation-1',
+        customer: 'customer-1',
+        title: 'Quote title',
+        description: 'Quote desc',
+        lineItems: [{ description: 'Service Work', quantity: 1, unitPrice: 1000 }],
+        serviceType: 'Repair',
+        thirdPartyServiceProviders: providers,
+      });
+
+      Invoice.create = jest.fn().mockResolvedValue({ _id: 'invoice-123', invoiceNumber: 'INV-123' });
+      Invoice.findOne = jest.fn()
+        .mockReturnValueOnce(buildPopulateQuery(null))
+        .mockReturnValueOnce(buildPopulateQuery({ _id: 'invoice-123', save: jest.fn(), ...createMockInvoice({ id: 'invoice-123' }) }));
+
+      await createFinalInvoiceFromServiceCall(req, res);
+
+      expect(Invoice.create).toHaveBeenCalledWith(expect.objectContaining({
+        thirdPartyServiceProviders: providers,
+      }));
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ created: expect.any(Boolean), invoice: expect.anything() }));
     });
     // Add more edge case tests here as needed
   });
@@ -255,6 +301,50 @@ describe('Invoice Controller - Public Share Endpoints', () => {
         .mockReturnValueOnce(buildPopulateQuery(null))
         .mockReturnValueOnce(buildPopulateQuery({ _id: 'invoice-123', save: jest.fn(), ...createMockInvoice({ id: 'invoice-123' }) }));
       await upsertProFormaInvoiceFromServiceCall(req, res);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ created: expect.any(Boolean), invoice: expect.anything() }));
+    });
+
+    it('carries third-party service providers from quotation into pro-forma invoice', async () => {
+      req.params.serviceCallId = 'serviceCall-1';
+      const providers = [
+        { companyName: 'Metro Welders', serviceRendered: 'On-site welding', serviceCost: 950 },
+      ];
+
+      ServiceCall.findOne = jest.fn().mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            populate: jest.fn().mockResolvedValue({
+              _id: 'serviceCall-1',
+              callNumber: 'SC-0001',
+              createdBy: 'user-1',
+              customer: { _id: 'customer-1' },
+              quotation: { _id: 'quotation-1', createdBy: 'user-1' },
+              save: jest.fn(),
+            }),
+          }),
+        }),
+      });
+
+      Quotation.findOne = jest.fn().mockResolvedValue({
+        _id: 'quotation-1',
+        customer: 'customer-1',
+        title: 'Quote title',
+        description: 'Quote desc',
+        lineItems: [{ description: 'Service Work', quantity: 1, unitPrice: 1000 }],
+        serviceType: 'Repair',
+        thirdPartyServiceProviders: providers,
+      });
+
+      Invoice.create = jest.fn().mockResolvedValue({ _id: 'invoice-123', invoiceNumber: 'INV-123' });
+      Invoice.findOne = jest.fn()
+        .mockReturnValueOnce(buildPopulateQuery(null))
+        .mockReturnValueOnce(buildPopulateQuery({ _id: 'invoice-123', save: jest.fn(), ...createMockInvoice({ id: 'invoice-123' }) }));
+
+      await upsertProFormaInvoiceFromServiceCall(req, res);
+
+      expect(Invoice.create).toHaveBeenCalledWith(expect.objectContaining({
+        thirdPartyServiceProviders: providers,
+      }));
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ created: expect.any(Boolean), invoice: expect.anything() }));
     });
   });

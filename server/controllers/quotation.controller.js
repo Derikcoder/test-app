@@ -49,10 +49,28 @@ const normalizePartLineItems = (lineItems = []) => {
   return lineItems.map((item) => ({
     ...item,
     partNumber: item.partNumber ? String(item.partNumber).trim() : undefined,
+    partName: item.partName ? String(item.partName).trim() : undefined,
+    partType: item.partType ? String(item.partType).trim() : undefined,
     quantity: Number(item.quantity),
     unitPrice: Number(item.unitPrice),
     total: Number(item.quantity) * Number(item.unitPrice),
   }));
+};
+
+const normalizeThirdPartyServiceProviders = (providers = []) => {
+  if (!Array.isArray(providers)) return [];
+
+  return providers
+    .map((provider) => ({
+      companyName: String(provider?.companyName || '').trim(),
+      serviceRendered: String(provider?.serviceRendered || '').trim(),
+      serviceCost: Number(provider?.serviceCost),
+    }))
+    .filter((provider) => provider.companyName || provider.serviceRendered || Number.isFinite(provider.serviceCost))
+    .map((provider) => ({
+      ...provider,
+      serviceCost: Number.isFinite(provider.serviceCost) && provider.serviceCost >= 0 ? provider.serviceCost : 0,
+    }));
 };
 
 const DEFAULT_TRAVEL_RATE_PER_KM = 8.5;
@@ -248,6 +266,12 @@ const generateQuotationPdfBuffer = (quotation) => {
       doc.text(`   Qty: ${item.quantity} | Unit: R ${Number(item.unitPrice).toFixed(2)} | Total: R ${Number(item.total).toFixed(2)}`);
       if (item.partNumber) {
         doc.text(`   Part Number: ${item.partNumber}`);
+      }
+      if (item.partName) {
+        doc.text(`   Part Name: ${item.partName}`);
+      }
+      if (item.partType) {
+        doc.text(`   Part Type: ${item.partType}`);
       }
     });
 
@@ -508,6 +532,7 @@ export const createQuotation = async (req, res) => {
       title,
       description,
       lineItems,
+      thirdPartyServiceProviders,
       partsFulfilmentMode,
       deliveryProvider,
       partsProcurementCost,
@@ -595,6 +620,7 @@ export const createQuotation = async (req, res) => {
       title,
       description,
       lineItems: costing.normalizedLineItems,
+      thirdPartyServiceProviders: normalizeThirdPartyServiceProviders(thirdPartyServiceProviders),
       partsFulfilmentMode: costing.partsFulfilmentMode,
       deliveryProvider: costing.deliveryProvider,
       partsProcurementCost: costing.partsProcurementCost,
@@ -651,6 +677,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       description,
       serviceType,
       lineItems,
+      thirdPartyServiceProviders,
       partsFulfilmentMode,
       deliveryProvider,
       partsProcurementCost,
@@ -759,6 +786,7 @@ export const createQuotationFromServiceCall = async (req, res) => {
       title: title || `Quotation for ${serviceCall.callNumber || 'Service Call'}`,
       description: description || serviceCall.description || '',
       lineItems: costing.normalizedLineItems,
+      thirdPartyServiceProviders: normalizeThirdPartyServiceProviders(thirdPartyServiceProviders),
       partsFulfilmentMode: costing.partsFulfilmentMode,
       deliveryProvider: costing.deliveryProvider,
       partsProcurementCost: costing.partsProcurementCost,
@@ -865,6 +893,10 @@ export const updateQuotation = async (req, res) => {
         quotation[field] = req.body[field];
       }
     });
+
+    if (req.body.thirdPartyServiceProviders !== undefined) {
+      quotation.thirdPartyServiceProviders = normalizeThirdPartyServiceProviders(req.body.thirdPartyServiceProviders);
+    }
 
     const shouldRecalculateFinancials = [
       'lineItems',

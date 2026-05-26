@@ -22,6 +22,16 @@ const lineItemSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  /** Optional part name */
+  partName: {
+    type: String,
+    trim: true,
+  },
+  /** Optional part category/type */
+  partType: {
+    type: String,
+    trim: true,
+  },
   /** Item/service description */
   description: {
     type: String,
@@ -46,6 +56,24 @@ const lineItemSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Line total is required'],
     min: [0, 'Total cannot be negative'],
+  },
+}, { _id: true });
+
+const thirdPartyServiceProviderSchema = new mongoose.Schema({
+  companyName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  serviceRendered: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  serviceCost: {
+    type: Number,
+    min: [0, 'Service cost cannot be negative'],
+    default: 0,
   },
 }, { _id: true });
 
@@ -146,6 +174,11 @@ const quotationSchema = new mongoose.Schema(
         },
         message: 'Quotation must have at least one line item',
       },
+    },
+    /** Third-party service providers captured for this quotation */
+    thirdPartyServiceProviders: {
+      type: [thirdPartyServiceProviderSchema],
+      default: [],
     },
     /** Parts fulfilment mode to support profitability analysis */
     partsFulfilmentMode: {
@@ -473,6 +506,7 @@ quotationSchema.statics.EDITABLE_FIELDS = [
   'title',
   'description',
   'lineItems',
+  'thirdPartyServiceProviders',
   'partsFulfilmentMode',
   'deliveryProvider',
   'partsProcurementCost',
