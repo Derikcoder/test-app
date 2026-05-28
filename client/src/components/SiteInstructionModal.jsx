@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import api from '../api/axios';
 import {
   CALL_OUT_FLOOR_AMOUNT,
@@ -14,6 +15,17 @@ const panelClass = 'rounded-lg border border-slate-700 bg-slate-900/90 p-4';
 const labelClass = 'dark-label';
 const inputClass = 'w-full rounded-lg border border-slate-600 bg-slate-950 text-slate-100 px-4 py-3 placeholder-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40';
 const mutedCardClass = 'rounded-lg border border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-100';
+const invoiceSummaryPropType = PropTypes.shape({
+  invoiceNumber: PropTypes.string,
+  workflowStatus: PropTypes.string,
+});
+const serviceCallPropType = PropTypes.shape({
+  _id: PropTypes.string,
+  proFormaInvoice: invoiceSummaryPropType,
+  quotation: PropTypes.shape({
+    quotationNumber: PropTypes.string,
+  }),
+});
 
 const CameraIcon = ({ className = '' }) => (
   <svg
@@ -30,6 +42,10 @@ const CameraIcon = ({ className = '' }) => (
     <circle cx="12" cy="13" r="3.25" />
   </svg>
 );
+
+CameraIcon.propTypes = {
+  className: PropTypes.string,
+};
 
 const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -376,7 +392,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
     consumablesRate: Number(formData.consumablesRate) || 0,
     vatRate: Number(formData.vatRate) || 15,
     depositRequired: Boolean(formData.depositRequired),
-    depositAmount: Boolean(formData.depositRequired) ? (Number(formData.depositAmount) || 0) : 0,
+    depositAmount: formData.depositRequired ? (Number(formData.depositAmount) || 0) : 0,
     depositReason: formData.depositRequired ? formData.depositReason : '',
     siteInstruction: formData.siteInstruction,
     notes: formData.notes,
@@ -581,7 +597,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="responsive-two-col-grid">
                   <div>
                     <label className={labelClass}>Title</label>
                     <input value={formData.title} onChange={(e) => updateField('title', e.target.value)} className={inputClass} />
@@ -683,13 +699,13 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                     <div className="md:col-span-4 rounded-md border border-white/15 bg-white/5 px-3 py-2">
                       <p className="text-xs text-white/70">
-                        Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00. Labour is always billed at full hours — the call-out floor fee is a separate dispatch/assessment charge.
+                        Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00. Travel to site is billable. For first-time customer/site visits under that call-out package, the first 15 minutes on site used to assess and prepare the quote are included before billable labour is calculated.
                       </p>
                     </div>
                     <div className="md:col-span-4 pt-1">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Parts Fulfilment Costing</h4>
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Parts Fulfilment</label>
                       <select value={formData.partsFulfilmentMode} onChange={(e) => updateField('partsFulfilmentMode', e.target.value)} className={inputClass}>
                         <option value="inHouseProcurement" className="text-black">In-house Procurement</option>
@@ -698,11 +714,11 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                     </div>
                     {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
                       <>
-                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                        <div className="glass-subcard">
                           <label className={labelClass}>Parts Procurement Cost (Internal Auto Formula) (R)</label>
                           <input value={preview.partsProcurementCost} readOnly className={`${inputClass} opacity-70`} />
                         </div>
-                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                        <div className="glass-subcard">
                           <label className={labelClass}>Procurement Distance Travelled (km)</label>
                           <input
                             type="number"
@@ -713,7 +729,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                             className={inputClass}
                           />
                         </div>
-                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                        <div className="glass-subcard">
                           <label className={labelClass}>Procurement Travel Time (minutes)</label>
                           <input
                             type="number"
@@ -735,18 +751,18 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                         </div>
                       </>
                     ) : (
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                      <div className="glass-subcard">
                         <label className={labelClass}>Parts Procurement Cost (R)</label>
                         <input type="number" min="0" step="0.01" value={formData.partsProcurementCost} onChange={(e) => updateField('partsProcurementCost', e.target.value)} className={inputClass} />
                       </div>
                     )}
                     {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
                       <>
-                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                        <div className="glass-subcard">
                           <label className={labelClass}>Delivery Provider</label>
                           <input value={formData.deliveryProvider} onChange={(e) => updateField('deliveryProvider', e.target.value)} className={inputClass} />
                         </div>
-                        <div className="md:col-span-2 rounded-lg border border-white/10 bg-white/5 p-3">
+                        <div className="md:col-span-2 glass-subcard">
                           <label className={labelClass}>Third-party Delivery Cost (Provider API) (R)</label>
                           <div className="flex gap-2">
                             <input value={Number(formData.thirdPartyDeliveryCost || 0).toFixed(2)} readOnly className={`${inputClass} opacity-70`} />
@@ -767,38 +783,38 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                         </div>
                       </>
                     ) : null}
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Labour Hours</label>
                       <input type="number" min="0" step="0.25" value={formData.laborHours} onChange={(e) => updateField('laborHours', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Labour Rate (R/hour)</label>
                       <input type="number" min="0" step="0.01" value={formData.laborRate} onChange={(e) => updateField('laborRate', e.target.value)} className={inputClass} />
                     </div>
                     <div className="md:col-span-4 rounded-lg border border-white/15 bg-white/5 px-3 py-2">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">Call-out Fee Calculation</h4>
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Distance Travelled (km)</label>
                       <input type="number" min="0" step="0.01" value={formData.distanceTravelledKm} onChange={(e) => updateField('distanceTravelledKm', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Rate per km (R)</label>
                       <input type="number" min="0" step="0.01" value={formData.travelRatePerKm} onChange={(e) => updateField('travelRatePerKm', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Travel Time (minutes)</label>
                       <input type="number" min="0" step="1" value={formData.travelTimeMinutes} onChange={(e) => updateField('travelTimeMinutes', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Time Travelled Cost (R) (Call-out Override, Optional)</label>
                       <input type="number" min="0" step="0.01" value={formData.timeTravelledCost} onChange={(e) => updateField('timeTravelledCost', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>Consumables Rate (%)</label>
                       <input type="number" min="0" step="0.01" value={formData.consumablesRate} onChange={(e) => updateField('consumablesRate', e.target.value)} className={inputClass} />
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="glass-subcard">
                       <label className={labelClass}>VAT Rate (%)</label>
                       <input type="number" min="0" max="100" step="0.01" value={formData.vatRate} onChange={(e) => updateField('vatRate', e.target.value)} className={inputClass} />
                     </div>
@@ -838,7 +854,7 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                     <input id={`deposit-required-${serviceCall._id}`} type="checkbox" checked={Boolean(formData.depositRequired)} onChange={(e) => updateField('depositRequired', e.target.checked)} className="form-checkbox-dark" />
                     <label htmlFor={`deposit-required-${serviceCall._id}`} className="mb-0 text-sm font-medium text-slate-200">Deposit required before additional work starts</label>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="responsive-two-col-grid">
                     <div>
                       <label className={labelClass}>Deposit Amount (R)</label>
                       <input type="number" min="0" step="0.01" value={formData.depositAmount} onChange={(e) => updateField('depositAmount', e.target.value)} disabled={!formData.depositRequired} className={inputClass} />
@@ -856,13 +872,13 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
                   <textarea rows="3" value={formData.siteInstruction.recommendedSolution} onChange={(e) => updateSiteInstruction('recommendedSolution', e.target.value)} placeholder="Recommended solution / additional work" className={inputClass} />
                   <textarea rows="3" value={formData.siteInstruction.requiredPartsAndMaterials} onChange={(e) => updateSiteInstruction('requiredPartsAndMaterials', e.target.value)} placeholder="Required parts / materials / components" className={inputClass} />
                   <textarea rows="2" value={formData.siteInstruction.thirdPartyServiceNotes} onChange={(e) => updateSiteInstruction('thirdPartyServiceNotes', e.target.value)} placeholder="Third-party service requirements (e.g. injectors, turbo, alternator, diesel pump)" className={inputClass} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="responsive-two-col-grid">
                     <input value={formData.siteInstruction.approvalReference} onChange={(e) => updateSiteInstruction('approvalReference', e.target.value)} placeholder="Customer approval reference / PO / verbal ref" className={inputClass} />
                     <input value={formData.siteInstruction.approvalNotes} onChange={(e) => updateSiteInstruction('approvalNotes', e.target.value)} placeholder="Approval notes" className={inputClass} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="responsive-two-col-grid">
                   <div>
                     <label className={labelClass}>Internal Notes</label>
                     <textarea rows="3" value={formData.notes} onChange={(e) => updateField('notes', e.target.value)} className={inputClass} />
@@ -908,6 +924,15 @@ const SiteInstructionModal = ({ token, serviceCall, triggerClassName, onUpdated,
       ) : null}
     </>
   );
+};
+
+SiteInstructionModal.propTypes = {
+  token: PropTypes.string,
+  serviceCall: serviceCallPropType,
+  triggerClassName: PropTypes.string,
+  onUpdated: PropTypes.func,
+  roleLabel: PropTypes.string,
+  isSuperAdmin: PropTypes.bool,
 };
 
 export default SiteInstructionModal;
