@@ -1,0 +1,353 @@
+@use './tokens' as *;
+
+.auth-option-card {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &--selected {
+    border-color: $brand-secondary;
+    background: rgba(255, 251, 40, 0.08);
+  }
+}
+
+.profile-form-label {
+  @apply flex flex-col gap-1 text-xs;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.profile-form-input {
+  @apply rounded-lg border px-3 py-2 text-sm outline-none;
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(2, 6, 23, 0.7);
+  color: #ffffff;
+}
+
+.quote-review-input {
+  @apply rounded-xl border px-3 py-2 text-sm focus:outline-none;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(2, 6, 23, 0.3);
+  color: #ffffff;
+}
+
+.quote-review-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.quote-table-header-cell {
+  @apply px-4 py-2 text-xs font-semibold uppercase tracking-wider;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.quote-review-action-secondary {
+  @apply flex-1 rounded-xl border px-4 py-2 text-sm font-bold disabled:opacity-50;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.quote-review-action-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.modal-grid-input {
+  @apply w-full rounded-lg border px-3 py-2;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.modal-section-panel {
+  @apply rounded-lg border p-4;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modal-help-card {
+  @apply rounded-md border px-3 py-2;
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modal-input-card {
+  @apply rounded-md border p-3;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modal-help-text {
+  @apply text-xs;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.modal-help-text-subtle {
+  @apply text-xs;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.modal-action-row {
+  @apply flex items-center justify-between gap-3 pt-2;
+}
+
+.modal-action-add-btn {
+  @apply glass-btn-secondary px-3 py-2 text-sm font-semibold;
+}
+
+.modal-action-remove-btn {
+  @apply w-full rounded-lg border px-2 py-2 text-sm text-white;
+  border-color: rgba(252, 165, 165, 0.5);
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.modal-action-cancel-btn {
+  @apply min-w-36 glass-btn-secondary px-5 py-2 font-semibold;
+}
+
+.modal-field-label {
+  @apply glass-form-label text-surface-strong;
+}
+
+.responsive-two-col-grid {
+  @apply grid grid-cols-1 gap-4 md:grid-cols-2;
+}
+
+.glass-subcard {
+  @apply rounded-lg border p-3;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.slate-input {
+  @apply w-full rounded-lg border bg-slate-950 px-4 py-2 text-slate-100;
+  border-color: rgba(71, 85, 105, 1);
+}
+
+.slate-input-sm {
+  @apply w-full rounded-lg border bg-slate-950 px-3 py-2 text-sm text-slate-100;
+  border-color: rgba(71, 85, 105, 1);
+}
+
+.slate-input-compact {
+  @apply w-full rounded-lg border bg-slate-950 px-3 py-2 text-slate-100;
+  border-color: rgba(71, 85, 105, 1);
+}
+
+.glass-form-group-flat {
+  @apply glass-form-group mb-0;
+}
+
+.table-cell-muted-nowrap {
+  @apply whitespace-nowrap px-6 py-4 text-sm text-slate-300;
+}
+
+.responsive-two-col-grid-wide {
+  @apply grid grid-cols-1 gap-6 md:grid-cols-2;
+}
+
+.alert-inline-icon {
+  @apply mr-3 h-5 w-5 flex-shrink-0;
+}
+
+.quote-audit-card {
+  @apply rounded-lg border bg-white/5 p-3;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.quote-audit-grid {
+  @apply grid grid-cols-2 gap-x-6 gap-y-1 text-xs;
+}
+
+.quote-status-option {
+  @apply bg-blue-900;
+}
+
+.invoice-panel {
+  @apply rounded-2xl border bg-white/10 p-5;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.invoice-summary-row {
+  @apply flex items-center justify-between gap-4;
+}
+
+.service-detail-card {
+  @apply rounded-lg border bg-white/5 p-3;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.service-detail-kicker {
+  @apply text-[10px] font-bold uppercase tracking-[0.18em];
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.customer-table-cell-muted {
+  @apply px-6 py-4 text-sm;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.slate-modal-btn-secondary {
+  @apply rounded-lg border border-slate-600 bg-slate-800 px-5 py-2 text-slate-100 hover:bg-slate-700;
+}
+
+.portal-section-shell {
+  @apply rounded-2xl border bg-slate-950/40 p-6 shadow-xl backdrop-blur-sm;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.portal-surface-card {
+  @apply rounded-xl border bg-slate-900/60 p-4;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.public-agent-section-title {
+  @apply mb-4 text-xl font-semibold text-slate-100;
+}
+
+.public-agent-subcard {
+  @apply rounded-xl border bg-slate-800/70 p-4;
+  border-color: rgba(51, 65, 85, 1);
+}
+
+.variance-mini-card {
+  @apply rounded-lg border bg-violet-900/20 p-2;
+  border-color: rgba(196, 181, 253, 0.2);
+}
+
+.variance-mini-label {
+  @apply text-[10px] uppercase tracking-wide text-violet-200/80;
+}
+
+.asset-meta-pill {
+  @apply rounded-full border bg-white/5 px-3 py-1;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.machine-filter-btn {
+  @apply rounded-lg px-4 py-2 font-medium transition-all;
+}
+
+.machine-filter-btn--active {
+  @apply bg-blue-600 text-white shadow-lg;
+}
+
+.machine-filter-btn--inactive {
+  @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+}
+
+.machine-spec-row {
+  @apply flex justify-between;
+}
+
+.machine-modal-section-title {
+  @apply mb-4 text-lg font-bold text-slate-900;
+}
+
+.machine-selector-panel {
+  @apply mb-4 border-2 border-blue-400 p-4;
+}
+
+.machine-loader-spinner {
+  @apply inline-block h-5 w-5 animate-spin rounded-full border border-blue-600 border-t-transparent;
+  border-width: 3px;
+}
+
+.machine-loader-text {
+  @apply mt-2 text-sm text-slate-600;
+}
+
+.machine-kv-row {
+  @apply flex justify-between;
+}
+
+.sidebar-icon {
+  @apply h-6 w-6;
+}
+
+.state-action-btn {
+  @apply mt-5 px-6 py-2 text-sm;
+}
+
+.site-contact-line {
+  @apply text-xs text-white/50;
+}
+
+.quote-inline-action-btn {
+  @apply rounded border px-2 py-0.5 text-[10px] font-semibold transition-colors;
+}
+
+.quote-inline-action-btn--danger {
+  @apply border-red-400/30 text-red-300 hover:text-red-200;
+}
+
+.service-call-count-text {
+  @apply text-xs text-white/40;
+}
+
+.profile-muted-text {
+  @apply text-sm text-white/40;
+}
+
+.agent-profile-shell {
+  @apply min-h-screen bg-slate-950 px-3 pb-8 pt-20 sm:px-6 lg:px-8;
+}
+
+.agent-profile-panel {
+  @apply rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl;
+}
+
+.agent-profile-stat-card {
+  @apply rounded-xl border border-slate-700 bg-slate-900/85 p-6;
+}
+
+.agent-profile-tab-active {
+  @apply border-b-2 border-cyan-300 text-cyan-300;
+}
+
+.agent-profile-tab-inactive {
+  @apply text-slate-300 hover:text-slate-100;
+}
+
+.agent-role-pill {
+  @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide;
+}
+
+.agent-role-pill--super {
+  @apply border-fuchsia-700 bg-fuchsia-950 text-fuchsia-200;
+}
+
+.agent-role-pill--ops {
+  @apply border-cyan-700 bg-cyan-950 text-cyan-200;
+}
+
+.agent-profile-banner {
+  @apply mb-6 rounded-xl border border-cyan-800 bg-cyan-950/50 px-4 py-3 text-sm text-cyan-100;
+}
+
+.agent-profile-invite-panel {
+  @apply mb-6 rounded-xl border border-slate-700 bg-slate-900/90 px-4 py-3;
+}
+
+.agent-form-label {
+  @apply text-xs font-semibold uppercase tracking-wide text-slate-300;
+}
+
+.agent-profile-info-card {
+  @apply rounded-lg border border-slate-700 bg-slate-950/70 px-4 py-3;
+}
+
+.agent-profile-status-pill {
+  @apply rounded-full border px-4 py-2 text-sm font-semibold;
+}
+
+.agent-profile-flag-pill {
+  @apply rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide;
+}

@@ -3,13 +3,15 @@ import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const cwd = path.dirname(fileURLToPath(import.meta.url))
+  const env = loadEnv(mode, cwd, '')
   const sslEnabled = env.VITE_SSL_ENABLED === 'true'
-  const certPath = env.VITE_SSL_CERT_FILE ? path.resolve(process.cwd(), env.VITE_SSL_CERT_FILE) : ''
-  const keyPath = env.VITE_SSL_KEY_FILE ? path.resolve(process.cwd(), env.VITE_SSL_KEY_FILE) : ''
+  const certPath = env.VITE_SSL_CERT_FILE ? path.resolve(cwd, env.VITE_SSL_CERT_FILE) : ''
+  const keyPath = env.VITE_SSL_KEY_FILE ? path.resolve(cwd, env.VITE_SSL_KEY_FILE) : ''
   const hasCerts = Boolean(certPath && keyPath && fs.existsSync(certPath) && fs.existsSync(keyPath))
   const backendTarget = env.VITE_API_PROXY_TARGET || (sslEnabled ? 'https://localhost:5000' : 'http://localhost:5000')
 

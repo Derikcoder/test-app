@@ -1,0 +1,87 @@
+@use './tokens' as *;
+
+.page-shell {
+  width: 100%;
+
+  &--full {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(255, 251, 40, 0.18), transparent 24%),
+      linear-gradient(160deg, #020f5f 0%, #05208f 42%, #0a4fc0 100%);
+  }
+
+  &--center {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.state-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.state-loading__message {
+  margin-top: 1rem;
+}
+
+.state-loading__message--sm {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.state-loading__spinner {
+  margin-inline: auto;
+}
+
+.state-card {
+  background: $state-card-bg;
+  border: 1px solid $state-card-border;
+  border-radius: 1rem;
+  box-shadow: $state-card-shadow;
+}
+
+.state-card--compact {
+  padding: 1.5rem;
+}
+
+.state-card--panel {
+  padding: 2rem;
+}
+
+.state-empty {
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+.state-empty__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.state-empty__message {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.state-error {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.state-error__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.state-error__message {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #fca5a5;
+}

@@ -47,6 +47,9 @@ coverage/
 # Local MongoDB user-mode data (runtime artefacts — never commit)
 .mongodb/
 
+# Rigour local runtime artifacts
+.rigour/
+
 # Misc
 .cache
 .temp

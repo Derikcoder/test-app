@@ -1,0 +1,66 @@
+@use './tokens' as *;
+
+.map-frame {
+  width: 100%;
+  height: 100%;
+}
+
+.page-action-button {
+  min-width: 160px;
+}
+
+.text-brand-primary {
+  color: $brand-primary;
+}
+
+.text-brand-secondary {
+  color: $brand-secondary;
+}
+
+.text-surface-strong {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.text-surface-medium {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.text-surface-muted {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.text-surface-subtle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.text-surface-faint {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.text-surface-link {
+  color: rgba(255, 255, 255, 0.85);
+
+  &:hover {
+    color: #ffffff;
+  }
+}
+
+.text-state-error {
+  color: #ee5a52;
+}
+
+.text-state-success {
+  color: #10b981;
+}
+
+.text-state-success-soft {
+  color: #86efac;
+}
+
+.bg-brand-primary {
+  background-color: $brand-primary;
+}
+
+.bg-brand-secondary {
+  background-color: $brand-secondary;
+}

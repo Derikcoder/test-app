@@ -10,6 +10,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css' // Global styles including Tailwind CSS
+import './styles/shared.scss'
 import App from './App.jsx'
 
 /**

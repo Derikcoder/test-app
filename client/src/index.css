@@ -659,18 +659,12 @@ body {
   }
 
   .service-booking-form .dark-label,
-  .service-booking-form label.text-white\/85,
-  .service-booking-form label.text-white\/90 {
+  .service-booking-form .booking-form-label {
     color: rgba(241, 245, 249, 0.98);
     font-weight: 700;
   }
 
-  .service-booking-form p.text-xs.text-white\/70,
-  .service-booking-form p.text-sm.text-white\/60,
-  .service-booking-form p.text-sm.text-white\/50,
-  .service-booking-form p.text-white\/70,
-  .service-booking-form span.text-white\/60,
-  .service-booking-form span.text-white\/50 {
+  .service-booking-form .booking-form-supporting-text {
     color: rgba(226, 232, 240, 0.95);
   }
 
@@ -736,11 +730,20 @@ body {
   }
 
   .quick-action-link-danger {
-    @apply text-xs font-semibold text-red-400 transition-colors hover:text-red-300;
+    @apply text-xs font-semibold text-red-400 transition-colors;
+  }
+
+  .quick-action-link-danger:hover {
+    color: #fca5a5;
   }
 
   .quick-action-link {
-    @apply text-xs text-white/60 transition-colors hover:text-white/85;
+    @apply text-xs transition-colors;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .quick-action-link:hover {
+    color: rgba(255, 255, 255, 0.85);
   }
 
   /* ============================================================
