@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { deriveCustomerAssets } from '../utils/customerAssets';
@@ -168,6 +169,64 @@ const normalizeAssets = (assets = []) => assets
   }));
 
 const getServiceCountLabel = (count) => (count === 1 ? 'View 1 service' : `View ${count} services`);
+
+const addressDetailsPropType = PropTypes.shape({
+  streetAddress: PropTypes.string,
+  complexName: PropTypes.string,
+  siteAddressDetail: PropTypes.string,
+  suburb: PropTypes.string,
+  cityDistrict: PropTypes.string,
+  province: PropTypes.string,
+  postalCode: PropTypes.string,
+});
+
+const serviceAssetPropType = PropTypes.shape({
+  assetName: PropTypes.string,
+  category: PropTypes.string,
+  brand: PropTypes.string,
+  model: PropTypes.string,
+  serialNumber: PropTypes.string,
+  notes: PropTypes.string,
+  status: PropTypes.string,
+});
+
+const serviceCallPropType = PropTypes.shape({
+  _id: PropTypes.string,
+  callNumber: PropTypes.string,
+  title: PropTypes.string,
+  description: PropTypes.string,
+  status: PropTypes.string,
+  serviceType: PropTypes.string,
+  rating: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  customerFeedback: PropTypes.string,
+  ratedDate: PropTypes.string,
+  updatedAt: PropTypes.string,
+  createdAt: PropTypes.string,
+  assignedAgent: PropTypes.shape({
+    firstName: PropTypes.string,
+    lastName: PropTypes.string,
+    employeeId: PropTypes.string,
+  }),
+  feedbackHistory: PropTypes.arrayOf(PropTypes.shape({
+    stage: PropTypes.string,
+    rating: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    feedback: PropTypes.string,
+    submittedAt: PropTypes.string,
+  })),
+});
+
+const customerPropType = PropTypes.shape({
+  customerType: PropTypes.string,
+  contactFirstName: PropTypes.string,
+  contactLastName: PropTypes.string,
+  email: PropTypes.string,
+  phoneNumber: PropTypes.string,
+  alternatePhone: PropTypes.string,
+  physicalAddress: PropTypes.string,
+  physicalAddressDetails: addressDetailsPropType,
+  notes: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+  serviceAssets: PropTypes.arrayOf(serviceAssetPropType),
+});
 
 const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCalls = [], token, isOwnProfile }) => {
   const navigate = useNavigate();
@@ -424,56 +483,56 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
       {isOwnProfile && isEditing ? (
         <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="contactFirstName">
+            <label className="profile-form-label" htmlFor="contactFirstName">
               First Name
-              <input id="contactFirstName" value={formData.contactFirstName} onChange={(e) => updateField('contactFirstName', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="contactFirstName" value={formData.contactFirstName} onChange={(e) => updateField('contactFirstName', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="contactLastName">
+            <label className="profile-form-label" htmlFor="contactLastName">
               Last Name
-              <input id="contactLastName" value={formData.contactLastName} onChange={(e) => updateField('contactLastName', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="contactLastName" value={formData.contactLastName} onChange={(e) => updateField('contactLastName', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="email">
+            <label className="profile-form-label" htmlFor="email">
               Email
-              <input id="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="phoneNumber">
+            <label className="profile-form-label" htmlFor="phoneNumber">
               Phone
-              <input id="phoneNumber" value={formData.phoneNumber} onChange={(e) => updateField('phoneNumber', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="phoneNumber" value={formData.phoneNumber} onChange={(e) => updateField('phoneNumber', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60 md:col-span-2" htmlFor="alternatePhone">
+            <label className="profile-form-label md:col-span-2" htmlFor="alternatePhone">
               Alternate Phone
-              <input id="alternatePhone" value={formData.alternatePhone} onChange={(e) => updateField('alternatePhone', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="alternatePhone" value={formData.alternatePhone} onChange={(e) => updateField('alternatePhone', e.target.value)} className="profile-form-input" />
             </label>
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <label className="flex flex-col gap-1 text-xs text-white/60 md:col-span-2" htmlFor="streetAddress">
+            <label className="profile-form-label md:col-span-2" htmlFor="streetAddress">
               Street Address
-              <input id="streetAddress" value={formData.streetAddress} onChange={(e) => updateField('streetAddress', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="streetAddress" value={formData.streetAddress} onChange={(e) => updateField('streetAddress', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="suburb">
+            <label className="profile-form-label" htmlFor="suburb">
               Suburb
-              <input id="suburb" value={formData.suburb} onChange={(e) => updateField('suburb', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="suburb" value={formData.suburb} onChange={(e) => updateField('suburb', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="cityDistrict">
+            <label className="profile-form-label" htmlFor="cityDistrict">
               City / District
-              <input id="cityDistrict" value={formData.cityDistrict} onChange={(e) => updateField('cityDistrict', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="cityDistrict" value={formData.cityDistrict} onChange={(e) => updateField('cityDistrict', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="province">
+            <label className="profile-form-label" htmlFor="province">
               Province
-              <input id="province" value={formData.province} onChange={(e) => updateField('province', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="province" value={formData.province} onChange={(e) => updateField('province', e.target.value)} className="profile-form-input" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="postalCode">
+            <label className="profile-form-label" htmlFor="postalCode">
               Postal Code
-              <input id="postalCode" value={formData.postalCode} onChange={(e) => updateField('postalCode', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+              <input id="postalCode" value={formData.postalCode} onChange={(e) => updateField('postalCode', e.target.value)} className="profile-form-input" />
             </label>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-white/90">Registered Machines / Assets</p>
-                <p className="text-xs text-white/50">Add future service items so your profile stays service-ready.</p>
+                <p className="text-sm font-semibold text-surface-strong">Registered Machines / Assets</p>
+                <p className="text-xs text-surface-faint">Add future service items so your profile stays service-ready.</p>
               </div>
               <button type="button" onClick={addAsset} className="rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-900/70">
                 + Add Machine
@@ -483,25 +542,25 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
             <div className="space-y-3">
               {formData.serviceAssets.map((asset, index) => (
                 <div key={`asset-${index}`} className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-white/5 p-3 md:grid-cols-2">
-                  <label className="flex flex-col gap-1 text-xs text-white/60">
+                  <label className="profile-form-label">
                     Machine / Asset Name
-                    <input value={asset.assetName} onChange={(e) => updateAsset(index, 'assetName', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+                    <input value={asset.assetName} onChange={(e) => updateAsset(index, 'assetName', e.target.value)} className="profile-form-input" />
                   </label>
-                  <label className="flex flex-col gap-1 text-xs text-white/60">
+                  <label className="profile-form-label">
                     Category
-                    <input value={asset.category} onChange={(e) => updateAsset(index, 'category', e.target.value)} placeholder="Electrical, Generator, HVAC..." className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+                    <input value={asset.category} onChange={(e) => updateAsset(index, 'category', e.target.value)} placeholder="Electrical, Generator, HVAC..." className="profile-form-input" />
                   </label>
-                  <label className="flex flex-col gap-1 text-xs text-white/60">
+                  <label className="profile-form-label">
                     Brand
-                    <input value={asset.brand} onChange={(e) => updateAsset(index, 'brand', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+                    <input value={asset.brand} onChange={(e) => updateAsset(index, 'brand', e.target.value)} className="profile-form-input" />
                   </label>
-                  <label className="flex flex-col gap-1 text-xs text-white/60">
+                  <label className="profile-form-label">
                     Model / Serial
-                    <input value={asset.model} onChange={(e) => updateAsset(index, 'model', e.target.value)} placeholder="Model" className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+                    <input value={asset.model} onChange={(e) => updateAsset(index, 'model', e.target.value)} placeholder="Model" className="profile-form-input" />
                   </label>
-                  <label className="flex flex-col gap-1 text-xs text-white/60 md:col-span-2">
+                  <label className="profile-form-label md:col-span-2">
                     Notes
-                    <input value={asset.notes} onChange={(e) => updateAsset(index, 'notes', e.target.value)} placeholder="Anything we should know before the next booking" className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+                    <input value={asset.notes} onChange={(e) => updateAsset(index, 'notes', e.target.value)} placeholder="Anything we should know before the next booking" className="profile-form-input" />
                   </label>
                   <div className="md:col-span-2 flex justify-end">
                     <button type="button" onClick={() => removeAsset(index)} className="text-xs font-semibold text-red-300 hover:text-red-200">
@@ -525,7 +584,7 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
               </p>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="password">
+              <label className="profile-form-label" htmlFor="password">
                 New Password
                 <input
                   id="password"
@@ -535,7 +594,7 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
                   className={`rounded-lg border bg-slate-950/70 px-3 py-2 text-sm text-white outline-none ${getPasswordInputBorderClass(formData.password)}`}
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="confirmPassword">
+              <label className="profile-form-label" htmlFor="confirmPassword">
                 Confirm New Password
                 <input
                   id="confirmPassword"
@@ -553,9 +612,9 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
             ) : null}
           </div>
 
-          <label className="flex flex-col gap-1 text-xs text-white/60" htmlFor="notes">
+          <label className="profile-form-label" htmlFor="notes">
             Service Notes / Preferences
-            <textarea id="notes" rows={3} value={formData.notes} onChange={(e) => updateField('notes', e.target.value)} className="rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none" />
+            <textarea id="notes" rows={3} value={formData.notes} onChange={(e) => updateField('notes', e.target.value)} className="profile-form-input" />
           </label>
 
           <div className="flex justify-end">
@@ -567,27 +626,27 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
       ) : null}
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <p className="text-sm font-semibold text-white/90">Machines and Serviceable Assets</p>
-        <p className="mt-1 text-xs text-white/50">Registered assets plus machines detected from the services already rendered for this customer.</p>
+        <p className="text-sm font-semibold text-surface-strong">Machines and Serviceable Assets</p>
+        <p className="mt-1 text-xs text-surface-faint">Registered assets plus machines detected from the services already rendered for this customer.</p>
         {assetInventory.length > 0 ? (
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
             {assetInventory.map((asset) => (
               <div key={asset.assetKey} className="rounded-xl border border-white/10 bg-slate-950/30 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-white/90">{asset.assetName || 'Serviced Machine'}</p>
-                    <p className="mt-1 text-xs text-white/50">{asset.notes || 'Machine record from your customer profile and completed service history.'}</p>
+                    <p className="text-sm font-semibold text-surface-strong">{asset.assetName || 'Serviced Machine'}</p>
+                    <p className="mt-1 text-xs text-surface-faint">{asset.notes || 'Machine record from your customer profile and completed service history.'}</p>
                   </div>
                   <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-100">
                     {asset.status || 'active'}
                   </span>
                 </div>
 
-                <div className="mt-3 space-y-1 text-xs text-white/75">
-                  <p><span className="font-semibold text-white/90">Name:</span> {asset.assetName || '—'}</p>
-                  <p><span className="font-semibold text-white/90">Brand:</span> {asset.brand || '—'}</p>
-                  <p><span className="font-semibold text-white/90">Model:</span> {asset.model || '—'}</p>
-                  <p><span className="font-semibold text-white/90">Category:</span> {asset.category || 'General'}</p>
+                <div className="mt-3 space-y-1 text-xs text-surface-muted">
+                  <p><span className="font-semibold text-surface-strong">Name:</span> {asset.assetName || '—'}</p>
+                  <p><span className="font-semibold text-surface-strong">Brand:</span> {asset.brand || '—'}</p>
+                  <p><span className="font-semibold text-surface-strong">Model:</span> {asset.model || '—'}</p>
+                  <p><span className="font-semibold text-surface-strong">Category:</span> {asset.category || 'General'}</p>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2">
@@ -608,12 +667,12 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-sm text-white/40">No machines registered yet.</p>
+          <p className="mt-2 text-sm text-surface-faint">No machines registered yet.</p>
         )}
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <p className="text-sm font-semibold text-white/90">Latest Customer Review</p>
+        <p className="text-sm font-semibold text-surface-strong">Latest Customer Review</p>
         {latestReview ? (
           <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
             <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-100">
@@ -621,20 +680,20 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
               <span>{'★'.repeat(Number(latestReview.rating || 0))}</span>
               <span>Customer sentiment snapshot</span>
             </div>
-            <p className="mt-2 text-sm text-white/85">{latestReview.feedback || 'No written feedback provided.'}</p>
-            <p className="mt-2 text-[11px] text-white/50">Submitted {formatDate(latestReview.submittedAt)}</p>
+            <p className="mt-2 text-sm text-surface-medium">{latestReview.feedback || 'No written feedback provided.'}</p>
+            <p className="mt-2 text-[11px] text-surface-faint">Submitted {formatDate(latestReview.submittedAt)}</p>
           </div>
         ) : (
-          <p className="mt-2 text-sm text-white/40">No review has been posted yet.</p>
+          <p className="mt-2 text-sm text-surface-faint">No review has been posted yet.</p>
         )}
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <p className="text-sm font-semibold text-white/90">Services Rendered</p>
-        <p className="mt-1 text-xs text-white/50">Grouped by service category and field service agent for clear history tracking.</p>
+        <p className="text-sm font-semibold text-surface-strong">Services Rendered</p>
+        <p className="mt-1 text-xs text-surface-faint">Grouped by service category and field service agent for clear history tracking.</p>
 
         {Object.keys(groupedServices).length === 0 ? (
-          <p className="mt-3 text-sm text-white/40">No grouped service history is available yet.</p>
+          <p className="mt-3 text-sm text-surface-faint">No grouped service history is available yet.</p>
         ) : (
           <div className="mt-4 space-y-4">
             {Object.entries(groupedServices).map(([category, agents]) => (
@@ -644,14 +703,14 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
                   {Object.entries(agents).map(([agent, calls]) => (
                     <div key={`${category}-${agent}`} className="rounded-lg border border-white/10 bg-white/5 p-3">
                       <p className="text-sm font-semibold text-cyan-100">{agent}</p>
-                      <ul className="mt-2 space-y-1 text-sm text-white/80">
+                      <ul className="mt-2 space-y-1 text-sm text-surface-medium">
                         {calls
                           .slice()
                           .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                           .map((call) => (
                             <li key={call._id}>
                               {call.callNumber || call._id} — {call.title || call.description || 'Service Job'}
-                              <span className="text-white/50"> · {call.status || 'pending'} · {formatDate(call.createdAt)}</span>
+                              <span className="text-surface-faint"> · {call.status || 'pending'} · {formatDate(call.createdAt)}</span>
                             </li>
                           ))}
                       </ul>
@@ -665,6 +724,15 @@ const CustomerSelfServicePanel = ({ customerId, customer, setCustomer, serviceCa
       </div>
     </div>
   );
+};
+
+CustomerSelfServicePanel.propTypes = {
+  customerId: PropTypes.string,
+  customer: customerPropType,
+  setCustomer: PropTypes.func,
+  serviceCalls: PropTypes.arrayOf(serviceCallPropType),
+  token: PropTypes.string,
+  isOwnProfile: PropTypes.bool,
 };
 
 export default CustomerSelfServicePanel;
