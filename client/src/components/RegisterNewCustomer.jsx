@@ -10,6 +10,7 @@ import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from '@react-google-m
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
+import { LoadingState, PageShell } from './shared/PageStates';
 
 const RegisterNewCustomer = () => {
  const navigate = useNavigate();
@@ -323,12 +324,9 @@ const RegisterNewCustomer = () => {
   return (
    <>
     <Sidebar />
-    <div className="page-center">
-     <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-      <p className="mt-4 text-white/70">Loading customers...</p>
-     </div>
-    </div>
+  <PageShell variant="center">
+   <LoadingState message="Loading customers..." />
+  </PageShell>
    </>
   );
  }
@@ -357,7 +355,7 @@ const RegisterNewCustomer = () => {
      <form onSubmit={handleSubmit} className="space-y-8">
       <div className="glass-card rounded-2xl shadow-xl p-8">
        <h2 className="glass-heading text-xl mb-6">Customer Type</h2>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+       <div className="responsive-two-col-grid-wide">
         <div>
          <label className="glass-form-label">Customer Type</label>
          <select
@@ -378,7 +376,7 @@ const RegisterNewCustomer = () => {
       
        <div className="glass-card rounded-2xl shadow-xl p-8">
         <h2 className="glass-heading text-xl mb-6">Customer Details</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="responsive-two-col-grid-wide">
          {customerType !== 'residential' && (
           <div className="md:col-span-2">
            <label className="glass-form-label">Business Name *</label>
@@ -467,7 +465,7 @@ const RegisterNewCustomer = () => {
           <label className="glass-form-label">
            {customerType !== 'residential' ? 'Physical Address *' : 'Residential Address *'}
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+          <div className="responsive-two-col-grid-wide mt-2">
            <input
             type="text"
             name="streetAddress"
@@ -574,7 +572,7 @@ const RegisterNewCustomer = () => {
              </Autocomplete>
              <div className="h-72 w-full rounded-lg overflow-hidden border border-white/20">
               <GoogleMap
-               mapContainerStyle={{ width: '100%', height: '100%' }}
+               mapContainerClassName="map-frame"
                center={markerPosition || mapCenter}
                zoom={15}
                onClick={handleMapClick}
@@ -597,7 +595,7 @@ const RegisterNewCustomer = () => {
         {customerType !== 'residential' && (
          <div className="mt-8">
           <h3 className="glass-heading-secondary text-lg mb-4">Business Structure</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="responsive-two-col-grid-wide">
            <div>
             <label className="glass-form-label">Branches</label>
             <select
@@ -664,7 +662,7 @@ const RegisterNewCustomer = () => {
        </div>
       <div className="glass-card rounded-2xl shadow-xl p-8">
        <h2 className="glass-heading text-xl mb-6">Locations</h2>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+       <div className="responsive-two-col-grid-wide">
         <div>
          <label className="glass-form-label">Booking Location</label>
          <input

@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { EmptyState, ErrorState, LoadingState } from './shared/PageStates';
 
 const MachineLibrary = () => {
   const { user } = useAuth();
@@ -102,10 +103,10 @@ const MachineLibrary = () => {
           <div className="mb-6 flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              className={`machine-filter-btn ${
                 selectedCategory === 'all'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                  ? 'machine-filter-btn--active'
+                  : 'machine-filter-btn--inactive'
               }`}
             >
               All Categories ({machines.length})
@@ -116,10 +117,10 @@ const MachineLibrary = () => {
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  className={`machine-filter-btn ${
                     selectedCategory === category
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                      ? 'machine-filter-btn--active'
+                      : 'machine-filter-btn--inactive'
                   }`}
                 >
                   {category} ({count})
@@ -131,29 +132,31 @@ const MachineLibrary = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block">
-              <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-            </div>
-            <p className="mt-4 text-slate-600">Loading machines...</p>
+          <div className="py-12">
+            <LoadingState message="Loading machines..." spinnerClassName="spinner-lg mx-auto" messageClassName="mt-4 text-slate-600" />
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-            {error}
-          </div>
+          <ErrorState
+            message={error}
+            className="max-w-none"
+            title="Machine library unavailable"
+            titleClassName="text-base font-semibold text-slate-900"
+            messageClassName="mt-2 text-sm text-red-700"
+          />
         )}
 
         {/* Empty State */}
         {!loading && !error && machines.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-slate-600 text-lg mb-4">No machines found</p>
-            <p className="text-slate-500">
-              Machines will appear here once you service your first one
-            </p>
-          </div>
+          <EmptyState
+            title="No machines found"
+            message="Machines will appear here once you service your first one"
+            className="py-12"
+            titleClassName="text-lg font-semibold text-slate-600"
+            messageClassName="mt-1 text-slate-500"
+          />
         )}
 
         {/* Machines Grid */}
@@ -177,25 +180,25 @@ const MachineLibrary = () => {
                   {/* Machine Specs */}
                   <div className="space-y-2 mb-4 text-sm">
                     {machine.generatorMakeModel && (
-                      <div className="flex justify-between">
+                      <div className="machine-spec-row">
                         <span className="text-slate-600">Make:</span>
                         <span className="font-medium text-slate-900">{machine.generatorMakeModel}</span>
                       </div>
                     )}
                     {machine.machineModelNumber && (
-                      <div className="flex justify-between">
+                      <div className="machine-spec-row">
                         <span className="text-slate-600">Model:</span>
                         <span className="font-medium text-slate-900">{machine.machineModelNumber}</span>
                       </div>
                     )}
                     {machine.generatorCapacityKva && (
-                      <div className="flex justify-between">
+                      <div className="machine-spec-row">
                         <span className="text-slate-600">Capacity:</span>
                         <span className="font-medium text-slate-900">{machine.generatorCapacityKva} kVA</span>
                       </div>
                     )}
                     {machine.siteName && (
-                      <div className="flex justify-between">
+                      <div className="machine-spec-row">
                         <span className="text-slate-600">Site:</span>
                         <span className="font-medium text-slate-900">{machine.siteName}</span>
                       </div>
@@ -248,7 +251,7 @@ const MachineLibrary = () => {
             <div className="p-6">
               {/* Machine Details */}
               <div className="mb-6">
-                <h3 className="font-bold text-lg text-slate-900 mb-4">Machine Details</h3>
+                <h3 className="machine-modal-section-title">Machine Details</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   {selectedMachine.generatorMakeModel && (
                     <div>
@@ -299,7 +302,7 @@ const MachineLibrary = () => {
 
               {/* Service History */}
               <div>
-                <h3 className="font-bold text-lg text-slate-900 mb-4">Service History</h3>
+                <h3 className="machine-modal-section-title">Service History</h3>
 
                 {historyLoading && (
                   <div className="text-center py-8">

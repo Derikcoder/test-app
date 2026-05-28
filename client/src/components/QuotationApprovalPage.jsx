@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api/axios';
+import { EmptyState, LoadingState, PageShell } from './shared/PageStates';
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-ZA', {
@@ -97,7 +98,9 @@ function QuotationApprovalPage() {
       });
       setDecisionMessage(response.data.message);
       setDecisionType('accepted');
-      setQuotation((q) => q ? { ...q, status: 'approved', approvedDate: new Date().toISOString() } : q);
+      setQuotation((currentQuotation) => (currentQuotation
+        ? { ...currentQuotation, status: 'approved', approvedDate: new Date().toISOString() }
+        : currentQuotation));
       setShowRejectForm(false);
 
       if (response.data?.portalAccountCreated && response.data?.portalUser?.email) {
@@ -139,24 +142,28 @@ function QuotationApprovalPage() {
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 flex items-center justify-center px-6">
-        <div className="glass-pane w-full max-w-xl p-8 text-center text-white">
-          <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-4 border-white/80 border-b-transparent" />
-          <p className="text-lg font-semibold">Loading quotation...</p>
+      <PageShell variant="full" className="flex items-center justify-center px-6">
+        <div className="state-card state-card--panel w-full max-w-xl text-center text-white">
+          <LoadingState message="Loading quotation..." spinnerClassName="spinner-lg mx-auto" messageClassName="mt-4 text-lg font-semibold" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   // ── Error / Not found ────────────────────────────────────────────────────
   if (!quotation) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 flex items-center justify-center px-6">
-        <div className="glass-pane w-full max-w-2xl p-8 text-center text-white">
-          <h1 className="text-2xl font-extrabold">Quotation Unavailable</h1>
-          <p className="mt-4 text-sm text-white/80">{error || 'This quotation link is unavailable or has expired.'}</p>
+      <PageShell variant="full" className="flex items-center justify-center px-6">
+        <div className="state-card state-card--panel w-full max-w-2xl text-center text-white">
+          <EmptyState
+            title="Quotation Unavailable"
+            message={error || 'This quotation link is unavailable or has expired.'}
+            icon="🧾"
+            titleClassName="text-2xl font-extrabold text-white"
+            messageClassName="mt-4 text-sm text-surface-medium"
+          />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -184,7 +191,7 @@ function QuotationApprovalPage() {
               <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl">
                 {quotation.quotationNumber}
               </h1>
-              <p className="mt-3 text-sm leading-6 text-white/80 sm:text-base">
+              <p className="mt-3 text-sm leading-6 text-surface-medium sm:text-base">
                 Please review the pricing below and indicate whether you accept or decline this quotation.
               </p>
 
@@ -194,13 +201,13 @@ function QuotationApprovalPage() {
                   <p className="field-kicker">Customer</p>
                   <p className="mt-2 text-base font-bold">{quotation.customer?.name || 'Customer'}</p>
                   {quotation.customer?.customerId && (
-                    <p className="mt-1 text-xs text-white/60">{quotation.customer.customerId}</p>
+                    <p className="mt-1 text-xs text-surface-subtle">{quotation.customer.customerId}</p>
                   )}
                 </div>
                 <div className="sub-card">
                   <p className="field-kicker">Valid Until</p>
                   <p className="mt-2 text-base font-bold">{formatDate(quotation.validUntil)}</p>
-                  <p className="mt-1 text-xs text-white/60">After this date the quotation expires</p>
+                  <p className="mt-1 text-xs text-surface-subtle">After this date the quotation expires</p>
                 </div>
                 {quotation.equipment && (
                   <div className="sub-card sm:col-span-2">
@@ -209,7 +216,7 @@ function QuotationApprovalPage() {
                       {[quotation.equipment.makeOrBrand, quotation.equipment.modelNumber].filter(Boolean).join(' — ') || quotation.equipment.type || 'Equipment on site'}
                     </p>
                     {quotation.equipment.serialNumber && (
-                      <p className="mt-1 text-xs text-white/60">S/N: {quotation.equipment.serialNumber}</p>
+                      <p className="mt-1 text-xs text-surface-subtle">S/N: {quotation.equipment.serialNumber}</p>
                     )}
                   </div>
                 )}
@@ -223,18 +230,18 @@ function QuotationApprovalPage() {
                     <table className="w-full text-sm text-white">
                       <thead>
                         <tr className="border-b border-white/15 bg-slate-950/30">
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-white/60">Description</th>
-                          <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-white/60">Qty</th>
-                          <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-white/60">Unit Price</th>
-                          <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-white/60">Total</th>
+                          <th className="quote-table-header-cell text-left">Description</th>
+                          <th className="quote-table-header-cell text-right">Qty</th>
+                          <th className="quote-table-header-cell text-right">Unit Price</th>
+                          <th className="quote-table-header-cell text-right">Total</th>
                         </tr>
                       </thead>
                       <tbody>
                         {lineItems.map((item, i) => (
                           <tr key={i} className="border-b border-white/10 last:border-0">
                             <td className="px-4 py-3">{item.description}</td>
-                            <td className="px-4 py-3 text-right text-white/80">{item.quantity}</td>
-                            <td className="px-4 py-3 text-right text-white/80">{formatCurrency(item.unitPrice)}</td>
+                            <td className="px-4 py-3 text-right text-surface-medium">{item.quantity}</td>
+                            <td className="px-4 py-3 text-right text-surface-medium">{formatCurrency(item.unitPrice)}</td>
                             <td className="px-4 py-3 text-right font-semibold">{formatCurrency(item.total ?? item.quantity * item.unitPrice)}</td>
                           </tr>
                         ))}
@@ -246,11 +253,11 @@ function QuotationApprovalPage() {
 
               {/* Totals ───────────────────────────────────────────────────── */}
               <div className="mt-6 space-y-2 sub-card">
-                <div className="flex justify-between text-sm text-white/80">
+                <div className="flex justify-between text-sm text-surface-medium">
                   <span>Subtotal</span>
                   <span>{formatCurrency(quotation.subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-sm text-white/80">
+                <div className="flex justify-between text-sm text-surface-medium">
                   <span>VAT ({((quotation.vatRate ?? 0.15) * 100).toFixed(0)}%)</span>
                   <span>{formatCurrency(quotation.vatAmount)}</span>
                 </div>
@@ -264,7 +271,7 @@ function QuotationApprovalPage() {
               {quotation.notes && (
                 <div className="mt-6 sub-card">
                   <p className="mb-1 field-kicker">Notes</p>
-                  <p className="text-sm leading-6 text-white/80">{quotation.notes}</p>
+                  <p className="text-sm leading-6 text-surface-medium">{quotation.notes}</p>
                 </div>
               )}
             </section>
@@ -272,7 +279,7 @@ function QuotationApprovalPage() {
             {/* ── Right column: decision panel ──────────────────────────── */}
             <section className="bg-white/5 p-6 text-white backdrop-blur-xl sm:p-8">
               <h2 className="text-xl font-extrabold">Your Response</h2>
-              <p className="mt-2 text-sm text-white/70">
+              <p className="mt-2 text-sm text-surface-muted">
                 Your decision is legally binding. Once submitted it cannot be changed through this link.
               </p>
 
@@ -315,7 +322,7 @@ function QuotationApprovalPage() {
                     )}
                   </div>
                   {quotation.status === 'rejected' && (
-                    <p className="text-xs text-white/60">
+                    <p className="text-xs text-surface-subtle">
                       If you have changed your mind, please contact us directly to request a revised quotation.
                     </p>
                   )}
@@ -330,7 +337,7 @@ function QuotationApprovalPage() {
                     <select
                       value={reviewState.rating}
                       onChange={(e) => setReviewState((current) => ({ ...current, rating: e.target.value }))}
-                      className="rounded-xl border border-white/20 bg-slate-950/30 px-3 py-2 text-sm text-white focus:outline-none"
+                      className="quote-review-input"
                     >
                       {[5, 4, 3, 2, 1].map((value) => (
                         <option key={value} value={value}>{value} star{value !== 1 ? 's' : ''}</option>
@@ -341,7 +348,7 @@ function QuotationApprovalPage() {
                       value={reviewState.feedback}
                       onChange={(e) => setReviewState((current) => ({ ...current, feedback: e.target.value }))}
                       placeholder="Optional comment about clarity, pricing, or communication"
-                      className="rounded-xl border border-white/20 bg-slate-950/30 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                      className="quote-review-input"
                     />
                   </div>
                 </div>
@@ -377,7 +384,7 @@ function QuotationApprovalPage() {
                         maxLength={500}
                         rows={3}
                         placeholder="Let us know why you are declining so we can improve our proposal..."
-                        className="w-full rounded-xl border border-white/20 bg-slate-950/30 p-3 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-rose-400/50 resize-none"
+                        className="quote-review-input w-full resize-none p-3 focus:ring-2 focus:ring-rose-400/50"
                       />
                       <div className="flex gap-3">
                         <button
@@ -390,7 +397,7 @@ function QuotationApprovalPage() {
                         <button
                           onClick={() => { setShowRejectForm(false); setRejectionReason(''); }}
                           disabled={submitting}
-                          className="flex-1 rounded-xl border border-white/20 px-4 py-2 text-sm font-bold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                          className="quote-review-action-secondary"
                         >
                           Cancel
                         </button>
@@ -398,7 +405,7 @@ function QuotationApprovalPage() {
                     </div>
                   )}
 
-                  <p className="text-xs text-white/50 text-center">
+                  <p className="text-xs text-surface-faint text-center">
                     By accepting you confirm that you have reviewed all line items and pricing.
                   </p>
                 </div>
@@ -416,7 +423,7 @@ function QuotationApprovalPage() {
                 </a>
               </div>
 
-              <p className="mt-6 text-center text-xs text-white/40">
+              <p className="mt-6 text-center text-xs text-surface-faint">
                 Powered by AppAtunid Field Service Management
               </p>
             </section>

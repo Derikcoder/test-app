@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
@@ -10,12 +10,18 @@ import {
  VISIBLE_AGENT_CATEGORIES,
  getAllowedSkillsForCategory,
 } from '../constants/agentTaxonomy';
+import {
+ buildServiceCallStats,
+ filterServiceCallsByTab,
+ getServiceCallPriorityClass,
+ getServiceCallStatusClass,
+} from '../utils/serviceCallPresentation';
 
-const pageShellClass = 'min-h-screen bg-slate-950 pt-20 pb-8 px-3 sm:px-6 lg:px-8';
-const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
-const statCardClass = 'rounded-xl border border-slate-700 bg-slate-900/85 p-6';
-const tabActiveClass = 'text-cyan-300 border-b-2 border-cyan-300';
-const tabInactiveClass = 'text-slate-300 hover:text-slate-100';
+const pageShellClass = 'agent-profile-shell';
+const panelClass = 'agent-profile-panel';
+const statCardClass = 'agent-profile-stat-card';
+const tabActiveClass = 'agent-profile-tab-active';
+const tabInactiveClass = 'agent-profile-tab-inactive';
 const roleLabelMap = {
  superAdmin: 'Super Admin',
  businessAdministrator: 'Business Administrator',
@@ -40,6 +46,16 @@ const ratingMeaningByScore = {
  1: 'Not Recommended',
  0: 'N/A',
 };
+const tabStatusMap = {
+ completed: ['completed', 'invoiced'],
+ 'in-progress': ['in-progress', 'awaiting-quote-approval'],
+ 'to-attend': ['assigned', 'open'],
+};
+const statStatusMap = {
+ completed: ['completed', 'invoiced'],
+ inProgress: ['in-progress', 'awaiting-quote-approval'],
+ toBeAttended: ['assigned', 'open'],
+};
 
 const AgentProfile = () => {
  const { id } = useParams();
@@ -48,9 +64,7 @@ const AgentProfile = () => {
  const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
  const roleLabel = roleLabelMap[user?.role] || (isSuperAdmin ? 'Super Admin' : 'Platform User');
  const canEditAgentProfile = isSuperAdmin || user?.role === 'businessAdministrator';
- const roleToneClass = isSuperAdmin
-  ? 'border-fuchsia-700 bg-fuchsia-950 text-fuchsia-200'
-  : 'border-cyan-700 bg-cyan-950 text-cyan-200';
+ const roleToneClass = isSuperAdmin ? 'agent-role-pill--super' : 'agent-role-pill--ops';
  const [agent, setAgent] = useState(null);
  const [serviceCalls, setServiceCalls] = useState([]);
  const [eligibleUnassignedCalls, setEligibleUnassignedCalls] = useState([]);
@@ -107,11 +121,13 @@ const AgentProfile = () => {
   }
  };
 
- useEffect(() => {
-  fetchAgentData();
- }, [id]);
+ const fetchAgentData = useCallback(async () => {
+  if (!user?.token) {
+   setLoading(false);
+   setError('Authentication token is missing. Please sign in again.');
+   return;
+  }
 
- const fetchAgentData = async () => {
   try {
    setLoading(true);
    
@@ -160,7 +176,11 @@ const AgentProfile = () => {
   } finally {
    setLoading(false);
   }
- };
+ }, [id, user?.token]);
+
+ useEffect(() => {
+  fetchAgentData();
+ }, [fetchAgentData]);
 
  const acceptUnassignedJob = async (callId) => {
   setActionError('');
@@ -360,61 +380,22 @@ const AgentProfile = () => {
  };
 
  // Calculate statistics
- const stats = {
-  total: serviceCalls.length,
-  completed: serviceCalls.filter(call => call.status === 'completed' || call.status === 'invoiced').length,
-  inProgress: serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval').length,
-  toBeAttended: serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open').length,
-  unassigned: eligibleUnassignedCalls.length,
- };
+ const stats = buildServiceCallStats({
+  serviceCalls,
+  statStatusMap,
+  extraCounts: {
+   unassigned: eligibleUnassignedCalls.length,
+  },
+ });
 
- // Filter service calls based on active tab
- const getFilteredCalls = () => {
-  switch (activeTab) {
-   case 'completed':
-    return serviceCalls.filter(call => call.status === 'completed' || call.status === 'invoiced');
-   case 'in-progress':
-    return serviceCalls.filter(call => call.status === 'in-progress' || call.status === 'awaiting-quote-approval');
-   case 'to-attend':
-    return serviceCalls.filter(call => call.status === 'assigned' || call.status === 'open');
-   case 'unassigned':
-    return eligibleUnassignedCalls;
-   default:
-    return serviceCalls;
-  }
- };
-
- const getStatusColor = (status) => {
-  switch (status) {
-   case 'completed':
-    return 'bg-green-500/30 text-green-100 border border-green-400/50';
-   case 'in-progress':
-    return 'bg-blue-500/30 text-blue-100 border border-blue-400/50';
-   case 'awaiting-quote-approval':
-    return 'bg-purple-500/30 text-purple-100 border border-purple-400/50';
-   case 'invoiced':
-    return 'bg-teal-500/30 text-teal-100 border border-teal-400/50';
-   case 'assigned':
-    return 'bg-yellow-500/30 text-yellow-100 border border-yellow-400/50';
-   case 'open':
-    return 'bg-gray-500/30 text-gray-100 border border-gray-400/50';
-   default:
-    return 'bg-gray-500/30 text-gray-100 border border-gray-400/50';
-  }
- };
-
- const getPriorityColor = (priority) => {
-  switch (priority) {
-   case 'high':
-    return 'text-red-200';
-   case 'medium':
-    return 'text-yellow-200';
-   case 'low':
-    return 'text-green-200';
-   default:
-    return 'text-gray-200';
-  }
- };
+ const filteredCalls = filterServiceCallsByTab({
+  activeTab,
+  serviceCalls,
+  tabStatusMap,
+  tabDataMap: {
+   unassigned: eligibleUnassignedCalls,
+  },
+ });
 
  const formatStructuredAddress = (address) => {
   if (!address) return 'N/A';
@@ -512,6 +493,80 @@ const AgentProfile = () => {
   return preview.length > 220 ? `${preview.slice(0, 220)}...` : preview;
  };
 
+ const getWorkflowActionClass = (isBusy, activeClass) => (
+  `btn-action text-white ${
+   isBusy
+    ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
+    : activeClass
+  }`
+ );
+
+ const renderCommonCallActions = (call) => {
+  const canCreateQuote = !call.quotation || !['sent', 'approved', 'converted'].includes(call.quotation.status);
+
+  return (
+   <>
+    {canCreateQuote && (
+     <CreateQuoteModal
+      token={user?.token}
+      isSuperUser={Boolean(user?.isSuperUser)}
+      sourceData={buildQuoteSourceFromCall(call)}
+      triggerLabel="Create Quote"
+      triggerClassName="btn-action-amber"
+      onCreated={fetchAgentData}
+     />
+    )}
+    {call.quotation && call.quotation.status === 'sent' && (
+     <button
+      type="button"
+      onClick={() => handleEditQuotation(call.quotation._id)}
+      className="btn-action-amber"
+     >
+      Edit Quote
+     </button>
+    )}
+    <SiteInstructionModal
+     token={user?.token}
+     serviceCall={call}
+     roleLabel={roleLabel}
+     isSuperAdmin={isSuperAdmin}
+     triggerClassName="btn-action-cyan"
+     onUpdated={fetchAgentData}
+    />
+    {call.status === 'in-progress' && (
+     <button
+      type="button"
+      onClick={() => markJobComplete(call._id)}
+      disabled={completingCallId === call._id}
+      className={getWorkflowActionClass(completingCallId === call._id, 'btn-action-green')}
+     >
+      {completingCallId === call._id ? 'Completing...' : 'Mark Job Complete'}
+     </button>
+    )}
+    {call.status === 'completed' && !call.invoice && (
+     <button
+      type="button"
+      onClick={() => createFinalInvoice(call._id)}
+      disabled={creatingInvoiceCallId === call._id}
+      className={getWorkflowActionClass(creatingInvoiceCallId === call._id, 'btn-action-emerald')}
+     >
+      {creatingInvoiceCallId === call._id ? 'Creating Invoice...' : 'Create Invoice'}
+     </button>
+    )}
+    {activeTab === 'unassigned' && (
+     <button
+      type="button"
+      onClick={() => acceptUnassignedJob(call._id)}
+      disabled={acceptingCallId === call._id}
+      className={getWorkflowActionClass(acceptingCallId === call._id, 'btn-action-orange')}
+     >
+      {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
+     </button>
+    )}
+   </>
+  );
+ };
+
  if (loading) {
   return (
    <>
@@ -564,7 +619,7 @@ const AgentProfile = () => {
      </button>
 
     <div className="mb-4 flex flex-wrap gap-2">
-     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${roleToneClass}`}>
+     <span className={`agent-role-pill ${roleToneClass}`}>
       Role: {roleLabel}
      </span>
      <span className="inline-flex items-center rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200">
@@ -572,12 +627,12 @@ const AgentProfile = () => {
      </span>
     </div>
 
-    <div className="mb-6 rounded-xl border border-cyan-800 bg-cyan-950/50 px-4 py-3 text-sm text-cyan-100">
+    <div className="agent-profile-banner">
      Entity Focus: Field Agent Workspace | Record Type: Agent Profile + Assigned Service Calls
     </div>
 
     {canEditAgentProfile ? (
-     <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/90 px-4 py-3">
+     <div className="agent-profile-invite-panel">
       <div className="flex flex-wrap items-center justify-between gap-3">
        <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Invite Actions</p>
@@ -665,14 +720,14 @@ const AgentProfile = () => {
          )}
         </div>
         <div className="flex flex-col items-end gap-3">
-         <span className={`px-4 py-2 text-sm font-semibold rounded-full ${
+        <span className={`agent-profile-status-pill ${
       agent.status === 'active' ? 'bg-emerald-950 text-emerald-200 border border-emerald-700' :
       agent.status === 'on-leave' ? 'bg-amber-950 text-amber-200 border border-amber-700' :
       'bg-slate-800 text-slate-200 border border-slate-600'
          }`}>
           {agent.status?.toUpperCase()}
          </span>
-          <span className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded-full border ${governanceFlagTone[agent.governanceFlag || 'green'] || governanceFlagTone.green}`}>
+         <span className={`agent-profile-flag-pill ${governanceFlagTone[agent.governanceFlag || 'green'] || governanceFlagTone.green}`}>
            Flag: {(agent.governanceFlag || 'green').toUpperCase()}
           </span>
          {canEditAgentProfile ? (
@@ -694,35 +749,35 @@ const AgentProfile = () => {
          </div>
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="space-y-1">
-           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Primary Email</span>
-           <input type="email" name="email" value={contactForm.email} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" required />
+           <span className="agent-form-label">Primary Email</span>
+           <input type="email" name="email" value={contactForm.email} onChange={handleContactInputChange} className="slate-input" required />
           </label>
           <label className="space-y-1">
-           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Backup Recovery Email</span>
-           <input type="email" name="backupEmail" value={contactForm.backupEmail} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" placeholder="Optional personal recovery email" />
+           <span className="agent-form-label">Backup Recovery Email</span>
+           <input type="email" name="backupEmail" value={contactForm.backupEmail} onChange={handleContactInputChange} className="slate-input" placeholder="Optional personal recovery email" />
           </label>
           <label className="space-y-1">
-           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Phone Number</span>
-           <input type="text" name="phoneNumber" value={contactForm.phoneNumber} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" required />
+           <span className="agent-form-label">Phone Number</span>
+           <input type="text" name="phoneNumber" value={contactForm.phoneNumber} onChange={handleContactInputChange} className="slate-input" required />
           </label>
           <label className="space-y-1">
-           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Assigned Area</span>
-           <input type="text" name="assignedArea" value={contactForm.assignedArea} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" />
+           <span className="agent-form-label">Assigned Area</span>
+           <input type="text" name="assignedArea" value={contactForm.assignedArea} onChange={handleContactInputChange} className="slate-input" />
           </label>
           <label className="space-y-1">
-           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Primary Category</span>
-           <select name="category" value={contactForm.category} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100">
+           <span className="agent-form-label">Primary Category</span>
+           <select name="category" value={contactForm.category} onChange={handleContactInputChange} className="slate-input">
             {VISIBLE_AGENT_CATEGORIES.map((category) => (
              <option key={category} value={category}>{category}</option>
             ))}
            </select>
           </label>
           <label className="space-y-1">
-           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Vehicle Number</span>
-           <input type="text" name="vehicleNumber" value={contactForm.vehicleNumber} onChange={handleContactInputChange} className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100" />
+           <span className="agent-form-label">Vehicle Number</span>
+           <input type="text" name="vehicleNumber" value={contactForm.vehicleNumber} onChange={handleContactInputChange} className="slate-input" />
           </label>
           <div className="space-y-1 md:col-span-2">
-           <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Skills</span>
+           <span className="agent-form-label">Skills</span>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border border-slate-700 bg-slate-950 p-3 max-h-56 overflow-y-auto">
             {editableSkills.map((skill) => (
              <label key={skill} className="flex items-center gap-2 text-sm text-slate-200">
@@ -741,12 +796,12 @@ const AgentProfile = () => {
           {isSuperAdmin ? (
            <>
             <label className="space-y-1 md:col-span-2">
-             <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Governance Flag</span>
+             <span className="agent-form-label">Governance Flag</span>
              <select
               name="governanceFlag"
               value={contactForm.governanceFlag}
               onChange={handleContactInputChange}
-              className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100"
+              className="slate-input"
              >
               {governanceFlagOptions.map((option) => (
                <option key={option.value} value={option.value}>
@@ -756,13 +811,13 @@ const AgentProfile = () => {
              </select>
             </label>
             <label className="space-y-1 md:col-span-2">
-             <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">Governance Note</span>
+             <span className="agent-form-label">Governance Note</span>
              <textarea
               name="governanceFlagNote"
               value={contactForm.governanceFlagNote}
               onChange={handleContactInputChange}
               rows="2"
-              className="w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100"
+              className="slate-input"
               placeholder="Reason for current governance status"
              />
             </label>
@@ -776,7 +831,7 @@ const AgentProfile = () => {
         </form>
        ) : null}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-         <div className="rounded-lg border border-slate-700 bg-slate-950/70 px-4 py-3">
+         <div className="agent-profile-info-card">
           <p className="text-xs uppercase tracking-wide text-slate-400">Average Service Rating</p>
           <p className="mt-1 text-lg font-semibold text-slate-100">
            {Number(agent.averageRating || 0).toFixed(2)} / 5
@@ -785,13 +840,13 @@ const AgentProfile = () => {
            </span>
           </p>
          </div>
-         <div className="rounded-lg border border-slate-700 bg-slate-950/70 px-4 py-3">
+         <div className="agent-profile-info-card">
           <p className="text-xs uppercase tracking-wide text-slate-400">Rating Rubric</p>
           <p className="mt-1 text-xs text-slate-200">5=Excellent, 4=Proficient, 3=Satisfactory, 2=Risky, 1=Not Recommended, 0=N/A</p>
          </div>
         </div>
         {agent.governanceFlagNote ? (
-         <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-200">
+         <div className="agent-profile-info-card mt-3 text-sm text-slate-200">
           <p className="text-xs uppercase tracking-wide text-slate-400">Governance Note</p>
           <p className="mt-1">{agent.governanceFlagNote}</p>
          </div>
@@ -921,62 +976,29 @@ const AgentProfile = () => {
 
        {/* Tabs */}
        <div className="mt-4 flex gap-2 border-b border-slate-700 overflow-x-auto">
+       {[
+        { key: 'all', label: 'All', count: stats.total },
+        { key: 'to-attend', label: 'To Attend', count: stats.toBeAttended },
+        { key: 'in-progress', label: 'In Progress', count: stats.inProgress },
+        { key: 'completed', label: 'Completed', count: stats.completed },
+        { key: 'unassigned', label: 'Unassigned', count: stats.unassigned },
+       ].map((tab) => (
         <button
-         onClick={() => setActiveTab('all')}
+         key={tab.key}
+         onClick={() => setActiveTab(tab.key)}
          className={`px-4 py-2 font-medium transition -mb-px ${
-          activeTab === 'all'
-           ? tabActiveClass
-           : tabInactiveClass
+          activeTab === tab.key ? tabActiveClass : tabInactiveClass
          }`}
         >
-         All ({stats.total})
+         {tab.label} ({tab.count})
         </button>
-        <button
-         onClick={() => setActiveTab('to-attend')}
-         className={`px-4 py-2 font-medium transition -mb-px ${
-          activeTab === 'to-attend'
-           ? tabActiveClass
-           : tabInactiveClass
-         }`}
-        >
-         To Attend ({stats.toBeAttended})
-        </button>
-        <button
-         onClick={() => setActiveTab('in-progress')}
-         className={`px-4 py-2 font-medium transition -mb-px ${
-          activeTab === 'in-progress'
-           ? tabActiveClass
-           : tabInactiveClass
-         }`}
-        >
-         In Progress ({stats.inProgress})
-        </button>
-        <button
-         onClick={() => setActiveTab('completed')}
-         className={`px-4 py-2 font-medium transition -mb-px ${
-          activeTab === 'completed'
-           ? tabActiveClass
-           : tabInactiveClass
-         }`}
-        >
-         Completed ({stats.completed})
-        </button>
-        <button
-         onClick={() => setActiveTab('unassigned')}
-         className={`px-4 py-2 font-medium transition -mb-px ${
-          activeTab === 'unassigned'
-           ? tabActiveClass
-           : tabInactiveClass
-         }`}
-        >
-         Unassigned ({stats.unassigned})
-        </button>
+       ))}
        </div>
       </div>
 
       {/* Calls List */}
       <div className="p-8">
-       {getFilteredCalls().length === 0 ? (
+      {filteredCalls.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
          <svg className="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -985,7 +1007,7 @@ const AgentProfile = () => {
         </div>
        ) : (
         <div className="space-y-4">
-         {getFilteredCalls().map((call) => (
+         {filteredCalls.map((call) => (
           <div
            key={call._id}
            className="rounded-lg border border-slate-700 bg-slate-900/85 p-6 hover:border-cyan-700 transition"
@@ -1006,10 +1028,10 @@ const AgentProfile = () => {
                 <span className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide rounded-full border border-cyan-700 bg-cyan-950 text-cyan-200">
                  Service Call
                 </span>
-              <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(call.status)}`}>
+              <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getServiceCallStatusClass(call.status)}`}>
                {call.status}
               </span>
-              <span className={`text-sm font-medium ${getPriorityColor(call.priority)}`}>
+              <span className={`text-sm font-medium ${getServiceCallPriorityClass(call.priority)}`}>
                {call.priority?.toUpperCase()} Priority
               </span>
              </div>
@@ -1182,148 +1204,12 @@ const AgentProfile = () => {
                   </svg>
                   Call Customer
                  </a>
-                 {(!call.quotation || !['sent', 'approved', 'converted'].includes(call.quotation.status)) && (
-                  <CreateQuoteModal
-                   token={user?.token}
-                   isSuperUser={Boolean(user?.isSuperUser)}
-                   sourceData={buildQuoteSourceFromCall(call)}
-                   triggerLabel="Create Quote"
-                   triggerClassName="btn-action-amber"
-                   onCreated={fetchAgentData}
-                  />
-                 )}
-                 {call.quotation && call.quotation.status === 'sent' && (
-                  <button
-                   type="button"
-                   onClick={() => handleEditQuotation(call.quotation._id)}
-                   className="btn-action-amber"
-                  >
-                   Edit Quote
-                  </button>
-                 )}
-                 <SiteInstructionModal
-                  token={user?.token}
-                  serviceCall={call}
-                  roleLabel={roleLabel}
-                  isSuperAdmin={isSuperAdmin}
-                  triggerClassName="btn-action-cyan"
-                  onUpdated={fetchAgentData}
-                 />
-                 {call.status === 'in-progress' && (
-                  <button
-                   type="button"
-                   onClick={() => markJobComplete(call._id)}
-                   disabled={completingCallId === call._id}
-                   className={`btn-action text-white ${
-                    completingCallId === call._id
-                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'btn-action-green'
-                   }`}
-                  >
-                   {completingCallId === call._id ? 'Completing...' : 'Mark Job Complete'}
-                  </button>
-                 )}
-                 {call.status === 'completed' && !call.invoice && (
-                  <button
-                   type="button"
-                   onClick={() => createFinalInvoice(call._id)}
-                   disabled={creatingInvoiceCallId === call._id}
-                   className={`btn-action text-white ${
-                    creatingInvoiceCallId === call._id
-                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'btn-action-emerald'
-                   }`}
-                  >
-                   {creatingInvoiceCallId === call._id ? 'Creating Invoice...' : 'Create Invoice'}
-                  </button>
-                 )}
-                  {activeTab === 'unassigned' && (
-                   <button
-                    type="button"
-                    onClick={() => acceptUnassignedJob(call._id)}
-                    disabled={acceptingCallId === call._id}
-                    className={`btn-action text-white ${
-                     acceptingCallId === call._id
-                      ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                      : 'btn-action-orange'
-                    }`}
-                   >
-                    {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
-                   </button>
-                  )}
+                 {renderCommonCallActions(call)}
                 </div>
                ) : (
                 <div className="quick-actions-wrap">
                  <p className="text-xs text-slate-400">No valid customer phone number available for call actions.</p>
-                 {(!call.quotation || !['sent', 'approved', 'converted'].includes(call.quotation.status)) && (
-                  <CreateQuoteModal
-                   token={user?.token}
-                   isSuperUser={Boolean(user?.isSuperUser)}
-                   sourceData={buildQuoteSourceFromCall(call)}
-                   triggerLabel="Create Quote"
-                   triggerClassName="btn-action-amber"
-                   onCreated={fetchAgentData}
-                  />
-                 )}
-                 {call.quotation && call.quotation.status === 'sent' && (
-                  <button
-                   type="button"
-                   onClick={() => handleEditQuotation(call.quotation._id)}
-                   className="btn-action-amber"
-                  >
-                   Edit Quote
-                  </button>
-                 )}
-                 <SiteInstructionModal
-                  token={user?.token}
-                  serviceCall={call}
-                  roleLabel={roleLabel}
-                  isSuperAdmin={isSuperAdmin}
-                  triggerClassName="btn-action-cyan"
-                  onUpdated={fetchAgentData}
-                 />
-                 {call.status === 'in-progress' && (
-                  <button
-                   type="button"
-                   onClick={() => markJobComplete(call._id)}
-                   disabled={completingCallId === call._id}
-                   className={`btn-action text-white ${
-                    completingCallId === call._id
-                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'btn-action-green'
-                   }`}
-                  >
-                   {completingCallId === call._id ? 'Completing...' : 'Mark Job Complete'}
-                  </button>
-                 )}
-                 {call.status === 'completed' && !call.invoice && (
-                  <button
-                   type="button"
-                   onClick={() => createFinalInvoice(call._id)}
-                   disabled={creatingInvoiceCallId === call._id}
-                   className={`btn-action text-white ${
-                    creatingInvoiceCallId === call._id
-                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'btn-action-emerald'
-                   }`}
-                  >
-                   {creatingInvoiceCallId === call._id ? 'Creating Invoice...' : 'Create Invoice'}
-                  </button>
-                 )}
-                 {activeTab === 'unassigned' && (
-                  <button
-                   type="button"
-                   onClick={() => acceptUnassignedJob(call._id)}
-                   disabled={acceptingCallId === call._id}
-                   className={`btn-action text-white ${
-                    acceptingCallId === call._id
-                     ? 'cursor-not-allowed border-slate-700 bg-slate-800 opacity-70'
-                     : 'btn-action-orange'
-                   }`}
-                  >
-                   {acceptingCallId === call._id ? 'Accepting...' : 'Accept Job'}
-                  </button>
-                 )}
+                 {renderCommonCallActions(call)}
                 </div>
                )}
               </div>
@@ -1386,7 +1272,7 @@ const AgentProfile = () => {
            type="email"
            value={agent.email || ''}
            readOnly
-           className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100 opacity-60 cursor-not-allowed"
+           className="mt-1 slate-input opacity-60 cursor-not-allowed"
           />
          </div>
          <div>
@@ -1396,7 +1282,7 @@ const AgentProfile = () => {
            value={provisionForm.userName}
            onChange={(e) => setProvisionForm({ userName: e.target.value })}
            required
-           className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-4 py-2 text-slate-100"
+           className="mt-1 slate-input"
           />
          </div>
          {provisionError ? (

@@ -13,12 +13,13 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { glob } from 'glob';
+import { fileURLToPath } from 'url';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-const CSS_FILE = path.resolve(__dirname, '../../index.css');
-const COMPONENTS_DIR = path.resolve(__dirname, '../../components');
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const CSS_FILE = path.resolve(testDir, '../../index.css');
+const COMPONENTS_DIR = path.resolve(testDir, '../../components');
 
 function readCSS() {
   return fs.readFileSync(CSS_FILE, 'utf8');

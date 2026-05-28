@@ -132,10 +132,10 @@ const ResetPassword = () => {
     {/* Error Message */}
     {error && (
      <div className="glass-alert-error mb-4">
-      <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      <svg className="alert-inline-icon" fill="currentColor" viewBox="0 0 20 20">
        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
       </svg>
-      <p style={{ color: '#ee5a52' }} className="font-medium">{error}</p>
+      <p className="text-state-error font-medium">{error}</p>
      </div>
     )}
 
@@ -157,7 +157,7 @@ const ResetPassword = () => {
        placeholder="Enter new password (min 6 characters)"
        disabled={loading}
       />
-      <p className="text-sm mt-2 opacity-75" style={{ color: 'var(--primary)' }}>
+      <p className="text-brand-primary text-sm mt-2 opacity-75">
        Password must be at least 6 characters
       </p>
      </div>
@@ -196,7 +196,7 @@ const ResetPassword = () => {
           }`}
          />
         </div>
-        <span className="text-xs font-medium" style={{ color: 'var(--primary)' }}>
+        <span className="text-brand-primary text-xs font-medium">
          {formData.password.length < 6
           ? 'Weak'
           : passwordSecurity.isSecure
@@ -204,7 +204,7 @@ const ResetPassword = () => {
           : 'Medium'}
         </span>
        </div>
-       <p className="text-xs mt-2" style={{ color: passwordSecurity.isSecure ? '#86efac' : 'var(--primary)' }}>
+      <p className={`text-xs mt-2 ${passwordSecurity.isSecure ? 'text-state-success-soft' : 'text-brand-primary'}`}>
         {passwordSecurity.label}
        </p>
       </div>
@@ -236,7 +236,7 @@ const ResetPassword = () => {
 
     {/* Security Information */}
     <div className="mt-6 text-center">
-     <p className="text-sm opacity-75" style={{ color: 'var(--primary)' }}>
+    <p className="text-brand-primary text-sm opacity-75">
       🔒 After resetting, you'll be automatically logged in
      </p>
     </div>

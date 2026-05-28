@@ -6,11 +6,12 @@
  * A "Register Customer" button opens the RegisterNewCustomer modal.
  */
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
+import { LoadingState, PageShell } from './shared/PageStates';
 
 const CUSTOMER_TYPE_LABELS = {
  headOffice:      'Head Office',
@@ -43,6 +44,7 @@ const customerTypeRoute = (type, id) => {
 const Customers = () => {
  const { user } = useAuth();
  const navigate = useNavigate();
+ const token = user?.token;
  const isSuperAdmin = user?.role === 'superAdmin' || user?.isSuperUser === true;
  const roleLabelMap = {
   superAdmin: 'Super Admin',
@@ -67,15 +69,16 @@ const Customers = () => {
  const [provisionSuccess, setProvisionSuccess] = useState('');
  const [provisionAccessKey, setProvisionAccessKey] = useState('');
 
- useEffect(() => {
-  fetchCustomers();
- }, []);
+ const fetchCustomers = useCallback(async () => {
+  if (!token) {
+   setLoading(false);
+   return;
+  }
 
- const fetchCustomers = async () => {
   setLoading(true);
   try {
    const res = await api.get('/customers', {
-    headers: { Authorization: `Bearer ${user.token}` },
+    headers: { Authorization: `Bearer ${token}` },
    });
    setCustomers(res.data || []);
   } catch (err) {
@@ -83,7 +86,11 @@ const Customers = () => {
   } finally {
    setLoading(false);
   }
- };
+ }, [token]);
+
+ useEffect(() => {
+  fetchCustomers();
+ }, [fetchCustomers]);
 
  const filtered = useMemo(() => {
   return customers.filter((c) => {
@@ -109,7 +116,7 @@ const Customers = () => {
   if (!window.confirm('Delete this customer profile? Transaction history (service calls, invoices) will be preserved.')) return;
   try {
    await api.delete(`/customers/${customerId}`, {
-    headers: { Authorization: `Bearer ${user.token}` },
+    headers: { Authorization: `Bearer ${token}` },
    });
    setSuccess('Customer deleted.');
    fetchCustomers();
@@ -144,7 +151,7 @@ const Customers = () => {
      userName: provisionForm.userName,
      email: provisionModal.email,
     },
-    { headers: { Authorization: `Bearer ${user.token}` } }
+    { headers: { Authorization: `Bearer ${token}` } }
    );
    setProvisionSuccess(response.data?.message || `Login provisioned for ${provisionModal.email}`);
    setProvisionAccessKey(response.data?.temporaryAccessKey || '');
@@ -160,12 +167,9 @@ const Customers = () => {
   return (
    <>
     <Sidebar />
-    <div className="page-center">
-     <div className="text-center">
-      <div className="spinner-lg"></div>
-      <p className="mt-4 text-white/70">Loading customers...</p>
-     </div>
-    </div>
+  <PageShell variant="center">
+   <LoadingState message="Loading customers..." />
+  </PageShell>
    </>
   );
  }
@@ -289,10 +293,10 @@ const Customers = () => {
               </div>
               <div className="text-xs text-white/50">{customer.email}</div>
              </td>
-             <td className="px-6 py-4 text-sm text-white/60">
+             <td className="customer-table-cell-muted">
               {customer.parentAccount?.businessName || '—'}
              </td>
-             <td className="px-6 py-4 text-sm text-white/60">
+             <td className="customer-table-cell-muted">
               {formatDate(customer.createdAt)}
              </td>
              <td className="px-6 py-4 text-right whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
@@ -387,7 +391,7 @@ const Customers = () => {
         <button
          type="button"
          onClick={() => setProvisionModal(null)}
-         className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+         className="slate-modal-btn-secondary"
         >
          Cancel
         </button>
@@ -420,7 +424,7 @@ const Customers = () => {
        ) : null}
        <button
         onClick={() => setProvisionModal(null)}
-        className="px-5 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+        className="slate-modal-btn-secondary"
        >
         Close
        </button>

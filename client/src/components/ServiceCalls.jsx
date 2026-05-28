@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { EmptyState, LoadingState, PageShell } from './shared/PageStates';
 
 const ServiceCalls = () => {
  const navigate = useNavigate();
@@ -339,12 +340,12 @@ const ServiceCalls = () => {
    <div className="flex items-start justify-between gap-2 flex-wrap">
     <div>
      <p className="text-sm font-semibold text-white">{call.callNumber || call._id}</p>
-     <p className="text-xs text-white/70">{getCustomerLabel(call)}</p>
+    <p className="text-surface-muted text-xs">{getCustomerLabel(call)}</p>
     </div>
     <StatusBadge status={call.status} />
    </div>
    {call.title && <p className="text-sm text-white/80">{call.title}</p>}
-   <div className="text-xs text-white/55 space-y-0.5">
+  <div className="text-surface-faint text-xs space-y-0.5">
     {call.scheduledDate && <p>Scheduled: {formatDate(call.scheduledDate)}</p>}
     {call.startedDate && <p>Started: {formatDate(call.startedDate)}</p>}
     {call.completedDate && <p>Completed: {formatDate(call.completedDate)}</p>}
@@ -380,22 +381,22 @@ const ServiceCalls = () => {
     <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-4">
      <div>
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">Job Progress</p>
-      <p className="mt-2 text-sm text-white/80">{getProgressSummary(call)}</p>
+      <p className="text-surface-medium mt-2 text-sm">{getProgressSummary(call)}</p>
      </div>
 
      <div className="grid gap-3 sm:grid-cols-2">
-      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Timeline</p>
-       <div className="mt-2 space-y-1 text-xs text-white/75">
+      <div className="service-detail-card">
+      <p className="service-detail-kicker">Timeline</p>
+      <div className="text-surface-muted mt-2 space-y-1 text-xs">
         <p>Scheduled: {formatDate(call.scheduledDate)}</p>
         <p>Started: {formatDate(call.startedDate)}</p>
         <p>Completed: {formatDate(call.completedDate)}</p>
         <p>Invoiced: {formatDate(call.invoicedDate)}</p>
        </div>
       </div>
-      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Linked Documents</p>
-       <div className="mt-2 space-y-1 text-xs text-white/75">
+      <div className="service-detail-card">
+      <p className="service-detail-kicker">Linked Documents</p>
+      <div className="text-surface-muted mt-2 space-y-1 text-xs">
         <p>Quotation: {call.quotation?.quotationNumber || 'None linked'}{call.quotation?.status ? ` · ${call.quotation.status}` : ''}</p>
         <p>Pro-forma: {call.proFormaInvoice?.invoiceNumber || 'None linked'}{call.proFormaInvoice?.paymentStatus ? ` · ${call.proFormaInvoice.paymentStatus}` : call.proFormaInvoice?.workflowStatus ? ` · ${call.proFormaInvoice.workflowStatus}` : ''}</p>
         <p>Final Invoice: {call.invoice?.invoiceNumber || invoiceSuccessMap[call._id] || 'None linked'}{call.invoice?.paymentStatus ? ` · ${call.invoice.paymentStatus}` : ''}</p>
@@ -405,8 +406,8 @@ const ServiceCalls = () => {
 
      {getBlockerItems(call).length > 0 && (
       <div className="rounded-lg border border-amber-300/20 bg-amber-500/10 p-3">
-       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200">Potential Hold-Ups</p>
-       <div className="mt-2 space-y-1 text-xs text-amber-100/90">
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200">Potential Hold-Ups</p>
+      <div className="mt-2 space-y-1 text-xs text-amber-100/90">
         {getBlockerItems(call).map((item) => (
          <p key={item}>{item}</p>
         ))}
@@ -417,21 +418,21 @@ const ServiceCalls = () => {
      {(call.notes || call.agentNotes || call.internalNotes) && (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
        {call.notes && (
-        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Customer Notes</p>
-         <p className="mt-2 text-xs text-white/80 whitespace-pre-wrap">{call.notes}</p>
+        <div className="service-detail-card">
+         <p className="service-detail-kicker">Customer Notes</p>
+         <p className="text-surface-medium mt-2 text-xs whitespace-pre-wrap">{call.notes}</p>
         </div>
        )}
        {call.agentNotes && (
-        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Agent Notes</p>
-         <p className="mt-2 text-xs text-white/80 whitespace-pre-wrap">{call.agentNotes}</p>
+        <div className="service-detail-card">
+         <p className="service-detail-kicker">Agent Notes</p>
+         <p className="text-surface-medium mt-2 text-xs whitespace-pre-wrap">{call.agentNotes}</p>
         </div>
        )}
        {call.internalNotes && (
-        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Internal Notes</p>
-         <p className="mt-2 text-xs text-white/80 whitespace-pre-wrap">{call.internalNotes}</p>
+        <div className="service-detail-card">
+         <p className="service-detail-kicker">Internal Notes</p>
+         <p className="text-surface-medium mt-2 text-xs whitespace-pre-wrap">{call.internalNotes}</p>
         </div>
        )}
       </div>
@@ -535,7 +536,7 @@ const ServiceCalls = () => {
       </button>
      ) : (
       <div className="quick-actions-wrap">
-       <span className="text-xs text-white/70">Remove this service call?</span>
+      <span className="text-surface-muted text-xs">Remove this service call?</span>
        <button
         type="button"
         disabled={deletingCallId === call._id}
@@ -565,7 +566,13 @@ const ServiceCalls = () => {
     <span className="count-badge">{calls.length}</span>
    </div>
    {calls.length === 0 ? (
-    <p className="text-sm text-white/50">{emptyMsg || 'No calls in this category.'}</p>
+    <EmptyState
+     title={emptyMsg || 'No calls in this category.'}
+     defaultMessage=""
+     className="py-2"
+    titleClassName="text-surface-faint text-sm font-medium"
+     messageClassName="hidden"
+    />
    ) : (
     <div className="space-y-3">
      {calls.map((call) => (
@@ -580,12 +587,9 @@ const ServiceCalls = () => {
   return (
    <>
     <Sidebar />
-    <div className="page-center">
-     <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-      <p className="mt-4 text-white/70">Loading service calls...</p>
-     </div>
-    </div>
+  <PageShell variant="center">
+   <LoadingState message="Loading service calls..." spinnerClassName="spinner-lg" />
+  </PageShell>
    </>
   );
  }

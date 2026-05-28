@@ -192,28 +192,28 @@ const PublicAgentProfile = ({ useCurrentAgent = false }) => {
         </section>
 
         <section className={panelClass}>
-          <h2 className="mb-4 text-xl font-semibold text-slate-100">Universal Service Report</h2>
+          <h2 className="public-agent-section-title">Universal Service Report</h2>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <article className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+            <article className="public-agent-subcard">
               <p className="text-xs uppercase tracking-wide text-slate-400">Assigned Jobs</p>
               <p className="mt-1 text-2xl font-semibold text-slate-100">{profile.serviceReport?.totalAssignedJobs || 0}</p>
             </article>
-            <article className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+            <article className="public-agent-subcard">
               <p className="text-xs uppercase tracking-wide text-slate-400">Completed / Invoiced</p>
               <p className="mt-1 text-2xl font-semibold text-emerald-300">{profile.serviceReport?.completedOrInvoicedJobs || 0}</p>
             </article>
-            <article className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+            <article className="public-agent-subcard">
               <p className="text-xs uppercase tracking-wide text-slate-400">Total Labor Hours</p>
               <p className="mt-1 text-2xl font-semibold text-slate-100">{Number(profile.serviceReport?.totalLaborHours || 0).toFixed(1)}</p>
             </article>
-            <article className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+            <article className="public-agent-subcard">
               <p className="text-xs uppercase tracking-wide text-slate-400">Parts Spend (historic)</p>
               <p className="mt-1 text-2xl font-semibold text-slate-100">{formatCurrency(profile.serviceReport?.totalPartsCost || 0)}</p>
             </article>
           </div>
 
-          <div className="mt-4 rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+          <div className="mt-4 public-agent-subcard">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Status Breakdown</h3>
             <div className="mt-3 flex flex-wrap gap-2">
               {Object.entries(profile.serviceReport?.statusBreakdown || {}).length > 0 ? Object.entries(profile.serviceReport?.statusBreakdown || {}).map(([status, count]) => (
@@ -228,7 +228,7 @@ const PublicAgentProfile = ({ useCurrentAgent = false }) => {
             <h3 className="mb-3 text-lg font-semibold text-slate-100">Recent Completed / Invoiced Jobs</h3>
             <div className="space-y-3">
               {(profile.serviceReport?.recentServiceEvidence || []).length > 0 ? (profile.serviceReport?.recentServiceEvidence || []).slice(0, 12).map((job) => (
-                <article key={`${job.callNumber}-${job.serviceDate || ''}`} className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+                <article key={`${job.callNumber}-${job.serviceDate || ''}`} className="public-agent-subcard">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-slate-100">{job.callNumber} • {job.title || job.serviceType || 'Service Job'}</p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -269,10 +269,10 @@ const PublicAgentProfile = ({ useCurrentAgent = false }) => {
         </section>
 
         <section className={panelClass}>
-          <h2 className="mb-4 text-xl font-semibold text-slate-100">Recent Customer Reviews</h2>
+          <h2 className="public-agent-section-title">Recent Customer Reviews</h2>
           <div className="space-y-3">
             {(profile.publicReviews || []).length > 0 ? (profile.publicReviews || []).slice(0, 12).map((review) => (
-              <article key={`${review.reviewId || review.callNumber}-${review.submittedAt || ''}`} className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+              <article key={`${review.reviewId || review.callNumber}-${review.submittedAt || ''}`} className="public-agent-subcard">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-slate-100">{review.customerName}</p>
                   <p className="text-sm text-amber-300">{review.rating} / 5</p>
@@ -288,11 +288,11 @@ const PublicAgentProfile = ({ useCurrentAgent = false }) => {
 
         <section className={`${panelClass} grid gap-6 lg:grid-cols-2`}>
           <div>
-            <h2 className="mb-4 text-xl font-semibold text-slate-100">Machines Worked On</h2>
+            <h2 className="public-agent-section-title">Machines Worked On</h2>
             {(profile.machinesWorkedOn || []).length > 0 ? (
               <div className="space-y-3">
                 {(profile.machinesWorkedOn || []).slice(0, 12).map((machine) => (
-                  <article key={machine.machineId} className="rounded-xl border border-slate-700 bg-slate-800/70 p-4">
+                  <article key={machine.machineId} className="public-agent-subcard">
                     <p className="font-semibold text-slate-100">{machine.generatorMakeModel || machine.machineType || 'Machine'}</p>
                     <p className="text-sm text-slate-300">{machine.machineModelNumber || 'No model number listed'}</p>
                     <p className="mt-1 text-xs text-cyan-200">Services Rendered: {machine.servicesRendered || 0} • Last Service: {formatDate(machine.lastServicedAt)}</p>
@@ -306,7 +306,7 @@ const PublicAgentProfile = ({ useCurrentAgent = false }) => {
 
           <div className="space-y-6">
             <div>
-              <h2 className="mb-4 text-xl font-semibold text-slate-100">Expertise Brands</h2>
+              <h2 className="public-agent-section-title">Expertise Brands</h2>
               <div className="flex flex-wrap gap-2">
                 {(profile.expertiseBrands || []).length > 0 ? (profile.expertiseBrands || []).map((brand) => (
                   <span key={brand} className="rounded-full border border-emerald-500/40 bg-emerald-900/30 px-3 py-1 text-xs text-emerald-100">{brand}</span>

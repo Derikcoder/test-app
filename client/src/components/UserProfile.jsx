@@ -295,7 +295,7 @@ const UserProfile = () => {
          <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
          </svg>
-         <p className="font-medium" style={{ color: '#ee5a52' }}>{error}</p>
+         <p className="text-state-error font-medium">{error}</p>
         </div>
        )}
 
@@ -384,7 +384,7 @@ const UserProfile = () => {
          <div className="glass-card p-5">
           <h3 className="glass-heading-secondary mb-3 text-left">Editable Fields</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-           <div className="glass-form-group mb-0">
+           <div className="glass-form-group-flat">
             <label className="glass-form-label">Business Name</label>
             <input
              type="text"
@@ -395,7 +395,7 @@ const UserProfile = () => {
              required
             />
            </div>
-             <div className="glass-form-group mb-0">
+             <div className="glass-form-group-flat">
               <label className="glass-form-label">Registration Number</label>
               <input
                type="text"
@@ -409,7 +409,7 @@ const UserProfile = () => {
                <p className="mt-1 text-xs text-white/60">Locked after initial save. Contact super admin for corrections.</p>
               )}
              </div>
-           <div className="glass-form-group mb-0">
+           <div className="glass-form-group-flat">
             <label className="glass-form-label">Email</label>
             <input
              type="email"
@@ -420,7 +420,7 @@ const UserProfile = () => {
              required
             />
            </div>
-           <div className="glass-form-group mb-0">
+           <div className="glass-form-group-flat">
             <label className="glass-form-label">Phone Number</label>
             <input
              type="text"
@@ -430,7 +430,7 @@ const UserProfile = () => {
              className="glass-form-input"
             />
            </div>
-           <div className="glass-form-group mb-0">
+           <div className="glass-form-group-flat">
             <label className="glass-form-label">Tax Number</label>
             <input
              type="text"
@@ -444,7 +444,7 @@ const UserProfile = () => {
              <p className="mt-1 text-xs text-white/60">Locked after initial save. Contact super admin for corrections.</p>
             )}
            </div>
-           <div className="glass-form-group mb-0">
+           <div className="glass-form-group-flat">
             <label className="glass-form-label">VAT Number</label>
             <input
              type="text"
@@ -460,10 +460,10 @@ const UserProfile = () => {
            </div>
            {canOverrideRegistrationIdentifiers && (
             <>
-             <div className="glass-form-group mb-0 sm:col-span-2">
+             <div className="glass-form-group-flat sm:col-span-2">
               <p className="text-xs text-white/70">Super admin overrides of existing registration fields require legal documentation.</p>
              </div>
-             <div className="glass-form-group mb-0">
+             <div className="glass-form-group-flat">
               <label className="glass-form-label">Legal Document Type</label>
               <input
                type="text"
@@ -474,7 +474,7 @@ const UserProfile = () => {
                placeholder="e.g. Court Order, CIPC Amendment"
               />
              </div>
-             <div className="glass-form-group mb-0">
+             <div className="glass-form-group-flat">
               <label className="glass-form-label">Legal Document Reference</label>
               <input
                type="text"
@@ -485,7 +485,7 @@ const UserProfile = () => {
                placeholder="Case/File/Certificate number"
               />
              </div>
-             <div className="glass-form-group mb-0 sm:col-span-2">
+             <div className="glass-form-group-flat sm:col-span-2">
               <label className="glass-form-label">Legal Document URL</label>
               <input
                type="url"
@@ -496,7 +496,7 @@ const UserProfile = () => {
                placeholder="https://..."
               />
              </div>
-             <div className="glass-form-group mb-0 sm:col-span-2">
+             <div className="glass-form-group-flat sm:col-span-2">
               <label className="glass-form-label">Legal Change Reason</label>
               <textarea
                name="legalChangeReason"
@@ -509,7 +509,7 @@ const UserProfile = () => {
              </div>
             </>
            )}
-           <div className="glass-form-group mb-0 sm:col-span-2">
+           <div className="glass-form-group-flat sm:col-span-2">
             <label className="glass-form-label">Physical Address</label>
             <textarea
              name="physicalAddress"
@@ -519,7 +519,7 @@ const UserProfile = () => {
              rows="3"
             />
            </div>
-           <div className="glass-form-group mb-0 sm:col-span-2">
+           <div className="glass-form-group-flat sm:col-span-2">
             <label className="glass-form-label">Website Address</label>
             <input
              type="url"
@@ -529,7 +529,7 @@ const UserProfile = () => {
              className="glass-form-input"
             />
            </div>
-           <div className="glass-form-group mb-0">
+           <div className="glass-form-group-flat">
             <label className="glass-form-label">New Password (Optional)</label>
             <input
              type="password"
@@ -540,7 +540,7 @@ const UserProfile = () => {
              placeholder="Leave blank to keep current"
             />
            </div>
-           <div className="glass-form-group mb-0">
+           <div className="glass-form-group-flat">
             <label className="glass-form-label">Confirm New Password</label>
             <input
              type="password"

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 import api from '../api/axios';
 import {
   CALL_OUT_FLOOR_AMOUNT,
+  INCLUDED_ASSESSMENT_MINUTES,
   calculateCallOutTravelCost,
+  calculateChargeableLabourHours,
   calculateProcurementCostBreakdown,
-  CALL_OUT_FLOOR_DISTANCE_KM,
-  CALL_OUT_FLOOR_TIME_MINUTES,
   PROCUREMENT_LABOUR_RATE_PER_HOUR,
   TRAVEL_RATE_PER_KM,
 } from '../utils/travelCosting';
@@ -19,7 +20,6 @@ const TEMPLATE_OPTIONS = [
 ];
 
 const MIN_PROFIT_MARGIN_RATE = 0.2;
-const INCLUDED_ASSESSMENT_MINUTES = 15;
 const AUTO_RESOLUTION_SOURCE_LABELS = {
   'equipment-history': 'Equipment history',
   'booking-request': 'Service booking data',
@@ -27,6 +27,99 @@ const AUTO_RESOLUTION_SOURCE_LABELS = {
 };
 
 const EMPTY_SOURCE_DATA = Object.freeze({});
+const idLikePropType = PropTypes.oneOfType([
+  PropTypes.string,
+  PropTypes.shape({
+    _id: PropTypes.string,
+  }),
+]);
+const lineItemPropType = PropTypes.shape({
+  partNumber: PropTypes.string,
+  partName: PropTypes.string,
+  partType: PropTypes.string,
+  description: PropTypes.string,
+  quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  unitPrice: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+});
+const thirdPartyServiceProviderPropType = PropTypes.shape({
+  companyName: PropTypes.string,
+  serviceRendered: PropTypes.string,
+  serviceCost: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+});
+const categoryLineItemPropType = PropTypes.shape({
+  description: PropTypes.string,
+  partName: PropTypes.string,
+  partNumber: PropTypes.string,
+  partType: PropTypes.string,
+  quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  unitPrice: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+});
+const sourceDataPropType = PropTypes.shape({
+  serviceCallId: PropTypes.string,
+  customerId: idLikePropType,
+  customerLabel: PropTypes.string,
+  siteId: PropTypes.string,
+  equipmentId: idLikePropType,
+  machineModelNumber: PropTypes.string,
+  generatorMakeModel: PropTypes.string,
+  serviceType: PropTypes.string,
+  title: PropTypes.string,
+  description: PropTypes.string,
+  validUntil: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+  partsFulfilmentMode: PropTypes.string,
+  deliveryProvider: PropTypes.string,
+  partsProcurementCost: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  thirdPartyDeliveryCost: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  vatRate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  labourHours: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  isFirstSiteVisit: PropTypes.bool,
+  labourRate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  distanceTravelledKm: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  travelRatePerKm: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  travelTimeMinutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  timeTravelledCost: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  procurementDistanceTravelledKm: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  procurementTravelTimeMinutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  consumablesRate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  thirdPartyServiceProviders: PropTypes.arrayOf(thirdPartyServiceProviderPropType),
+  notes: PropTypes.string,
+  terms: PropTypes.string,
+  lineItems: PropTypes.arrayOf(lineItemPropType),
+  categories: PropTypes.arrayOf(PropTypes.shape({
+    partType: PropTypes.string,
+    lineItems: PropTypes.arrayOf(categoryLineItemPropType),
+    items: PropTypes.arrayOf(categoryLineItemPropType),
+  })),
+});
+const quotationPropType = PropTypes.shape({
+  _id: PropTypes.string,
+  customer: idLikePropType,
+  siteId: PropTypes.string,
+  equipment: idLikePropType,
+  serviceType: PropTypes.string,
+  title: PropTypes.string,
+  description: PropTypes.string,
+  validUntil: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+  partsFulfilmentMode: PropTypes.string,
+  deliveryProvider: PropTypes.string,
+  partsProcurementCost: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  thirdPartyDeliveryCost: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  vatRate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  labourHours: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  isFirstSiteVisit: PropTypes.bool,
+  labourRate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  distanceTravelledKm: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  travelRatePerKm: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  travelTimeMinutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  timeTravelledCost: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  procurementDistanceTravelledKm: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  procurementTravelTimeMinutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  consumablesRate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  thirdPartyServiceProviders: PropTypes.arrayOf(thirdPartyServiceProviderPropType),
+  notes: PropTypes.string,
+  terms: PropTypes.string,
+  lineItems: PropTypes.arrayOf(lineItemPropType),
+});
 
 const formatDate = (value) => {
   if (!value) return 'N/A';
@@ -354,25 +447,7 @@ const CreateQuoteModal = ({
         ? resolveInitialLineItems(sourceData)
         : prev.lineItems,
     }));
-  }, [
-    sourceData.customerId,
-    sourceData.siteId,
-    sourceData.equipmentId,
-    sourceData.serviceType,
-    sourceData.title,
-    sourceData.description,
-    sourceData.validUntil,
-    sourceData.partsFulfilmentMode,
-    sourceData.deliveryProvider,
-    sourceData.partsProcurementCost,
-    sourceData.thirdPartyDeliveryCost,
-    sourceData.procurementDistanceTravelledKm,
-    sourceData.procurementTravelTimeMinutes,
-    sourceData.thirdPartyServiceProviders,
-    sourceData.notes,
-    sourceData.lineItems,
-    sourceData.categories,
-  ]);
+  }, [sourceData]);
 
   useEffect(() => {
     if (formData.partsFulfilmentMode !== 'thirdPartyDelivery') {
@@ -583,8 +658,6 @@ const CreateQuoteModal = ({
     const procurementDistanceTravelledKm = Number(formData.procurementDistanceTravelledKm) || 0;
     const procurementTravelTimeMinutes = Number(formData.procurementTravelTimeMinutes) || 0;
     const {
-      distanceTravelCost,
-      timeTravelCost,
       baseTravelCost,
       isCallOutFloorApplicable,
       travelCost: travellingCost,
@@ -595,9 +668,15 @@ const CreateQuoteModal = ({
       timeTravelledCost,
     });
     const isFirstVisitCallOutPackage = isCallOutFloorApplicable && isFirstSiteVisit;
-    // Labour is always billed at full hours. The R650 call-out floor is a separate
-    // dispatch/assessment charge and does not replace any billed labour time.
-    const chargeableLabourHours = labourHours;
+    const {
+      includedAssessmentHours,
+      chargeableLabourHours,
+    } = calculateChargeableLabourHours({
+      labourHours,
+      isFirstSiteVisit,
+      isCallOutFloorApplicable,
+      includedAssessmentMinutes: INCLUDED_ASSESSMENT_MINUTES,
+    });
     const procurementBreakdown = calculateProcurementCostBreakdown({
       distanceTravelledKm: procurementDistanceTravelledKm,
       travelRatePerKm: TRAVEL_RATE_PER_KM,
@@ -645,6 +724,8 @@ const CreateQuoteModal = ({
       estimatedPartsProfit: estimatedPartsProfit.toFixed(2),
       thirdPartyServicesCost: thirdPartyServicesCost.toFixed(2),
       labourHours: labourHours.toFixed(2),
+      includedAssessmentHours: includedAssessmentHours.toFixed(2),
+      includedAssessmentMinutes: isFirstVisitCallOutPackage ? INCLUDED_ASSESSMENT_MINUTES : 0,
       chargeableLabourHours: chargeableLabourHours.toFixed(2),
       labourCost: labourCost.toFixed(2),
       distanceTravelledKm: distanceTravelledKm.toFixed(2),
@@ -944,7 +1025,7 @@ const CreateQuoteModal = ({
           <div className="glass-card w-full max-w-4xl rounded-2xl border border-white/20 bg-slate-900/85 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="glass-heading-secondary">{editMode ? 'Edit Quotation' : 'Submit Quote'}</h2>
-              <button type="button" onClick={closeModal} className="text-white/80 hover:text-white">Close</button>
+              <button type="button" onClick={closeModal} className="text-surface-medium hover:text-white">Close</button>
             </div>
 
             {error ? <div className="mb-4 rounded-lg border border-red-300/50 bg-red-500/20 px-4 py-2 text-white">{error}</div> : null}
@@ -952,12 +1033,12 @@ const CreateQuoteModal = ({
             {autoResolutionInfo ? (
               <div className="mb-4 rounded-lg border border-cyan-300/50 bg-cyan-500/20 px-4 py-2 text-white">
                 <p className="text-sm font-semibold">Auto template source selected</p>
-                <p className="text-sm text-white/90">
+                <p className="text-sm text-surface-strong">
                   Source: {AUTO_RESOLUTION_SOURCE_LABELS[autoResolutionInfo.source] || autoResolutionInfo.source || 'Unknown'}
                   {autoResolutionInfo.confidence ? ` (${autoResolutionInfo.confidence} confidence)` : ''}
                 </p>
                 {autoResolutionInfo.equipment ? (
-                  <p className="text-xs text-white/80 mt-1">
+                  <p className="text-xs text-surface-medium mt-1">
                     Equipment: {[
                       autoResolutionInfo.equipment.equipmentId,
                       autoResolutionInfo.equipment.brand,
@@ -966,14 +1047,14 @@ const CreateQuoteModal = ({
                   </p>
                 ) : null}
                 {autoResolutionInfo.historyStats ? (
-                  <p className="text-xs text-white/80 mt-1">
+                  <p className="text-xs text-surface-medium mt-1">
                     History considered: {autoResolutionInfo.historyStats.totalHistoryEventsConsidered || 0} events across {autoResolutionInfo.historyStats.totalEquipmentEvaluated || 0} equipment records.
                   </p>
                 ) : null}
                 {Array.isArray(autoResolutionInfo.recentServiceHistory) && autoResolutionInfo.recentServiceHistory.length > 0 ? (
-                  <div className="mt-2 rounded-md border border-white/15 bg-white/5 px-3 py-2">
-                    <p className="text-xs font-semibold text-white/90 mb-1">Recent Service History</p>
-                    <ul className="text-xs text-white/80 space-y-1 list-disc list-inside">
+                  <div className="mt-2 modal-help-card">
+                    <p className="text-xs font-semibold text-surface-strong mb-1">Recent Service History</p>
+                    <ul className="text-xs text-surface-medium space-y-1 list-disc list-inside">
                       {autoResolutionInfo.recentServiceHistory.slice(0, 5).map((entry, index) => (
                         <li key={`history-entry-${index}`}>
                           {(entry.callNumber || 'Call')}
@@ -986,7 +1067,7 @@ const CreateQuoteModal = ({
                   </div>
                 ) : null}
                 {autoResolutionInfo.bookingSeed ? (
-                  <p className="text-xs text-white/80 mt-2">
+                  <p className="text-xs text-surface-medium mt-2">
                     Booking reference: {autoResolutionInfo.bookingSeed.machineModelNumber || autoResolutionInfo.bookingSeed.generatorMakeModel || 'No machine model provided'}
                     {autoResolutionInfo.bookingSeed.siteName ? ` at ${autoResolutionInfo.bookingSeed.siteName}` : ''}.
                   </p>
@@ -998,7 +1079,7 @@ const CreateQuoteModal = ({
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="glass-form-label text-white/90">Customer</label>
+                  <label className="modal-field-label">Customer</label>
                   {isServiceCallContext || editMode ? (
                     <input
                       value={lockedCustomerLabel}
@@ -1029,7 +1110,7 @@ const CreateQuoteModal = ({
                 </div>
 
                 <div>
-                  <label className="glass-form-label text-white/90">Service Type</label>
+                  <label className="modal-field-label">Service Type</label>
                   <input
                     value={formData.serviceType}
                     onChange={(event) => setFormData((prev) => ({ ...prev, serviceType: event.target.value }))}
@@ -1039,7 +1120,7 @@ const CreateQuoteModal = ({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="glass-form-label text-white/90">Title</label>
+                  <label className="modal-field-label">Title</label>
                   <input
                     value={formData.title}
                     onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
@@ -1049,7 +1130,7 @@ const CreateQuoteModal = ({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="glass-form-label text-white/90">Description / Scope</label>
+                  <label className="modal-field-label">Description / Scope</label>
                   <textarea
                     rows="3"
                     value={formData.description}
@@ -1059,7 +1140,7 @@ const CreateQuoteModal = ({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="glass-form-label text-white/90">Template</label>
+                  <label className="modal-field-label">Template</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <select
                       value={selectedTemplate}
@@ -1084,30 +1165,30 @@ const CreateQuoteModal = ({
 
               </div>
 
-              <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
+              <div className="modal-section-panel space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-white font-semibold">Parts</h3>
-                    <p className="text-xs text-white/60 mt-1">
+                    <p className="modal-help-text-subtle mt-1">
                       Keep the service scope focused here. Any external recon or specialist work stays in the provider section below.
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-md border border-white/15 bg-white/5 px-3 py-2">
-                  <p className="text-xs text-white/70">
+                <div className="modal-help-card">
+                  <p className="modal-help-text">
                     Enter part cost per unit. Selling unit price is auto-calculated with tiered markup and never falls below the 20% floor.
                   </p>
                 </div>
 
-                <p className="text-xs text-white/70">
+                <p className="modal-help-text">
                   Enter part cost per unit. Selling unit price is auto-calculated with tiered markup:
                   {' '}
                   &lt;R1000 = 50%, &lt;R2000 = 40%, &lt;R3000 = 30%, &lt;R4000 = 25%, &lt;R5000 = 20%, &gt;=R5000 = 20%. Minimum margin floor is 20%.
                 </p>
 
-                <div className="rounded-md border border-white/15 bg-white/5 px-3 py-2">
-                  <p className="text-xs text-white/70">
+                <div className="modal-help-card">
+                  <p className="modal-help-text">
                     Profit margin policy note: tiered markup is applied automatically and never below 20%.
                   </p>
                 </div>
@@ -1115,43 +1196,43 @@ const CreateQuoteModal = ({
                 {formData.lineItems.map((item, index) => (
                   <div key={`line-item-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
                     <div className="md:col-span-2">
-                      <label className="glass-form-label text-white/80">Part Number (Optional)</label>
+                      <label className="glass-form-label text-surface-medium">Part Number (Optional)</label>
                       <input
                         value={item.partNumber || ''}
                         onChange={(event) => updateLineItem(index, 'partNumber', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         placeholder="e.g. A-7003"
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="glass-form-label text-white/80">Part Name (Optional)</label>
+                      <label className="glass-form-label text-surface-medium">Part Name (Optional)</label>
                       <input
                         value={item.partName || ''}
                         onChange={(event) => updateLineItem(index, 'partName', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         placeholder="e.g. Alternator"
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="glass-form-label text-white/80">Part Type (Optional)</label>
+                      <label className="glass-form-label text-surface-medium">Part Type (Optional)</label>
                       <input
                         value={item.partType || ''}
                         onChange={(event) => updateLineItem(index, 'partType', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         placeholder="e.g. Electrical"
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <label className="glass-form-label text-white/80">Description</label>
+                      <label className="glass-form-label text-surface-medium">Description</label>
                       <input
                         value={item.description}
                         onChange={(event) => updateLineItem(index, 'description', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         required
                       />
                     </div>
                     <div className="md:col-span-1">
-                      <label className="glass-form-label text-white/80" htmlFor={`line-item-quantity-${index}`}>Qty</label>
+                      <label className="glass-form-label text-surface-medium" htmlFor={`line-item-quantity-${index}`}>Qty</label>
                       <input
                         id={`line-item-quantity-${index}`}
                         type="number"
@@ -1160,19 +1241,19 @@ const CreateQuoteModal = ({
                         inputMode="decimal"
                         value={item.quantity}
                         onChange={(event) => updateLineItem(index, 'quantity', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         required
                       />
                     </div>
                     <div className="md:col-span-1">
-                      <label className="glass-form-label text-white/80">{editMode ? 'Unit Price (R)' : 'Unit Cost (R)'}</label>
+                      <label className="glass-form-label text-surface-medium">{editMode ? 'Unit Price (R)' : 'Unit Cost (R)'}</label>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={item.unitPrice}
                         onChange={(event) => updateLineItem(index, 'unitPrice', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         required
                       />
                     </div>
@@ -1180,7 +1261,7 @@ const CreateQuoteModal = ({
                       <button
                         type="button"
                         onClick={() => removeLineItem(index)}
-                        className="w-full rounded-lg border border-red-300/50 bg-red-500/20 px-2 py-2 text-white text-sm"
+                        className="modal-action-remove-btn"
                         title="Remove line item"
                       >
                         X
@@ -1189,61 +1270,61 @@ const CreateQuoteModal = ({
                   </div>
                 ))}
 
-                <div className="flex items-center justify-between gap-3 pt-2">
-                  <p className="text-xs text-white/60">Use Add Item for additional part rows, not for specialist third-party work.</p>
-                  <button type="button" onClick={addLineItem} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Item</button>
+                <div className="modal-action-row">
+                  <p className="modal-help-text-subtle">Use Add Item for additional part rows, not for specialist third-party work.</p>
+                  <button type="button" onClick={addLineItem} className="modal-action-add-btn">Add Item</button>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
+              <div className="modal-section-panel space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-white font-semibold">3rd Party Service Providers</h3>
-                    <p className="text-xs text-white/60 mt-1">
+                    <p className="modal-help-text-subtle mt-1">
                       Capture specialist work here for turbo recon, injectors, fuel pumps, radiators, and similar external jobs.
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-md border border-white/15 bg-white/5 px-3 py-2">
-                  <p className="text-xs text-white/70">
+                <div className="modal-help-card">
+                  <p className="modal-help-text">
                     Keep provider details separate so they can be reused cleanly in pro-forma and invoice accounting.
                   </p>
                 </div>
 
                 {formData.thirdPartyServiceProviders.length === 0 ? (
-                  <p className="text-xs text-white/60">No external providers added yet.</p>
+                  <p className="modal-help-text-subtle">No external providers added yet.</p>
                 ) : null}
 
                 {formData.thirdPartyServiceProviders.map((provider, index) => (
                   <div key={`third-party-provider-${index}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
                     <div className="md:col-span-4">
-                      <label className="glass-form-label text-white/80">Company Name</label>
+                      <label className="glass-form-label text-surface-medium">Company Name</label>
                       <input
                         value={provider.companyName}
                         onChange={(event) => updateThirdPartyServiceProvider(index, 'companyName', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         placeholder="e.g. ABC Logistics"
                       />
                     </div>
                     <div className="md:col-span-4">
-                      <label className="glass-form-label text-white/80">Service Rendered</label>
+                      <label className="glass-form-label text-surface-medium">Service Rendered</label>
                       <input
                         value={provider.serviceRendered}
                         onChange={(event) => updateThirdPartyServiceProvider(index, 'serviceRendered', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         placeholder="e.g. After-hours delivery surcharge"
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <label className="glass-form-label text-white/80">Service Cost (R)</label>
+                      <label className="glass-form-label text-surface-medium">Service Cost (R)</label>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={provider.serviceCost}
                         onChange={(event) => updateThirdPartyServiceProvider(index, 'serviceCost', event.target.value)}
-                        className="w-full rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2"
+                        className="modal-grid-input"
                         placeholder="0.00"
                       />
                     </div>
@@ -1251,7 +1332,7 @@ const CreateQuoteModal = ({
                       <button
                         type="button"
                         onClick={() => removeThirdPartyServiceProvider(index)}
-                        className="w-full rounded-lg border border-red-300/50 bg-red-500/20 px-2 py-2 text-white text-sm"
+                        className="modal-action-remove-btn"
                         title="Remove provider"
                       >
                         X
@@ -1260,26 +1341,26 @@ const CreateQuoteModal = ({
                   </div>
                 ))}
 
-                <div className="flex items-center justify-between gap-3 pt-2">
+                <div className="modal-action-row">
                   <p className="text-xs text-cyan-200">Third-party services total: R {totals.thirdPartyServicesCost}</p>
-                  <button type="button" onClick={addThirdPartyServiceProvider} className="glass-btn-secondary px-3 py-2 text-sm font-semibold">Add Provider</button>
+                  <button type="button" onClick={addThirdPartyServiceProvider} className="modal-action-add-btn">Add Provider</button>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-white/20 bg-white/5 p-4">
+              <div className="modal-section-panel">
                 <h3 className="text-white font-semibold mb-3">Costing Inputs</h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   {/* UI consistency rule: keep helper notes in the first block of the section, not under individual fields. */}
-                  <div className="md:col-span-4 rounded-md border border-white/15 bg-white/5 px-3 py-2">
-                    <p className="text-xs text-white/70">
-                      Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00. Labour is always billed at full hours — the call-out floor fee is a separate dispatch/assessment charge.
+                  <div className="md:col-span-4 modal-help-card">
+                    <p className="modal-help-text">
+                      Notes: Distance travelled is the dynamic job value (future Google API source). Rate per km remains standard and can only be adjusted by superAdmin. Floor call-out rule: if distance is under 45 km and travel time is under 30 minutes, minimum travel charge is R 650.00. For first-time customer/site visits under that call-out package, the first 15 minutes on site are included before billable labour is calculated.
                     </p>
                   </div>
                   <div className="md:col-span-4 pt-1">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-white/80">Parts Fulfilment Costing</h4>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-medium">Parts Fulfilment Costing</h4>
                   </div>
-                  <div className="md:col-span-1 rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Parts Fulfilment</label>
+                  <div className="md:col-span-1 modal-input-card">
+                    <label className="modal-field-label">Parts Fulfilment</label>
                     <select
                       value={formData.partsFulfilmentMode}
                       onChange={(event) => setFormData((prev) => ({ ...prev, partsFulfilmentMode: event.target.value }))}
@@ -1291,16 +1372,16 @@ const CreateQuoteModal = ({
                   </div>
                   {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
                     <>
-                      <div className="md:col-span-1 rounded-md border border-white/10 bg-white/5 p-3">
-                      <label className="glass-form-label text-white/90">Parts Procurement Cost (Internal Auto Formula) (R)</label>
+                      <div className="md:col-span-1 modal-input-card">
+                      <label className="modal-field-label">Parts Procurement Cost (Internal Auto Formula) (R)</label>
                       <input
                         value={totals.partsProcurementCost}
                         readOnly
                         className="dark-field-input opacity-70"
                       />
                       </div>
-                      <div className="md:col-span-1 rounded-md border border-white/10 bg-white/5 p-3">
-                        <label className="glass-form-label text-white/90">Procurement Distance Travelled (km)</label>
+                      <div className="md:col-span-1 modal-input-card">
+                        <label className="modal-field-label">Procurement Distance Travelled (km)</label>
                         <input
                           type="number"
                           min="0"
@@ -1310,8 +1391,8 @@ const CreateQuoteModal = ({
                           className="dark-field-input"
                         />
                       </div>
-                      <div className="md:col-span-1 rounded-md border border-white/10 bg-white/5 p-3">
-                        <label className="glass-form-label text-white/90">Procurement Travel Time (minutes)</label>
+                      <div className="md:col-span-1 modal-input-card">
+                        <label className="modal-field-label">Procurement Travel Time (minutes)</label>
                         <input
                           type="number"
                           min="0"
@@ -1322,19 +1403,19 @@ const CreateQuoteModal = ({
                         />
                       </div>
                       <div className="md:col-span-4">
-                      <p className="text-[11px] text-white/70 mt-1">
+                      <p className="text-[11px] text-surface-muted mt-1">
                         Formula: ({totals.procurementDistanceTravelledKm} km x R {TRAVEL_RATE_PER_KM.toFixed(2)}) + ({totals.inHouseTravelLabourHours} h x R {PROCUREMENT_LABOUR_RATE_PER_HOUR.toFixed(2)}/h)
                       </p>
                       <p className="text-[11px] text-cyan-200 mt-1">
                         Result: R {totals.inHouseDistanceProcurementCost} + R {totals.inHouseTimeProcurementCost} = R {totals.partsProcurementCost}
                       </p>
-                      <p className="text-[11px] text-white/70 mt-1">Internal operations cost only (not added to customer subtotal).</p>
-                      <p className="text-[11px] text-white/60 mt-1">These two inputs are the required variables for procurement costing.</p>
+                      <p className="text-[11px] text-surface-muted mt-1">Internal operations cost only (not added to customer subtotal).</p>
+                      <p className="text-[11px] text-surface-subtle mt-1">These two inputs are the required variables for procurement costing.</p>
                       </div>
                     </>
                   ) : (
-                    <div className="md:col-span-3 rounded-md border border-white/10 bg-white/5 p-3">
-                      <label className="glass-form-label text-white/90">Parts Procurement Cost (R)</label>
+                    <div className="md:col-span-3 modal-input-card">
+                      <label className="modal-field-label">Parts Procurement Cost (R)</label>
                       <input
                         type="number"
                         min="0"
@@ -1347,8 +1428,8 @@ const CreateQuoteModal = ({
                   )}
                   {formData.partsFulfilmentMode === 'thirdPartyDelivery' ? (
                     <>
-                      <div className="md:col-span-1 rounded-md border border-white/10 bg-white/5 p-3">
-                        <label className="glass-form-label text-white/90">Delivery Provider</label>
+                      <div className="md:col-span-1 modal-input-card">
+                        <label className="modal-field-label">Delivery Provider</label>
                         <input
                           value={formData.deliveryProvider}
                           onChange={(event) => setFormData((prev) => ({ ...prev, deliveryProvider: event.target.value }))}
@@ -1356,8 +1437,8 @@ const CreateQuoteModal = ({
                           className="dark-field-input"
                         />
                       </div>
-                      <div className="md:col-span-2 rounded-md border border-white/10 bg-white/5 p-3">
-                        <label className="glass-form-label text-white/90">Third-party Delivery Cost (Provider API) (R)</label>
+                      <div className="md:col-span-2 modal-input-card">
+                        <label className="modal-field-label">Third-party Delivery Cost (Provider API) (R)</label>
                         <div className="flex gap-2">
                           <input
                             value={Number(formData.thirdPartyDeliveryCost || 0).toFixed(2)}
@@ -1376,16 +1457,16 @@ const CreateQuoteModal = ({
                         {deliveryQuoteMeta?.quoteId ? (
                           <p className="text-[11px] text-cyan-200 mt-1">Quote Ref: {deliveryQuoteMeta.quoteId}</p>
                         ) : (
-                          <p className="text-[11px] text-white/70 mt-1">Cost is API-derived only. Manual entry disabled.</p>
+                          <p className="text-[11px] text-surface-muted mt-1">Cost is API-derived only. Manual entry disabled.</p>
                         )}
                       </div>
                     </>
                   ) : null}
                   <div className="md:col-span-4">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-white/80 mt-1">Call-out Fee Calculation</h4>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-medium mt-1">Call-out Fee Calculation</h4>
                   </div>
-                  <div className="rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Labour Rate (R/hour)</label>
+                  <div className="modal-input-card">
+                    <label className="modal-field-label">Labour Rate (R/hour)</label>
                     <input
                       type="number"
                       min="0"
@@ -1396,8 +1477,8 @@ const CreateQuoteModal = ({
                       disabled={!isSuperUser}
                     />
                   </div>
-                  <div className="rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Distance Travelled (km)</label>
+                  <div className="modal-input-card">
+                    <label className="modal-field-label">Distance Travelled (km)</label>
                     <input
                       type="number"
                       min="0"
@@ -1407,8 +1488,8 @@ const CreateQuoteModal = ({
                       className="dark-field-input"
                     />
                   </div>
-                  <div className="rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Rate per km (R)</label>
+                  <div className="modal-input-card">
+                    <label className="modal-field-label">Rate per km (R)</label>
                     <input
                       type="number"
                       min="0"
@@ -1419,8 +1500,8 @@ const CreateQuoteModal = ({
                       disabled={!isSuperUser}
                     />
                   </div>
-                  <div className="rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Travel Time (minutes)</label>
+                  <div className="modal-input-card">
+                    <label className="modal-field-label">Travel Time (minutes)</label>
                     <input
                       type="number"
                       min="0"
@@ -1430,8 +1511,8 @@ const CreateQuoteModal = ({
                       className="dark-field-input"
                     />
                   </div>
-                  <div className="rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Time Travelled Cost (R) (Call-out Override, Optional)</label>
+                  <div className="modal-input-card">
+                    <label className="modal-field-label">Time Travelled Cost (R) (Call-out Override, Optional)</label>
                     <input
                       type="number"
                       min="0"
@@ -1441,8 +1522,8 @@ const CreateQuoteModal = ({
                       className="dark-field-input"
                     />
                   </div>
-                  <div className="rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Labour Hours</label>
+                  <div className="modal-input-card">
+                    <label className="modal-field-label">Labour Hours</label>
                     <input
                       type="number"
                       min="0"
@@ -1452,8 +1533,8 @@ const CreateQuoteModal = ({
                       className="dark-field-input"
                     />
                   </div>
-                  <div className="rounded-md border border-white/10 bg-white/5 p-3">
-                    <label className="glass-form-label text-white/90">Consumables Rate (%)</label>
+                  <div className="modal-input-card">
+                    <label className="modal-field-label">Consumables Rate (%)</label>
                     <input
                       type="number"
                       min="0"
@@ -1471,7 +1552,7 @@ const CreateQuoteModal = ({
                       onChange={(event) => setFormData((prev) => ({ ...prev, isFirstSiteVisit: event.target.checked }))}
                       className="form-checkbox-dark"
                     />
-                    <label htmlFor="first-site-visit" className="glass-form-label text-white/90 mb-0">
+                    <label htmlFor="first-site-visit" className="glass-form-label text-surface-strong mb-0">
                       First-time customer/site visit
                     </label>
                   </div>
@@ -1480,7 +1561,7 @@ const CreateQuoteModal = ({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="glass-form-label text-white/90">Valid Until</label>
+                  <label className="modal-field-label">Valid Until</label>
                   <input
                     type="date"
                     value={formData.validUntil}
@@ -1489,7 +1570,7 @@ const CreateQuoteModal = ({
                   />
                 </div>
                 <div>
-                  <label className="glass-form-label text-white/90">VAT Rate (%)</label>
+                  <label className="modal-field-label">VAT Rate (%)</label>
                   <input
                     type="number"
                     min="0"
@@ -1501,7 +1582,7 @@ const CreateQuoteModal = ({
                   />
                 </div>
                 <div className="rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-sm text-white md:col-span-2">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/70">Cost Accounting Explanation</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-muted">Cost Accounting Explanation</p>
                   <p>Parts Cost: R {totals.partsCost}</p>
                   <p>Third-Party Services Cost: R {totals.thirdPartyServicesCost}</p>
                   <p>Parts Procurement Cost (Internal): R {totals.partsProcurementCost}</p>
@@ -1511,29 +1592,31 @@ const CreateQuoteModal = ({
                     <p>In-house Procurement Cost (Internal Formula): R {totals.partsProcurementCost}</p>
                   )}
                   {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
-                    <p className="text-xs text-white/70">Procurement distance: {totals.procurementDistanceTravelledKm} km x R {TRAVEL_RATE_PER_KM.toFixed(2)} = R {totals.inHouseDistanceProcurementCost}</p>
+                    <p className="modal-help-text">Procurement distance: {totals.procurementDistanceTravelledKm} km x R {TRAVEL_RATE_PER_KM.toFixed(2)} = R {totals.inHouseDistanceProcurementCost}</p>
                   ) : null}
                   {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
-                    <p className="text-xs text-white/70">Time component: {totals.inHouseTravelLabourHours} h x R {PROCUREMENT_LABOUR_RATE_PER_HOUR.toFixed(2)}/h = R {totals.inHouseTimeProcurementCost}</p>
+                    <p className="modal-help-text">Time component: {totals.inHouseTravelLabourHours} h x R {PROCUREMENT_LABOUR_RATE_PER_HOUR.toFixed(2)}/h = R {totals.inHouseTimeProcurementCost}</p>
                   ) : null}
                   {formData.partsFulfilmentMode === 'inHouseProcurement' ? (
                     <p className="text-xs text-cyan-200">Standardized rule: In-house Procurement Cost = (distance x R {TRAVEL_RATE_PER_KM.toFixed(2)}) + (travel time x R {PROCUREMENT_LABOUR_RATE_PER_HOUR.toFixed(2)}/h)</p>
                   ) : null}
-                  <p className="text-xs text-white/70">Applied Fulfilment Cost: R {totals.partsFulfilmentCost}</p>
+                  <p className="modal-help-text">Applied Fulfilment Cost: R {totals.partsFulfilmentCost}</p>
                   <p className="font-semibold">Estimated Parts Profit: R {totals.estimatedPartsProfit}</p>
                   {totals.isFirstVisitCallOutPackage ? (
-                    <p className="text-xs text-yellow-200">First visit call-out floor: R {CALL_OUT_FLOOR_AMOUNT.toFixed(2)} (min. travel charge)</p>
+                    <p className="text-xs text-yellow-200">First visit call-out floor: R {CALL_OUT_FLOOR_AMOUNT.toFixed(2)} (min. travel charge) with {totals.includedAssessmentMinutes} included on-site assessment minutes.</p>
                   ) : null}
-                  <p>Labour Hours: {totals.chargeableLabourHours}</p>
+                  <p>Reported Labour Hours: {totals.labourHours}</p>
+                  <p>Included Assessment: {totals.includedAssessmentHours} h ({totals.includedAssessmentMinutes} min)</p>
+                  <p>Chargeable Labour Hours: {totals.chargeableLabourHours}</p>
                   <p>Labour Cost: R {totals.labourCost}</p>
                   <p>Travel: ({totals.distanceTravelledKm} km x R {totals.travelRatePerKm}) + R {totals.timeTravelledCost}</p>
-                  <p className="text-xs text-white/70">Travel time: {totals.travelTimeMinutes} minutes | Base travel: R {totals.baseTravelCost}</p>
+                  <p className="modal-help-text">Travel time: {totals.travelTimeMinutes} minutes | Base travel: R {totals.baseTravelCost}</p>
                   {totals.isCallOutFloorApplicable ? (
                     <p className="text-xs text-yellow-200">Call-out floor rule applied: minimum R {CALL_OUT_FLOOR_AMOUNT.toFixed(2)}</p>
                   ) : null}
                   <p>Travelling Cost: R {totals.travellingCost}</p>
                   <p>Consumables Cost: R {totals.consumablesCost}</p>
-                  <p className="text-xs text-white/70 mt-1">Rule reference: 50% labour threshold = R {totals.halfLabourThreshold}</p>
+                  <p className="modal-help-text mt-1">Rule reference: 50% labour threshold = R {totals.halfLabourThreshold}</p>
                   <p className="mt-1">Customer Subtotal (Billable): R {totals.subtotal}</p>
                   <p>VAT: R {totals.vatAmount}</p>
                   <p className="font-semibold text-yellow-200">Total: R {totals.totalAmount}</p>
@@ -1541,7 +1624,7 @@ const CreateQuoteModal = ({
               </div>
 
               <div>
-                <label className="glass-form-label text-white/90">Notes</label>
+                <label className="modal-field-label">Notes</label>
                 <textarea
                   rows="2"
                   value={formData.notes}
@@ -1551,7 +1634,7 @@ const CreateQuoteModal = ({
               </div>
 
               <div>
-                <label className="glass-form-label text-white/90">Terms</label>
+                <label className="modal-field-label">Terms</label>
                 <textarea
                   rows="2"
                   value={formData.terms}
@@ -1560,13 +1643,13 @@ const CreateQuoteModal = ({
                 />
               </div>
 
-              <div className="rounded-lg border border-white/20 bg-white/5 p-4 space-y-3">
+              <div className="modal-section-panel space-y-3">
                 <h3 className="text-white font-semibold">Share PDF Externally</h3>
-                <p className="text-xs text-white/70">
+                <p className="modal-help-text">
                   The quotation is already visible in the customer&apos;s portal once submitted. Use these options to also deliver a PDF copy via external channels — useful for customers who do not yet have a platform account.
                 </p>
                 <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-sm text-white/90">
+                  <label className="flex items-center gap-2 text-sm text-surface-strong">
                     <input
                       type="checkbox"
                       checked={Boolean(shareChannels.email)}
@@ -1575,7 +1658,7 @@ const CreateQuoteModal = ({
                     />
                     Email
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-white/90">
+                  <label className="flex items-center gap-2 text-sm text-surface-strong">
                     <input
                       type="checkbox"
                       checked={Boolean(shareChannels.whatsapp)}
@@ -1584,7 +1667,7 @@ const CreateQuoteModal = ({
                     />
                     WhatsApp
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-white/90">
+                  <label className="flex items-center gap-2 text-sm text-surface-strong">
                     <input
                       type="checkbox"
                       checked={Boolean(shareChannels.telegram)}
@@ -1615,7 +1698,7 @@ const CreateQuoteModal = ({
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="min-w-36 glass-btn-secondary font-semibold py-2 px-5"
+                  className="modal-action-cancel-btn"
                 >
                   Close
                 </button>
@@ -1626,6 +1709,19 @@ const CreateQuoteModal = ({
       ) : null}
     </>
   );
+};
+
+CreateQuoteModal.propTypes = {
+  token: PropTypes.string,
+  isSuperUser: PropTypes.bool,
+  sourceData: sourceDataPropType,
+  triggerLabel: PropTypes.string,
+  triggerClassName: PropTypes.string,
+  onCreated: PropTypes.func,
+  editMode: PropTypes.bool,
+  existingQuotation: quotationPropType,
+  forceOpen: PropTypes.bool,
+  onClose: PropTypes.func,
 };
 
 export default CreateQuoteModal;

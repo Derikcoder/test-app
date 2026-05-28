@@ -125,7 +125,7 @@ const MachineSelector = ({
 
       {/* Selected Machine Display */}
       {selectedMachine && (
-        <div className="glass-card mb-4 p-4 border-2 border-blue-400">
+        <div className="glass-card machine-selector-panel">
           <div className="flex justify-between items-start mb-3">
             <div>
               <h4 className="font-bold text-slate-900">{selectedMachine.machineType}</h4>
@@ -183,14 +183,14 @@ const MachineSelector = ({
           
           <div className="space-y-3 text-sm">
             {quotationTemplate.lastService?.date && (
-              <div className="flex justify-between">
+              <div className="machine-kv-row">
                 <span className="text-slate-600">Service Date:</span>
                 <span className="font-medium">{formatDate(quotationTemplate.lastService.date)}</span>
               </div>
             )}
             
             {quotationTemplate.lastService?.labourHours && (
-              <div className="flex justify-between">
+              <div className="machine-kv-row">
                 <span className="text-slate-600">Labour Hours:</span>
                 <span className="font-medium">{quotationTemplate.lastService.labourHours} hrs</span>
               </div>
@@ -198,13 +198,13 @@ const MachineSelector = ({
 
             {quotationTemplate.suggestedCosts && (
               <>
-                <div className="flex justify-between">
+                <div className="machine-kv-row">
                   <span className="text-slate-600">Last Labour Cost:</span>
                   <span className="font-medium">
                     R{quotationTemplate.suggestedCosts.labour?.toFixed(2) || '0.00'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="machine-kv-row">
                   <span className="text-slate-600">Last Parts Cost:</span>
                   <span className="font-medium">
                     R{quotationTemplate.suggestedCosts.parts?.toFixed(2) || '0.00'}
@@ -241,8 +241,8 @@ const MachineSelector = ({
 
       {selectedMachine && templateLoading && (
         <div className="text-center py-6">
-          <div className="inline-block animate-spin h-5 w-5 border-3 border-blue-600 border-t-transparent rounded-full"></div>
-          <p className="text-sm text-slate-600 mt-2">Loading quotation template...</p>
+          <div className="machine-loader-spinner"></div>
+          <p className="machine-loader-text">Loading quotation template...</p>
         </div>
       )}
 
@@ -261,11 +261,11 @@ const MachineSelector = ({
 
       {/* Machine Selector Dropdown */}
       {showSelector && !selectedMachine && (
-        <div className="glass-card mb-4 p-4 border-2 border-blue-400">
+        <div className="glass-card machine-selector-panel">
           {loading && (
             <div className="text-center py-6">
-              <div className="inline-block animate-spin h-5 w-5 border-3 border-blue-600 border-t-transparent rounded-full"></div>
-              <p className="text-sm text-slate-600 mt-2">Loading machines...</p>
+              <div className="machine-loader-spinner"></div>
+              <p className="machine-loader-text">Loading machines...</p>
             </div>
           )}
 

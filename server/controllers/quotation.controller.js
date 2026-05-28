@@ -370,7 +370,6 @@ const calculateQuotationCosts = ({
 
   const resolvedLabourHours = Number.isFinite(Number(labourHours)) ? Number(labourHours) : 0;
   const resolvedIsFirstSiteVisit = Boolean(isFirstSiteVisit);
-  const includedAssessmentHours = resolvedIsFirstSiteVisit ? (INCLUDED_ASSESSMENT_MINUTES / 60) : 0;
   const requestedLabourRate = Number.isFinite(Number(labourRate)) ? Number(labourRate) : 650;
   const resolvedLabourRate = isSuperUser ? requestedLabourRate : 650;
   const resolvedDistanceTravelledKm = Number.isFinite(Number(distanceTravelledKm)) ? Number(distanceTravelledKm) : 0;
@@ -394,6 +393,8 @@ const calculateQuotationCosts = ({
   const isCallOutFloorApplicable = resolvedDistanceTravelledKm < CALL_OUT_FLOOR_DISTANCE_KM
     && resolvedTravelTimeMinutes < CALL_OUT_FLOOR_TIME_MINUTES;
   const isFirstVisitCallOutPackage = isCallOutFloorApplicable && resolvedIsFirstSiteVisit;
+  const resolvedIncludedAssessmentMinutes = isFirstVisitCallOutPackage ? INCLUDED_ASSESSMENT_MINUTES : 0;
+  const includedAssessmentHours = resolvedIncludedAssessmentMinutes / 60;
   const resolvedTravellingCost = isCallOutFloorApplicable
     ? Number(Math.max(baseTravellingCost, CALL_OUT_FLOOR_AMOUNT).toFixed(2))
     : baseTravellingCost;
@@ -412,9 +413,11 @@ const calculateQuotationCosts = ({
   const estimatedPartsProfit = Number((partsCost - resolvedPartsProcurementCost - resolvedThirdPartyDeliveryCost).toFixed(2));
   const resolvedConsumablesRate = Number.isFinite(Number(consumablesRate)) ? Number(consumablesRate) : 2;
 
-  // Labour is always billed at full hours. The call-out floor fee (R650) is the separate
-  // assessment/dispatch charge — it does NOT replace any portion of billable labour time.
-  const resolvedChargeableLabourHours = resolvedLabourHours;
+  // First-visit call-out packages include the first 15 minutes on site before
+  // billable labour is calculated.
+  const resolvedChargeableLabourHours = Number(
+    Math.max(resolvedLabourHours - includedAssessmentHours, 0).toFixed(2)
+  );
   const labourCost = Number((resolvedChargeableLabourHours * resolvedLabourRate).toFixed(2));
 
   // Pricing rule (kept explicit for policy visibility):
@@ -437,7 +440,7 @@ const calculateQuotationCosts = ({
     partsCost,
     labourHours: resolvedLabourHours,
     isFirstSiteVisit: resolvedIsFirstSiteVisit,
-    includedAssessmentMinutes: INCLUDED_ASSESSMENT_MINUTES,
+    includedAssessmentMinutes: resolvedIncludedAssessmentMinutes,
     chargeableLabourHours: resolvedChargeableLabourHours,
     labourRate: resolvedLabourRate,
     labourCost,

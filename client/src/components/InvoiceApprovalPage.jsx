@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api/axios';
+import { EmptyState, LoadingState, PageShell } from './shared/PageStates';
 
 const formatCurrency = (value) => new Intl.NumberFormat('en-ZA', {
   style: 'currency',
@@ -139,23 +140,27 @@ function InvoiceApprovalPage() {
 
   if (loading) {
     return (
-      <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 flex items-center justify-center px-6">
+      <PageShell variant="full" className="flex items-center justify-center px-6">
         <div className="glass-pane w-full max-w-xl p-8 text-center text-white">
-          <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-4 border-white/80 border-b-transparent"></div>
-          <p className="text-lg font-semibold">Loading shared pro-forma...</p>
+          <LoadingState message="Loading shared pro-forma..." spinnerClassName="spinner-lg mx-auto" messageClassName="mt-4 text-lg font-semibold" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   if (!documentData) {
     return (
-      <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 flex items-center justify-center px-6">
+      <PageShell variant="full" className="flex items-center justify-center px-6">
         <div className="glass-pane w-full max-w-2xl p-8 text-center text-white">
-          <h1 className="text-2xl font-extrabold">Shared Document Unavailable</h1>
-          <p className="mt-4 text-sm text-white/80">{error || 'This approval link is unavailable.'}</p>
+          <EmptyState
+            title="Shared Document Unavailable"
+            message={error || 'This approval link is unavailable.'}
+            icon="📄"
+            titleClassName="text-2xl font-extrabold text-white"
+            messageClassName="mt-4 text-sm text-white/80"
+          />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -199,42 +204,42 @@ function InvoiceApprovalPage() {
                 <div className="sub-card">
                   <p className="field-kicker">Document</p>
                   <p className="mt-2 text-lg font-bold">{documentData.invoiceNumber}</p>
-                  <p className="mt-1 text-sm text-white/70">{documentData.documentType === 'proForma' ? 'Pro-forma site instruction' : documentData.documentType}</p>
+                  <p className="text-surface-muted mt-1 text-sm">{documentData.documentType === 'proForma' ? 'Pro-forma site instruction' : documentData.documentType}</p>
                 </div>
                 <div className="sub-card">
                   <p className="field-kicker">Customer</p>
                   <p className="mt-2 text-lg font-bold">{documentData.customer?.businessName || customerName || 'Customer'}</p>
-                  <p className="mt-1 text-sm text-white/70">{customerName || 'Customer contact not specified'}</p>
+                  <p className="text-surface-muted mt-1 text-sm">{customerName || 'Customer contact not specified'}</p>
                 </div>
                 <div className="sub-card">
                   <p className="field-kicker">Service Date</p>
                   <p className="mt-2 text-lg font-bold">{formatDate(documentData.serviceDate)}</p>
-                  <p className="mt-1 text-sm text-white/70">{documentData.serviceType || 'General service work'}</p>
+                  <p className="text-surface-muted mt-1 text-sm">{documentData.serviceType || 'General service work'}</p>
                 </div>
                 <div className="sub-card">
                   <p className="field-kicker">Total Value</p>
                   <p className="mt-2 text-lg font-bold text-yellow-200">{formatCurrency(documentData.totalAmount)}</p>
-                  <p className="mt-1 text-sm text-white/70">VAT included</p>
+                  <p className="text-surface-muted mt-1 text-sm">VAT included</p>
                 </div>
               </div>
 
               {documentData.description ? (
-                <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-5">
+                <div className="mt-8 invoice-panel">
                   <p className="field-kicker">Summary</p>
-                  <p className="mt-3 text-sm leading-6 text-white/85">{documentData.description}</p>
+                  <p className="text-surface-medium mt-3 text-sm leading-6">{documentData.description}</p>
                 </div>
               ) : null}
 
               <div className="mt-8 grid gap-6 xl:grid-cols-2">
-                <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
+                <div className="invoice-panel">
                   <p className="field-kicker">Problems Found</p>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">
+                  <p className="text-surface-medium mt-3 whitespace-pre-wrap text-sm leading-6">
                     {documentData.siteInstruction?.problemsFound || 'No site findings were captured on this document.'}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
+                <div className="invoice-panel">
                   <p className="field-kicker">Recommended Solution</p>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">
+                  <p className="text-surface-medium mt-3 whitespace-pre-wrap text-sm leading-6">
                     {documentData.siteInstruction?.recommendedSolution || 'No recommended solution was captured on this document.'}
                   </p>
                 </div>
@@ -244,7 +249,7 @@ function InvoiceApprovalPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="field-kicker">Line Items</p>
-                    <p className="mt-1 text-sm text-white/70">Detailed pricing for the requested work.</p>
+                    <p className="text-surface-muted mt-1 text-sm">Detailed pricing for the requested work.</p>
                   </div>
                   <a
                     href={documentData.pdfUrl}
@@ -277,7 +282,7 @@ function InvoiceApprovalPage() {
 
             <aside className="bg-slate-950/35 p-6 text-white backdrop-blur-xl sm:p-8">
               <h2 className="text-2xl font-extrabold">Approval Decision</h2>
-              <p className="mt-3 text-sm leading-6 text-white/75">
+                  <p className="text-surface-muted mt-3 text-sm leading-6">
                 Enter an approval reference if your internal process requires one, add any notes for the field agent, then approve or reject the requested work.
               </p>
 
@@ -319,7 +324,7 @@ function InvoiceApprovalPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-white/60" htmlFor="approvalReference">
+                  <label className="text-surface-muted mb-2 block text-xs font-bold uppercase tracking-[0.16em]" htmlFor="approvalReference">
                     Approval Reference
                   </label>
                   <input
@@ -333,7 +338,7 @@ function InvoiceApprovalPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-white/60" htmlFor="approvalNotes">
+                  <label className="text-surface-muted mb-2 block text-xs font-bold uppercase tracking-[0.16em]" htmlFor="approvalNotes">
                     Notes
                   </label>
                   <textarea
@@ -347,34 +352,34 @@ function InvoiceApprovalPage() {
                 </div>
               </div>
 
-              <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-5">
+                <div className="mt-8 invoice-panel">
                 <p className="field-kicker">Cost Summary</p>
-                <div className="mt-4 space-y-3 text-sm text-white/85">
-                  <div className="flex items-center justify-between gap-4">
+                <div className="text-surface-medium mt-4 space-y-3 text-sm">
+                  <div className="invoice-summary-row">
                     <span>Parts</span>
                     <span>{formatCurrency(documentData.partsCost)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="invoice-summary-row">
                     <span>Labour</span>
                     <span>{formatCurrency(documentData.laborCost)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="invoice-summary-row">
                     <span>Travel</span>
                     <span>{formatCurrency(documentData.travelCost)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="invoice-summary-row">
                     <span>Consumables</span>
                     <span>{formatCurrency(documentData.consumablesCost)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-3">
+                  <div className="invoice-summary-row border-t border-white/10 pt-3">
                     <span>Subtotal</span>
                     <span>{formatCurrency(documentData.subtotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="invoice-summary-row">
                     <span>VAT</span>
                     <span>{formatCurrency(documentData.vatAmount)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-3 text-base font-bold text-yellow-200">
+                  <div className="invoice-summary-row border-t border-white/10 pt-3 text-base font-bold text-yellow-200">
                     <span>Total</span>
                     <span>{formatCurrency(documentData.totalAmount)}</span>
                   </div>
@@ -409,7 +414,7 @@ function InvoiceApprovalPage() {
               </div>
 
               {!documentData.approvalAllowed ? (
-                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                <div className="text-surface-muted mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
                   This pro-forma is no longer awaiting a customer decision. Current status: <strong className="text-white">{documentData.workflowStatus}</strong>.
                 </div>
               ) : null}
@@ -417,15 +422,15 @@ function InvoiceApprovalPage() {
               {(documentData.notes || documentData.terms) ? (
                 <div className="mt-8 space-y-4">
                   {documentData.notes ? (
-                    <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
+                    <div className="invoice-panel">
                       <p className="field-kicker">Notes</p>
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">{documentData.notes}</p>
+                      <p className="text-surface-medium mt-3 whitespace-pre-wrap text-sm leading-6">{documentData.notes}</p>
                     </div>
                   ) : null}
                   {documentData.terms ? (
-                    <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
+                    <div className="invoice-panel">
                       <p className="field-kicker">Terms</p>
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/85">{documentData.terms}</p>
+                      <p className="text-surface-medium mt-3 whitespace-pre-wrap text-sm leading-6">{documentData.terms}</p>
                     </div>
                   ) : null}
                 </div>

@@ -995,7 +995,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
             </p>
            ) : (
             <>
-             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-white/60">Select a completed service to repeat</label>
+             <label className="booking-form-label mb-1 block text-xs font-semibold uppercase tracking-wide">Select a completed service to repeat</label>
              <select
               value={selectedPastCallId}
               onChange={(e) => handleSelectPastCall(e.target.value)}
@@ -1040,7 +1040,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
 
         <section className="space-y-4">
          <h2 className="glass-heading-secondary">Service Category & Request Type</h2>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         <div className="responsive-two-col-grid">
           <select
            name="serviceCategory"
            value={formData.serviceCategory}
@@ -1064,7 +1064,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
            ))}
           </select>
          </div>
-         <p className="text-xs text-white/70">
+         <p className="booking-form-supporting-text text-xs">
           Select category first. Equipment details appear only for request types that require machine-specific information.
          </p>
         </section>
@@ -1072,9 +1072,9 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
           <section className="space-y-4">
            <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="glass-heading-secondary">Choose Your Service Agent (Validated Sources of Truth)</h2>
-            {isLoadingAgentProfiles ? <span className="text-xs text-white/60">Loading agent evidence...</span> : null}
+            {isLoadingAgentProfiles ? <span className="booking-form-supporting-text text-xs">Loading agent evidence...</span> : null}
            </div>
-           <p className="text-xs text-white/70">
+           <p className="booking-form-supporting-text text-xs">
             Ratings, service outcomes, machine-link coverage, expertise brands, and supplier network data are pulled from the agent&apos;s public service report.
            </p>
 
@@ -1143,7 +1143,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
              })}
             </div>
            ) : (
-            <p className="text-sm text-white/60 rounded-xl border border-white/10 bg-slate-900/40 p-4">
+            <p className="booking-form-supporting-text text-sm rounded-xl border border-white/10 bg-slate-900/40 p-4">
              No currently available agents listed. You can still book this service call and let dispatch assign the best-fit agent.
             </p>
            )}
@@ -1151,7 +1151,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
            <button
             type="button"
             onClick={() => setSelectedAgentId('')}
-            className="text-xs text-white/70 underline underline-offset-2 hover:text-white"
+            className="quick-action-link text-xs underline underline-offset-2"
            >
             Clear agent selection and allow dispatch assignment
            </button>
@@ -1160,12 +1160,12 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
         {isGeneralMaintenance && (
          <section className="space-y-4">
           <h2 className="glass-heading-secondary">General Maintenance Task Checklist</h2>
-          <p className="text-xs text-white/70">
+           <p className="booking-form-supporting-text text-xs">
            Select the work items that apply. Dispatch will use the registered service address, without machine-specific questions.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
            {GENERAL_MAINTENANCE_TASK_OPTIONS.map((task) => (
-            <label key={task} className="flex items-center gap-3 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/85">
+             <label key={task} className="booking-form-label flex items-center gap-3 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm">
              <input
               type="checkbox"
               name="generalMaintenanceTasks"
@@ -1225,15 +1225,15 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
             )}
            </div>
           </div>
-          <p className="text-xs text-white/45">Contact and address details are pre-filled from your registered profile. To update them, visit your profile settings.</p>
+          <p className="booking-form-supporting-text text-xs">Contact and address details are pre-filled from your registered profile. To update them, visit your profile settings.</p>
          </section>
         ) : (
          <>
           <section className="space-y-4">
            <h2 className="glass-heading-secondary">Customer Type</h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="responsive-two-col-grid">
             <div>
-             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/60">Customer Category</label>
+             <label className="booking-form-label mb-1.5 block text-xs font-semibold uppercase tracking-wide">Customer Category</label>
              <select
               name="customerType"
               value={formData.customerType}
@@ -1246,7 +1246,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
             </div>
             {formData.customerType === 'business' && (
              <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/60">Business Structure</label>
+              <label className="booking-form-label mb-1.5 block text-xs font-semibold uppercase tracking-wide">Business Structure</label>
               <select
                name="businessStructure"
                value={formData.businessStructure}
@@ -1260,9 +1260,9 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
             )}
            </div>
            {formData.customerType === 'business' && formData.businessStructure === 'group' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="responsive-two-col-grid">
              <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/60">Business Role</label>
+              <label className="booking-form-label mb-1.5 block text-xs font-semibold uppercase tracking-wide">Business Role</label>
               <select
                name="businessRole"
                value={formData.businessRole}
@@ -1275,9 +1275,9 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
              </div>
              {formData.businessRole === 'branch' && (
               <div>
-               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-white/60">Link to Head Office</label>
+               <label className="booking-form-label mb-1.5 block text-xs font-semibold uppercase tracking-wide">Link to Head Office</label>
                {isFetchingHeadOffices ? (
-                <p className="text-sm text-white/60">Loading registered head offices…</p>
+                <p className="booking-form-supporting-text text-sm">Loading registered head offices…</p>
                ) : headOfficeFetchError === 'error' ? (
                 <p className="text-sm text-red-400">Failed to load head offices. Please refresh and try again.</p>
                ) : headOfficeFetchError === 'none' ? (
@@ -1338,7 +1338,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
            <h2 className="glass-heading-secondary">
             {formData.customerType === 'business' ? 'Company & Contact' : 'Private Contact'}
            </h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="responsive-two-col-grid">
             {formData.customerType === 'business' && (
              <input
               name="companyName"
@@ -1393,7 +1393,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
              ? 'Administrative Address (Billing/Records)'
              : 'Physical Address'}
            </h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="responsive-two-col-grid">
             <input name="adminStreetAddress" value={formData.adminStreetAddress} onChange={handleInputChange} placeholder="Street Address" className="dark-field-input" required />
             <input name="adminComplexName" value={formData.adminComplexName} onChange={handleInputChange} placeholder="Complex / Industrial Park (Optional)" className="dark-field-input" />
             <input name="adminSiteAddressDetail" value={formData.adminSiteAddressDetail} onChange={handleInputChange} placeholder="Unit / Site Address Detail (Optional)" className="dark-field-input" />
@@ -1420,7 +1420,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
         {requiresEquipmentDetails && (
           <section className="space-y-4">
             <h2 className="glass-heading-secondary">{equipmentLabel} Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="responsive-two-col-grid">
               <input
                 name="generatorMakeModel"
                 value={formData.generatorMakeModel}
@@ -1458,7 +1458,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
          </h2>
          {formData.customerType === 'business' ? (
           <>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="responsive-two-col-grid">
             <select name="machineLocationSameAsAdmin" value={formData.machineLocationSameAsAdmin} onChange={handleInputChange} className="dark-field-input">
              <option value="yes" className="text-black">Dispatch location is the same as administrative address</option>
              <option value="no" className="text-black">Dispatch location is different</option>
@@ -1474,7 +1474,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
             />
            </div>
            {formData.machineLocationSameAsAdmin === 'no' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="responsive-two-col-grid">
              <input name="machineStreetAddress" value={formData.machineStreetAddress} onChange={handleInputChange} placeholder="Machine Street Address" className="dark-field-input" required />
              <input name="machineComplexName" value={formData.machineComplexName} onChange={handleInputChange} placeholder="Complex / Industrial Park (Optional)" className="dark-field-input" />
              <input name="machineAddressDetail" value={formData.machineAddressDetail} onChange={handleInputChange} placeholder="Unit / Internal Location Detail (Optional)" className="dark-field-input" />
@@ -1490,18 +1490,18 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
            <div className="space-y-3 rounded-xl border border-white/15 bg-white/5 p-4">
             <p className="text-sm font-medium text-white/90">Is machine located at residential address?</p>
             <div className="flex flex-wrap gap-6">
-             <label className="flex items-center gap-2 text-white/85">
+             <label className="booking-form-label flex items-center gap-2">
               <input type="radio" name="machineLocationSameAsAdmin" value="yes" checked={formData.machineLocationSameAsAdmin === 'yes'} onChange={handleInputChange} />
               <span>Yes</span>
              </label>
-             <label className="flex items-center gap-2 text-white/85">
+             <label className="booking-form-label flex items-center gap-2">
               <input type="radio" name="machineLocationSameAsAdmin" value="no" checked={formData.machineLocationSameAsAdmin === 'no'} onChange={handleInputChange} />
               <span>No</span>
              </label>
             </div>
            </div>
            {formData.machineLocationSameAsAdmin === 'no' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="responsive-two-col-grid">
              <input name="machineStreetAddress" value={formData.machineStreetAddress} onChange={handleInputChange} placeholder="Machine Street Address" className="dark-field-input" required />
              <input name="machineComplexName" value={formData.machineComplexName} onChange={handleInputChange} placeholder="Complex / Industrial Park (Optional)" className="dark-field-input" />
              <input name="machineAddressDetail" value={formData.machineAddressDetail} onChange={handleInputChange} placeholder="Unit / Site Detail (Optional)" className="dark-field-input" />
@@ -1550,14 +1550,14 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
            </select>
           )}
          </div>
-         <p className="text-xs text-white/70">
+         <p className="booking-form-supporting-text text-xs">
           {isCustomerPortalBooking
            ? 'Choose a preferred visit date. Repeat-service selections can pre-fill equipment and site details from your service history.'
            : 'Choose a service history type first. First service calls only need a preferred visit date, while existing customers also require the last serviced date.'}
          </p>
          {allowsOutageWindow && formData.outageWindowApplicable === 'yes' ? (
           <>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="responsive-two-col-grid">
             <label className="space-y-1">
              <span className="dark-label">Outage Window Start (required when applicable)</span>
              <input
@@ -1581,22 +1581,22 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
              />
             </label>
            </div>
-           <p className="text-xs text-white/70">
+           <p className="booking-form-supporting-text text-xs">
             Outage window is enabled for this booking, so both start and end are required.
            </p>
           </>
          ) : allowsOutageWindow ? (
-          <p className="text-xs text-white/70">
+          <p className="booking-form-supporting-text text-xs">
            Outage window is not applicable for this machine/site booking.
           </p>
          ) : (
-          <p className="text-xs text-white/70">
+          <p className="booking-form-supporting-text text-xs">
            Service outage window applies to Generator & Backup Power bookings only.
           </p>
          )}
 
          {isCustomerPortalBooking ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="responsive-two-col-grid">
            <label className="space-y-1 md:col-span-2">
             <span className="dark-label">Preferred Site Visit Date (required)</span>
             <input
@@ -1610,13 +1610,13 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
             />
            </label>
            {selectedPastCallId && formData.dateOfLastService && (
-            <p className="md:col-span-2 text-xs text-white/70">
+             <p className="booking-form-supporting-text md:col-span-2 text-xs">
              Last service date was pre-filled from your selected service history. You can review it in your service records.
             </p>
            )}
           </div>
          ) : formData.serviceHistoryType === 'first-service-call' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="responsive-two-col-grid">
            <label className="space-y-1 md:col-span-2">
             <span className="dark-label">Preferred First Site Visit Date (required)</span>
             <input
@@ -1631,7 +1631,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
            </label>
           </div>
          ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="responsive-two-col-grid">
            <label className="space-y-1">
             <span className="dark-label">Date of Last Service (required for existing customers)</span>
             <input
@@ -1655,7 +1655,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
              required
             />
            </label>
-           <p className="md:col-span-2 text-xs text-white/70">
+           <p className="booking-form-supporting-text md:col-span-2 text-xs">
             {lastServiceAutofillMeta
              ? `Date of Last Service was auto-filled from ${lastServiceAutofillMeta.callNumber}. You can adjust it if needed.`
              : 'Date of Last Service can auto-fill from your previous service records when a matching contact email is found.'}
@@ -1687,7 +1687,7 @@ const [quotationTemplate, setQuotationTemplate] = useState(null);
           <option value="20:00 - 23:00" className="text-black">20:00 - 23:00</option>
          </select>
          <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows="4" placeholder="Additional notes (access restrictions, standby requirements, risk details, etc.)" className="dark-field-input" />
-         <label className="flex items-start gap-3 text-white/85">
+         <label className="booking-form-label flex items-start gap-3">
           <input type="checkbox" name="confirmAccuracy" checked={formData.confirmAccuracy} onChange={handleInputChange} className="mt-1" />
           <span>I confirm that the information is accurate and authorized for dispatch planning.</span>
          </label>

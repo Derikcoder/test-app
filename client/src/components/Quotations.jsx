@@ -3,6 +3,7 @@ import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import CreateQuoteModal from './CreateQuoteModal';
+import { EmptyState, ErrorState, LoadingState } from './shared/PageStates';
 
 /**
  * Source label map for autoResolutionSnapshot source values
@@ -118,25 +119,25 @@ const QuotationAuditPanel = ({ snapshot }) => {
 
       {/* Equipment identity */}
       {equipment && (
-        <div className="rounded-lg bg-white/5 border border-white/10 p-3 space-y-1">
+        <div className="quote-audit-card space-y-1">
           <p className="text-cyan-300/80 text-xs font-semibold uppercase tracking-wide mb-1">Selected Equipment</p>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+          <div className="quote-audit-grid">
             {equipment.equipmentId && (
-              <div><span className="text-white/60">Equipment ID:</span> <span className="text-white">{equipment.equipmentId}</span></div>
+              <div><span className="text-surface-muted">Equipment ID:</span> <span className="text-white">{equipment.equipmentId}</span></div>
             )}
             {(equipment.brand || equipment.model) && (
               <div>
-                <span className="text-white/60">Machine:</span>{' '}
+                <span className="text-surface-muted">Machine:</span>{' '}
                 <span className="text-white">
                   {[equipment.brand, equipment.model].filter(Boolean).join(' ')}
                 </span>
               </div>
             )}
             {equipment.equipmentType && (
-              <div><span className="text-white/60">Type:</span> <span className="text-white">{equipment.equipmentType}</span></div>
+              <div><span className="text-surface-muted">Type:</span> <span className="text-white">{equipment.equipmentType}</span></div>
             )}
             {equipment.serialNumber && (
-              <div><span className="text-white/60">Serial:</span> <span className="text-white">{equipment.serialNumber}</span></div>
+              <div><span className="text-surface-muted">Serial:</span> <span className="text-white">{equipment.serialNumber}</span></div>
             )}
           </div>
         </div>
@@ -144,7 +145,7 @@ const QuotationAuditPanel = ({ snapshot }) => {
 
       {/* History stats */}
       {historyStats && (
-        <div className="text-xs text-cyan-100/80">
+        <div className="text-surface-muted text-xs">
           <span className="text-cyan-300/70">History considered: </span>
           <span>
             {historyStats.totalHistoryEventsConsidered ?? 0} event{historyStats.totalHistoryEventsConsidered !== 1 ? 's' : ''} across{' '}
@@ -158,7 +159,7 @@ const QuotationAuditPanel = ({ snapshot }) => {
           {historyStats.selectedEquipmentScore > 0 && (
             <span className="ml-2">
               <span className="text-cyan-300/70">| Score: </span>
-              <span className="text-white">{historyStats.selectedEquipmentScore}</span>
+              <span className="text-surface-strong">{historyStats.selectedEquipmentScore}</span>
             </span>
           )}
         </div>
@@ -172,11 +173,11 @@ const QuotationAuditPanel = ({ snapshot }) => {
           </p>
           <ul className="space-y-1">
             {recentServiceHistory.map((event, idx) => (
-              <li key={event.callNumber || idx} className="text-xs text-white/80 flex flex-wrap gap-x-3 gap-y-0.5">
+              <li key={event.callNumber || idx} className="text-surface-muted text-xs flex flex-wrap gap-x-3 gap-y-0.5">
                 <span className="font-mono text-cyan-200">{event.callNumber || '—'}</span>
                 <span>{event.serviceType || '—'}</span>
-                <span className="text-white/50">{event.status || '—'}</span>
-                <span className="text-white/40">{formatDate(event.completedDate || event.createdAt)}</span>
+                <span className="text-surface-faint">{event.status || '—'}</span>
+                <span className="text-surface-faint">{formatDate(event.completedDate || event.createdAt)}</span>
               </li>
             ))}
           </ul>
@@ -194,12 +195,12 @@ const QuotationAuditPanel = ({ snapshot }) => {
           </summary>
           <ul className="mt-2 space-y-1">
             {evaluatedEquipment.map((eq, idx) => (
-              <li key={eq.equipmentId || idx} className="text-xs text-white/70 flex flex-wrap gap-x-3 gap-y-0.5 pl-4">
-                <span className="font-mono text-white/50">{eq.equipmentId || '—'}</span>
+              <li key={eq.equipmentId || idx} className="text-surface-muted text-xs flex flex-wrap gap-x-3 gap-y-0.5 pl-4">
+                <span className="font-mono text-surface-faint">{eq.equipmentId || '—'}</span>
                 <span>{[eq.brand, eq.model].filter(Boolean).join(' ') || '—'}</span>
                 <span className="text-cyan-300/60">score: {eq.score ?? '—'}</span>
                 {eq.historyCount > 0 && (
-                  <span className="text-white/40">{eq.historyCount} event{eq.historyCount !== 1 ? 's' : ''}</span>
+                  <span className="text-surface-faint">{eq.historyCount} event{eq.historyCount !== 1 ? 's' : ''}</span>
                 )}
               </li>
             ))}
@@ -209,20 +210,20 @@ const QuotationAuditPanel = ({ snapshot }) => {
 
       {/* Booking seed (when source = booking-request) */}
       {bookingSeed && source === 'booking-request' && (
-        <div className="rounded-lg bg-white/5 border border-white/10 p-3 space-y-1">
+        <div className="quote-audit-card space-y-1">
           <p className="text-cyan-300/80 text-xs font-semibold uppercase tracking-wide mb-1">Booking Seed Data</p>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+          <div className="quote-audit-grid">
             {bookingSeed.machineModelNumber && (
-              <div><span className="text-white/60">Model Number:</span> <span className="text-white">{bookingSeed.machineModelNumber}</span></div>
+              <div><span className="text-surface-muted">Model Number:</span> <span className="text-white">{bookingSeed.machineModelNumber}</span></div>
             )}
             {bookingSeed.generatorMakeModel && (
-              <div><span className="text-white/60">Generator:</span> <span className="text-white">{bookingSeed.generatorMakeModel}</span></div>
+              <div><span className="text-surface-muted">Generator:</span> <span className="text-white">{bookingSeed.generatorMakeModel}</span></div>
             )}
             {bookingSeed.generatorCapacityKva && (
-              <div><span className="text-white/60">Capacity (kVA):</span> <span className="text-white">{bookingSeed.generatorCapacityKva}</span></div>
+              <div><span className="text-surface-muted">Capacity (kVA):</span> <span className="text-white">{bookingSeed.generatorCapacityKva}</span></div>
             )}
             {bookingSeed.siteName && (
-              <div><span className="text-white/60">Site:</span> <span className="text-white">{bookingSeed.siteName}</span></div>
+              <div><span className="text-surface-muted">Site:</span> <span className="text-white">{bookingSeed.siteName}</span></div>
             )}
           </div>
         </div>
@@ -358,7 +359,7 @@ const Quotations = () => {
           {/* Page header */}
           <div className="mb-8">
             <h1 className="glass-heading text-3xl text-white">Quotations</h1>
-            <p className="text-white/70 mt-1">
+            <p className="text-surface-muted mt-1">
               Review all quotations and audit Auto template selections
               {auditableCount > 0 && (
                 <span className="ml-2 text-cyan-300">
@@ -383,19 +384,19 @@ const Quotations = () => {
           {/* Filters */}
           <div className="glass-pane rounded-xl p-4 mb-6 flex flex-wrap gap-4 items-center">
             <div className="flex items-center gap-2">
-              <label className="text-white/70 text-sm">Status:</label>
+              <label className="text-surface-muted text-sm">Status:</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="glass-form-select rounded-lg px-3 py-1.5 bg-white/20 text-white border border-white/30 text-sm"
               >
-                <option value="" className="bg-blue-900">All statuses</option>
-                <option value="draft" className="bg-blue-900">Draft</option>
-                <option value="sent" className="bg-blue-900">Sent</option>
-                <option value="approved" className="bg-blue-900">Approved</option>
-                <option value="rejected" className="bg-blue-900">Rejected</option>
-                <option value="expired" className="bg-blue-900">Expired</option>
-                <option value="converted" className="bg-blue-900">Converted</option>
+                <option value="" className="quote-status-option">All statuses</option>
+                <option value="draft" className="quote-status-option">Draft</option>
+                <option value="sent" className="quote-status-option">Sent</option>
+                <option value="approved" className="quote-status-option">Approved</option>
+                <option value="rejected" className="quote-status-option">Rejected</option>
+                <option value="expired" className="quote-status-option">Expired</option>
+                <option value="converted" className="quote-status-option">Converted</option>
               </select>
             </div>
             <button
@@ -430,18 +431,21 @@ const Quotations = () => {
 
           {/* Error */}
           {error && (
-            <div className="mb-4 p-4 rounded-lg bg-red-500/30 text-red-200 border border-red-400/50">
-              {error}
-            </div>
+            <ErrorState
+              message={error}
+              className="mb-4 max-w-none"
+              title="Quotation list unavailable"
+              titleClassName="text-sm font-semibold text-white"
+              messageClassName="mt-0 text-sm text-red-200"
+            />
           )}
 
           {/* Loading skeleton */}
           {loading && (
             <div className="space-y-4">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="glass-pane rounded-2xl p-6 animate-pulse">
-                  <div className="h-4 bg-white/20 rounded w-1/3 mb-3" />
-                  <div className="h-3 bg-white/10 rounded w-1/2" />
+                <div key={n} className="glass-pane rounded-2xl p-6">
+                  <LoadingState message="Loading quotation..." spinnerClassName="spinner-sm mx-auto" />
                 </div>
               ))}
             </div>
@@ -449,15 +453,14 @@ const Quotations = () => {
 
           {/* Empty state */}
           {!loading && quotations.length === 0 && !error && (
-            <div className="glass-pane rounded-2xl p-10 text-center text-white/60">
-              <svg className="w-12 h-12 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-lg font-semibold text-white/70">No quotations found</p>
-              <p className="text-sm mt-1">
-                {statusFilter ? `No quotations with status "${statusFilter}".` : 'No quotations have been created yet.'}
-              </p>
+            <div className="glass-pane rounded-2xl p-10">
+              <EmptyState
+                icon="🧾"
+                title="No quotations found"
+                message={statusFilter ? `No quotations with status "${statusFilter}".` : 'No quotations have been created yet.'}
+                titleClassName="text-surface-muted text-lg font-semibold"
+                messageClassName="text-surface-subtle mt-1 text-sm"
+              />
             </div>
           )}
 
@@ -479,7 +482,7 @@ const Quotations = () => {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-white/50 text-xs">{q.quotationNumber}</span>
+                          <span className="text-surface-faint font-mono text-xs">{q.quotationNumber}</span>
                           <span className={`rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusClass}`}>
                             {q.status}
                           </span>
@@ -490,33 +493,33 @@ const Quotations = () => {
                           )}
                         </div>
                         <h2 className="text-white font-semibold text-base leading-snug">{q.title}</h2>
-                        <p className="text-white/60 text-sm">{customerName}</p>
+                        <p className="text-surface-muted text-sm">{customerName}</p>
                       </div>
 
                       {/* Financials */}
                       <div className="text-right space-y-1">
                         <p className="text-white font-bold text-lg">{formatCurrency(q.totalAmount)}</p>
-                        <p className="text-white/50 text-xs">incl. VAT</p>
+                        <p className="text-surface-faint text-xs">incl. VAT</p>
                       </div>
                     </div>
 
                     {/* Meta row */}
-                    <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-white/60">
+                    <div className="text-surface-muted mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
                       <span>
-                        <span className="text-white/40">Service type: </span>
+                        <span className="text-surface-faint">Service type: </span>
                         {q.serviceType || 'N/A'}
                       </span>
                       <span>
-                        <span className="text-white/40">Created: </span>
+                        <span className="text-surface-faint">Created: </span>
                         {formatDate(q.createdAt)}
                       </span>
                       <span>
-                        <span className="text-white/40">Valid until: </span>
+                        <span className="text-surface-faint">Valid until: </span>
                         {formatDate(q.validUntil)}
                       </span>
                       {q.convertedToServiceCall?.callNumber && (
                         <span>
-                          <span className="text-white/40">Converted to: </span>
+                          <span className="text-surface-faint">Converted to: </span>
                           <span className="text-purple-300">{q.convertedToServiceCall.callNumber}</span>
                         </span>
                       )}
@@ -551,7 +554,7 @@ const Quotations = () => {
 
                     {/* No snapshot notice */}
                     {!hasSnapshot && (
-                      <p className="mt-3 text-xs text-white/30 italic">
+                      <p className="text-surface-faint mt-3 text-xs italic">
                         No template resolution data — quote was created manually or before auto-resolution was enabled.
                       </p>
                     )}
@@ -588,7 +591,7 @@ const Quotations = () => {
                             <button
                               type="button"
                               onClick={() => setConvertPendingId('')}
-                              className="text-xs text-white/50 hover:text-white/80"
+                              className="text-surface-faint text-xs hover:text-white"
                             >
                               Cancel
                             </button>
@@ -622,7 +625,7 @@ const Quotations = () => {
                             <button
                               type="button"
                               onClick={() => setPendingDeleteId('')}
-                              className="text-xs text-white/50 hover:text-white/80"
+                              className="text-surface-faint text-xs hover:text-white"
                             >
                               Cancel
                             </button>

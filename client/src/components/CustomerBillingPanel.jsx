@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import api from '../api/axios';
 
 const formatCurrency = (value) => new Intl.NumberFormat('en-ZA', {
@@ -238,7 +239,7 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
   };
 
   if (loading) {
-    return <p className="text-sm text-white/50">Loading billing documents…</p>;
+    return <p className="text-surface-faint text-sm">Loading billing documents…</p>;
   }
 
   return (
@@ -247,7 +248,7 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
       {successMessage ? <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{successMessage}</div> : null}
 
       {visibleInvoices.length === 0 ? (
-        <p className="text-sm text-white/40">No pending billing items right now.</p>
+        <p className="text-surface-faint text-sm">No pending billing items right now.</p>
       ) : (
         visibleInvoices.map((invoice) => {
           const draft = getPaymentDraft(invoice._id);
@@ -267,18 +268,18 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                     <button
                       type="button"
                       onClick={() => setExpandedVarianceInvoiceId((prev) => (prev === invoice._id ? null : invoice._id))}
-                      className="text-sm font-semibold text-white/90 underline decoration-cyan-300/60 underline-offset-4 hover:text-cyan-200"
+                      className="text-surface-link text-sm font-semibold underline decoration-cyan-300/60 underline-offset-4"
                     >
                       {invoice.invoiceNumber}
                     </button>
                     <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
                       {invoice.documentType === 'proForma' ? 'Pro-Forma' : 'Invoice'}
                     </span>
-                    <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/70">
+                    <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-surface-muted text-[10px] font-bold uppercase tracking-wide">
                       {invoice.paymentStatus || invoice.workflowStatus || 'pending'}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-white/50">Due {formatDate(invoice.dueDate)}</p>
+                  <p className="text-surface-faint mt-1 text-xs">Due {formatDate(invoice.dueDate)}</p>
                   {invoice.depositRequired ? (
                     <p className="mt-2 text-xs text-amber-200">
                       Deposit required: {formatCurrency(invoice.depositAmount)}{invoice.depositReason ? ` · ${invoice.depositReason}` : ''}
@@ -308,40 +309,40 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                 </div>
 
                 <div className="text-left sm:text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Outstanding Balance</p>
+                  <p className="text-surface-faint text-[10px] font-bold uppercase tracking-widest">Outstanding Balance</p>
                   <p className="text-lg font-extrabold text-yellow-300">{formatCurrency(outstandingBalance)}</p>
                 </div>
               </div>
 
               {isVarianceExpanded ? (
                 <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100">Amount History</p>
+                      <p className="text-[10px] font-bold tracking-[0.18em] text-violet-100 uppercase">Amount History</p>
                   {hasVarianceData ? (
                     <>
-                      <p className="mt-1 text-xs text-violet-50/90">
+                        <p className="mt-1 text-xs text-violet-50/90">
                         Compared against approved quote {variance.quotationNumber}.
                       </p>
-                      <p className="mt-1 text-xs text-violet-200">
+                        <p className="mt-1 text-xs text-violet-200">
                         {formatVarianceDirection(variance.direction)}: <span className="font-semibold">{formatCurrency(variance.total?.delta || 0)}</span>
                       </p>
                       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <div className="rounded-lg border border-violet-300/20 bg-violet-900/20 p-2">
-                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">Subtotal Delta</p>
+                        <div className="variance-mini-card">
+                          <p className="variance-mini-label">Subtotal Delta</p>
                           <p className="text-xs font-semibold text-violet-50">{formatCurrency(variance.subtotal?.delta || 0)}</p>
                         </div>
-                        <div className="rounded-lg border border-violet-300/20 bg-violet-900/20 p-2">
-                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">VAT Delta</p>
+                        <div className="variance-mini-card">
+                          <p className="variance-mini-label">VAT Delta</p>
                           <p className="text-xs font-semibold text-violet-50">{formatCurrency(variance.vat?.delta || 0)}</p>
                         </div>
-                        <div className="rounded-lg border border-violet-300/20 bg-violet-900/20 p-2">
-                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">Total Delta</p>
+                        <div className="variance-mini-card">
+                          <p className="variance-mini-label">Total Delta</p>
                           <p className="text-xs font-semibold text-violet-50">{formatCurrency(variance.total?.delta || 0)}</p>
                         </div>
                       </div>
 
                       {Array.isArray(variance.drivers) && variance.drivers.length > 0 ? (
                         <div className="mt-3">
-                          <p className="text-[10px] uppercase tracking-wide text-violet-200/80">Variance Drivers</p>
+                          <p className="variance-mini-label">Variance Drivers</p>
                           <div className="mt-2 space-y-1">
                             {variance.drivers.map((driver) => (
                               <p key={driver.key} className="text-xs text-violet-50/90">
@@ -355,7 +356,7 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                       )}
                     </>
                   ) : (
-                    <p className="mt-1 text-xs text-violet-50/85">
+                      <p className="mt-1 text-xs text-violet-50/85">
                       No linked approved quotation was found for this document, so a variance breakdown is not available.
                     </p>
                   )}
@@ -367,7 +368,7 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                   {!isSettled ? (
                     <>
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <label className="flex flex-col gap-1 text-xs text-white/60">
+                        <label className="text-surface-subtle flex flex-col gap-1 text-xs">
                           Payment Method
                           <select
                             value={draft.method}
@@ -380,7 +381,7 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                           </select>
                         </label>
 
-                        <label className="flex flex-col gap-1 text-xs text-white/60 md:col-span-2">
+                        <label className="text-surface-subtle flex flex-col gap-1 text-xs md:col-span-2">
                           Reference / Transaction ID
                           <input
                             type="text"
@@ -393,7 +394,7 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-xs text-white/50">
+                          <p className="text-surface-faint text-xs">
                           Payment amount to submit now: <span className="font-semibold text-white/80">{formatCurrency(paymentAmount)}</span>
                         </p>
                         <button
@@ -458,6 +459,12 @@ const CustomerBillingPanel = ({ customerId, token, isOwnProfile }) => {
       )}
     </div>
   );
+};
+
+CustomerBillingPanel.propTypes = {
+  customerId: PropTypes.string,
+  token: PropTypes.string,
+  isOwnProfile: PropTypes.bool,
 };
 
 export default CustomerBillingPanel;

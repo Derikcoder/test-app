@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { deriveCustomerAssets } from '../utils/customerAssets';
 import Sidebar from './Sidebar';
 import api from '../api/axios';
+import { ErrorState, LoadingState, PageShell } from './shared/PageStates';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -64,12 +65,9 @@ const CustomerAssetHistoryPage = () => {
     return (
       <>
         <Sidebar />
-        <div className="page-center">
-          <div className="text-center">
-            <div className="spinner-lg" />
-            <p className="mt-4 text-sm text-white/70">Loading machine history…</p>
-          </div>
-        </div>
+        <PageShell variant="center">
+          <LoadingState message="Loading machine history…" />
+        </PageShell>
       </>
     );
   }
@@ -78,18 +76,16 @@ const CustomerAssetHistoryPage = () => {
     return (
       <>
         <Sidebar />
-        <div className="page-center px-4">
-          <div className="glass-card max-w-xl p-8 text-center">
-            <p className="text-sm text-red-300">{error || 'Machine history could not be found.'}</p>
-            <button
-              type="button"
-              onClick={() => navigate(backTarget)}
-              className="mt-4 rounded-lg border border-cyan-700 bg-cyan-950 px-4 py-2 text-sm font-semibold text-cyan-100"
-            >
-              ← Back to Customer Profile
-            </button>
-          </div>
-        </div>
+        <PageShell variant="center" className="px-4">
+          <ErrorState
+            message={error || 'Machine history could not be found.'}
+            onRetry={() => navigate(backTarget)}
+            retryLabel="← Back to Customer Profile"
+            title="Machine history unavailable"
+            titleClassName="text-lg font-bold text-white"
+            messageClassName="mt-3 text-sm text-red-300"
+          />
+        </PageShell>
       </>
     );
   }
@@ -113,9 +109,9 @@ const CustomerAssetHistoryPage = () => {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Machine Service History</p>
                 <h1 className="mt-2 text-2xl font-extrabold text-white sm:text-3xl">{selectedAsset.assetName}</h1>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-white/75">
-                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">Brand: {selectedAsset.brand || '—'}</span>
-                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">Model: {selectedAsset.model || '—'}</span>
-                  <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">Category: {selectedAsset.category || 'General'}</span>
+                  <span className="asset-meta-pill">Brand: {selectedAsset.brand || '—'}</span>
+                  <span className="asset-meta-pill">Model: {selectedAsset.model || '—'}</span>
+                  <span className="asset-meta-pill">Category: {selectedAsset.category || 'General'}</span>
                 </div>
               </div>
               <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-right">

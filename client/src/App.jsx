@@ -13,6 +13,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoadingState, PageShell } from './components/shared/PageStates';
 
 const Register = lazy(() => import('./components/Register'));
 const Login = lazy(() => import('./components/Login'));
@@ -40,12 +41,9 @@ const MachineLibrary = lazy(() => import('./components/MachineLibrary'));
 const Quotations = lazy(() => import('./components/Quotations'));
 
 const PageLoader = () => (
-  <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
-    <div className="glass-card p-8 text-center">
-      <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-b-transparent mx-auto mb-4"></div>
-      <p className="text-lg font-semibold opacity-90" style={{ color: 'white' }}>Loading page...</p>
-    </div>
-  </div>
+  <PageShell variant="full" className="flex items-center justify-center">
+    <LoadingState message="Loading page..." />
+  </PageShell>
 );
 
 /**
@@ -71,12 +69,9 @@ const ProtectedRoute = ({ children }) => {
   // Show loading spinner while authentication status is being determined
   if (loading) {
     return (
-      <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
-        <div className="glass-card p-8 text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-b-transparent mx-auto mb-4"></div>
-          <p className="text-lg font-semibold opacity-90" style={{ color: 'white' }}>Loading...</p>
-        </div>
-      </div>
+      <PageShell variant="full" className="flex items-center justify-center">
+        <LoadingState message="Loading..." />
+      </PageShell>
     );
   }
 
@@ -101,12 +96,9 @@ const AdminRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="glass-bg-particles min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-400 flex items-center justify-center">
-        <div className="glass-card p-8 text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-b-transparent mx-auto mb-4"></div>
-          <p className="text-lg font-semibold opacity-90" style={{ color: 'white' }}>Loading...</p>
-        </div>
-      </div>
+      <PageShell variant="full" className="flex items-center justify-center">
+        <LoadingState message="Loading..." />
+      </PageShell>
     );
   }
 

@@ -95,12 +95,12 @@ const ForgotPassword = () => {
     {/* Success Message */}
     {submitted && message && (
      <div className="glass-alert-success mb-4">
-      <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      <svg className="alert-inline-icon" fill="currentColor" viewBox="0 0 20 20">
        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
       </svg>
       <div>
-       <p style={{ color: '#10b981' }} className="font-medium">{message}</p>
-       <p style={{ color: '#10b981' }} className="text-sm mt-1">
+      <p className="text-state-success font-medium">{message}</p>
+      <p className="text-state-success text-sm mt-1">
         Check your email inbox and spam folder. Redirecting to login in 5 seconds...
        </p>
       </div>
@@ -110,10 +110,10 @@ const ForgotPassword = () => {
     {/* Error Message */}
     {error && (
      <div className="glass-alert-error mb-4">
-      <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      <svg className="alert-inline-icon" fill="currentColor" viewBox="0 0 20 20">
        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
       </svg>
-      <p style={{ color: '#ee5a52' }} className="font-medium">{error}</p>
+      <p className="text-state-error font-medium">{error}</p>
      </div>
     )}
 
@@ -135,7 +135,7 @@ const ForgotPassword = () => {
         placeholder="you@example.com"
         disabled={loading}
        />
-       <p className="text-sm mt-2 opacity-75" style={{ color: 'var(--primary)' }}>
+      <p className="text-brand-primary text-sm mt-2 opacity-75">
         We'll send a password reset link to this email address
        </p>
       </div>
@@ -177,7 +177,7 @@ const ForgotPassword = () => {
 
     {/* Security Information */}
     <div className="mt-6 text-center">
-     <p className="text-sm opacity-75" style={{ color: 'var(--primary)' }}>
+    <p className="text-brand-primary text-sm opacity-75">
       🔒 The reset link will be valid for 1 hour for security reasons
      </p>
     </div>

@@ -178,15 +178,15 @@ const Login = () => {
 
                     {error && (
                         <div className="glass-alert-error mb-5">
-                            <svg className="mr-3 h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="alert-inline-icon" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
-                            <p className="font-medium" style={{ color: '#ee5a52' }}>{error}</p>
+                            <p className="font-medium text-state-error">{error}</p>
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="glass-form-group mb-0">
+                        <div className="glass-form-group-flat">
                             <label htmlFor="email" className="glass-form-label">Business Email</label>
                             <input
                                 id="email"
@@ -201,7 +201,7 @@ const Login = () => {
                             />
                         </div>
 
-                        <div className="glass-form-group mb-0">
+                        <div className="glass-form-group-flat">
                             <div className="mb-2 flex items-center justify-between">
                                 <label htmlFor="password" className="glass-form-label mb-0">Password</label>
                                 <button
@@ -209,8 +209,7 @@ const Login = () => {
                                     onClick={() => navigate('/forgot-password', {
                                         state: formData.email ? { email: formData.email } : undefined,
                                     })}
-                                    className="text-sm font-semibold transition-colors duration-200"
-                                    style={{ color: 'var(--secondary)' }}
+                                    className="text-brand-secondary text-sm font-semibold transition-colors duration-200"
                                 >
                                     Forgot password?
                                 </button>

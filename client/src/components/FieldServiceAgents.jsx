@@ -546,8 +546,8 @@ const FieldServiceAgents = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                            <div className="font-medium text-slate-100">{agent.firstName} {agent.lastName}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.category || 'Uncategorized'}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.skills?.length ? agent.skills.join(', ') : '-'}</td>
+                          <td className="table-cell-muted-nowrap">{agent.category || 'Uncategorized'}</td>
+                          <td className="table-cell-muted-nowrap">{agent.skills?.length ? agent.skills.join(', ') : '-'}</td>
             <td className="px-6 py-4 whitespace-nowrap">
                          <div className="text-sm text-slate-100">{agent.email}</div>
                          {agent.backupEmail ? <div className="text-xs text-amber-300">Backup: {agent.backupEmail}</div> : null}
@@ -567,12 +567,12 @@ const FieldServiceAgents = () => {
               {agent.status}
              </span>
             </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.assignedArea || '-'}</td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.jobsCompleted ?? agent.totalJobsAttended ?? 0}</td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.jobsInProgress ?? 0}</td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{agent.quotesAwaitingApproval ?? 0}</td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{Number(agent.averageRating || 0).toFixed(2)}</td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                        <td className="table-cell-muted-nowrap">{agent.assignedArea || '-'}</td>
+            <td className="table-cell-muted-nowrap">{agent.jobsCompleted ?? agent.totalJobsAttended ?? 0}</td>
+            <td className="table-cell-muted-nowrap">{agent.jobsInProgress ?? 0}</td>
+            <td className="table-cell-muted-nowrap">{agent.quotesAwaitingApproval ?? 0}</td>
+            <td className="table-cell-muted-nowrap">{Number(agent.averageRating || 0).toFixed(2)}</td>
+            <td className="table-cell-muted-nowrap">
              <span className={`px-2 py-1 text-xs font-semibold uppercase tracking-wide rounded-full border ${governanceFlagTone[agent.governanceFlag || 'green'] || governanceFlagTone.green}`}>
               {agent.governanceFlag || 'green'}
              </span>

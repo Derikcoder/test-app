@@ -199,17 +199,17 @@ const CustomerPortal = () => {
       <Sidebar />
       <div className="page-body">
         <div className="mx-auto max-w-7xl space-y-6">
-          <section className="rounded-2xl border border-white/15 bg-slate-950/40 p-6 shadow-xl backdrop-blur-sm">
+          <section className="portal-section-shell">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Customer Workspace</p>
-                <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-900/50 px-3 py-1 text-[11px] text-white/85">
+                <div className="text-surface-medium mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-900/50 px-3 py-1 text-[11px]">
                   <span>Customer Workspace</span>
                   <span className="text-white/40">/</span>
                   <span className="font-semibold text-cyan-100">{activeSection.label}</span>
                 </div>
                 <h1 className="mt-2 text-2xl font-extrabold text-white">{customer?.businessName || 'My Service Portal'}</h1>
-                <p className="mt-2 text-sm text-white/85">Choose a section to manage your account, services, and billing journey.</p>
+                <p className="text-surface-medium mt-2 text-sm">Choose a section to manage your account, services, and billing journey.</p>
               </div>
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -227,7 +227,7 @@ const CustomerPortal = () => {
                       }`}
                     >
                       <p className="text-sm font-semibold">{item.label}</p>
-                      <p className="mt-1 text-xs text-white/70">{item.description}</p>
+                      <p className="text-surface-muted mt-1 text-xs">{item.description}</p>
                     </Link>
                   );
                 })}
@@ -283,8 +283,8 @@ const CustomerPortal = () => {
           </section>
 
           {loading ? (
-            <section className="rounded-2xl border border-white/15 bg-slate-950/40 p-6 shadow-xl backdrop-blur-sm">
-              <p className="text-sm text-white/85">Loading your customer workspace...</p>
+            <section className="portal-section-shell">
+              <p className="text-surface-medium text-sm">Loading your customer workspace...</p>
             </section>
           ) : (
             <>
@@ -295,7 +295,7 @@ const CustomerPortal = () => {
               ) : null}
 
               {section === 'dashboard' ? (
-                <section className="section-transition rounded-2xl border border-white/15 bg-slate-950/40 p-6 shadow-xl backdrop-blur-sm">
+                <section className="section-transition portal-section-shell">
                   <CustomerSelfServicePanel
                     customerId={customerId}
                     customer={customer}
@@ -308,11 +308,11 @@ const CustomerPortal = () => {
               ) : null}
 
               {section === 'profile' ? (
-                <section className="section-transition rounded-2xl border border-white/15 bg-slate-950/40 p-6 shadow-xl backdrop-blur-sm">
+                <section className="section-transition portal-section-shell">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="text-lg font-bold text-white">Service Review Cards</h2>
-                      <p className="text-sm text-white/80">Each card summarizes a service, the assigned field agent, and customer feedback.</p>
+                      <p className="text-surface-medium text-sm">Each card summarizes a service, the assigned field agent, and customer feedback.</p>
                     </div>
                     <span className="rounded-full border border-white/20 bg-slate-900/50 px-3 py-1 text-xs text-white/90">
                       {profileCards.length} service card{profileCards.length === 1 ? '' : 's'}
@@ -320,15 +320,15 @@ const CustomerPortal = () => {
                   </div>
 
                   {profileCards.length === 0 ? (
-                    <p className="text-sm text-white/75">No service cards available yet.</p>
+                    <p className="text-surface-muted text-sm">No service cards available yet.</p>
                   ) : (
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                       {profileCards.map((card) => (
-                        <article key={card.id} className="rounded-xl border border-white/20 bg-slate-900/60 p-4">
+                        <article key={card.id} className="portal-surface-card">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold text-white">{card.callNumber}</p>
-                              <p className="mt-1 text-xs text-white/75">{card.serviceType} · {card.title}</p>
+                              <p className="text-surface-muted mt-1 text-xs">{card.serviceType} · {card.title}</p>
                             </div>
                             <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-100">
                               {card.status}
@@ -339,7 +339,7 @@ const CustomerPortal = () => {
                             <p><span className="font-semibold text-white">Agent:</span> {card.agentLabel}</p>
                             <p><span className="font-semibold text-white">Rating:</span> {card.rating > 0 ? `${'★'.repeat(card.rating)} (${card.rating}/5)` : 'Not rated yet'}</p>
                             <p><span className="font-semibold text-white">Review:</span> {card.reviewText || 'No written review submitted yet.'}</p>
-                            <p className="text-xs text-white/70">Stage: {card.reviewStage} · Updated {formatDate(card.completedDate)}</p>
+                            <p className="text-surface-muted text-xs">Stage: {card.reviewStage} · Updated {formatDate(card.completedDate)}</p>
                           </div>
                         </article>
                       ))}
@@ -349,7 +349,7 @@ const CustomerPortal = () => {
               ) : null}
 
               {section === 'billing' ? (
-                <section className="section-transition rounded-2xl border border-white/15 bg-slate-950/40 p-6 shadow-xl backdrop-blur-sm space-y-5">
+                <section className="section-transition portal-section-shell space-y-5">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="rounded-xl border border-amber-400/30 bg-amber-950/40 p-3">
                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">Quotes Awaiting Action</p>
@@ -365,7 +365,7 @@ const CustomerPortal = () => {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-white/20 bg-slate-900/60 p-4">
+                  <div className="portal-surface-card">
                     <h3 className="text-sm font-semibold text-white">Quotes To Accept</h3>
                     {activeQuotations.length === 0 ? (
                       <p className="mt-2 text-sm text-white/75">No active quotations right now.</p>
@@ -407,7 +407,7 @@ const CustomerPortal = () => {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-white/20 bg-slate-900/60 p-4">
+                  <div className="portal-surface-card">
                     <h3 className="text-sm font-semibold text-white">Invoices Due</h3>
                     <div className="mt-3">
                       <CustomerBillingPanel customerId={customerId} token={user?.token} isOwnProfile />
@@ -417,9 +417,9 @@ const CustomerPortal = () => {
               ) : null}
 
               {section === 'services' ? (
-                <section className="section-transition rounded-2xl border border-white/15 bg-slate-950/40 p-6 shadow-xl backdrop-blur-sm">
+                <section className="section-transition portal-section-shell">
                   <h2 className="text-lg font-bold text-white">Services Rendered By Category</h2>
-                  <p className="mt-1 text-sm text-white/80">Browse every service delivered to your account in grouped categories.</p>
+                      <p className="text-surface-medium mt-1 text-sm">Browse every service delivered to your account in grouped categories.</p>
 
                   <div className="sticky top-20 z-20 my-5 flex items-center gap-3 rounded-xl border border-cyan-400/20 bg-slate-950/85 px-3 py-2 backdrop-blur-sm">
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-300/50 to-transparent" />
@@ -448,13 +448,13 @@ const CustomerPortal = () => {
                   </div>
 
                   {Object.keys(groupedServices).length === 0 ? (
-                    <p className="mt-4 text-sm text-white/75">No service activity has been captured yet.</p>
+                    <p className="text-surface-muted mt-4 text-sm">No service activity has been captured yet.</p>
                   ) : (
                     <div className="mt-4 space-y-4">
                       {Object.entries(groupedServices)
                         .sort((a, b) => b[1].length - a[1].length)
                         .map(([category, calls]) => (
-                          <div key={category} className="rounded-xl border border-white/20 bg-slate-900/60 p-4">
+                          <div key={category} className="portal-surface-card">
                             <div className="flex items-center justify-between gap-3">
                               <p className="text-sm font-semibold text-yellow-300">{category}</p>
                               <span className="rounded-full border border-white/20 bg-slate-900/50 px-2.5 py-0.5 text-[10px] uppercase tracking-wide text-white/85">
@@ -469,8 +469,8 @@ const CustomerPortal = () => {
                                 .map((call) => (
                                   <div key={call._id} className="rounded-lg border border-white/10 bg-slate-950/35 p-3 text-sm text-white/80">
                                     <p className="font-semibold text-white/90">{call.callNumber || call._id}</p>
-                                    <p className="text-xs text-white/60">{call.title || call.description || 'Service Job'} · {getAgentLabel(call)}</p>
-                                    <p className="text-xs text-white/50">Status: {call.status || 'pending'} · Updated {formatDate(call.completedDate || call.updatedAt || call.createdAt)}</p>
+                                    <p className="text-surface-subtle text-xs">{call.title || call.description || 'Service Job'} · {getAgentLabel(call)}</p>
+                                    <p className="text-surface-faint text-xs">Status: {call.status || 'pending'} · Updated {formatDate(call.completedDate || call.updatedAt || call.createdAt)}</p>
                                   </div>
                                 ))}
                             </div>

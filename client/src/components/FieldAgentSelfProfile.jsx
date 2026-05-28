@@ -9,6 +9,12 @@ import {
  getConfirmPasswordBorderClass,
  getPasswordInputBorderClass,
 } from '../utils/passwordSecurity';
+import {
+ buildServiceCallStats,
+ filterServiceCallsByTab,
+ getServiceCallPriorityClass,
+ getServiceCallStatusClass,
+} from '../utils/serviceCallPresentation';
 
 const pageShellClass = 'min-h-screen bg-slate-950 pt-20 pb-8 px-3 sm:px-6 lg:px-8';
 const panelClass = 'rounded-2xl border border-slate-700 bg-slate-900/90 shadow-xl';
@@ -23,6 +29,20 @@ const roleLabelMap = {
  businessAdministrator: 'Business Administrator',
  fieldServiceAgent: 'Field Service Agent',
  customer: 'Customer',
+};
+const tabStatusMap = {
+ 'awaiting-acceptance': ['awaiting-quote-approval'],
+ accepted: ['assigned', 'scheduled'],
+ 'on-hold': ['on-hold'],
+ completed: ['completed', 'invoiced'],
+ 'in-progress': ['in-progress'],
+};
+const statStatusMap = {
+ awaitingAcceptance: ['awaiting-quote-approval'],
+ accepted: ['assigned', 'scheduled'],
+ onHold: ['on-hold'],
+ inProgress: ['in-progress'],
+ completed: ['completed', 'invoiced'],
 };
 
 const createEmptyProvider = () => ({
@@ -520,66 +540,22 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
  }, [serviceCalls]);
 
  // Calculate statistics
- const stats = {
-  total: serviceCalls.length,
-  awaitingAcceptance: serviceCalls.filter((call) => call.status === 'awaiting-quote-approval').length,
-  accepted: serviceCalls.filter((call) => call.status === 'assigned' || call.status === 'scheduled').length,
-  onHold: serviceCalls.filter((call) => call.status === 'on-hold').length,
-  inProgress: serviceCalls.filter((call) => call.status === 'in-progress').length,
-  completed: serviceCalls.filter((call) => call.status === 'completed' || call.status === 'invoiced').length,
-  unassigned: eligibleUnassignedCalls.length,
- };
+ const stats = buildServiceCallStats({
+  serviceCalls,
+  statStatusMap,
+  extraCounts: {
+   unassigned: eligibleUnassignedCalls.length,
+  },
+ });
 
- const getFilteredCalls = () => {
-  switch (activeTab) {
-   case 'awaiting-acceptance':
-    return serviceCalls.filter((call) => call.status === 'awaiting-quote-approval');
-   case 'accepted':
-    return serviceCalls.filter((call) => call.status === 'assigned' || call.status === 'scheduled');
-   case 'on-hold':
-    return serviceCalls.filter((call) => call.status === 'on-hold');
-   case 'completed':
-    return serviceCalls.filter((call) => call.status === 'completed' || call.status === 'invoiced');
-   case 'in-progress':
-    return serviceCalls.filter((call) => call.status === 'in-progress');
-   case 'unassigned':
-    return eligibleUnassignedCalls;
-   default:
-    return serviceCalls;
-  }
- };
-
- const getStatusColor = (status) => {
-  switch (status) {
-   case 'completed':
-    return 'bg-green-500/30 text-green-100 border border-green-400/50';
-   case 'in-progress':
-    return 'bg-blue-500/30 text-blue-100 border border-blue-400/50';
-   case 'awaiting-quote-approval':
-    return 'bg-purple-500/30 text-purple-100 border border-purple-400/50';
-   case 'invoiced':
-    return 'bg-teal-500/30 text-teal-100 border border-teal-400/50';
-   case 'assigned':
-    return 'bg-yellow-500/30 text-yellow-100 border border-yellow-400/50';
-   case 'open':
-    return 'bg-gray-500/30 text-gray-100 border border-gray-400/50';
-   default:
-    return 'bg-gray-500/30 text-gray-100 border border-gray-400/50';
-  }
- };
-
- const getPriorityColor = (priority) => {
-  switch (priority) {
-   case 'high':
-    return 'text-red-200';
-   case 'medium':
-    return 'text-yellow-200';
-   case 'low':
-    return 'text-green-200';
-   default:
-    return 'text-gray-200';
-  }
- };
+ const filteredCalls = filterServiceCallsByTab({
+  activeTab,
+  serviceCalls,
+  tabStatusMap,
+  tabDataMap: {
+   unassigned: eligibleUnassignedCalls,
+  },
+ });
 
  const formatStructuredAddress = (address) => {
   if (!address) return 'N/A';
@@ -957,7 +933,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
               name="email"
               value={particularsForm.email}
               onChange={handleParticularsChange}
-              className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+              className="mt-1 slate-input-compact"
               placeholder="Business primary email"
              />
             </label>
@@ -968,7 +944,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
             name="phoneNumber"
             value={particularsForm.phoneNumber}
             onChange={handleParticularsChange}
-            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            className="mt-1 slate-input-compact"
             placeholder="Update phone number"
            />
           </label>
@@ -979,7 +955,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
             name="backupEmail"
             value={particularsForm.backupEmail}
             onChange={handleParticularsChange}
-            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            className="mt-1 slate-input-compact"
             placeholder="Optional backup email"
            />
           </label>
@@ -990,7 +966,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
             name="assignedArea"
             value={particularsForm.assignedArea}
             onChange={handleParticularsChange}
-            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            className="mt-1 slate-input-compact"
             placeholder="Service area"
            />
           </label>
@@ -1001,7 +977,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
             name="vehicleNumber"
             value={particularsForm.vehicleNumber}
             onChange={handleParticularsChange}
-            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            className="mt-1 slate-input-compact"
             placeholder="Vehicle registration"
            />
           </label>
@@ -1012,7 +988,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
             name="category"
             value={particularsForm.category}
             onChange={handleParticularsChange}
-            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-slate-100"
+            className="mt-1 slate-input-compact"
            >
             {VISIBLE_AGENT_CATEGORIES.map((category) => (
              <option key={category} value={category}>{category}</option>
@@ -1083,31 +1059,31 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
                <input
                 value={provider.businessName}
                 onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'businessName', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Business name"
                />
                <input
                 value={provider.location}
                 onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'location', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Location"
                />
                <input
                 value={provider.category}
                 onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'category', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Category"
                />
                <input
                 value={provider.supplierProductType}
                 onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'supplierProductType', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Supplier product type"
                />
                <input
                 value={provider.preferredBrands}
                 onChange={(event) => updatePreferredProviderField('preferredSuppliers', index, 'preferredBrands', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 md:col-span-2"
+                className="slate-input-sm md:col-span-2"
                 placeholder="Preferred brands (comma-separated)"
                />
               </div>
@@ -1150,31 +1126,31 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
                <input
                 value={provider.businessName}
                 onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'businessName', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Business name"
                />
                <input
                 value={provider.location}
                 onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'location', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Location"
                />
                <input
                 value={provider.category}
                 onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'category', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Category"
                />
                <input
                 value={provider.supplierProductType}
                 onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'supplierProductType', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                className="slate-input-sm"
                 placeholder="Supplier product type"
                />
                <input
                 value={provider.preferredBrands}
                 onChange={(event) => updatePreferredProviderField('preferredThirdPartyServiceProviders', index, 'preferredBrands', event.target.value)}
-                className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 md:col-span-2"
+                className="slate-input-sm md:col-span-2"
                 placeholder="Preferred brands (comma-separated)"
                />
               </div>
@@ -1344,7 +1320,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
 
       {/* Calls List */}
       <div className="p-8">
-       {getFilteredCalls().length === 0 ? (
+      {filteredCalls.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
          <svg className="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1353,7 +1329,7 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
         </div>
        ) : (
         <div className="space-y-4">
-         {getFilteredCalls().map((call) => (
+         {filteredCalls.map((call) => (
           <div
            key={call._id}
            className="rounded-lg border border-slate-700 bg-slate-900/85 p-6 hover:border-cyan-700 transition"
@@ -1374,10 +1350,10 @@ const FieldAgentSelfProfile = ({ workspaceMode = 'service-calls' }) => {
                 <span className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide rounded-full border border-cyan-700 bg-cyan-950 text-cyan-200">
                  Service Call
                 </span>
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(call.status)}`}>
+                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getServiceCallStatusClass(call.status)}`}>
                  {call.status}
                 </span>
-                <span className={`text-sm font-medium ${getPriorityColor(call.priority)}`}>
+                <span className={`text-sm font-medium ${getServiceCallPriorityClass(call.priority)}`}>
                  {call.priority?.toUpperCase()} Priority
                 </span>
                </div>

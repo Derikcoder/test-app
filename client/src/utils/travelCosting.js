@@ -6,6 +6,7 @@ export const PROCUREMENT_LABOUR_RATE_PER_HOUR = 650;
 export const CALL_OUT_FLOOR_DISTANCE_KM = 45;
 export const CALL_OUT_FLOOR_TIME_MINUTES = 30;
 export const CALL_OUT_FLOOR_AMOUNT = 650;
+export const INCLUDED_ASSESSMENT_MINUTES = 15;
 
 /**
  * Calculates in-house procurement cost from two explicit components:
@@ -91,5 +92,33 @@ export const calculateCallOutTravelCost = ({
     baseTravelCost,
     isCallOutFloorApplicable,
     travelCost,
+  };
+};
+
+/**
+ * Calculates billable labour after the included first-visit assessment allowance.
+ *
+ * @param {Object} params
+ * @param {number} params.labourHours
+ * @param {boolean} params.isFirstSiteVisit
+ * @param {boolean} params.isCallOutFloorApplicable
+ * @param {number} [params.includedAssessmentMinutes]
+ * @returns {{ includedAssessmentHours: number, chargeableLabourHours: number }}
+ */
+export const calculateChargeableLabourHours = ({
+  labourHours,
+  isFirstSiteVisit,
+  isCallOutFloorApplicable,
+  includedAssessmentMinutes = INCLUDED_ASSESSMENT_MINUTES,
+}) => {
+  const normalizedLabourHours = Number(labourHours) || 0;
+  const normalizedIncludedAssessmentMinutes = Number(includedAssessmentMinutes) || 0;
+  const includedAssessmentHours = isFirstSiteVisit && isCallOutFloorApplicable
+    ? normalizedIncludedAssessmentMinutes / 60
+    : 0;
+
+  return {
+    includedAssessmentHours,
+    chargeableLabourHours: Math.max(normalizedLabourHours - includedAssessmentHours, 0),
   };
 };

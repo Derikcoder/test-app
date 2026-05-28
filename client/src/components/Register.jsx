@@ -130,7 +130,7 @@ const Register = () => {
      <p className="auth-aside-copy">
       Registration adapts by principal type with role-specific verification, profile linking, and controlled onboarding.
      </p>
-     <ul className="mt-6 space-y-2 text-sm" style={{ color: 'rgba(255,255,255,0.88)' }}>
+    <ul className="text-surface-strong mt-6 space-y-2 text-sm">
       <li>Role-first onboarding for all principal types</li>
       <li>One-time passkey flow for delegated roles</li>
       <li>Operational profile linking for field agents and customers</li>
@@ -144,27 +144,25 @@ const Register = () => {
     {/* Error Message Display */}
     {error && (
      <div className="glass-alert-error mb-6">
-      <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      <svg className="alert-inline-icon" fill="currentColor" viewBox="0 0 20 20">
        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
       </svg>
-      <p style={{ color: '#ee5a52' }} className="font-medium">{error}</p>
+      <p className="text-state-error font-medium">{error}</p>
      </div>
     )}
 
     <form onSubmit={handleSubmit} className="space-y-5">
      {/* Role Section */}
     <div className="card card-glass glass-card">
-      <h3 className="text-xl font-bold mb-3" style={{ color: 'var(--primary)' }}>Account Role</h3>
-      <p className="text-sm mb-4 opacity-75" style={{ color: 'var(--primary)' }}>
+      <h3 className="text-brand-primary mb-3 text-xl font-bold">Account Role</h3>
+      <p className="text-brand-primary mb-4 text-sm opacity-75">
        Choose the principal role first. Required fields below will adapt automatically.
       </p>
       <div className="grid grid-cols-1 gap-3">
        {ROLE_OPTIONS.map((option) => (
-        <label key={option.value} className="glass-form-group mb-0 cursor-pointer rounded-lg border p-3 transition-all"
-          style={{
-            borderColor: formData.role === option.value ? 'var(--secondary)' : 'rgba(255,255,255,0.25)',
-            background: formData.role === option.value ? 'rgba(255, 251, 40, 0.08)' : 'rgba(255,255,255,0.08)',
-          }}
+        <label
+          key={option.value}
+          className={`glass-form-group auth-option-card mb-0 ${formData.role === option.value ? 'auth-option-card--selected' : ''}`}
         >
          <div className="flex items-start gap-3">
           <input
@@ -176,8 +174,8 @@ const Register = () => {
            className="mt-1 h-4 w-4"
           />
           <div>
-           <p className="font-semibold" style={{ color: 'var(--primary)' }}>{option.title}</p>
-           <p className="text-xs opacity-80" style={{ color: 'var(--primary)' }}>{option.summary}</p>
+           <p className="text-brand-primary font-semibold">{option.title}</p>
+           <p className="text-brand-primary text-xs opacity-80">{option.summary}</p>
           </div>
          </div>
         </label>
@@ -187,8 +185,8 @@ const Register = () => {
 
      {/* User Information Section */}
     <div className="card card-glass glass-card">
-      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>User Credentials</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <h3 className="text-brand-primary mb-4 text-xl font-bold">User Credentials</h3>
+      <div className="responsive-two-col-grid">
        <div className="glass-form-group">
         <label className="glass-form-label">Username</label>
         <input
@@ -243,9 +241,9 @@ const Register = () => {
        {/* Delegated Access Section */}
        {requiresPasskey && (
         <div className="card card-glass glass-card">
-         <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Delegated Access Verification</h3>
+         <h3 className="text-brand-primary mb-4 text-xl font-bold">Delegated Access Verification</h3>
          <div className="grid grid-cols-1 gap-4">
-        <div className="glass-form-group mb-0">
+        <div className="glass-form-group-flat">
          <label className="glass-form-label">One-Time Passkey</label>
          <input
           type="text"
@@ -264,10 +262,10 @@ const Register = () => {
        {/* Profile Linking Section */}
        {(requiresFieldAgentProfile || requiresCustomerProfile) && (
         <div className="card card-glass glass-card">
-         <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Operational Profile Link</h3>
+         <h3 className="text-brand-primary mb-4 text-xl font-bold">Operational Profile Link</h3>
          <div className="grid grid-cols-1 gap-4">
         {requiresFieldAgentProfile && (
-         <div className="glass-form-group mb-0">
+         <div className="glass-form-group-flat">
           <label className="glass-form-label">Field Service Agent Profile ID</label>
           <input
            type="text"
@@ -281,7 +279,7 @@ const Register = () => {
          </div>
         )}
         {requiresCustomerProfile && (
-         <div className="glass-form-group mb-0">
+         <div className="glass-form-group-flat">
           <label className="glass-form-label">Customer Profile ID</label>
           <input
            type="text"
@@ -301,8 +299,8 @@ const Register = () => {
        {/* Business Information Section */}
        {requiresBusinessInfo && (
       <div className="card card-glass glass-card">
-        <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Business Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h3 className="text-brand-primary mb-4 text-xl font-bold">Business Information</h3>
+      <div className="responsive-two-col-grid">
        <div className="md:col-span-2 glass-form-group">
         <label className="glass-form-label">Business Name</label>
         <input
@@ -367,7 +365,7 @@ const Register = () => {
      {/* Address Information Section */}
       {requiresBusinessInfo && (
       <div className="card card-glass glass-card">
-      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--primary)' }}>Address Information</h3>
+      <h3 className="text-brand-primary mb-4 text-xl font-bold">Address Information</h3>
       <div className="grid grid-cols-1 gap-4">
        <div className="glass-form-group">
         <label className="glass-form-label">Physical Address</label>
@@ -416,7 +414,7 @@ const Register = () => {
 
      {/* Footer */}
      <div className="text-center pt-4">
-      <p className="text-xs opacity-70" style={{ color: 'var(--primary)' }}>
+      <p className="text-brand-primary text-xs opacity-70">
        By registering, you agree to our Terms & Conditions
       </p>
      </div>

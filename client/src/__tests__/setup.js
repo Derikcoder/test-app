@@ -4,7 +4,7 @@
  */
 
 import '@testing-library/jest-dom';
-import { expect, afterEach, vi, beforeEach } from 'vitest';
+import { afterEach, vi, beforeEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 // Cleanup after each test
@@ -41,7 +41,7 @@ const createLocalStorageMock = () => {
 
 // Reset localStorage before each test
 beforeEach(() => {
-  global.localStorage = createLocalStorageMock();
+  globalThis.localStorage = createLocalStorageMock();
 });
 
 // Mock window.matchMedia
