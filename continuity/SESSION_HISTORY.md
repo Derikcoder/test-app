@@ -122,3 +122,10 @@ Chronological checkpoint record for crash recovery and continuity.
 - Checkpoint: 20260520-113600-main
 - Note: Restore point before Field Service Agent UI logic fixes
 - Next Action: Fix broken Field Service Agent perspective UI logic, then resume UAT Section 2.3
+
+## 2026-05-26 17:11:36 SAST
+- Branch: main
+- HEAD: 9f54c91
+- Checkpoint: 20260526-171136-main
+- Note: EOD checkpoint: Jira account created and CSV uploaded via Confluence workspace
+- Next Action: Tomorrow: complete Jira and Confluence VS Code integrations and validate ticket/page workflows

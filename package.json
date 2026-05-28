@@ -11,6 +11,8 @@
     "eod:new": "bash ./scripts/new-eod-entry.sh",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
+    "lint": "npm run lint:client",
+    "lint:client": "npm run lint --prefix client",
     "build:client": "npm run build --prefix client",
     "test:server": "npm --prefix ./server run test --",
     "test:server:json": "npm --prefix ./server run test -- --json --outputFile=jest.output.json .",
