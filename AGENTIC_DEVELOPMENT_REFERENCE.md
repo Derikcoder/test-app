@@ -168,6 +168,12 @@ Resume only from the last verified safe point, then create a fresh checkpoint or
 - Role: keep checkpoints, session notes, and end-of-day handoff state aligned.
 - Best for: preserving the next-session starting point after a work block.
 
+### ERD Architect Agent
+
+- File: [.agent.erd-architect.md](.agent.erd-architect.md)
+- Role: create and maintain implementation-grade ERD mind-maps for entities, relationships, keys, and workflow states.
+- Best for: schema planning, bounded-context decomposition, ownership-boundary design, and migration-safe database evolution.
+
 ## 3. Bootstrap Check
 
 ### Command
