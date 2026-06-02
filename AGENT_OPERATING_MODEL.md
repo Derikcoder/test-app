@@ -5,6 +5,16 @@ Last updated: 2026-04-02
 ## Goal
 Create focused agent roles so delivery remains fast and predictable.
 
+## Current Rollout Position
+
+This model describes the target operating shape, not a mandate to create every agent immediately.
+
+Current rule:
+
+1. Do not create a new agent until repeated task patterns justify a specialist.
+2. Prefer activating the smallest possible set of roles for the current sprint.
+3. Treat server and database agents as proposed additions until rollout gates are met.
+
 ## Oracle Pattern
 Copilot (Oracle) coordinates specialist agents, collects outputs, and decides final action path.
 
@@ -24,6 +34,12 @@ Purpose: React components, UX flows, state wiring, API integration.
 4. Integration Agent
 Purpose: verify backend/frontend contract compatibility and release readiness.
 
+Phase 1 note:
+
+- This section describes the core team shape the system can grow into.
+- It does not mean every Phase 1 role must exist as a separate agent file on day one.
+- If the current sprint is frontend-heavy, keep the live set narrower and defer backend specialization until backend work becomes repetitive enough to justify it.
+
 ## Scaled Agents (Phase 2)
 1. Database Agent
 Purpose: schema evolution, index strategy, migration safety, data integrity.
@@ -37,22 +53,51 @@ Purpose: map end-to-end workflows, identify bottlenecks, enforce operational che
 4. DevOps/Security Agent
 Purpose: deployment configuration, environment hygiene, CI/CD gates, vulnerability triage.
 
+Phase 2 note:
+
+- These agents should be introduced only after the work shows a stable repeated pattern.
+- Database specialization is valuable, but only once schema, query, or migration risk becomes a recurring lane.
+
 ## Specialist Team Recommendations (Current State)
 Use this decision matrix when deciding whether to activate specialist agents.
 
 1. Activate now (high value this week)
 - Project Tracker Agent
-- Backend Agent
-- Integration Agent
 - Security Tracker Agent
 
-2. Activate this sprint only if work starts
+2. Keep active only when the current sprint needs them repeatedly
+- Backend Agent
+- Frontend Agent
+- Integration Agent
+
+3. Activate this sprint only if work starts
 - Database Agent (if local-first mirror/event log implementation begins)
 - API Contract Agent (if auth/response shape changes across frontend/backend)
 
-3. Activate later (low immediate value)
+4. Activate later (low immediate value)
 - Process Flow Agent (after sprint 1 backend stability)
 - DevOps/Security Agent (as release window approaches)
+
+### Rollout Gates Before Creating New Agent Files
+
+An agent should move from proposed to active only when all four gates pass:
+
+1. Repetition gate: the same task shape has appeared at least three times.
+2. Boundary gate: the role can be described without overlapping another agent's core lane.
+3. Value gate: the role reduces routing confusion, risk, or rework.
+4. Trial gate: one dry-run or pilot invocation shows the role produces a clearer handoff than the general workflow.
+
+### Recommended Near-Term Expansion
+
+If expansion becomes necessary, add agents in this order:
+
+1. Server Delivery Agent
+Purpose: repeated route-controller-middleware-validation-test work.
+
+2. Database Safety Agent
+Purpose: schema evolution, index strategy, migration review, and data integrity checks.
+
+Do not add both at once unless both lanes are active and independently justified.
 
 ## Oracle Routing For Next Week
 1. Project Tracker Agent starts each session and publishes the checklist.
@@ -85,19 +130,19 @@ Each agent output must include:
 ## 30-Day Rollout
 
 ### Week 1
-1. Run Security Tracker + Backend + Frontend + Integration only.
+1. Run Security Tracker plus only the smallest specialist set the current sprint actually needs.
 2. Use [BRANCH_SECURITY_TRACKER.md](BRANCH_SECURITY_TRACKER.md) for queue control.
 
 ### Week 2
-1. Introduce Database Agent for schema-impacting tasks.
-2. Add API Contract Agent for endpoint drift prevention.
+1. Introduce a Server Delivery Agent only if backend implementation patterns are repeating.
+2. Add a Database Safety Agent only if schema-impacting tasks have become a recurring lane.
 
 ### Week 3
-1. Add Process Flow Agent for UAT/business workflow validation.
+1. Add API Contract Agent if endpoint drift or payload mismatch is becoming real overhead.
 2. Define standard handoff snippets in PR descriptions.
 
 ### Week 4
-1. Add DevOps/Security Agent for release gates and dependency/security review.
+1. Add Process Flow Agent or DevOps/Security Agent only if release and workflow pressure justify the extra specialization.
 2. Measure cycle time and reduce friction points.
 
 ## Success Criteria

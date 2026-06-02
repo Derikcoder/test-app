@@ -8,6 +8,7 @@
     "refresh": "bash ./refresh.sh",
     "checkpoint": "bash ./scripts/create-checkpoint.sh",
     "checkpoint:recover": "bash ./scripts/recover-last-checkpoint.sh",
+    "bootstrap:mcp": "bash ./scripts/bootstrap-mcp-check.sh",
     "eod:new": "bash ./scripts/new-eod-entry.sh",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
