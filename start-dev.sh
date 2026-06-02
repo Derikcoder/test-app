@@ -14,6 +14,8 @@ ROOT_DIR="$(pwd)"
 USER_MONGO_PID_FILE="$ROOT_DIR/.mongodb/mongod.pid"
 MONGOD_USER_MODE_STARTED=0
 
+bash "$ROOT_DIR/scripts/db-source-guard.sh"
+
 echo "🚀 Starting Field Service Management System..."
 echo ""
 

@@ -45,20 +45,40 @@ const connectDB = async () => {
   const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
   const primaryUri = process.env.MONGODB_URI;
   const localUri = process.env.MONGODB_LOCAL_URI || DEFAULT_LOCAL_MONGO_URI;
+  const defaultMode = isDevelopment ? 'local-only' : 'atlas-only';
+  const rawRuntimeMode = (process.env.DB_RUNTIME_MODE || defaultMode).toLowerCase();
+  const runtimeMode = ['local-only', 'atlas-only', 'auto'].includes(rawRuntimeMode)
+    ? rawRuntimeMode
+    : defaultMode;
   const attempts = [];
 
-  // In development, prefer local MongoDB first to avoid Atlas IP whitelist friction.
-  if (isDevelopment) {
+  if (rawRuntimeMode !== runtimeMode) {
+    console.warn(`⚠️  Invalid DB_RUNTIME_MODE="${rawRuntimeMode}". Falling back to "${runtimeMode}".`);
+  }
+
+  console.log(`ℹ️  DB runtime mode: ${runtimeMode}`);
+
+  if (runtimeMode === 'local-only') {
     attempts.push({ label: 'Local MongoDB', uri: localUri });
-    if (primaryUri && primaryUri !== localUri) {
+  } else if (runtimeMode === 'atlas-only') {
+    if (primaryUri) {
       attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
     }
-  } else if (primaryUri) {
-    attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
+  } else if (runtimeMode === 'auto') {
+    // Auto mode preserves prior behavior: local-first in development.
+    if (isDevelopment) {
+      attempts.push({ label: 'Local MongoDB', uri: localUri });
+      if (primaryUri && primaryUri !== localUri) {
+        attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
+      }
+    } else if (primaryUri) {
+      attempts.push({ label: 'Primary MongoDB', uri: primaryUri });
+    }
   }
 
   if (attempts.length === 0) {
-    console.error('❌ MongoDB connection skipped: no URI configured. Set MONGODB_URI or MONGODB_LOCAL_URI.');
+    console.error('❌ MongoDB connection skipped: no URI configured for selected DB_RUNTIME_MODE.');
+    console.error('💡 Set MONGODB_LOCAL_URI for local-only, MONGODB_URI for atlas-only, or DB_RUNTIME_MODE=auto.');
     return null;
   }
 

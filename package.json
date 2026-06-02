@@ -5,6 +5,13 @@
   "scripts": {
     "install:all": "npm install --prefix server && npm install --prefix client",
     "dev": "bash ./start-dev.sh",
+    "dev:local": "DB_RUNTIME_MODE=local-only bash ./start-dev.sh",
+    "dev:atlas": "DB_RUNTIME_MODE=atlas-only bash ./start-dev.sh",
+    "db:guard": "bash ./scripts/db-source-guard.sh",
+    "db:report:local": "npm --prefix ./server run db:report:local",
+    "db:report:atlas": "npm --prefix ./server run db:report:atlas",
+    "db:audit:duplicates:local": "npm --prefix ./server run db:audit:duplicates:local",
+    "db:audit:duplicates:atlas": "npm --prefix ./server run db:audit:duplicates:atlas",
     "refresh": "bash ./refresh.sh",
     "checkpoint": "bash ./scripts/create-checkpoint.sh",
     "checkpoint:recover": "bash ./scripts/recover-last-checkpoint.sh",

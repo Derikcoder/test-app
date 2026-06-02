@@ -7,6 +7,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "db:report:local": "node ./scripts/db-target-report.mjs --target local",
+    "db:report:atlas": "node ./scripts/db-target-report.mjs --target atlas",
+    "db:audit:duplicates:local": "node ./scripts/db-duplicate-audit.mjs --target local",
+    "db:audit:duplicates:atlas": "node ./scripts/db-duplicate-audit.mjs --target atlas",
     "test": "node --experimental-vm-modules ./node_modules/.bin/jest --detectOpenHandles",
     "test:server": "npm run test",
     "test:server:json": "npm run test -- --json --outputFile=jest.output.json .",
