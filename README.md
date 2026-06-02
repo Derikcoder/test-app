@@ -914,6 +914,7 @@ npm update
 - **[BRANCH_SECURITY_TRACKER.md](BRANCH_SECURITY_TRACKER.md)** - Branch-by-branch security/sync tracker and remediation queue
 - **[PROJECT_TRACKING_SYSTEM.md](PROJECT_TRACKING_SYSTEM.md)** - Command-center workflow for delivery, risk, and branch operations
 - **[AGENT_OPERATING_MODEL.md](AGENT_OPERATING_MODEL.md)** - Specialized agent roles, handoffs, and rollout plan
+- **[ARCHITECTURE_DOCTRINE.md](ARCHITECTURE_DOCTRINE.md)** - One-source-of-truth doctrine for domain symmetry, DB target governance, and scale-ready ERD breakdown
 - **[CLEANUP_SEQUENCE_AGENT_PLAN.md](CLEANUP_SEQUENCE_AGENT_PLAN.md)** - Cleanup order-of-operations with agent delegation
 - **[COST_CALC_AUDIT_STRATEGY.md](COST_CALC_AUDIT_STRATEGY.md)** - Costing separation contract, audit checklist, and regression release gate
 - **[AI_ASSISTANT_GUIDE.md](AI_ASSISTANT_GUIDE.md)** - AI assistant briefing and recent changes log
