@@ -16,7 +16,15 @@ Current rule:
 3. Treat server and database agents as proposed additions until rollout gates are met.
 
 ## Oracle Pattern
-Copilot (Oracle) coordinates specialist agents, collects outputs, and decides final action path.
+Copilot (Oracle) is the primary communication line with the user, coordinates specialist agents, collects outputs, and decides final action path.
+
+### ERD-First Feature Gate
+For net-new features and schema-impacting behavior changes:
+
+1. ERD Architect Agent runs first and produces canonical model + relationship package.
+2. Oracle validates handoff quality and determines affected layers.
+3. Oracle dispatches explicit instruction packets to frontend, backend, and database specialists.
+4. Implementation starts only after this gate passes.
 
 ## Essential Agents (Phase 1)
 1. Project Tracker Agent
@@ -101,10 +109,11 @@ Do not add both at once unless both lanes are active and independently justified
 
 ## Oracle Routing For Next Week
 1. Project Tracker Agent starts each session and publishes the checklist.
-2. Backend Agent executes implementation tasks in priority order.
-3. Integration Agent validates contract and regression behavior after each major task group.
-4. Security Tracker Agent runs branch/risk checks before end-of-day closeout.
-5. Oracle resolves conflicts and sets next session top 3 actions.
+2. ERD Architect Agent runs first for net-new features.
+3. Backend Agent executes implementation tasks in priority order.
+4. Integration Agent validates contract and regression behavior after each major task group.
+5. Security Tracker Agent runs branch/risk checks before end-of-day closeout.
+6. Oracle resolves conflicts and sets next session top 3 actions.
 
 ## Agent Handoff Contract
 Each agent output must include:
@@ -113,6 +122,12 @@ Each agent output must include:
 3. Risks found
 4. Decision recommendation
 5. Next step owner
+
+Oracle must additionally include:
+1. ERD gate status (required/passed/not required)
+2. Frontend instruction packet
+3. Backend instruction packet
+4. Database instruction packet
 
 ## Anti-Overlap Rules
 1. Backend agent does not design UI.

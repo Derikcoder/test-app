@@ -141,8 +141,14 @@ Resume only from the last verified safe point, then create a fresh checkpoint or
 ### Task Router Agent
 
 - File: [.agent.task-router.md](.agent.task-router.md)
-- Role: first-pass classifier that routes each request to the narrowest specialist agent.
-- Best for: deciding whether a new message should go to scouting, UI refactor, UX review, continuity, or testing.
+- Role: first-pass classifier that routes each request to the narrowest specialist path, with Oracle orchestration.
+- Best for: deciding whether a new message requires ERD-first planning and which specialist lane should execute next.
+
+### Oracle Orchestrator Agent
+
+- File: [.agent.oracle-orchestrator.md](.agent.oracle-orchestrator.md)
+- Role: primary communication line between user goals and specialist execution, including cross-layer dispatch.
+- Best for: converting ERD-informed requirements into clear frontend, backend, and database instruction packets.
 
 ### Read-Only Scout Agent
 
@@ -171,8 +177,8 @@ Resume only from the last verified safe point, then create a fresh checkpoint or
 ### ERD Architect Agent
 
 - File: [.agent.erd-architect.md](.agent.erd-architect.md)
-- Role: create and maintain implementation-grade ERD mind-maps for entities, relationships, keys, and workflow states.
-- Best for: schema planning, bounded-context decomposition, ownership-boundary design, and migration-safe database evolution.
+- Role: create and maintain implementation-grade ERD mind-maps for entities, relationships, keys, and workflow states, then hand off to Oracle.
+- Best for: schema planning, bounded-context decomposition, ownership-boundary design, migration-safe database evolution, and first-pass feature modeling.
 
 ## 3. Bootstrap Check
 
@@ -190,10 +196,12 @@ Resume only from the last verified safe point, then create a fresh checkpoint or
 
 1. Run `npm run bootstrap:mcp`.
 2. Route the request through `task-router` first, or rely on the router-first instruction.
-3. Use `read-only-investigation-mcp.yaml` to map the smallest safe change surface.
-4. Use `repo-safe-coding-mcp.yaml` for the actual edit.
-5. Use `ux-review` after a UI pass if the visual result needs a sanity check.
-6. Use `continuity-custodian` before stopping for the day.
+3. If it is net-new feature work, run `ERD Architect Agent` first.
+4. Route through `Oracle Orchestrator Agent` for final specialist dispatch and sequencing.
+5. Use `read-only-investigation-mcp.yaml` to map the smallest safe change surface.
+6. Use `repo-safe-coding-mcp.yaml` for the actual edit.
+7. Use `ux-review` after a UI pass if the visual result needs a sanity check.
+8. Use `continuity-custodian` before stopping for the day.
 
 ## 5. Update Rules
 
