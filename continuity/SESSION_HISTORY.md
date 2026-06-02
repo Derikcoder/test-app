@@ -129,3 +129,10 @@ Chronological checkpoint record for crash recovery and continuity.
 - Checkpoint: 20260526-171136-main
 - Note: EOD checkpoint: Jira account created and CSV uploaded via Confluence workspace
 - Next Action: Tomorrow: complete Jira and Confluence VS Code integrations and validate ticket/page workflows
+
+## 2026-06-02 14:33:17 SAST
+- Branch: main
+- HEAD: d5fc9d7
+- Checkpoint: 20260602-143317-main
+- Note: Security remediation complete; lockfiles refreshed and vulnerabilities cleared
+- Next Action: Tomorrow 12:00 SAST: verify Dependabot alert refresh; if any remain, triage by advisory ID and affected manifest

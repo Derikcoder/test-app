@@ -1,0 +1,13 @@
+diff --git a/continuity/CURRENT_STATUS.md b/continuity/CURRENT_STATUS.md
+index 7b59034..1e0c8ab 100644
+--- a/continuity/CURRENT_STATUS.md
++++ b/continuity/CURRENT_STATUS.md
+@@ -61,3 +61,8 @@ Do not resume until all four answers are yes:
+ 4. Is the next action still correct?
+ 
+ If any answer is no, stop and reconstruct state from checkpoint artifacts and session logs before continuing.
++
++## Scheduled Reminder
++
++- 2026-06-03 12:00 SAST: Check GitHub Dependabot alerts for `Derikcoder/test-app` after security commits `3e9ca21` and `d5fc9d7`.
++- If alerts are not cleared, capture remaining advisory IDs and affected manifests/lockfiles, then run targeted triage and remediation.
